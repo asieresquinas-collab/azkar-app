@@ -671,17 +671,18 @@ function collectFormData() {
     if (el) data[id] = el.value;
   });
 
-  // Collect table rows
+  // Collect table rows (rows have class 'cr' inside container 'tb')
   const rows = [];
-  document.querySelectorAll('#tbl .tr').forEach(tr => {
-    const cells = tr.querySelectorAll('input, select');
-    if (cells.length >= 5) {
+  document.querySelectorAll('#tb .cr').forEach(cr => {
+    const inputs = cr.querySelectorAll('input');
+    const selects = cr.querySelectorAll('select');
+    if (inputs.length >= 4 && selects.length >= 1) {
       rows.push({
-        c: cells[0]?.value || '',
-        z: cells[1]?.value || '',
-        u: cells[2]?.value || '',
-        p: cells[3]?.value || '',
-        d: cells[4]?.value || ''
+        c: inputs[0]?.value || '',
+        z: selects[0]?.value || 'Salón',
+        u: inputs[1]?.value || '',
+        p: inputs[2]?.value || '',
+        d: inputs[3]?.value || ''
       });
     }
   });
@@ -841,8 +842,9 @@ async function loadPresupuesto(id) {
   const data = await getPresupuesto(id);
   if (!data) return alert('Presupuesto no encontrado');
   
-  // Clear existing rows
-  document.querySelectorAll('#tbl .tr').forEach(tr => tr.remove());
+  // Clear existing rows (rows have class 'cr' inside container 'tb')
+  document.querySelectorAll('#tb .cr').forEach(cr => cr.remove());
+  rid = 0;
   restoreFormData(data);
   closeMgr();
   if (typeof ST === 'function') ST('presupuesto');
@@ -929,11 +931,11 @@ async function saveFirebaseConfig() {
 // ══════════════════════════════════════════════════════════════
 //  OVERRIDE: Guardar y Cargar con IndexedDB + Firebase
 // ══════════════════════════════════════════════════════════════
-const _originalSV = typeof SV === 'function' ? SV : null;
+const _originalGD = typeof GD === 'function' ? GD : null;
 
-window.SV = async function() {
-  // Call original save (updates embedded JSON)
-  if (_originalSV) _originalSV();
+window.GD = async function() {
+  // Call original GD save (downloads HTML with embedded JSON)
+  // if (_originalGD) _originalGD();
   
   // Also persist to IndexedDB
   const data = collectFormData();
