@@ -11,7 +11,7 @@
 #topnav,.tact,.bdel,.bq,.ntab,.acts,.pak-btns,.stop,#pwa-install-banner,#sync-status,#offline-indicator,#mgr-panel,#fb-config-overlay{display:none!important}
 body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;margin:0!important;padding:0!important}
 .page{padding:0!important;margin:0!important}
-body.print-all .page{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;overflow:visible!important;position:relative!important}
+.page{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;overflow:visible!important;position:relative!important}
 
 /* ========== DOSSIER: compacto ========== */
 .portada{margin:0 auto!important;box-shadow:none!important;border-radius:0!important;max-height:50vh!important;overflow:hidden!important}
@@ -222,30 +222,27 @@ function LD(){
 
 
 function PA(){
+  window.print();
+}
+/* beforeprint: browser fires this BEFORE rendering print — show all pages */
+window.addEventListener('beforeprint', function(){
   document.body.classList.add('print-all');
   var pages=["page-dossier","page-presupuesto","page-contrato"];
   for(var i=0;i<pages.length;i++){
     var p=document.getElementById(pages[i]);
-    if(p){
-      p.style.cssText='display:block !important;visibility:visible !important;opacity:1 !important;height:auto !important;overflow:visible !important;';
-    }
+    if(p) p.style.setProperty('display','block','important');
   }
-  /* Hide PWA overlays */
-  var hide=['pwa-install-banner','sync-status','offline-indicator','mgr-panel','fb-config-overlay'];
-  for(var j=0;j<hide.length;j++){var h=document.getElementById(hide[j]);if(h)h.style.display='none';}
-  setTimeout(function(){
-    window.print();
-    setTimeout(function(){
-      document.body.classList.remove('print-all');
-      /* Restore pages */
-      for(var i=0;i<pages.length;i++){
-        var p=document.getElementById(pages[i]);
-        if(p) p.style.cssText='';
-      }
-      ST('dossier');
-    },1000);
-  },500);
-}
+});
+/* afterprint: restore to single-page view */
+window.addEventListener('afterprint', function(){
+  document.body.classList.remove('print-all');
+  var pages=["page-dossier","page-presupuesto","page-contrato"];
+  for(var i=0;i<pages.length;i++){
+    var p=document.getElementById(pages[i]);
+    if(p) p.style.display='';
+  }
+  ST('dossier');
+})
 
 // ══════════════════════════════════════════════════════════════
 //  AZKAR v2  ·  Catálogo precios · PAKs · Tipo servicio · Auto
