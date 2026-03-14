@@ -980,11 +980,16 @@ window.addEventListener('DOMContentLoaded', function() {
     acts.insertBefore(mgrBtn, acts.firstChild);
   }
   
-  // Auto-load Firebase config if saved
-  try {
-    const saved = JSON.parse(localStorage.getItem('azkar-firebase-config') || 'null');
-    if (saved && saved.apiKey) initFirebase(saved);
-  } catch(e) {}
+  // Auto-connect Firebase with hardcoded config
+  const azkarFirebaseConfig = {
+    apiKey: "AIzaSyABQfCy-0afkyYqTFsNP_ayV5-ruitrkbA",
+    authDomain: "azkar-mudanzas.firebaseapp.com",
+    projectId: "azkar-mudanzas",
+    storageBucket: "azkar-mudanzas.firebasestorage.app",
+    messagingSenderId: "1057774147621",
+    appId: "1:1057774147621:web:0a29da12018adafaff87cc"
+  };
+  initFirebase(azkarFirebaseConfig);
   
   // Auto-save every 60 seconds
   setInterval(() => {
