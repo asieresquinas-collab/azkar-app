@@ -13,50 +13,134 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 .page{padding:0!important;margin:0!important}
 .page{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;overflow:visible!important;position:relative!important}
 
-/* ========== DOSSIER: compacto ========== */
-.portada{margin:0 auto!important;box-shadow:none!important;border-radius:0!important;max-height:50vh!important;overflow:hidden!important}
-.pfoto{max-height:50vh!important;width:100%!important;object-fit:cover!important}
-.istrip{box-shadow:none!important;margin:0 auto!important;border-radius:0!important;padding:3px!important;font-size:10px!important}
-.istrip div{padding:3px 6px!important}
-.dsh{box-shadow:none!important;margin:3px auto 0!important;border-radius:0!important}
-.dsh h2{font-size:13px!important;margin:3px 0!important;padding:4px 10px!important}
-.dsh p,.dsh li,.dsh td{font-size:10px!important;line-height:1.25!important;margin:1px 0!important;padding:1px 3px!important}
-.pcta{margin:2px 6px 3px!important;padding:3px 6px!important;border-radius:2px!important;font-size:9px!important}
-.pcard{padding:2px!important}
-.pkname{font-size:10px!important}
-.pkdesc{font-size:8px!important}
+/* ========== PÁGINA 1: PORTADA ========== */
+.portada{margin:0 auto!important;box-shadow:none!important;border-radius:0!important;max-height:58vh!important;overflow:hidden!important}
+.pfoto{max-height:58vh!important;width:100%!important;object-fit:cover!important}
+.pcont{padding:20px 28px 18px!important}
+.ptag{font-size:36px!important}
+.pstats .sbox{padding:6px 10px!important}
+.sv{font-size:18px!important}
+.sl{font-size:8px!important}
+.istrip{box-shadow:none!important;margin:0 auto!important;border-radius:0!important;padding:4px!important;font-size:10px!important}
+.istrip div{padding:4px 8px!important}
+.itel{font-size:20px!important}
+.nv{font-size:18px!important}
+/* Forzar salto después de portada+istrip */
+.istrip{page-break-after:always!important}
+
+/* ========== PÁGINA 2: QUIÉNES SOMOS + SERVICIOS + PACKS ========== */
+.dsh{box-shadow:none!important;margin:0 auto!important;border-radius:0!important;page-break-inside:avoid!important}
+.dhead{padding:6px 14px!important}
+.dlogo{height:20px!important}
+.dbody{min-height:auto!important}
+.dleft{padding:12px 14px 8px!important}
+.kick{font-size:8px!important;margin-bottom:4px!important}
+.btit{font-size:18px!important;margin-bottom:5px!important}
+.bpar{font-size:10px!important;line-height:1.5!important;margin-bottom:8px!important}
+.vgrid{gap:4px!important;margin-bottom:8px!important}
+.vi{padding:4px 6px!important;border-top-width:2px!important}
+.vit{font-size:9px!important}
+.vis{font-size:8px!important}
+.sgrid{gap:4px 8px!important}
+.sd{width:5px!important;height:5px!important;margin-top:3px!important}
+.st{font-size:9px!important}
+.ss{font-size:8px!important;line-height:1.3!important}
+.df1,.df2{max-height:130px!important}
+.dft{padding:4px 14px!important;font-size:8px!important}
+.dnar{height:3px!important}
+/* Packs compactos */
+.pgrid{gap:6px!important;padding:0 14px 8px!important}
+.pc{border-radius:4px!important}
+.pt{height:3px!important}
+.ph{padding:7px 9px 5px!important}
+.pn{font-size:14px!important}
+.pp{font-size:11px!important;margin-top:2px!important}
+.psub{font-size:8px!important;margin-top:1px!important;margin-bottom:4px!important}
+.psep{margin:0 9px!important}
+.pitems{padding:5px 9px 7px!important;gap:2px!important}
+.pitem{font-size:8.5px!important}
+.pd{width:5px!important;height:5px!important;margin-top:2px!important}
+.pbg{font-size:7px!important;padding:2px 4px!important}
+/* CTA compacto */
+.pcta{margin:0 14px 8px!important;padding:6px 12px!important;border-radius:3px!important;border-top-width:2px!important}
+.ctat{font-size:13px!important}
+.ctas{font-size:8px!important}
+.ctatel{font-size:16px!important}
 #page-dossier .foot{font-size:7px!important;padding:2px!important}
 
-/* ========== PRESUPUESTO: hoja propia ========== */
+/* ========== PÁGINA 3: PRESUPUESTO ========== */
 #page-presupuesto{page-break-before:always!important}
-#page-presupuesto .sheet{box-shadow:none!important;border:none!important;padding:2mm 0!important;border-radius:0!important}
-.shead{page-break-after:avoid!important}
-.slogo{max-height:40px!important}
-.stitle{page-break-after:avoid!important;font-size:12px!important}
+#page-presupuesto .sheet{box-shadow:none!important;border:none!important;padding:0!important;border-radius:0!important}
+.shead{page-break-after:avoid!important;padding:10px 18px!important}
+.slogo{max-height:30px!important}
+.sbrand{font-size:16px!important}
+.sbrand small{font-size:8px!important}
+.sinfo{font-size:9px!important}
+.stitle{page-break-after:avoid!important;font-size:11px!important;padding:6px 18px!important;letter-spacing:1px!important}
+.sec{padding:10px 18px!important}
+.sec+.sec{padding-top:0!important}
+.sbar{font-size:9px!important;padding:4px 10px!important;margin-bottom:8px!important}
+.fg{gap:5px!important;margin-bottom:5px!important}
+.fi label{font-size:8px!important;padding:3px 7px!important}
+.fi input,.fi select,.fi textarea{font-size:11px!important;padding:5px 7px!important}
+.fi textarea{min-height:30px!important}
+.cw{padding:0 18px 10px!important}
+.th{padding:4px 8px!important;gap:3px!important}
+.th span{font-size:8px!important}
+.cr{padding:3px 8px!important;gap:3px!important}
+.cr input,.cr select{font-size:10px!important;padding:3px 5px!important}
+.ctot{font-size:11px!important}
+.tw{margin:0 18px 10px!important}
+.tots{min-width:240px!important}
+.tr{padding:5px 10px!important}
+.tr.hl .tl{font-size:11px!important}
+.tr.hl .tv{font-size:13px!important}
+.tl{font-size:10px!important}
+.tv{font-size:12px!important}
+.nota{margin:0 18px 10px!important;padding:5px 10px!important;font-size:9px!important;line-height:1.5!important}
+.firmas{page-break-inside:avoid!important;margin:0 18px 10px!important;gap:8px!important}
+.ft{font-size:9px!important;padding:5px 10px!important}
+.fa{height:55px!important}
+.sfb{height:3px!important}
+.sfoot{padding:6px 18px!important;font-size:8px!important}
 .cr,.cl{page-break-inside:avoid}
 .tots{page-break-inside:avoid!important}
-.firmas{page-break-inside:avoid!important;margin-top:8px!important}
 
-/* ========== CONTRATO: TODO en 1 hoja ========== */
+/* ========== PÁGINA 4: CONTRATO ========== */
 #page-contrato{page-break-before:always!important}
-#page-contrato .sheet{box-shadow:none!important;border:none!important;padding:1mm 0!important;border-radius:0!important}
-#page-contrato .slogo{max-height:30px!important}
-#page-contrato .shead{padding:2px!important}
-#page-contrato .stitle{font-size:10px!important;padding:2px 0!important;margin:2px 0!important}
-/* Datos del contrato arriba */
-#page-contrato .srow{padding:1px 4px!important;font-size:9px!important;margin:0!important}
-#page-contrato .sbar{font-size:9px!important;padding:3px 8px!important;margin:4px 0 0!important;letter-spacing:1px!important}
-/* Clausulas ultra compactas */
+#page-contrato .sheet{box-shadow:none!important;border:none!important;padding:0!important;border-radius:0!important}
+#page-contrato .shead{padding:6px 14px!important}
+#page-contrato .slogo{max-height:26px!important}
+#page-contrato .sbrand{font-size:14px!important}
+#page-contrato .sinfo{font-size:8px!important}
+#page-contrato .stitle{font-size:10px!important;padding:4px 14px!important}
+#page-contrato .csec{padding:8px 14px!important}
+#page-contrato .pbox{padding:6px 10px!important;margin-bottom:6px!important}
+#page-contrato .plab{font-size:8px!important;margin-bottom:2px!important}
+#page-contrato .ptxt{font-size:10px!important;line-height:1.5!important}
+#page-contrato .cdg{gap:5px!important;margin-bottom:5px!important}
+#page-contrato .df .dl{font-size:8px!important;padding:2px 7px!important}
+#page-contrato .df .dv{font-size:11px!important;padding:4px 7px!important;min-height:22px!important}
+#page-contrato .df.imp .dv{font-size:15px!important;padding:6px 10px!important}
+#page-contrato .sbar{font-size:8px!important;padding:3px 8px!important;margin:4px 0 4px!important;letter-spacing:0.8px!important}
+#page-contrato .sec{padding:6px 14px!important}
+#page-contrato .sec+.sec{padding-top:0!important}
+/* Descripción del servicio compacta */
+#page-contrato .sec .ptxt{font-size:9.5px!important;line-height:1.4!important}
+/* Cláusulas ultra compactas */
 .cls{margin-top:2px!important;border-radius:2px!important}
 .cl{padding:0!important;border-bottom:0.5px solid #ddd!important}
-.cln{font-size:8px!important;padding:1px 4px!important;min-width:18px!important;width:18px!important}
+.cln{font-size:7px!important;padding:1px 3px!important;min-width:16px!important;width:16px!important}
 .clb{padding:1px 4px!important}
-.clt{font-size:8px!important;font-weight:700!important;margin-bottom:0!important;letter-spacing:0.3px!important}
-.clx{font-size:7.5px!important;line-height:1.2!important;color:#333!important}
+.clt{font-size:7.5px!important;font-weight:700!important;margin-bottom:0!important;letter-spacing:0.3px!important}
+.clx{font-size:7px!important;line-height:1.15!important;color:#333!important}
 /* Firmas contrato */
-.cfirmas{page-break-inside:avoid!important;margin-top:4px!important;padding:4px!important}
-.cfirmas div{font-size:9px!important}
-.nota{page-break-inside:avoid!important;font-size:7px!important;padding:2px 4px!important;margin-top:2px!important}
+.cfirmas{page-break-inside:avoid!important;margin:6px 14px 10px!important;gap:8px!important}
+.cft{font-size:8px!important;padding:4px 10px!important}
+.cfn{font-size:10px!important;padding:4px 10px!important;min-height:20px!important}
+.cfa{height:50px!important}
+.cfs{font-size:8px!important;padding:3px 10px!important}
+#page-contrato .sfoot{padding:4px 14px!important;font-size:7px!important}
 
 /* Sheets general */
 .sheet{max-width:100%!important;margin:0!important;box-shadow:none!important;border-radius:0!important}
