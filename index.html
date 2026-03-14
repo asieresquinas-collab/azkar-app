@@ -311,22 +311,44 @@ function PA(){
   window.print();
 }
 /* beforeprint: browser fires this BEFORE rendering print — show all pages */
+var _printMode = 'pdf'; // 'pdf' or 'parte'
 window.addEventListener('beforeprint', function(){
-  document.body.classList.add('print-all');
-  var pages=["page-dossier","page-presupuesto","page-contrato"];
-  for(var i=0;i<pages.length;i++){
-    var p=document.getElementById(pages[i]);
-    if(p) p.style.setProperty('display','block','important');
+  if (_printMode === 'parte') {
+    // Solo mostrar el parte
+    var pages=["page-dossier","page-presupuesto","page-contrato"];
+    for(var i=0;i<pages.length;i++){
+      var p=document.getElementById(pages[i]);
+      if(p) p.style.setProperty('display','none','important');
+    }
+    var topnav=document.getElementById('topnav');
+    if(topnav) topnav.style.setProperty('display','none','important');
+    var parte=document.getElementById('page-parte');
+    if(parte) parte.style.setProperty('display','block','important');
+  } else {
+    // PDF completo: dossier + presupuesto + contrato (sin parte)
+    document.body.classList.add('print-all');
+    var pages=["page-dossier","page-presupuesto","page-contrato"];
+    for(var i=0;i<pages.length;i++){
+      var p=document.getElementById(pages[i]);
+      if(p) p.style.setProperty('display','block','important');
+    }
+    var parte=document.getElementById('page-parte');
+    if(parte) parte.style.setProperty('display','none','important');
   }
 });
 /* afterprint: restore to single-page view */
 window.addEventListener('afterprint', function(){
   document.body.classList.remove('print-all');
+  var parte=document.getElementById('page-parte');
+  if(parte) parte.style.display='none';
+  var topnav=document.getElementById('topnav');
+  if(topnav) topnav.style.display='';
   var pages=["page-dossier","page-presupuesto","page-contrato"];
   for(var i=0;i<pages.length;i++){
     var p=document.getElementById(pages[i]);
     if(p) p.style.display='';
   }
+  _printMode = 'pdf';
   ST('dossier');
 })
 
@@ -1131,30 +1153,9 @@ function PRINT_PARTE() {
     rowsDiv.innerHTML = '<div style="padding:20px;text-align:center;color:#888;font-style:italic">No hay enseres registrados</div>';
   }
   
-  // Show parte, hide everything else, print, restore
-  var pages = ['page-dossier','page-presupuesto','page-contrato'];
-  var prevDisplay = {};
-  pages.forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) { prevDisplay[id] = el.style.display; el.style.display = 'none'; }
-  });
-  var topnav = document.getElementById('topnav');
-  if (topnav) topnav.style.display = 'none';
-  
-  var parte = document.getElementById('page-parte');
-  parte.style.display = 'block';
-  
+  // Set print mode and print
+  _printMode = 'parte';
   window.print();
-  
-  // Restore after print
-  setTimeout(function() {
-    parte.style.display = 'none';
-    if (topnav) topnav.style.display = '';
-    pages.forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) el.style.display = prevDisplay[id] || '';
-    });
-  }, 500);
 }
 </script>
 
