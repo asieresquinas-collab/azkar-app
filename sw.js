@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  AZKAR PWA · Service Worker · Offline-first
 // ══════════════════════════════════════════════════════════════
-const CACHE_NAME = 'azkar-pwa-v6';
+const CACHE_NAME = 'azkar-pwa-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -32,15 +32,29 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Firebase API calls: network only
-  if (url.hostname.includes('firestore') || url.hostname.includes('firebase')) {
+  // API calls (Firebase + Railway): network only, never cache
+  if (url.hostname.includes('firestore') || url.hostname.includes('firebase') || url.hostname.includes('railway.app')) {
     e.respondWith(fetch(e.request).catch(() => new Response('{"offline":true}', {
       headers: { 'Content-Type': 'application/json' }
     })));
     return;
   }
 
-  // Everything else: cache-first
+  // HTML pages: network-first (always get latest, fallback to cache)
+  if (e.request.destination === 'document' || e.request.url.endsWith('.html')) {
+    e.respondWith(
+      fetch(e.request).then(response => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(e.request).then(c => c || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Everything else (fonts, icons): cache-first
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
