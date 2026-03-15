@@ -32,8 +32,8 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // API calls (Firebase + Railway): network only, never cache
-  if (url.hostname.includes('firestore') || url.hostname.includes('firebase') || url.hostname.includes('railway.app')) {
+  // API calls (Firebase + Railway) + CDN scripts: network only, never cache
+  if (url.hostname.includes('firestore') || url.hostname.includes('firebase') || url.hostname.includes('railway.app') || url.hostname.includes('cdnjs.cloudflare.com')) {
     e.respondWith(fetch(e.request).catch(() => new Response('{"offline":true}', {
       headers: { 'Content-Type': 'application/json' }
     })));
