@@ -1011,32 +1011,60 @@ async function openMgr() {
   
   try {
     const all = await getAllPresupuestos();
-    all.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-    count.textContent = all.length + ' presupuesto(s)';
-    
-    if (all.length === 0) {
+
+    // Separar: actuales (sin _isVersion) y versiones anteriores
+    const current = all.filter(p => !p._isVersion).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    const versions = all.filter(p => p._isVersion).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    const totalVersions = versions.length;
+    count.textContent = current.length + ' presupuesto(s)' + (totalVersions > 0 ? ' · ' + totalVersions + ' versión(es) anterior(es)' : '');
+
+    if (current.length === 0 && versions.length === 0) {
       list.innerHTML = '<div style="text-align:center;padding:40px;color:#888;font-size:14px;">No hay presupuestos guardados.<br><br>Rellena un presupuesto y pulsa <b>Guardar</b> para verlo aquí.</div>';
       return;
     }
-    
-    list.innerHTML = all.map(p => `
-      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:8px;border:1px solid #e0e4ea;border-radius:8px;cursor:pointer;transition:.15s;background:#fff;" 
-           onmouseover="this.style.background='#EBF3FD';this.style.borderColor='#2376C5'" 
-           onmouseout="this.style.background='#fff';this.style.borderColor='#e0e4ea'"
-           onclick="loadPresupuesto('${p.id}')">
-        <div style="width:42px;height:42px;background:linear-gradient(135deg,#1B4F8A,#2376C5);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">
-          ${(p.f_ref || 'N/A').slice(-3)}
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.f_nom || 'Sin nombre'}</div>
-          <div style="font-size:11px;color:#888;margin-top:1px;">${p.f_ref || 'Sin ref'} · ${p.f_fecha || 'Sin fecha'}</div>
-        </div>
-        <div style="text-align:right;font-size:11px;color:#888;">
-          ${p.f_rec ? '📍 ' + (p.f_rec.length > 20 ? p.f_rec.substring(0,20)+'...' : p.f_rec) : ''}
-        </div>
-        <button onclick="event.stopPropagation();delPresupuesto('${p.id}')" style="background:#fee;border:1px solid #fcc;color:#c0392b;padding:6px 10px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;">🗑</button>
-      </div>
-    `).join('');
+
+    function formatDate(ts) {
+      if (!ts) return '';
+      const d = new Date(ts);
+      return d.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'2-digit' }) + ' ' + d.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+    }
+
+    function renderItem(p, isVersion) {
+      const bgGrad = isVersion ? 'linear-gradient(135deg,#888,#aaa)' : 'linear-gradient(135deg,#1B4F8A,#2376C5)';
+      const versionLabel = isVersion ? '<span style="background:#f0ad4e;color:#fff;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;margin-left:4px;">ANTERIOR</span>' : '';
+      const dateLabel = isVersion && p.timestamp ? ' · Guardado: ' + formatDate(p.timestamp) : '';
+      return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:' + (isVersion ? '4' : '8') + 'px;border:1px solid ' + (isVersion ? '#f0e0c0' : '#e0e4ea') + ';border-radius:8px;cursor:pointer;transition:.15s;background:' + (isVersion ? '#fffdf5' : '#fff') + ';" onmouseover="this.style.background=\'' + (isVersion ? '#fff8e1' : '#EBF3FD') + '\'" onmouseout="this.style.background=\'' + (isVersion ? '#fffdf5' : '#fff') + '\'" onclick="loadPresupuesto(\'' + p.id + '\')">'
+        + '<div style="width:42px;height:42px;background:' + bgGrad + ';border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">' + (p.f_ref || p._versionOf || 'N/A').slice(-4) + '</div>'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.f_nom || 'Sin nombre') + versionLabel + '</div>'
+        + '<div style="font-size:11px;color:#888;margin-top:1px;">' + (p.f_ref || p._versionOf || 'Sin ref') + ' · ' + (p.f_fecha || 'Sin fecha') + dateLabel + '</div>'
+        + '</div>'
+        + '<div style="text-align:right;font-size:11px;color:#888;">' + (p.f_rec ? (p.f_rec.length > 20 ? p.f_rec.substring(0,20)+'...' : p.f_rec) : '') + '</div>'
+        + '<button onclick="event.stopPropagation();delPresupuesto(\'' + p.id + '\')" style="background:#fee;border:1px solid #fcc;color:#c0392b;padding:6px 10px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;">x</button>'
+        + '</div>';
+    }
+
+    // Mostrar: primero actuales, debajo de cada uno sus versiones
+    let html = '';
+    current.forEach(p => {
+      html += renderItem(p, false);
+      // Buscar versiones de este presupuesto
+      const ref = p.f_ref || p.id;
+      const myVersions = versions.filter(v => v._versionOf === ref);
+      myVersions.forEach(v => { html += renderItem(v, true); });
+    });
+    // Versiones huérfanas (sin presupuesto actual)
+    const usedVersionIds = new Set();
+    current.forEach(p => {
+      const ref = p.f_ref || p.id;
+      versions.filter(v => v._versionOf === ref).forEach(v => usedVersionIds.add(v.id));
+    });
+    const orphanVersions = versions.filter(v => !usedVersionIds.has(v.id));
+    if (orphanVersions.length > 0) {
+      html += '<div style="font-size:11px;color:#888;padding:8px 0;font-weight:700;">Versiones sin presupuesto actual:</div>';
+      orphanVersions.forEach(v => { html += renderItem(v, true); });
+    }
+    list.innerHTML = html;
   } catch (e) {
     list.innerHTML = '<div style="color:red;padding:20px;">Error cargando presupuestos: ' + e.message + '</div>';
   }
@@ -1434,7 +1462,29 @@ window.GD = async function() {
   const numRef = parseInt(ref, 10);
 
   try {
-    // Guardar en IndexedDB
+    // ── HISTORIAL DE VERSIONES ──
+    // Si ya existe un presupuesto con este ref, guardar copia como versión anterior
+    const existing = await getPresupuesto(ref);
+    if (existing && existing.timestamp) {
+      // Comprobar que los datos han cambiado (comparar campos clave)
+      const changed = ['f_nom','f_rec','f_ent','f_obs','f_tel','f_email'].some(
+        k => (existing[k] || '') !== (data[k] || '')
+      ) || JSON.stringify(existing.rows || []) !== JSON.stringify(data.rows || []);
+
+      if (changed) {
+        // Guardar versión anterior con ID = ref_v{timestamp}
+        const versionId = ref + '_v' + existing.timestamp;
+        const versionData = { ...existing, id: versionId, _versionOf: ref, _isVersion: true };
+        await savePresupuesto(versionData);
+        // También guardar versión en Firebase
+        if (firebaseConfigured && window._fb) {
+          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', versionId), versionData);
+        }
+        console.log('[Azkar] Versión anterior guardada:', versionId);
+      }
+    }
+
+    // Guardar versión actual en IndexedDB
     await savePresupuesto(data);
 
     // Renombrar carpeta en Drive con el nombre del cliente (si tiene nombre)
