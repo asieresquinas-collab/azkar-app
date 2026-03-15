@@ -375,7 +375,7 @@ async function PA(){
   _printMode = 'pdf';
   window.print();
 
-  // 2) Después de imprimir → guardar copia HTML en Drive
+  // 2) Después de imprimir → guardar HTML COMPLETO (con estilos) en Drive
   if (number && number.trim() && numRef >= 1000) {
     showSyncStatus('⏳ Guardando en carpeta ' + number + '...');
     try {
@@ -384,21 +384,17 @@ async function PA(){
         await renameDriveFolder(numRef, clientName);
       }
 
-      // Fijar valores en el HTML antes de capturar
-      _bakeFormValues(document.getElementById('page-presupuesto'));
-      _bakeFormValues(document.getElementById('page-contrato'));
-      _bakeFormValues(document.getElementById('page-dossier'));
+      // Construir HTML completo con TODOS los estilos y datos del formulario
+      var completeHTML = buildCompleteHTML(['page-dossier', 'page-presupuesto', 'page-contrato']);
 
-      // Guardar PRESUPUESTO
-      var presupuesto = document.getElementById('page-presupuesto') ? document.getElementById('page-presupuesto').outerHTML : '';
-      var res1 = await saveToDrive(number, clientName, presupuesto, 'PRESUPUESTO');
+      // Guardar como un solo archivo completo
+      var result = await saveToDrive(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO');
 
-      // Guardar CONTRATO
-      var contrato = document.getElementById('page-contrato') ? document.getElementById('page-contrato').outerHTML : '';
-      var res2 = await saveToDrive(number, clientName, contrato, 'CONTRATO');
-
-      var saved = (res1 && res1.success ? 1 : 0) + (res2 && res2.success ? 1 : 0);
-      showSyncStatus('✅ ' + saved + '/2 docs guardados en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase());
+      if (result && result.success) {
+        showSyncStatus('✅ Documento guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase());
+      } else {
+        showSyncStatus('❌ Error al guardar en Drive', 5000);
+      }
     } catch(e) {
       console.error('[Drive] Error:', e);
       showSyncStatus('❌ Error guardando en Drive: ' + e.message, 5000);
@@ -781,7 +777,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v10';
+var APP_VERSION = 'v11';
 if ('serviceWorker' in navigator) {
   // Forzar comprobación de actualizaciones (sin usar caché HTTP para el SW)
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(function(reg) {
@@ -1212,6 +1208,51 @@ async function renameDriveFolder(number, clientName) {
   }
 }
 
+// Construir HTML completo con estilos para guardar en Drive
+function buildCompleteHTML(pageIds) {
+  // Recoger TODOS los estilos de la página
+  var styles = '';
+  document.querySelectorAll('style').forEach(function(s) {
+    styles += s.outerHTML + '\n';
+  });
+  // Recoger link tags de fuentes
+  var links = '';
+  document.querySelectorAll('link[rel="stylesheet"]').forEach(function(l) {
+    links += l.outerHTML + '\n';
+  });
+
+  // Fijar valores de formulario y construir el contenido
+  var body = '';
+  pageIds.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    // Fijar valores actuales en atributos HTML
+    el.querySelectorAll('input, textarea').forEach(function(inp) {
+      inp.setAttribute('value', inp.value || '');
+      if (inp.type === 'checkbox' || inp.type === 'radio') {
+        if (inp.checked) inp.setAttribute('checked', 'checked');
+        else inp.removeAttribute('checked');
+      }
+    });
+    el.querySelectorAll('select').forEach(function(sel) {
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].selected) sel.options[i].setAttribute('selected', 'selected');
+        else sel.options[i].removeAttribute('selected');
+      }
+    });
+    el.querySelectorAll('textarea').forEach(function(ta) {
+      ta.textContent = ta.value || '';
+    });
+    body += '<div style="display:block;page-break-before:always">' + el.outerHTML + '</div>\n';
+  });
+
+  // Montar documento HTML completo
+  return '<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>AZKAR Mudanzas</title>\n'
+    + links + '\n' + styles + '\n'
+    + '<style>body{margin:0;padding:0;background:#fff}@media print{body{margin:0}}</style>\n'
+    + '</head><body>\n' + body + '\n</body></html>';
+}
+
 async function saveToDrive(number, clientName, htmlContent, docType) {
   try {
     const fileName = number + '_' + docType + '.html';
@@ -1565,13 +1606,12 @@ async function PRINT_PARTE() {
     _printMode = 'pdf';
   }, 1000);
 
-  // 2) Después de imprimir → guardar copia HTML en Drive
+  // 2) Después de imprimir → guardar HTML completo del parte en Drive
   if (number && number.trim() && numRef >= 1000) {
     showSyncStatus('⏳ Guardando parte en carpeta ' + number + '...');
     try {
-      _bakeFormValues(document.getElementById('page-parte'));
-      var parte = document.getElementById('page-parte') ? document.getElementById('page-parte').outerHTML : '';
-      var result = await saveToDrive(number, clientName, parte, 'PARTE_TRABAJO');
+      var completeHTML = buildCompleteHTML(['page-parte']);
+      var result = await saveToDrive(number, clientName, completeHTML, 'PARTE_TRABAJO');
       if (result && result.success) {
         showSyncStatus('✅ Parte guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase());
       }
