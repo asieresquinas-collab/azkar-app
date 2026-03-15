@@ -780,7 +780,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v8';
+var APP_VERSION = 'v9';
 if ('serviceWorker' in navigator) {
   // Forzar comprobación de actualizaciones (sin usar caché HTTP para el SW)
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(function(reg) {
@@ -1258,29 +1258,91 @@ async function savePdfToDrive(number, clientName, pdfBase64, docType) {
 async function generatePdfBase64(elements) {
   // Crear contenedor temporal con clones de los elementos
   var container = document.createElement("div");
-  elements.forEach(function(id) {
+  container.style.cssText = "position:absolute;left:-9999px;top:0;width:794px;background:#fff;";
+
+  elements.forEach(function(id, idx) {
     var el = document.getElementById(id);
     if (el) {
       var clone = el.cloneNode(true);
       clone.style.display = "block";
-      clone.style.pageBreakBefore = id === elements[0] ? "auto" : "always";
+      clone.style.width = "100%";
+      clone.style.overflow = "visible";
+      clone.style.maxHeight = "none";
+      clone.style.height = "auto";
+      if (idx > 0) clone.style.pageBreakBefore = "always";
+
+      // CLAVE: Reemplazar inputs/selects/textareas por texto visible
+      // para que html2canvas los capture correctamente
+      clone.querySelectorAll("input[type=text], input[type=date], input[type=email], input[type=tel], input[type=number], input:not([type])").forEach(function(inp) {
+        var span = document.createElement("span");
+        // Usar el valor actual del input ORIGINAL (no del clone)
+        var origId = inp.id || inp.name;
+        var origEl = origId ? document.getElementById(origId) : null;
+        var val = origEl ? origEl.value : (inp.getAttribute("value") || "");
+        span.textContent = val || inp.placeholder || "";
+        span.style.cssText = window.getComputedStyle(inp).cssText;
+        span.style.display = "inline-block";
+        span.style.border = "none";
+        span.style.background = "transparent";
+        span.style.minHeight = "1em";
+        span.style.whiteSpace = "nowrap";
+        span.style.overflow = "visible";
+        if (inp.parentNode) inp.parentNode.replaceChild(span, inp);
+      });
+
+      clone.querySelectorAll("select").forEach(function(sel) {
+        var span = document.createElement("span");
+        var origId = sel.id || sel.name;
+        var origEl = origId ? document.getElementById(origId) : null;
+        var val = origEl ? origEl.options[origEl.selectedIndex]?.text : (sel.options[sel.selectedIndex]?.text || "");
+        span.textContent = val || "";
+        span.style.cssText = window.getComputedStyle(sel).cssText;
+        span.style.display = "inline-block";
+        span.style.border = "none";
+        span.style.background = "transparent";
+        if (sel.parentNode) sel.parentNode.replaceChild(span, sel);
+      });
+
+      clone.querySelectorAll("textarea").forEach(function(ta) {
+        var span = document.createElement("span");
+        var origId = ta.id || ta.name;
+        var origEl = origId ? document.getElementById(origId) : null;
+        span.textContent = origEl ? origEl.value : (ta.textContent || "");
+        span.style.cssText = window.getComputedStyle(ta).cssText;
+        span.style.display = "block";
+        span.style.whiteSpace = "pre-wrap";
+        span.style.border = "none";
+        span.style.background = "transparent";
+        if (ta.parentNode) ta.parentNode.replaceChild(span, ta);
+      });
+
+      // Asegurar que todo el contenido es visible (no recortado)
+      clone.querySelectorAll("*").forEach(function(el) {
+        var s = el.style;
+        if (s.overflow === "hidden") s.overflow = "visible";
+        if (s.maxHeight && s.maxHeight !== "none") s.maxHeight = "none";
+      });
+
       container.appendChild(clone);
     }
   });
+
   document.body.appendChild(container);
-  
+
+  // Esperar un frame para que el layout se calcule
+  await new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
+
   var opt = {
-    margin: [5, 5, 5, 5],
-    image: { type: "jpeg", quality: 0.95 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
+    margin: [3, 3, 3, 3],
+    image: { type: "jpeg", quality: 0.92 },
+    html2canvas: { scale: 2, useCORS: true, logging: false, width: 794, windowWidth: 794, scrollY: 0, scrollX: 0 },
     jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-    pagebreak: { mode: ["css", "legacy"], before: ".page-break" }
+    pagebreak: { mode: ["css", "legacy"], avoid: [".sheet", ".csec", ".pbox"] }
   };
-  
+
   try {
     var pdfBlob = await html2pdf().set(opt).from(container).outputPdf("blob");
     document.body.removeChild(container);
-    // Convertir blob a base64
     return new Promise(function(resolve, reject) {
       var reader = new FileReader();
       reader.onload = function() { resolve(reader.result.split(",")[1]); };
