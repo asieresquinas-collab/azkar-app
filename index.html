@@ -352,7 +352,35 @@ function LD(){
 }
 
 
-function PA(){
+async function PA(){
+  const number = document.getElementById('f_ref') ? document.getElementById('f_ref').value : '';
+  const clientName = document.getElementById('f_nom') ? document.getElementById('f_nom').value : '';
+  const numRef = parseInt(number, 10);
+
+  // 1) Primero guardar en Drive (carpeta del cliente)
+  if (number && number.trim() && numRef >= 1000) {
+    showSyncStatus('⏳ Guardando en carpeta ' + number + '...');
+
+    // Renombrar carpeta con nombre del cliente
+    if (clientName && clientName.trim()) {
+      await renameDriveFolder(numRef, clientName);
+    }
+
+    // Guardar PRESUPUESTO
+    const presupuesto = document.getElementById('page-presupuesto') ? document.getElementById('page-presupuesto').outerHTML : '';
+    const res1 = await saveToDrive(number, clientName, presupuesto, 'PRESUPUESTO');
+
+    // Guardar CONTRATO
+    const contrato = document.getElementById('page-contrato') ? document.getElementById('page-contrato').outerHTML : '';
+    const res2 = await saveToDrive(number, clientName, contrato, 'CONTRATO');
+
+    const saved = (res1 && res1.success ? 1 : 0) + (res2 && res2.success ? 1 : 0);
+    showSyncStatus('✅ ' + saved + '/2 docs guardados en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase());
+  } else {
+    showSyncStatus('⚠ Sin nº cliente. Pulsa "+ Nuevo" primero', 4000);
+  }
+
+  // 2) Luego imprimir
   window.print();
 }
 /* beforeprint: browser fires this BEFORE rendering print — show all pages */
@@ -579,13 +607,8 @@ function AUTO_INIT(){
   var fd=document.getElementById('f_fecha');
   if(fd&&!fd.value) fd.value=new Date().toISOString().slice(0,10);
 
-  // Nº presupuesto automático
-  var fref=document.getElementById('f_ref');
-  if(fref&&!fref.value){
-    var yr=new Date().getFullYear(), key='azkar_ref_'+yr, cnt=1;
-    try{cnt=parseInt(localStorage.getItem(key)||'0')+1; localStorage.setItem(key,cnt);}catch(e){}
-    fref.value='PRE-'+yr+'-'+String(cnt).padStart(3,'0');
-  }
+  // Nº presupuesto: ya NO se auto-genera aquí (se obtiene de Drive en newPresupuesto)
+  // El campo f_ref se rellena desde getDriveNextNumber() al pulsar "+ Nuevo"
 
   // Fila: Tipo servicio + Comercial + Forma de pago
   var g4=document.querySelector('#page-presupuesto .fg.g4');
@@ -1004,7 +1027,7 @@ async function loadPresupuesto(id) {
   showSyncStatus('📄 Presupuesto cargado');
 }
 
-function newPresupuesto() {
+async function newPresupuesto() {
   // Reset form
   const fields = ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_obs'];
   fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -1012,7 +1035,24 @@ function newPresupuesto() {
   if (typeof AUTO_INIT === 'function') AUTO_INIT();
   closeMgr();
   if (typeof ST === 'function') ST('presupuesto');
-  showSyncStatus('📝 Nuevo presupuesto');
+
+  // Asignar número de cliente automáticamente desde Drive
+  showSyncStatus('🔄 Obteniendo nº de cliente...');
+  const refField = document.getElementById('f_ref');
+  try {
+    const driveInfo = await getDriveNextNumber();
+    if (driveInfo && driveInfo.nextNumber) {
+      refField.value = String(driveInfo.nextNumber);
+      // Guardar info de Drive para usarla al guardar (needsCreate, folderId)
+      window._driveInfo = driveInfo;
+      showSyncStatus('📝 Nuevo presupuesto — Nº cliente: ' + driveInfo.nextNumber);
+    } else {
+      showSyncStatus('⚠ No se pudo obtener nº de Drive, ponlo manualmente', 4000);
+    }
+  } catch (e) {
+    console.error('[Drive] Error al obtener número:', e);
+    showSyncStatus('⚠ Sin conexión a Drive, pon el nº manualmente', 4000);
+  }
 }
 
 async function delPresupuesto(id) {
@@ -1086,38 +1126,181 @@ async function saveFirebaseConfig() {
 // ══════════════════════════════════════════════════════════════
 const _originalGD = typeof GD === 'function' ? GD : null;
 
-window.GD = async function() {
-  // Call original GD save (downloads HTML with embedded JSON)
-  // if (_originalGD) _originalGD();
-  
-  // Also persist to IndexedDB
-  const data = collectFormData();
-  const ref = data.f_ref || ('PRE-' + Date.now());
-  data.id = ref;
-  
+// ── DRIVE CAPTACIÓN CONFIG ──────────────────────────────
+const RAILWAY_API = 'https://azkar-presupuestos-production.up.railway.app';
+
+async function getDriveNextNumber() {
   try {
+    const res = await fetch(RAILWAY_API + '/api/drive/captacion/next-number');
+    const data = await res.json();
+    if (data.success) return data; // {nextNumber, needsCreate, folderId, ...}
+    console.error('[Drive] Error:', data.error);
+    return null;
+  } catch (e) {
+    console.error('[Drive] Fetch error:', e);
+    return null;
+  }
+}
+
+async function createDriveFolder(number) {
+  try {
+    const res = await fetch(RAILWAY_API + '/api/drive/captacion/create-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number: number })
+    });
+    const data = await res.json();
+    return data;
+  } catch (e) {
+    console.error('[Drive] Create folder error:', e);
+    return null;
+  }
+}
+
+async function renameDriveFolder(number, clientName) {
+  try {
+    const res = await fetch(RAILWAY_API + '/api/drive/captacion/rename-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number: number, clientName: clientName })
+    });
+    const data = await res.json();
+    return data;
+  } catch (e) {
+    console.error('[Drive] Rename folder error:', e);
+    return null;
+  }
+}
+
+async function saveToDrive(number, clientName, htmlContent, docType) {
+  try {
+    const fileName = number + '_' + docType + '.html';
+    const res = await fetch(RAILWAY_API + '/api/drive/captacion/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        number: number,
+        clientName: clientName,
+        htmlContent: htmlContent,
+        fileName: fileName,
+        docType: docType
+      })
+    });
+    const data = await res.json();
+    return data;
+  } catch (e) {
+    console.error('[Drive] Save error:', e);
+    return null;
+  }
+}
+
+window.GD = async function() {
+  const btn = document.querySelector('.nbtn.sav');
+
+  // Recoger datos del formulario
+  const data = collectFormData();
+  let ref = data.f_ref;
+
+  // Si no tiene número de cliente, avisar (debería haberse asignado en "+ Nuevo")
+  if (!ref || ref.trim() === '') {
+    showSyncStatus('⚠ Sin nº de cliente. Pulsa "+ Nuevo" primero', 4000);
+    return;
+  }
+
+  data.id = ref;
+  const numRef = parseInt(ref, 10);
+
+  try {
+    // Guardar en IndexedDB
     await savePresupuesto(data);
-    
+
+    // Renombrar carpeta en Drive con el nombre del cliente (si tiene nombre)
+    const clientName = document.getElementById('f_nom') ? document.getElementById('f_nom').value : '';
+    if (clientName && clientName.trim() && numRef >= 1000) {
+      // Usar driveInfo guardada o crear carpeta si es necesario
+      const driveInfo = window._driveInfo;
+      if (driveInfo && driveInfo.needsCreate) {
+        if (btn) btn.innerHTML = '📁 Creando carpeta...';
+        await createDriveFolder(numRef);
+        window._driveInfo.needsCreate = false; // Ya creada, no repetir
+      }
+      if (btn) btn.innerHTML = '📝 Renombrando carpeta...';
+      const renameResult = await renameDriveFolder(numRef, clientName);
+      if (renameResult && renameResult.success) {
+        showSyncStatus('📁 Carpeta: ' + ref + ' ' + clientName.toUpperCase());
+      }
+    }
+
     // Sync to Firebase if configured
     if (firebaseConfigured && window._fb) {
       await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), data);
-      showSyncStatus('✓ Guardado y sincronizado');
+      showSyncStatus('✓ Guardado y sincronizado (Nº ' + ref + ')');
     } else {
-      showSyncStatus('💾 Guardado localmente');
+      showSyncStatus('💾 Guardado localmente (Nº ' + ref + ')');
     }
   } catch (e) {
     console.error('[Azkar] Error guardando:', e);
     showSyncStatus('⚠ Error al guardar', 4000);
   }
-  
+
   // Visual feedback
-  const btn = document.querySelector('.nbtn.sav');
   if (btn) {
     const o = btn.innerHTML;
-    btn.innerHTML = '✓ Guardado!';
+    btn.innerHTML = '✓ Guardado! (Nº ' + ref + ')';
     btn.style.background = '#0d5c2e';
-    setTimeout(() => { btn.innerHTML = o; btn.style.background = ''; }, 2500);
+    setTimeout(() => { btn.innerHTML = o; btn.style.background = ''; }, 3000);
   }
+};
+
+// ══════════════════════════════════════════════════════════════
+//  SAVE ALL DOCUMENTS TO DRIVE
+// ══════════════════════════════════════════════════════════════
+window.saveAllToDrive = async function() {
+  const number = document.getElementById('f_ref') ? document.getElementById('f_ref').value : '';
+  const clientName = document.getElementById('f_nom') ? document.getElementById('f_nom').value : '';
+
+  if (!number || !number.trim()) {
+    showSyncStatus('⚠ Sin número de referencia', 4000);
+    return;
+  }
+
+  if (!clientName || !clientName.trim()) {
+    showSyncStatus('⚠ Sin nombre de cliente', 4000);
+    return;
+  }
+
+  const btn = document.querySelector('[data-save-all-drive]');
+  if (btn) btn.innerHTML = '⏳ Guardando...';
+
+  // Get HTML of all 3 documents
+  const presupuesto_html = document.getElementById('page-presupuesto') ? document.getElementById('page-presupuesto').outerHTML : '';
+  const contrato_html = document.getElementById('page-contrato') ? document.getElementById('page-contrato').outerHTML : '';
+  const parte_html = document.getElementById('page-parte') ? document.getElementById('page-parte').outerHTML : '';
+
+  let saved_count = 0;
+
+  // Save PRESUPUESTO
+  const res1 = await saveToDrive(number, clientName, presupuesto_html, 'PRESUPUESTO');
+  if (res1 && res1.success) saved_count++;
+
+  // Save CONTRATO
+  const res2 = await saveToDrive(number, clientName, contrato_html, 'CONTRATO');
+  if (res2 && res2.success) saved_count++;
+
+  // Save PARTE_TRABAJO
+  const res3 = await saveToDrive(number, clientName, parte_html, 'PARTE_TRABAJO');
+  if (res3 && res3.success) saved_count++;
+
+  if (btn) {
+    btn.innerHTML = '✓ ¡Guardados!';
+    btn.style.opacity = '0.7';
+    setTimeout(() => {
+      btn.innerHTML = '💾 Guardar en Drive';
+      btn.style.opacity = '';
+    }, 2000);
+  }
+
+  showSyncStatus(saved_count + '/3 documentos guardados en Drive');
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -1133,8 +1316,17 @@ window.addEventListener('DOMContentLoaded', function() {
     mgrBtn.innerHTML = '📋 MIS PRESUPUESTOS';
     mgrBtn.onclick = openMgr;
     acts.insertBefore(mgrBtn, acts.firstChild);
+
+    // Add "Guardar en Drive" button
+    const driveBtn = document.createElement('button');
+    driveBtn.className = 'nbtn';
+    driveBtn.setAttribute('data-save-all-drive', 'true');
+    driveBtn.style.cssText = 'background:#1a7a3f;color:#fff;margin-right:4px;';
+    driveBtn.innerHTML = '💾 GUARDAR EN DRIVE';
+    driveBtn.onclick = window.saveAllToDrive;
+    acts.insertBefore(driveBtn, acts.firstChild);
   }
-  
+
   // Auto-connect Firebase with hardcoded config
   const azkarFirebaseConfig = {
     apiKey: "AIzaSyABQfCy-0afkyYqTFsNP_ayV5-ruitrkbA",
@@ -1158,7 +1350,7 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 
 // === PARTE DE TRABAJO ===
-function PRINT_PARTE() {
+async function PRINT_PARTE() {
   // Collect data from presupuesto fields
   var nom = document.getElementById('f_nom');
   var fserv = document.getElementById('f_fserv');
@@ -1198,11 +1390,25 @@ function PRINT_PARTE() {
     rowsDiv.innerHTML = '<div style="padding:20px;text-align:center;color:#888;font-style:italic">No hay enseres registrados</div>';
   }
   
-  // Set print mode and print
+  const number = document.getElementById('f_ref') ? document.getElementById('f_ref').value : '';
+  const clientName = document.getElementById('f_nom') ? document.getElementById('f_nom').value : '';
+  const numRef = parseInt(number, 10);
+
+  // 1) Primero guardar PARTE en Drive (carpeta del cliente)
+  if (number && number.trim() && numRef >= 1000) {
+    showSyncStatus('⏳ Guardando parte en carpeta ' + number + '...');
+    const parte = document.getElementById('page-parte') ? document.getElementById('page-parte').outerHTML : '';
+    const result = await saveToDrive(number, clientName, parte, 'PARTE_TRABAJO');
+    if (result && result.success) {
+      showSyncStatus('✅ Parte de trabajo guardado en Drive → carpeta ' + number);
+    }
+  }
+
+  // 2) Luego imprimir
   _printMode = 'parte';
   document.body.classList.add('print-parte');
   window.print();
-  // Cleanup after print (timeout for mobile compatibility)
+  // Cleanup after print
   setTimeout(function() {
     document.body.classList.remove('print-parte');
     _printMode = 'pdf';
