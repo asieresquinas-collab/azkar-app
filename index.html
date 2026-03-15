@@ -935,9 +935,10 @@ async function initFirebase(config) {
     // Store Firebase modules globally
     window._fb = { collection, doc, setDoc, getDocs, deleteDoc, onSnapshot, db: firestoreDB };
     
-    // Listen for real-time changes
+    // Listen for real-time changes (baja datos de la nube al dispositivo)
     const colRef = collection(firestoreDB, 'presupuestos');
-    onSnapshot(colRef, snapshot => {
+    let firstSync = true;
+    onSnapshot(colRef, async snapshot => {
       snapshot.docChanges().forEach(async change => {
         if (change.type === 'added' || change.type === 'modified') {
           await savePresupuesto({ ...change.doc.data(), id: change.doc.id });
@@ -946,9 +947,34 @@ async function initFirebase(config) {
           await deletePresupuesto(change.doc.id);
         }
       });
+      // Después de recibir datos de la nube, subir los locales que no estén
+      if (firstSync) {
+        firstSync = false;
+        // Esperar un momento para que se guarden los de la nube primero
+        setTimeout(async () => {
+          try {
+            const local = await getAllPresupuestos();
+            const cloudIds = new Set();
+            const cloudDocs = await getDocs(colRef);
+            cloudDocs.forEach(d => cloudIds.add(d.id));
+            // Subir los que solo están en local
+            let uploaded = 0;
+            for (const p of local) {
+              if (!cloudIds.has(p.id)) {
+                await setDoc(doc(firestoreDB, 'presupuestos', p.id), p);
+                uploaded++;
+              }
+            }
+            if (uploaded > 0) {
+              console.log('[Azkar] Subidos ' + uploaded + ' presupuestos locales a la nube');
+              showSyncStatus('☁️ ' + uploaded + ' presupuesto(s) sincronizado(s) con la nube');
+            }
+          } catch (e) { console.warn('[Azkar] Error sync local→nube:', e); }
+        }, 2000);
+      }
       showSyncStatus('✓ Sincronizado con la nube');
     });
-    
+
     console.log('[Azkar] Firebase conectado');
     showSyncStatus('☁️ Firebase conectado');
   } catch (e) {
