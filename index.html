@@ -383,6 +383,29 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <input type="text" id="fch-new-emp-name" placeholder="Ej: Juan García López">
       <label>PIN de acceso (4 dígitos)</label>
       <input type="text" id="fch-new-emp-pin" maxlength="4" placeholder="Ej: 1234" pattern="[0-9]{4}">
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e0e4ea">
+        <div style="font-weight:700;font-size:12px;color:#1B4F8A;margin-bottom:10px">Horario de trabajo</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label>Entrada</label>
+            <input type="time" id="fch-new-emp-hora-entrada" value="08:00">
+          </div>
+          <div>
+            <label>Salida</label>
+            <input type="time" id="fch-new-emp-hora-salida" value="17:00">
+          </div>
+        </div>
+        <label style="margin-top:8px">Días laborables</label>
+        <div id="fch-new-emp-dias" style="display:flex;gap:6px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:3px;font-size:11px;background:#f0f4f9;padding:4px 8px;border-radius:4px;cursor:pointer;text-transform:none;letter-spacing:0;border:none"><input type="checkbox" value="1" checked> L</label>
+          <label style="display:flex;align-items:center;gap:3px;font-size:11px;background:#f0f4f9;padding:4px 8px;border-radius:4px;cursor:pointer;text-transform:none;letter-spacing:0;border:none"><input type="checkbox" value="2" checked> M</label>
+          <label style="display:flex;align-items:center;gap:3px;font-size:11px;background:#f0f4f9;padding:4px 8px;border-radius:4px;cursor:pointer;text-transform:none;letter-spacing:0;border:none"><input type="checkbox" value="3" checked> X</label>
+          <label style="display:flex;align-items:center;gap:3px;font-size:11px;background:#f0f4f9;padding:4px 8px;border-radius:4px;cursor:pointer;text-transform:none;letter-spacing:0;border:none"><input type="checkbox" value="4" checked> J</label>
+          <label style="display:flex;align-items:center;gap:3px;font-size:11px;background:#f0f4f9;padding:4px 8px;border-radius:4px;cursor:pointer;text-transform:none;letter-spacing:0;border:none"><input type="checkbox" value="5" checked> V</label>
+          <label style="display:flex;align-items:center;gap:3px;font-size:11px;background:#f0f4f9;padding:4px 8px;border-radius:4px;cursor:pointer;text-transform:none;letter-spacing:0;border:none"><input type="checkbox" value="6"> S</label>
+          <label style="display:flex;align-items:center;gap:3px;font-size:11px;background:#f0f4f9;padding:4px 8px;border-radius:4px;cursor:pointer;text-transform:none;letter-spacing:0;border:none"><input type="checkbox" value="0"> D</label>
+        </div>
+      </div>
     </div>
     <div class="fch-modal-foot">
       <button class="cancel" onclick="document.getElementById('fch-add-emp-modal').style.display='none'">Cancelar</button>
@@ -2135,12 +2158,14 @@ async function fichaje_renderEmployees() {
       ? '<span class="fch-emp-status working">Trabajando</span>'
       : '<span class="fch-emp-status off">' + (empRecords.length > 0 ? 'Salió' : 'Sin fichar') + '</span>';
 
+    var schedule = (emp.horaEntrada || '08:00') + ' - ' + (emp.horaSalida || '17:00');
     html += '<div class="fch-emp-row">'
-      + '<span class="fch-emp-name">' + emp.nombre + '</span>'
+      + '<span class="fch-emp-name">' + emp.nombre + '<br><span style="font-size:10px;color:#888;font-weight:400">&#128340; ' + schedule + '</span></span>'
       + '<span class="fch-emp-pin">' + emp.pin + '</span>'
       + statusHtml
       + '<span class="fch-emp-actions">'
       + '<button class="view" onclick="fichaje_viewEmployee(\'' + emp._id + '\')">Ver</button>'
+      + '<button class="view" onclick="fichaje_editSchedule(\'' + emp._id + '\')" style="background:#FEF0E7;color:#E85C0D">&#128340;</button>'
       + '<button class="del" onclick="fichaje_removeEmployee(\'' + emp._id + '\',\'' + emp.nombre + '\')">&#10005;</button>'
       + '</span></div>';
   }
@@ -2166,8 +2191,15 @@ async function fichaje_saveNewEmployee() {
     if (emps[i].pin === pin) { alert('Ese PIN ya está en uso por ' + emps[i].nombre); return; }
   }
 
+  // Get schedule
+  var horaEntrada = document.getElementById('fch-new-emp-hora-entrada').value || '08:00';
+  var horaSalida = document.getElementById('fch-new-emp-hora-salida').value || '17:00';
+  var diasChecks = document.querySelectorAll('#fch-new-emp-dias input[type=checkbox]');
+  var diasLaborables = [];
+  diasChecks.forEach(function(cb) { if (cb.checked) diasLaborables.push(parseInt(cb.value)); });
+
   var id = 'emp_' + Date.now();
-  await fichaje_saveDoc('empleados', id, { nombre: name, pin: pin, creado: new Date().toISOString() });
+  await fichaje_saveDoc('empleados', id, { nombre: name, pin: pin, horaEntrada: horaEntrada, horaSalida: horaSalida, diasLaborables: diasLaborables, creado: new Date().toISOString() });
   document.getElementById('fch-add-emp-modal').style.display = 'none';
   showSyncStatus('✅ Empleado añadido: ' + name);
   fichaje_renderEmployees();
@@ -2509,6 +2541,200 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // También en print, ocultar fichaje
+
+// ─── Modal editar horario ───
+function fichaje_editSchedule(empId) {
+  fichaje_getCollection('empleados').then(function(emps) {
+    var emp = emps.find(function(e) { return e._id === empId; });
+    if (!emp) return;
+    
+    var modal = document.getElementById('fch-add-emp-modal');
+    document.getElementById('fch-new-emp-name').value = emp.nombre;
+    document.getElementById('fch-new-emp-pin').value = emp.pin;
+    document.getElementById('fch-new-emp-hora-entrada').value = emp.horaEntrada || '08:00';
+    document.getElementById('fch-new-emp-hora-salida').value = emp.horaSalida || '17:00';
+    
+    // Set days
+    var diasChecks = document.querySelectorAll('#fch-new-emp-dias input[type=checkbox]');
+    var dias = emp.diasLaborables || [1,2,3,4,5];
+    diasChecks.forEach(function(cb) {
+      cb.checked = dias.indexOf(parseInt(cb.value)) !== -1;
+    });
+    
+    // Change save button to update mode
+    var saveBtn = modal.querySelector('.confirm');
+    saveBtn.textContent = 'Actualizar empleado';
+    saveBtn.onclick = function() { fichaje_updateEmployee(empId); };
+    modal.style.display = 'block';
+  });
+}
+
+async function fichaje_updateEmployee(empId) {
+  var name = document.getElementById('fch-new-emp-name').value.trim();
+  var pin = document.getElementById('fch-new-emp-pin').value.trim();
+  if (!name) { alert('Escribe el nombre del empleado'); return; }
+  if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) { alert('El PIN debe ser de 4 dígitos'); return; }
+  
+  // Check PIN not duplicated (except self)
+  var emps = await fichaje_getEmployees();
+  for (var i = 0; i < emps.length; i++) {
+    if (emps[i].pin === pin && emps[i]._id !== empId) { alert('Ese PIN ya está en uso por ' + emps[i].nombre); return; }
+  }
+  
+  var horaEntrada = document.getElementById('fch-new-emp-hora-entrada').value || '08:00';
+  var horaSalida = document.getElementById('fch-new-emp-hora-salida').value || '17:00';
+  var diasChecks = document.querySelectorAll('#fch-new-emp-dias input[type=checkbox]');
+  var diasLaborables = [];
+  diasChecks.forEach(function(cb) { if (cb.checked) diasLaborables.push(parseInt(cb.value)); });
+  
+  var emp = emps.find(function(e) { return e._id === empId; });
+  await fichaje_saveDoc('empleados', empId, { 
+    nombre: name, pin: pin, horaEntrada: horaEntrada, horaSalida: horaSalida, 
+    diasLaborables: diasLaborables, creado: emp ? emp.creado : new Date().toISOString() 
+  });
+  
+  document.getElementById('fch-add-emp-modal').style.display = 'none';
+  // Reset save button
+  var saveBtn = document.querySelector('#fch-add-emp-modal .confirm');
+  saveBtn.textContent = 'Guardar empleado';
+  saveBtn.onclick = fichaje_saveNewEmployee;
+  
+  showSyncStatus('✅ Empleado actualizado: ' + name);
+  fichaje_renderEmployees();
+}
+
+// ─── SISTEMA DE ALARMAS / NOTIFICACIONES ───
+var fichaje_alarmInterval = null;
+var fichaje_lastAlarmKey = '';
+
+function fichaje_requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function fichaje_sendNotification(title, body) {
+  // Notification API
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification(title, { body: body, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', vibrate: [200, 100, 200] }); } catch(e) {}
+  }
+  // Also show in-app alert
+  showSyncStatus('🔔 ' + body, 10000);
+  
+  // Audio beep
+  try {
+    var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 800;
+    gain.gain.value = 0.3;
+    osc.start();
+    setTimeout(function() { osc.stop(); audioCtx.close(); }, 300);
+    setTimeout(function() {
+      var audioCtx2 = new (window.AudioContext || window.webkitAudioContext)();
+      var osc2 = audioCtx2.createOscillator();
+      var gain2 = audioCtx2.createGain();
+      osc2.connect(gain2);
+      gain2.connect(audioCtx2.destination);
+      osc2.frequency.value = 1000;
+      gain2.gain.value = 0.3;
+      osc2.start();
+      setTimeout(function() { osc2.stop(); audioCtx2.close(); }, 300);
+    }, 400);
+  } catch(e) {}
+}
+
+async function fichaje_checkAlarms() {
+  var now = new Date();
+  var currentDay = now.getDay(); // 0=domingo
+  var currentH = now.getHours();
+  var currentM = now.getMinutes();
+  var currentTime = String(currentH).padStart(2,'0') + ':' + String(currentM).padStart(2,'0');
+  
+  // Get current employee (in employee mode) or all employees (admin mode)
+  var empId = fichaje_currentEmployee ? fichaje_currentEmployee._id : null;
+  
+  if (empId) {
+    // Employee mode: check their own schedule
+    var emp = fichaje_currentEmployee;
+    var dias = emp.diasLaborables || [1,2,3,4,5];
+    if (dias.indexOf(currentDay) === -1) return; // Not a work day
+    
+    var todayRecords = await fichaje_getTodayRecords(empId);
+    var lastRec = todayRecords.length > 0 ? todayRecords[todayRecords.length - 1] : null;
+    var hasEntrada = todayRecords.some(function(r) { return r.tipo === 'entrada'; });
+    var hasSalida = lastRec && lastRec.tipo === 'salida';
+    
+    // 5 min before entrada
+    var entradaParts = (emp.horaEntrada || '08:00').split(':');
+    var entradaMin = parseInt(entradaParts[0]) * 60 + parseInt(entradaParts[1]);
+    var nowMin = currentH * 60 + currentM;
+    var alarmKey = fichaje_dateStr() + '_' + empId + '_';
+    
+    if (!hasEntrada && nowMin >= entradaMin - 5 && nowMin <= entradaMin) {
+      var key = alarmKey + 'entrada';
+      if (fichaje_lastAlarmKey !== key) {
+        fichaje_lastAlarmKey = key;
+        fichaje_sendNotification('AZKAR Fichaje', '¡Faltan ' + (entradaMin - nowMin) + ' minutos para fichar ENTRADA! (' + emp.horaEntrada + ')');
+      }
+    }
+    
+    // 5 min before salida
+    var salidaParts = (emp.horaSalida || '17:00').split(':');
+    var salidaMin = parseInt(salidaParts[0]) * 60 + parseInt(salidaParts[1]);
+    
+    if (hasEntrada && !hasSalida && nowMin >= salidaMin - 5 && nowMin <= salidaMin) {
+      var key2 = alarmKey + 'salida';
+      if (fichaje_lastAlarmKey !== key2) {
+        fichaje_lastAlarmKey = key2;
+        fichaje_sendNotification('AZKAR Fichaje', '¡Faltan ' + (salidaMin - nowMin) + ' minutos para fichar SALIDA! (' + emp.horaSalida + ')');
+      }
+    }
+    
+    // Alert if 15 min late and hasn't clocked in
+    if (!hasEntrada && nowMin > entradaMin + 15 && nowMin <= entradaMin + 16) {
+      var key3 = alarmKey + 'retraso';
+      if (fichaje_lastAlarmKey !== key3) {
+        fichaje_lastAlarmKey = key3;
+        fichaje_sendNotification('AZKAR Fichaje', '¡Llevas 15 minutos de retraso! Ficha tu entrada ya.');
+      }
+    }
+  }
+}
+
+function fichaje_startAlarms() {
+  fichaje_requestNotificationPermission();
+  if (fichaje_alarmInterval) clearInterval(fichaje_alarmInterval);
+  // Check every 30 seconds
+  fichaje_alarmInterval = setInterval(fichaje_checkAlarms, 30000);
+  // Check immediately
+  fichaje_checkAlarms();
+}
+
+// Start alarms when fichaje tab is opened or in employee mode
+var _origSTForAlarm = ST;
+ST = function(tab) {
+  _origSTForAlarm(tab);
+  if (tab === 'fichaje') {
+    fichaje_startAlarms();
+  }
+};
+
+// Auto-start alarms in employee mode
+(function() {
+  var origCheckMode = fichaje_checkEmployeeMode;
+  fichaje_checkEmployeeMode = function() {
+    origCheckMode();
+    // After employee mode activates, start alarms
+    setTimeout(function() {
+      if (fichaje_currentEmployee) {
+        fichaje_startAlarms();
+      }
+    }, 3000);
+  };
+})();
 </script>
 
 </body>
