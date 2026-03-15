@@ -1240,13 +1240,16 @@ function buildCompleteHTML(pageIds) {
     el.querySelectorAll('textarea').forEach(function(ta) {
       ta.textContent = ta.value || '';
     });
-    body += '<div style="display:block;page-break-before:always">' + el.outerHTML + '</div>\n';
+    // Capturar HTML y quitar display:none inline del elemento
+    var html = el.outerHTML.replace(/style\s*=\s*["'][^"']*display\s*:\s*none[^"']*["']/gi, 'style="display:block"');
+    body += '<div style="display:block;page-break-before:always">' + html + '</div>\n';
   });
 
   // Montar documento HTML completo
+  // IMPORTANTE: forzar display:block en TODOS los page-* con máxima especificidad
   return '<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>AZKAR Mudanzas</title>\n'
     + links + '\n' + styles + '\n'
-    + '<style>body{margin:0;padding:0;background:#fff}[id^="page-"]{display:block!important}#topnav,.tact,.bdel,.bq,.ntab,.acts,.pak-btns,.stop,#pwa-install-banner,#sync-status,#offline-indicator,#mgr-panel,#fb-config-overlay{display:none!important}@media print{body{margin:0}}</style>\n'
+    + '<style>body{margin:0;padding:0;background:#fff}#page-dossier,#page-presupuesto,#page-contrato,#page-parte{display:block!important}#topnav,.tact,.bdel,.bq,.ntab,.acts,.pak-btns,.stop,#pwa-install-banner,#sync-status,#offline-indicator,#mgr-panel,#fb-config-overlay{display:none!important}@media print{body{margin:0}}</style>\n'
     + '</head><body>\n' + body + '\n</body></html>';
 }
 
