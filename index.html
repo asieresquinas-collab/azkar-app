@@ -371,36 +371,33 @@ async function PA(){
   const clientName = document.getElementById('f_nom') ? document.getElementById('f_nom').value : '';
   const numRef = parseInt(number, 10);
 
-  // 1) Imprimir con el diálogo del navegador (genera PDF perfecto)
-  _printMode = 'pdf';
-  window.print();
-
-  // 2) Después de imprimir → guardar HTML COMPLETO (con estilos) en Drive
-  if (number && number.trim() && numRef >= 1000) {
-    showSyncStatus('⏳ Guardando en carpeta ' + number + '...');
-    try {
-      // Renombrar carpeta con nombre del cliente
-      if (clientName && clientName.trim()) {
-        await renameDriveFolder(numRef, clientName);
-      }
-
-      // Construir HTML completo con TODOS los estilos y datos del formulario
-      var completeHTML = buildCompleteHTML(['page-dossier', 'page-presupuesto', 'page-contrato']);
-
-      // Guardar como un solo archivo completo
-      var result = await saveToDrive(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO');
-
-      if (result && result.success) {
-        showSyncStatus('✅ Documento guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase());
-      } else {
-        showSyncStatus('❌ Error al guardar en Drive', 5000);
-      }
-    } catch(e) {
-      console.error('[Drive] Error:', e);
-      showSyncStatus('❌ Error guardando en Drive: ' + e.message, 5000);
-    }
-  } else {
+  if (!number || !number.trim() || numRef < 1000) {
     showSyncStatus('⚠ Sin nº cliente. Pulsa "+ Nuevo" primero', 4000);
+    return;
+  }
+
+  showSyncStatus('⏳ Generando PDF y guardando en carpeta ' + number + '...');
+
+  try {
+    // Renombrar carpeta con nombre del cliente
+    if (clientName && clientName.trim()) {
+      await renameDriveFolder(numRef, clientName);
+    }
+
+    // Construir HTML completo con estilos y datos del formulario
+    var completeHTML = buildCompleteHTML(['page-dossier', 'page-presupuesto', 'page-contrato']);
+
+    // Enviar al servidor → genera PDF perfecto con Puppeteer → guarda en Drive
+    var result = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO');
+
+    if (result && result.success) {
+      showSyncStatus('✅ PDF guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase());
+    } else {
+      showSyncStatus('❌ Error: ' + (result ? (result.error || result.details || 'sin respuesta') : 'sin conexión'), 5000);
+    }
+  } catch(e) {
+    console.error('[PDF] Error:', e);
+    showSyncStatus('❌ Error: ' + e.message, 5000);
   }
 }
 /* beforeprint: browser fires this BEFORE rendering print — show all pages */
@@ -777,7 +774,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v11';
+var APP_VERSION = 'v12';
 if ('serviceWorker' in navigator) {
   // Forzar comprobación de actualizaciones (sin usar caché HTTP para el SW)
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(function(reg) {
@@ -1253,6 +1250,26 @@ function buildCompleteHTML(pageIds) {
     + '</head><body>\n' + body + '\n</body></html>';
 }
 
+async function savePdfViaServer(number, clientName, htmlContent, docType) {
+  try {
+    var res = await fetch(RAILWAY_API + '/api/pdf/generate-and-save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        number: number,
+        clientName: clientName,
+        htmlContent: htmlContent,
+        docType: docType || 'PRESUPUESTO_COMPLETO'
+      })
+    });
+    var data = await res.json();
+    return data;
+  } catch (e) {
+    console.error('[PDF Server] Error:', e);
+    return null;
+  }
+}
+
 async function saveToDrive(number, clientName, htmlContent, docType) {
   try {
     const fileName = number + '_' + docType + '.html';
@@ -1597,27 +1614,28 @@ async function PRINT_PARTE() {
   const clientName = document.getElementById('f_nom') ? document.getElementById('f_nom').value : '';
   const numRef = parseInt(number, 10);
 
-  // 1) Imprimir parte con diálogo del navegador
-  _printMode = 'parte';
-  document.body.classList.add('print-parte');
-  window.print();
-  setTimeout(function() {
-    document.body.classList.remove('print-parte');
-    _printMode = 'pdf';
-  }, 1000);
+  if (!number || !number.trim() || numRef < 1000) {
+    showSyncStatus('⚠ Sin nº cliente. Pulsa "+ Nuevo" primero', 4000);
+    return;
+  }
 
-  // 2) Después de imprimir → guardar HTML completo del parte en Drive
-  if (number && number.trim() && numRef >= 1000) {
-    showSyncStatus('⏳ Guardando parte en carpeta ' + number + '...');
-    try {
-      var completeHTML = buildCompleteHTML(['page-parte']);
-      var result = await saveToDrive(number, clientName, completeHTML, 'PARTE_TRABAJO');
-      if (result && result.success) {
-        showSyncStatus('✅ Parte guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase());
-      }
-    } catch(e) {
-      console.error('[Drive Parte] Error:', e);
+  showSyncStatus('⏳ Generando PDF parte y guardando en carpeta ' + number + '...');
+
+  try {
+    // Construir HTML completo del parte con estilos
+    var completeHTML = buildCompleteHTML(['page-parte']);
+
+    // Enviar al servidor → genera PDF perfecto → guarda en Drive
+    var result = await savePdfViaServer(number, clientName, completeHTML, 'PARTE_TRABAJO');
+
+    if (result && result.success) {
+      showSyncStatus('✅ Parte PDF guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase());
+    } else {
+      showSyncStatus('❌ Error: ' + (result ? (result.error || 'sin respuesta') : 'sin conexión'), 5000);
     }
+  } catch(e) {
+    console.error('[PDF Parte] Error:', e);
+    showSyncStatus('❌ Error: ' + e.message, 5000);
   }
 }
 </script>
