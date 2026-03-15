@@ -352,12 +352,34 @@ function LD(){
 }
 
 
+// Helper: fijar valores de inputs/selects/textareas en el HTML para que outerHTML los capture
+function _bakeFormValues(container) {
+  if (!container) return;
+  container.querySelectorAll('input, textarea').forEach(function(el) {
+    el.setAttribute('value', el.value || '');
+  });
+  container.querySelectorAll('select').forEach(function(el) {
+    for (var i = 0; i < el.options.length; i++) {
+      if (el.options[i].selected) el.options[i].setAttribute('selected', 'selected');
+      else el.options[i].removeAttribute('selected');
+    }
+  });
+}
+
 async function PA(){
   const number = document.getElementById('f_ref') ? document.getElementById('f_ref').value : '';
   const clientName = document.getElementById('f_nom') ? document.getElementById('f_nom').value : '';
   const numRef = parseInt(number, 10);
 
-  // 1) Primero guardar en Drive (carpeta del cliente)
+  if (!number || !number.trim() || numRef < 1000) {
+    showSyncStatus('⚠ Sin nº cliente. Pulsa "+ Nuevo" primero', 4000);
+  }
+
+  // 1) Primero imprimir el PDF
+  _printMode = 'pdf';
+  window.print();
+
+  // 2) Después de imprimir → guardar en Drive
   if (number && number.trim() && numRef >= 1000) {
     showSyncStatus('⏳ Guardando en carpeta ' + number + '...');
 
@@ -365,6 +387,10 @@ async function PA(){
     if (clientName && clientName.trim()) {
       await renameDriveFolder(numRef, clientName);
     }
+
+    // Fijar valores en el HTML antes de capturar
+    _bakeFormValues(document.getElementById('page-presupuesto'));
+    _bakeFormValues(document.getElementById('page-contrato'));
 
     // Guardar PRESUPUESTO
     const presupuesto = document.getElementById('page-presupuesto') ? document.getElementById('page-presupuesto').outerHTML : '';
@@ -376,12 +402,7 @@ async function PA(){
 
     const saved = (res1 && res1.success ? 1 : 0) + (res2 && res2.success ? 1 : 0);
     showSyncStatus('✅ ' + saved + '/2 docs guardados en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase());
-  } else {
-    showSyncStatus('⚠ Sin nº cliente. Pulsa "+ Nuevo" primero', 4000);
   }
-
-  // 2) Luego imprimir
-  window.print();
 }
 /* beforeprint: browser fires this BEFORE rendering print — show all pages */
 var _printMode = 'pdf'; // 'pdf' or 'parte'
@@ -1394,17 +1415,7 @@ async function PRINT_PARTE() {
   const clientName = document.getElementById('f_nom') ? document.getElementById('f_nom').value : '';
   const numRef = parseInt(number, 10);
 
-  // 1) Primero guardar PARTE en Drive (carpeta del cliente)
-  if (number && number.trim() && numRef >= 1000) {
-    showSyncStatus('⏳ Guardando parte en carpeta ' + number + '...');
-    const parte = document.getElementById('page-parte') ? document.getElementById('page-parte').outerHTML : '';
-    const result = await saveToDrive(number, clientName, parte, 'PARTE_TRABAJO');
-    if (result && result.success) {
-      showSyncStatus('✅ Parte de trabajo guardado en Drive → carpeta ' + number);
-    }
-  }
-
-  // 2) Luego imprimir
+  // 1) Primero imprimir
   _printMode = 'parte';
   document.body.classList.add('print-parte');
   window.print();
@@ -1413,6 +1424,17 @@ async function PRINT_PARTE() {
     document.body.classList.remove('print-parte');
     _printMode = 'pdf';
   }, 1000);
+
+  // 2) Después de imprimir → guardar en Drive
+  if (number && number.trim() && numRef >= 1000) {
+    showSyncStatus('⏳ Guardando parte en carpeta ' + number + '...');
+    _bakeFormValues(document.getElementById('page-parte'));
+    const parte = document.getElementById('page-parte') ? document.getElementById('page-parte').outerHTML : '';
+    const result = await saveToDrive(number, clientName, parte, 'PARTE_TRABAJO');
+    if (result && result.success) {
+      showSyncStatus('✅ Parte de trabajo guardado en Drive → carpeta ' + number);
+    }
+  }
 }
 </script>
 
