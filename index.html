@@ -385,15 +385,35 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <input type="text" id="fch-new-emp-pin" maxlength="4" placeholder="Ej: 1234" pattern="[0-9]{4}">
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e0e4ea">
         <div style="font-weight:700;font-size:12px;color:#1B4F8A;margin-bottom:10px">Horario de trabajo</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div>
-            <label>Entrada</label>
-            <input type="time" id="fch-new-emp-hora-entrada" value="08:00">
+        <div style="background:#f0f4f9;padding:10px;border-radius:6px;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:#1B4F8A;margin-bottom:6px">TRAMO 1 — Mañana</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label>Entrada</label>
+              <input type="time" id="fch-new-emp-hora-entrada" value="08:00">
+            </div>
+            <div>
+              <label>Salida comida</label>
+              <input type="time" id="fch-new-emp-hora-comida-salida" value="13:00">
+            </div>
           </div>
-          <div>
-            <label>Salida</label>
-            <input type="time" id="fch-new-emp-hora-salida" value="17:00">
+        </div>
+        <div style="background:#f0f4f9;padding:10px;border-radius:6px;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:#1B4F8A;margin-bottom:6px">TRAMO 2 — Tarde</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label>Entrada tarde</label>
+              <input type="time" id="fch-new-emp-hora-comida-entrada" value="14:00">
+            </div>
+            <div>
+              <label>Salida</label>
+              <input type="time" id="fch-new-emp-hora-salida" value="17:00">
+            </div>
           </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <input type="checkbox" id="fch-new-emp-jornada-partida" checked onchange="document.getElementById('fch-tramo2-container').style.display=this.checked?'block':'none'">
+          <label style="font-size:11px;margin:0;text-transform:none;letter-spacing:0;border:none;background:none;padding:0;color:#666;cursor:pointer" onclick="var cb=document.getElementById('fch-new-emp-jornada-partida');cb.checked=!cb.checked;cb.onchange()">Jornada partida (con descanso para comer)</label>
         </div>
         <label style="margin-top:8px">Días laborables</label>
         <div id="fch-new-emp-dias" style="display:flex;gap:6px;margin-top:4px">
@@ -2158,7 +2178,9 @@ async function fichaje_renderEmployees() {
       ? '<span class="fch-emp-status working">Trabajando</span>'
       : '<span class="fch-emp-status off">' + (empRecords.length > 0 ? 'Salió' : 'Sin fichar') + '</span>';
 
-    var schedule = (emp.horaEntrada || '08:00') + ' - ' + (emp.horaSalida || '17:00');
+    var schedule = (emp.horaEntrada || '08:00') + '-' + (emp.horaComidaSalida || '13:00');
+    if (emp.jornadaPartida !== false) schedule += ' / ' + (emp.horaComidaEntrada || '14:00') + '-' + (emp.horaSalida || '17:00');
+    else schedule += '-' + (emp.horaSalida || '17:00');
     html += '<div class="fch-emp-row">'
       + '<span class="fch-emp-name">' + emp.nombre + '<br><span style="font-size:10px;color:#888;font-weight:400">&#128340; ' + schedule + '</span></span>'
       + '<span class="fch-emp-pin">' + emp.pin + '</span>'
@@ -2194,12 +2216,15 @@ async function fichaje_saveNewEmployee() {
   // Get schedule
   var horaEntrada = document.getElementById('fch-new-emp-hora-entrada').value || '08:00';
   var horaSalida = document.getElementById('fch-new-emp-hora-salida').value || '17:00';
+  var horaComidaSalida = document.getElementById('fch-new-emp-hora-comida-salida').value || '13:00';
+  var horaComidaEntrada = document.getElementById('fch-new-emp-hora-comida-entrada').value || '14:00';
+  var jornadaPartida = document.getElementById('fch-new-emp-jornada-partida').checked;
   var diasChecks = document.querySelectorAll('#fch-new-emp-dias input[type=checkbox]');
   var diasLaborables = [];
   diasChecks.forEach(function(cb) { if (cb.checked) diasLaborables.push(parseInt(cb.value)); });
 
   var id = 'emp_' + Date.now();
-  await fichaje_saveDoc('empleados', id, { nombre: name, pin: pin, horaEntrada: horaEntrada, horaSalida: horaSalida, diasLaborables: diasLaborables, creado: new Date().toISOString() });
+  await fichaje_saveDoc('empleados', id, { nombre: name, pin: pin, horaEntrada: horaEntrada, horaSalida: horaSalida, horaComidaSalida: horaComidaSalida, horaComidaEntrada: horaComidaEntrada, jornadaPartida: jornadaPartida, diasLaborables: diasLaborables, creado: new Date().toISOString() });
   document.getElementById('fch-add-emp-modal').style.display = 'none';
   showSyncStatus('✅ Empleado añadido: ' + name);
   fichaje_renderEmployees();
@@ -2553,6 +2578,11 @@ function fichaje_editSchedule(empId) {
     document.getElementById('fch-new-emp-pin').value = emp.pin;
     document.getElementById('fch-new-emp-hora-entrada').value = emp.horaEntrada || '08:00';
     document.getElementById('fch-new-emp-hora-salida').value = emp.horaSalida || '17:00';
+    document.getElementById('fch-new-emp-hora-comida-salida').value = emp.horaComidaSalida || '13:00';
+    document.getElementById('fch-new-emp-hora-comida-entrada').value = emp.horaComidaEntrada || '14:00';
+    var jpCheck = document.getElementById('fch-new-emp-jornada-partida');
+    jpCheck.checked = emp.jornadaPartida !== false;
+    jpCheck.onchange();
     
     // Set days
     var diasChecks = document.querySelectorAll('#fch-new-emp-dias input[type=checkbox]');
@@ -2588,8 +2618,13 @@ async function fichaje_updateEmployee(empId) {
   diasChecks.forEach(function(cb) { if (cb.checked) diasLaborables.push(parseInt(cb.value)); });
   
   var emp = emps.find(function(e) { return e._id === empId; });
+  var horaComidaSalida = document.getElementById('fch-new-emp-hora-comida-salida').value || '13:00';
+  var horaComidaEntrada = document.getElementById('fch-new-emp-hora-comida-entrada').value || '14:00';
+  var jornadaPartida = document.getElementById('fch-new-emp-jornada-partida').checked;
+  
   await fichaje_saveDoc('empleados', empId, { 
-    nombre: name, pin: pin, horaEntrada: horaEntrada, horaSalida: horaSalida, 
+    nombre: name, pin: pin, horaEntrada: horaEntrada, horaSalida: horaSalida,
+    horaComidaSalida: horaComidaSalida, horaComidaEntrada: horaComidaEntrada, jornadaPartida: jornadaPartida,
     diasLaborables: diasLaborables, creado: emp ? emp.creado : new Date().toISOString() 
   });
   
@@ -2667,38 +2702,49 @@ async function fichaje_checkAlarms() {
     var hasEntrada = todayRecords.some(function(r) { return r.tipo === 'entrada'; });
     var hasSalida = lastRec && lastRec.tipo === 'salida';
     
-    // 5 min before entrada
-    var entradaParts = (emp.horaEntrada || '08:00').split(':');
-    var entradaMin = parseInt(entradaParts[0]) * 60 + parseInt(entradaParts[1]);
     var nowMin = currentH * 60 + currentM;
     var alarmKey = fichaje_dateStr() + '_' + empId + '_';
+    var numEntradas = todayRecords.filter(function(r) { return r.tipo === 'entrada'; }).length;
+    var numSalidas = todayRecords.filter(function(r) { return r.tipo === 'salida'; }).length;
+    var isJornadaPartida = emp.jornadaPartida !== false;
     
-    if (!hasEntrada && nowMin >= entradaMin - 5 && nowMin <= entradaMin) {
-      var key = alarmKey + 'entrada';
-      if (fichaje_lastAlarmKey !== key) {
-        fichaje_lastAlarmKey = key;
-        fichaje_sendNotification('AZKAR Fichaje', '¡Faltan ' + (entradaMin - nowMin) + ' minutos para fichar ENTRADA! (' + emp.horaEntrada + ')');
-      }
+    // Build alarm times: [{ tipo, hora, label }]
+    var alarmas = [];
+    var e1Parts = (emp.horaEntrada || '08:00').split(':');
+    alarmas.push({ tipo: 'entrada', min: parseInt(e1Parts[0])*60+parseInt(e1Parts[1]), hora: emp.horaEntrada || '08:00', label: 'ENTRADA mañana', needed: numEntradas === 0 });
+    
+    if (isJornadaPartida) {
+      var cs = (emp.horaComidaSalida || '13:00').split(':');
+      alarmas.push({ tipo: 'salida', min: parseInt(cs[0])*60+parseInt(cs[1]), hora: emp.horaComidaSalida || '13:00', label: 'SALIDA a comer', needed: numEntradas === 1 && numSalidas === 0 });
+      var ce = (emp.horaComidaEntrada || '14:00').split(':');
+      alarmas.push({ tipo: 'entrada', min: parseInt(ce[0])*60+parseInt(ce[1]), hora: emp.horaComidaEntrada || '14:00', label: 'ENTRADA tarde', needed: numEntradas === 1 && numSalidas === 1 });
+      var s2 = (emp.horaSalida || '17:00').split(':');
+      alarmas.push({ tipo: 'salida', min: parseInt(s2[0])*60+parseInt(s2[1]), hora: emp.horaSalida || '17:00', label: 'SALIDA final', needed: numEntradas === 2 && numSalidas === 1 });
+    } else {
+      var s1 = (emp.horaSalida || '17:00').split(':');
+      alarmas.push({ tipo: 'salida', min: parseInt(s1[0])*60+parseInt(s1[1]), hora: emp.horaSalida || '17:00', label: 'SALIDA', needed: numEntradas === 1 && numSalidas === 0 });
     }
     
-    // 5 min before salida
-    var salidaParts = (emp.horaSalida || '17:00').split(':');
-    var salidaMin = parseInt(salidaParts[0]) * 60 + parseInt(salidaParts[1]);
-    
-    if (hasEntrada && !hasSalida && nowMin >= salidaMin - 5 && nowMin <= salidaMin) {
-      var key2 = alarmKey + 'salida';
-      if (fichaje_lastAlarmKey !== key2) {
-        fichaje_lastAlarmKey = key2;
-        fichaje_sendNotification('AZKAR Fichaje', '¡Faltan ' + (salidaMin - nowMin) + ' minutos para fichar SALIDA! (' + emp.horaSalida + ')');
+    for (var ai = 0; ai < alarmas.length; ai++) {
+      var al = alarmas[ai];
+      if (!al.needed) continue;
+      
+      // 5 min before
+      if (nowMin >= al.min - 5 && nowMin <= al.min) {
+        var key = alarmKey + al.label;
+        if (fichaje_lastAlarmKey !== key) {
+          fichaje_lastAlarmKey = key;
+          fichaje_sendNotification('AZKAR Fichaje', '¡Faltan ' + (al.min - nowMin) + ' min para fichar ' + al.label + '! (' + al.hora + ')');
+        }
       }
-    }
-    
-    // Alert if 15 min late and hasn't clocked in
-    if (!hasEntrada && nowMin > entradaMin + 15 && nowMin <= entradaMin + 16) {
-      var key3 = alarmKey + 'retraso';
-      if (fichaje_lastAlarmKey !== key3) {
-        fichaje_lastAlarmKey = key3;
-        fichaje_sendNotification('AZKAR Fichaje', '¡Llevas 15 minutos de retraso! Ficha tu entrada ya.');
+      
+      // 15 min late for entrada only
+      if (al.tipo === 'entrada' && nowMin > al.min + 15 && nowMin <= al.min + 16) {
+        var key2 = alarmKey + al.label + '_retraso';
+        if (fichaje_lastAlarmKey !== key2) {
+          fichaje_lastAlarmKey = key2;
+          fichaje_sendNotification('AZKAR Fichaje', '¡Llevas 15 min de retraso en ' + al.label + '! Ficha ya.');
+        }
       }
     }
   }
