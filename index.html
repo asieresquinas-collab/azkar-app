@@ -1891,6 +1891,87 @@ window.addEventListener('DOMContentLoaded', function() {
       savePresupuesto(data).catch(() => {});
     }
   }, 60000);
+
+  // ── MEJORA 1: Guardar al refrescar/cerrar la página ──
+  window.addEventListener('beforeunload', () => {
+    const ref = document.getElementById('f_ref');
+    if (ref && ref.value) {
+      const data = collectFormData();
+      data.id = ref.value;
+      // Guardado síncrono urgente en localStorage como backup
+      try {
+        localStorage.setItem('azkar_backup_ref', ref.value);
+        localStorage.setItem('azkar_backup_data', JSON.stringify(data));
+        localStorage.setItem('azkar_backup_time', Date.now().toString());
+      } catch(e) {}
+      // También intentar guardar en IndexedDB (puede que no se complete)
+      savePresupuesto(data).catch(() => {});
+    }
+  });
+
+  // ── MEJORA 2: Guardado automático al cambiar campos (debounced 5s) ──
+  let _saveTimeout = null;
+  function debouncedAutoSave() {
+    clearTimeout(_saveTimeout);
+    _saveTimeout = setTimeout(() => {
+      const ref = document.getElementById('f_ref');
+      if (ref && ref.value) {
+        const data = collectFormData();
+        data.id = ref.value;
+        savePresupuesto(data).catch(() => {});
+        // Backup en localStorage también
+        try {
+          localStorage.setItem('azkar_backup_ref', ref.value);
+          localStorage.setItem('azkar_backup_data', JSON.stringify(data));
+          localStorage.setItem('azkar_backup_time', Date.now().toString());
+        } catch(e) {}
+      }
+    }, 5000);
+  }
+  // Escuchar cambios en TODOS los campos del formulario de presupuesto
+  document.querySelectorAll('#page-presupuesto input, #page-presupuesto textarea, #page-presupuesto select').forEach(el => {
+    el.addEventListener('input', debouncedAutoSave);
+    el.addEventListener('change', debouncedAutoSave);
+  });
+  // También en filas de la tabla (observer para filas nuevas)
+  const tbObserver = new MutationObserver(() => {
+    document.querySelectorAll('#tb .cr input, #tb .cr select').forEach(el => {
+      if (!el._azkarListener) {
+        el._azkarListener = true;
+        el.addEventListener('input', debouncedAutoSave);
+        el.addEventListener('change', debouncedAutoSave);
+      }
+    });
+  });
+  const tbEl = document.getElementById('tb');
+  if (tbEl) tbObserver.observe(tbEl, { childList: true, subtree: true });
+
+  // ── MEJORA 3: Restaurar último presupuesto al abrir ──
+  setTimeout(async () => {
+    try {
+      // Primero intentar desde localStorage (backup de emergencia)
+      const backupRef = localStorage.getItem('azkar_backup_ref');
+      const backupData = localStorage.getItem('azkar_backup_data');
+      const backupTime = localStorage.getItem('azkar_backup_time');
+
+      // Comprobar si hay un presupuesto activo en IndexedDB
+      const ref = document.getElementById('f_ref');
+      if (ref && !ref.value) {
+        // No hay nada cargado, intentar restaurar
+        if (backupRef && backupData) {
+          const data = JSON.parse(backupData);
+          // Verificar que el backup no es muy viejo (menos de 24h)
+          const age = Date.now() - parseInt(backupTime || '0');
+          if (age < 86400000) {
+            // Restaurar desde backup
+            restoreFormData(data);
+            showSyncStatus('♻️ Presupuesto restaurado (Nº ' + backupRef + ')');
+            console.log('[Azkar] Presupuesto restaurado desde backup localStorage');
+          }
+        }
+      }
+    } catch(e) { console.warn('[Azkar] Error restaurando backup:', e); }
+  }, 1500);
 });
 
 // === PARTE DE TRABAJO ===
