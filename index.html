@@ -624,9 +624,9 @@ async function PA(){
   var clientEmail = document.getElementById('f_email') ? document.getElementById('f_email').value.trim() : '';
 
   if (clientEmail && clientEmail.includes('@')) {
-    showSyncStatus('⏳ Generando PDF, guardando en Drive y enviando a ' + clientEmail + '...');
+    showSyncStatus('⏳ Generando PDF, guardando en Drive y enviando email a ' + clientEmail + '...', 0);
   } else {
-    showSyncStatus('⏳ Generando PDF y guardando en carpeta ' + number + '...');
+    showSyncStatus('⏳ Generando PDF y guardando en carpeta ' + number + '...', 0);
   }
 
   try {
@@ -644,18 +644,18 @@ async function PA(){
     if (result && result.success) {
       // Mensaje según si se envió email o no
       if (result.email && result.email.success) {
-        showSyncStatus('✅ PDF guardado + Email enviado a ' + result.email.to, 5000);
+        showSyncStatus('✅ PDF guardado en Drive + Email enviado a ' + result.email.to, 8000);
       } else if (result.email && !result.email.success) {
-        showSyncStatus('✅ PDF guardado. ⚠ Email no enviado: ' + (result.email.error || 'error'), 5000);
+        showSyncStatus('✅ PDF guardado en Drive. ⚠ Email falló: ' + (result.email.error || 'error desconocido'), 8000);
       } else {
-        showSyncStatus('✅ PDF guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase(), 5000);
+        showSyncStatus('✅ PDF guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase(), 6000);
       }
     } else {
-      showSyncStatus('❌ Error: ' + (result ? (result.error || result.details || 'sin respuesta') : 'sin conexión'), 5000);
+      showSyncStatus('❌ Error: ' + (result ? (result.error || result.details || 'sin respuesta del servidor') : 'sin conexión al servidor'), 8000);
     }
   } catch(e) {
     console.error('[PDF] Error:', e);
-    showSyncStatus('❌ Error: ' + e.message, 5000);
+    showSyncStatus('❌ Error de conexión: ' + e.message, 8000);
   }
 }
 /* beforeprint: browser fires this BEFORE rendering print — show all pages */
@@ -1020,13 +1020,16 @@ window.addEventListener('online', () => {
   if (typeof syncToFirebase === 'function') syncToFirebase();
 });
 
+var _syncStatusTimer = null;
 function showSyncStatus(msg, duration) {
   const el = document.getElementById('sync-status');
   if (!el) return;
+  if (_syncStatusTimer) { clearTimeout(_syncStatusTimer); _syncStatusTimer = null; }
   el.textContent = msg || '✓ Sincronizado';
   el.style.display = 'block';
   el.style.opacity = '1';
-  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.style.display = 'none', 300); }, duration || 2500);
+  if (duration === 0) return; // duration=0 means persistent (no auto-hide)
+  _syncStatusTimer = setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.style.display = 'none', 300); }, duration || 2500);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1576,15 +1579,23 @@ async function savePdfViaServer(number, clientName, htmlContent, docType, client
     if (clientEmail && clientEmail.includes('@')) {
       payload.clientEmail = clientEmail;
     }
+    // Timeout de 90 segundos (Puppeteer + Drive + Email puede tardar)
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 90000);
     var res = await fetch(RAILWAY_API + '/api/pdf/generate-and-save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
     var data = await res.json();
     return data;
   } catch (e) {
     console.error('[PDF Server] Error:', e);
+    if (e.name === 'AbortError') {
+      return { error: 'Tiempo agotado (90s). El PDF puede haberse guardado. Revisa Drive.' };
+    }
     return null;
   }
 }
