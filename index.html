@@ -1869,6 +1869,14 @@ window.addEventListener('DOMContentLoaded', function() {
     driveBtn.innerHTML = '💾 GUARDAR EN DRIVE';
     driveBtn.onclick = window.saveAllToDrive;
     acts.insertBefore(driveBtn, acts.firstChild);
+
+    // Botón "Nueva Llamada" para transcripciones
+    const callBtn = document.createElement('button');
+    callBtn.className = 'nbtn';
+    callBtn.style.cssText = 'background:#E85C0D;color:#fff;margin-right:4px;';
+    callBtn.innerHTML = '📞 NUEVA LLAMADA';
+    callBtn.onclick = openTranscriptionModal;
+    acts.insertBefore(callBtn, acts.firstChild);
   }
 
   // Auto-connect Firebase with hardcoded config
@@ -2864,6 +2872,310 @@ ST = function(tab) {
     }, 3000);
   };
 })();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- MODAL DE TRANSCRIPCIÓN DE LLAMADAS -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="transcription-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);overflow-y:auto;">
+  <div style="max-width:800px;margin:20px auto;background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#E85C0D,#ff7b3a);color:#fff;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-weight:800;font-size:18px;font-family:'Barlow Condensed',sans-serif;">📞 Nueva Llamada</div>
+        <div style="font-size:11px;opacity:.8;margin-top:2px;">Pega la transcripción y la IA extraerá los datos</div>
+      </div>
+      <button onclick="closeTranscriptionModal()" style="background:rgba(255,255,255,.2);color:#fff;border:none;padding:8px 14px;border-radius:5px;font-weight:700;font-size:12px;cursor:pointer;font-family:'Barlow',sans-serif;">✕ Cerrar</button>
+    </div>
+
+    <!-- Paso 1: Pegar transcripción -->
+    <div id="tx-step1" style="padding:20px 24px;">
+      <div style="font-weight:700;font-size:14px;color:#1B4F8A;margin-bottom:8px;">Paso 1: Pega la transcripción de la llamada</div>
+      <textarea id="tx-input" placeholder="Pega aquí el texto de la llamada con el cliente...&#10;&#10;Ejemplo: 'Buenos días, le llamo porque necesito hacer una mudanza de un piso en Bilbao a Getxo. Me llamo García, mi teléfono es 666 123 456. Tengo un sofá, una mesa de comedor, 4 sillas, una cama doble...'" style="width:100%;min-height:200px;border:2px solid #D8DCE3;border-radius:8px;padding:14px;font-family:'Barlow',sans-serif;font-size:13px;color:#111;resize:vertical;outline:none;transition:.2s;box-sizing:border-box;" onfocus="this.style.borderColor='#E85C0D'" onblur="this.style.borderColor='#D8DCE3'"></textarea>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:12px;">
+        <button id="tx-analyze-btn" onclick="analyzeTranscription()" style="background:#E85C0D;color:#fff;border:none;padding:12px 28px;border-radius:6px;font-weight:700;font-size:14px;cursor:pointer;font-family:'Barlow',sans-serif;display:flex;align-items:center;gap:8px;transition:.2s;">
+          ✨ Analizar con IA
+        </button>
+        <span id="tx-status" style="font-size:12px;color:#888;"></span>
+      </div>
+    </div>
+
+    <!-- Paso 2: Resultados extraídos (oculto inicialmente) -->
+    <div id="tx-step2" style="display:none;padding:0 24px 20px;">
+      <div style="font-weight:700;font-size:14px;color:#1B4F8A;margin-bottom:4px;">Paso 2: Revisa y modifica los datos</div>
+      <div id="tx-resumen" style="background:#FEF0E7;border-left:4px solid #E85C0D;padding:10px 14px;font-size:12px;color:#444;margin-bottom:14px;border-radius:0 4px 4px 0;"></div>
+
+      <!-- Datos del cliente -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div class="fi"><label>Nombre cliente</label><input type="text" id="tx-nombre"></div>
+        <div class="fi"><label>Teléfono</label><input type="text" id="tx-telefono"></div>
+        <div class="fi"><label>Email</label><input type="text" id="tx-email"></div>
+        <div class="fi"><label>DNI</label><input type="text" id="tx-dni"></div>
+      </div>
+
+      <!-- Direcciones -->
+      <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px;">
+        <div class="fi"><label>Dirección recogida</label><input type="text" id="tx-recogida"></div>
+        <div class="fi"><label>Dirección entrega</label><input type="text" id="tx-entrega"></div>
+      </div>
+
+      <!-- Servicio -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div class="fi"><label>Fecha servicio</label><input type="date" id="tx-fecha"></div>
+        <div class="fi"><label>Tipo servicio</label>
+          <select id="tx-tipo">
+            <option value="local">📍 Local Bizkaia</option>
+            <option value="provincial">🚛 Provincial (Euskadi)</option>
+            <option value="nacional">🗺️ Nacional</option>
+            <option value="internacional">✈️ Internacional</option>
+          </select>
+        </div>
+        <div class="fi"><label>Forma pago</label>
+          <select id="tx-pago">
+            <option value="">Sin especificar</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="50+50">50% + 50%</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Observaciones -->
+      <div class="fi" style="margin-bottom:12px;"><label>Observaciones</label><textarea id="tx-obs" style="min-height:50px;"></textarea></div>
+
+      <!-- Artículos -->
+      <div style="font-weight:700;font-size:13px;color:#1B4F8A;margin-bottom:8px;">Artículos detectados</div>
+      <div id="tx-articulos" style="border:1.5px solid #D8DCE3;border-radius:6px;overflow:hidden;margin-bottom:14px;">
+        <div style="display:grid;grid-template-columns:2fr 1fr 60px 80px 30px;gap:4px;padding:8px;background:#1B4F8A;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;">
+          <span>Concepto</span><span>Zona</span><span style="text-align:center">Uds</span><span style="text-align:center">Precio</span><span></span>
+        </div>
+        <div id="tx-articulos-list"></div>
+      </div>
+      <button onclick="txAddArticulo()" style="background:#1B4F8A;color:#fff;border:none;padding:7px 14px;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;">+ Añadir artículo</button>
+
+      <!-- Botón crear presupuesto -->
+      <div style="margin-top:20px;padding-top:16px;border-top:2px solid #D8DCE3;display:flex;align-items:center;gap:12px;">
+        <button onclick="txCreatePresupuesto()" style="background:#1a7a3f;color:#fff;border:none;padding:14px 32px;border-radius:6px;font-weight:700;font-size:15px;cursor:pointer;font-family:'Barlow',sans-serif;display:flex;align-items:center;gap:8px;">
+          ✓ Crear Presupuesto
+        </button>
+        <span style="font-size:12px;color:#888;">Se rellenarán los campos del presupuesto con estos datos</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  SISTEMA DE TRANSCRIPCIÓN DE LLAMADAS
+// ══════════════════════════════════════════════════════════════
+const TX_API = 'https://azkar-presupuestos-production.up.railway.app';
+var txArticuloId = 0;
+
+function openTranscriptionModal() {
+  document.getElementById('transcription-modal').style.display = 'block';
+  document.getElementById('tx-step1').style.display = 'block';
+  document.getElementById('tx-step2').style.display = 'none';
+  document.getElementById('tx-input').value = '';
+  document.getElementById('tx-status').textContent = '';
+  document.getElementById('tx-input').focus();
+}
+
+function closeTranscriptionModal() {
+  document.getElementById('transcription-modal').style.display = 'none';
+}
+
+async function analyzeTranscription() {
+  var input = document.getElementById('tx-input').value.trim();
+  if (input.length < 20) {
+    document.getElementById('tx-status').textContent = '⚠ El texto es demasiado corto. Pega la transcripción completa.';
+    document.getElementById('tx-status').style.color = '#c0392b';
+    return;
+  }
+
+  var btn = document.getElementById('tx-analyze-btn');
+  var status = document.getElementById('tx-status');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Analizando...';
+  status.textContent = 'Enviando a la IA, puede tardar unos segundos...';
+  status.style.color = '#888';
+
+  try {
+    var res = await fetch(TX_API + '/api/transcription/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transcription: input })
+    });
+
+    var result = await res.json();
+
+    if (!result.success) {
+      status.textContent = '❌ ' + (result.error || 'Error desconocido');
+      status.style.color = '#c0392b';
+      btn.disabled = false;
+      btn.innerHTML = '✨ Analizar con IA';
+      return;
+    }
+
+    // Rellenar los campos con los datos extraídos
+    var d = result.data;
+    document.getElementById('tx-nombre').value = d.nombre || '';
+    document.getElementById('tx-telefono').value = d.telefono || '';
+    document.getElementById('tx-email').value = d.email || '';
+    document.getElementById('tx-dni').value = d.dni || '';
+    document.getElementById('tx-recogida').value = d.direccion_recogida || '';
+    document.getElementById('tx-entrega').value = d.direccion_entrega || '';
+    document.getElementById('tx-obs').value = d.observaciones || '';
+    document.getElementById('tx-resumen').innerHTML = '💡 <b>Resumen:</b> ' + (d.resumen || 'Sin resumen');
+
+    // Fecha servicio (convertir de texto a formato date si es posible)
+    if (d.fecha_servicio) {
+      var dateMatch = d.fecha_servicio.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+      if (dateMatch) {
+        var year = dateMatch[3].length === 2 ? '20' + dateMatch[3] : dateMatch[3];
+        var month = dateMatch[2].padStart(2, '0');
+        var day = dateMatch[1].padStart(2, '0');
+        document.getElementById('tx-fecha').value = year + '-' + month + '-' + day;
+      }
+    }
+
+    // Tipo y pago
+    var tipoMap = { 'local': 'local', 'provincial': 'provincial', 'nacional': 'nacional', 'internacional': 'internacional' };
+    document.getElementById('tx-tipo').value = tipoMap[d.tipo_servicio] || 'local';
+    var pagoMap = { 'transferencia': 'transferencia', 'efectivo': 'efectivo', 'tarjeta': 'tarjeta', '50+50': '50+50' };
+    document.getElementById('tx-pago').value = pagoMap[d.forma_pago] || '';
+
+    // Artículos
+    document.getElementById('tx-articulos-list').innerHTML = '';
+    txArticuloId = 0;
+    if (d.articulos && d.articulos.length > 0) {
+      d.articulos.forEach(function(art) {
+        txAddArticulo(art.concepto, art.zona, art.unidades, art.precio);
+      });
+    }
+
+    // Mostrar paso 2
+    document.getElementById('tx-step2').style.display = 'block';
+    status.textContent = '✅ Datos extraídos correctamente. Revisa y modifica lo que necesites.';
+    status.style.color = '#1a7a3f';
+    btn.disabled = false;
+    btn.innerHTML = '✨ Re-analizar';
+
+  } catch (err) {
+    status.textContent = '❌ Error de conexión: ' + err.message;
+    status.style.color = '#c0392b';
+    btn.disabled = false;
+    btn.innerHTML = '✨ Analizar con IA';
+  }
+}
+
+function txAddArticulo(concepto, zona, unidades, precio) {
+  txArticuloId++;
+  var id = txArticuloId;
+  var zonas = ['Salón','Comedor','Dormitorio principal','Dormitorio 2','Dormitorio 3','Cocina','Entrada/Recibidor','Baño','Trastero','Garaje','Terraza','Varios','Servicio adicional'];
+  var zonaOpts = zonas.map(function(z) {
+    return '<option value="' + z + '"' + (z === (zona || 'Varios') ? ' selected' : '') + '>' + z + '</option>';
+  }).join('');
+
+  var row = document.createElement('div');
+  row.id = 'tx-art-' + id;
+  row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 60px 80px 30px;gap:4px;padding:6px 8px;align-items:center;border-bottom:1px solid #D8DCE3;';
+  if (id % 2 === 0) row.style.background = '#F2F4F7';
+  row.innerHTML = '<input type="text" value="' + (concepto || '') + '" style="border:1px solid transparent;padding:4px 6px;font-size:12px;border-radius:3px;font-family:Barlow,sans-serif;" onfocus="this.style.borderColor=\'#2376C5\'" onblur="this.style.borderColor=\'transparent\'">'
+    + '<select style="border:1px solid transparent;padding:4px;font-size:11px;border-radius:3px;font-family:Barlow,sans-serif;">' + zonaOpts + '</select>'
+    + '<input type="number" value="' + (unidades || 1) + '" min="1" style="text-align:center;border:1px solid transparent;padding:4px;font-size:12px;border-radius:3px;width:100%;font-family:Barlow,sans-serif;" onfocus="this.style.borderColor=\'#2376C5\'" onblur="this.style.borderColor=\'transparent\'">'
+    + '<input type="number" value="' + (precio || 0) + '" min="0" step="0.01" style="text-align:right;border:1px solid transparent;padding:4px;font-size:12px;border-radius:3px;width:100%;font-family:Barlow,sans-serif;" onfocus="this.style.borderColor=\'#2376C5\'" onblur="this.style.borderColor=\'transparent\'">'
+    + '<button onclick="document.getElementById(\'tx-art-' + id + '\').remove()" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:14px;">✕</button>';
+  document.getElementById('tx-articulos-list').appendChild(row);
+}
+
+function txCreatePresupuesto() {
+  // Primero crear un nuevo presupuesto (con número de Drive)
+  if (typeof newPresupuesto === 'function') {
+    newPresupuesto();
+  }
+
+  // Esperar a que se asigne el número y rellenar los campos
+  setTimeout(function() {
+    // Rellenar campos del presupuesto
+    var fields = {
+      'f_nom': document.getElementById('tx-nombre').value,
+      'f_tel': document.getElementById('tx-telefono').value,
+      'f_email': document.getElementById('tx-email').value,
+      'f_dni': document.getElementById('tx-dni').value,
+      'f_rec': document.getElementById('tx-recogida').value,
+      'f_ent': document.getElementById('tx-entrega').value,
+      'f_fserv': document.getElementById('tx-fecha').value,
+      'f_obs': document.getElementById('tx-obs').value
+    };
+
+    Object.keys(fields).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && fields[id]) el.value = fields[id];
+    });
+
+    // Tipo de servicio
+    var tipo = document.getElementById('tx-tipo').value;
+    var tipoMap = { 'local': '📍 Local Bizkaia', 'provincial': '🚛 Provincial (Euskadi)', 'nacional': '🗺️ Nacional', 'internacional': '✈️ Internacional' };
+    var fTipo = document.getElementById('f_tipo');
+    if (fTipo) {
+      for (var i = 0; i < fTipo.options.length; i++) {
+        if (fTipo.options[i].text.includes(tipoMap[tipo] ? tipoMap[tipo].substring(2) : 'Local')) {
+          fTipo.selectedIndex = i;
+          break;
+        }
+      }
+    }
+
+    // Forma de pago
+    var pago = document.getElementById('tx-pago').value;
+    var fPago = document.getElementById('f_pago');
+    if (fPago && pago) {
+      var pagoTexts = { 'transferencia': 'Transferencia', 'efectivo': 'Efectivo', 'tarjeta': 'Tarjeta', '50+50': '50%' };
+      for (var j = 0; j < fPago.options.length; j++) {
+        if (fPago.options[j].text.toLowerCase().includes((pagoTexts[pago] || '').toLowerCase())) {
+          fPago.selectedIndex = j;
+          break;
+        }
+      }
+    }
+
+    // Limpiar filas existentes
+    document.querySelectorAll('#tb .cr').forEach(function(cr) { cr.remove(); });
+    if (typeof window.rid !== 'undefined') window.rid = 0;
+
+    // Añadir artículos al presupuesto
+    var artRows = document.querySelectorAll('#tx-articulos-list > div');
+    artRows.forEach(function(row) {
+      var inputs = row.querySelectorAll('input');
+      var select = row.querySelector('select');
+      if (inputs.length >= 3 && typeof AR === 'function') {
+        var concepto = inputs[0].value;
+        var zona = select ? select.value : 'Varios';
+        var uds = inputs[1].value || '1';
+        var precio = inputs[2].value || '0';
+        if (concepto.trim()) {
+          AR(concepto, zona, uds, precio, '0');
+        }
+      }
+    });
+
+    // Recalcular totales
+    if (typeof CA === 'function') CA();
+    if (typeof SY === 'function') SY();
+
+    // Cambiar a pestaña presupuesto
+    if (typeof ST === 'function') ST('presupuesto');
+
+    // Cerrar modal
+    closeTranscriptionModal();
+
+    // Mostrar confirmación
+    if (typeof showSyncStatus === 'function') {
+      showSyncStatus('📞 Presupuesto creado desde llamada');
+    }
+  }, 2000);
+}
 </script>
 
 </body>
