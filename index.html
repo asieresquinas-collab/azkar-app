@@ -706,42 +706,42 @@ window.addEventListener('afterprint', function(){
 
 // ── Catálogo de precios plano ─────────────────────────────────
 var PRECIOS_FLAT = {
-  'Zapatero':32.20,'Taquillón':32.20,'Mampara':41.41,'Perchero':13.81,
-  'Mesita auxiliar':18.41,'Vinoteca':13.81,'Cajas/Maletas':7.36,'Bultos':7.36,'Rag':114.08,
-  'Televisor pequeño':27.63,'Televisor grande':55.22,'Mesa centro':18.41,
-  'Aparador':64.42,'Mesa comedor':38.65,'Sillas comedor':7.72,'Butacas':55.22,
-  'Sofá dos plazas':92.02,'Sofá tres plazas':110.43,'Consola':62.57,
-  'Mueble grande':248.46,'Mueble mediano':156.43,'Mueble TV pequeño':45.01,
-  'Estantería':55.22,'Espejo grande':64.42,'Vitrina':64.42,
-  'Alfombras':7.72,'Cortinas':22.10,'Cuadros pequeños':6.63,'Cuadros grandes':22.99,
-  'Estantería pequeña':32.00,
-  'Módulo cocina':59.81,'Nevera':45.01,'Horno':38.65,'Campana':38.65,
-  'Fregadero':27.63,'Encimera':92.02,'Lavavajillas':45.01,'Lavadora':45.01,
-  'Secadora':45.01,'Panificadora':11.05,'Arcón congelador':55.22,'Banco':18.41,
-  'Piano pared eléctrico':110.43,'Mesa cocina':38.65,'Sillas cocina':7.72,
-  'Canapé':55.22,'Somier':13.81,'Colchón':13.81,'Mesillas':18.41,
-  'Armario módulo':59.81,'Cómoda':35.00,'Cabecero':16.58,'Cuna':32.20,
-  'Cambiador':44.17,'Puf':7.36,'Canapé/Cama nido':70.00,'Cajonera':32.20,
-  'Escritorio sin cajoneras':32.20,'Escritorio con cajoneras':45.01,
-  'Escritorio':32.20,'Sillas escritorio':13.81,'Sillas galán':7.72,
-  'Trona bebé':18.41,'Mesa niño con sillas':13.81,'Arcón':27.63,'Caballetes':36.81,
-  'Mueble baño':55.22,
-  'Tendedero':8.84,'Armario escobero':49.69,
-  'Mesa niño':22.99,'Hacer cajas':14.00,'Bicicletas':9.89,
-  'Guardamuebles (mes)':205.70,'Plataforma elevadora 2h':190.00,
-  'Sillas':7.72,'Espejo':27.63,'Cuadros':6.63,'Lámpara mesa':3.31
+  'Zapatero':38.64,'Taquillón':38.64,'Mampara':49.69,'Perchero':16.57,
+  'Mesita auxiliar':22.09,'Vinoteca':16.57,'Cajas/Maletas':8.83,'Bultos':8.83,'Rag':136.90,
+  'Televisor pequeño':33.16,'Televisor grande':66.26,'Mesa centro':22.09,
+  'Aparador':77.30,'Mesa comedor':46.38,'Sillas comedor':9.26,'Butacas':66.26,
+  'Sofá dos plazas':110.42,'Sofá tres plazas':132.52,'Consola':75.08,
+  'Mueble grande':298.15,'Mueble mediano':187.72,'Mueble TV pequeño':54.01,
+  'Estantería':66.26,'Espejo grande':77.30,'Vitrina':77.30,
+  'Alfombras':9.26,'Cortinas':26.52,'Cuadros pequeños':7.96,'Cuadros grandes':27.59,
+  'Estantería pequeña':38.40,
+  'Módulo cocina':71.77,'Nevera':54.01,'Horno':46.38,'Campana':46.38,
+  'Fregadero':33.16,'Encimera':110.42,'Lavavajillas':54.01,'Lavadora':54.01,
+  'Secadora':54.01,'Panificadora':13.26,'Arcón congelador':66.26,'Banco':22.09,
+  'Piano pared eléctrico':132.52,'Mesa cocina':46.38,'Sillas cocina':9.26,
+  'Canapé':66.26,'Somier':16.57,'Colchón':16.57,'Mesillas':22.09,
+  'Armario módulo':71.77,'Cómoda':42.00,'Cabecero':19.90,'Cuna':38.64,
+  'Cambiador':53.00,'Puf':8.83,'Canapé/Cama nido':84.00,'Cajonera':38.64,
+  'Escritorio sin cajoneras':38.64,'Escritorio con cajoneras':54.01,
+  'Escritorio':38.64,'Sillas escritorio':16.57,'Sillas galán':9.26,
+  'Trona bebé':22.09,'Mesa niño con sillas':16.57,'Arcón':33.16,'Caballetes':44.17,
+  'Mueble baño':66.26,
+  'Tendedero':10.61,'Armario escobero':59.63,
+  'Mesa niño':27.59,'Hacer cajas':16.80,'Bicicletas':11.87,
+  'Guardamuebles (mes)':246.84,'Plataforma elevadora 2h':228.00,
+  'Sillas':9.26,'Espejo':33.16,'Cuadros':7.96,'Lámpara mesa':3.97
 };
 
 // ── Overrides por zona (mismo artículo, precio diferente según habitación) ──
 var PRECIOS_ZONA = {
-  'Salón':              {'Lámpara techo':8.28,  'Lámpara pie':11.05},
-  'Entrada / Recibidor':{'Lámpara techo':11.05, 'Lámpara pie':11.05},
-  'Cocina':             {'Lámpara techo':11.05, 'Lámpara pie':11.05},
-  'Dormitorio principal':{'Lámpara techo':13.81,'Lámpara pie':13.81,'Espejo':27.63},
-  'Dormitorio 2':       {'Lámpara techo':11.05, 'Lámpara pie':13.81},
-  'Dormitorio 3':       {'Lámpara techo':11.05, 'Lámpara pie':13.81},
-  'Baño':               {'Lámpara techo':11.05, 'Espejo':36.81},
-  'Terraza':            {'Espejo':18.41, 'Cajonera':38.65}
+  'Salón':              {'Lámpara techo':9.94,  'Lámpara pie':13.26},
+  'Entrada / Recibidor':{'Lámpara techo':13.26, 'Lámpara pie':13.26},
+  'Cocina':             {'Lámpara techo':13.26, 'Lámpara pie':13.26},
+  'Dormitorio principal':{'Lámpara techo':16.57,'Lámpara pie':16.57,'Espejo':33.16},
+  'Dormitorio 2':       {'Lámpara techo':13.26, 'Lámpara pie':16.57},
+  'Dormitorio 3':       {'Lámpara techo':13.26, 'Lámpara pie':16.57},
+  'Baño':               {'Lámpara techo':13.26, 'Espejo':44.17},
+  'Terraza':            {'Espejo':22.09, 'Cajonera':46.38}
 };
 
 // ── PAKs de servicio ──────────────────────────────────────────
