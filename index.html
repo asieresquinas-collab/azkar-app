@@ -3285,8 +3285,8 @@ function txCreatePresupuesto() {
   }
 
   // Escuchar cambios en los campos de dirección (con delay de 1.5s para no cargar mientras escribe)
-  const txRecogida = document.getElementById('tx-recogida');
-  const txEntrega = document.getElementById('tx-entrega');
+  const txRecogida = document.getElementById('f_rec');
+  const txEntrega = document.getElementById('f_ent');
 
   if (txRecogida) {
     txRecogida.addEventListener('input', function() {
