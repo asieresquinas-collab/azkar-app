@@ -3281,7 +3281,7 @@ function txCreatePresupuesto() {
       return;
     }
     let fullAddress = address.trim();
-    if (!fullAddress.match(/bilbao|barakaldo|getxo|portugalete|santurtzi|basauri|galdakao|durango|gernika|leioa|erandio|sopela|mungia|bermeo|ondarroa|bizkaia|vizcaya|euskadi|españa/i)) {
+    if (!fullAddress.match(/bilbao|barakaldo|getxo|portugalete|santurtzi|basauri|galdakao|durango|gernika|leioa|erandio|sopela|mungia|bermeo|ondarroa|bizkaia|vizcaya|vitoria|gasteiz|donostia|san\s*sebasti|irún|irun|eibar|mondragón|mondragon|arrasate|tolosa|zarautz|rentería|renteria|álava|alava|araba|gipuzkoa|guipúzcoa|guipuzcoa|cantabria|santander|torrelavega|castro\s*urdiales|burgos|logroño|logro|miranda|haro|pamplona|iruña|tudela|navarra|nafarroa|madrid|barcelona|zaragoza|valladolid|león|leon|euskadi|españa|spain/i)) {
       fullAddress += ', Bizkaia, España';
     }
     const encoded = encodeURIComponent(fullAddress);
