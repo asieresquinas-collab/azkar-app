@@ -3144,7 +3144,7 @@ function txCreatePresupuesto() {
     document.querySelectorAll('#tb .cr').forEach(function(cr) { cr.remove(); });
     if (typeof window.rid !== 'undefined') window.rid = 0;
 
-    // Añadir artículos al presupuesto
+    // Añadir artículos al presupuesto con precios de PRECIOS_FLAT/PRECIOS_ZONA
     var artRows = document.querySelectorAll('#tx-articulos-list > div');
     artRows.forEach(function(row) {
       var inputs = row.querySelectorAll('input');
@@ -3153,9 +3153,40 @@ function txCreatePresupuesto() {
         var concepto = inputs[0].value;
         var zona = select ? select.value : 'Varios';
         var uds = inputs[1].value || '1';
-        var precio = inputs[2].value || '0';
         if (concepto.trim()) {
-          AR(concepto, zona, uds, precio, '0');
+          // Buscar precio real en las tarifas de la app
+          var precio = null;
+          // 1) Buscar en precios por zona
+          if (typeof PRECIOS_ZONA !== 'undefined' && PRECIOS_ZONA[zona] && PRECIOS_ZONA[zona][concepto] !== undefined) {
+            precio = PRECIOS_ZONA[zona][concepto];
+          }
+          // 2) Buscar en precios generales (exacto)
+          if (precio === null && typeof PRECIOS_FLAT !== 'undefined' && PRECIOS_FLAT[concepto] !== undefined) {
+            precio = PRECIOS_FLAT[concepto];
+          }
+          // 3) Buscar aproximado (ignorando mayúsculas/minúsculas)
+          if (precio === null && typeof PRECIOS_FLAT !== 'undefined') {
+            var cLower = concepto.toLowerCase();
+            for (var key in PRECIOS_FLAT) {
+              if (key.toLowerCase() === cLower) {
+                precio = PRECIOS_FLAT[key];
+                concepto = key;
+                break;
+              }
+            }
+          }
+          // 4) Buscar parcial (si el concepto contiene el nombre de la tarifa o viceversa)
+          if (precio === null && typeof PRECIOS_FLAT !== 'undefined') {
+            var cLower2 = concepto.toLowerCase();
+            for (var key2 in PRECIOS_FLAT) {
+              if (cLower2.includes(key2.toLowerCase()) || key2.toLowerCase().includes(cLower2)) {
+                precio = PRECIOS_FLAT[key2];
+                concepto = key2;
+                break;
+              }
+            }
+          }
+          AR(concepto, zona, uds, precio !== null ? precio : '0', '0');
         }
       }
     });
