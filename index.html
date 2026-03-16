@@ -621,7 +621,13 @@ async function PA(){
     return;
   }
 
-  showSyncStatus('⏳ Generando PDF y guardando en carpeta ' + number + '...');
+  var clientEmail = document.getElementById('f_email') ? document.getElementById('f_email').value.trim() : '';
+
+  if (clientEmail && clientEmail.includes('@')) {
+    showSyncStatus('⏳ Generando PDF, guardando en Drive y enviando a ' + clientEmail + '...');
+  } else {
+    showSyncStatus('⏳ Generando PDF y guardando en carpeta ' + number + '...');
+  }
 
   try {
     // Renombrar carpeta con nombre del cliente
@@ -632,11 +638,18 @@ async function PA(){
     // Construir HTML completo con estilos y datos del formulario
     var completeHTML = buildCompleteHTML(['page-dossier', 'page-presupuesto', 'page-contrato']);
 
-    // Enviar al servidor → genera PDF perfecto con Puppeteer → guarda en Drive
-    var result = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO');
+    // Enviar al servidor → genera PDF → guarda en Drive → envía email si hay clientEmail
+    var result = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO', clientEmail);
 
     if (result && result.success) {
-      showSyncStatus('✅ PDF guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase());
+      // Mensaje según si se envió email o no
+      if (result.email && result.email.success) {
+        showSyncStatus('✅ PDF guardado + Email enviado a ' + result.email.to, 5000);
+      } else if (result.email && !result.email.success) {
+        showSyncStatus('✅ PDF guardado. ⚠ Email no enviado: ' + (result.email.error || 'error'), 5000);
+      } else {
+        showSyncStatus('✅ PDF guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase(), 5000);
+      }
     } else {
       showSyncStatus('❌ Error: ' + (result ? (result.error || result.details || 'sin respuesta') : 'sin conexión'), 5000);
     }
@@ -1552,17 +1565,21 @@ function buildCompleteHTML(pageIds) {
     + '</head><body>\n' + body + '\n</body></html>';
 }
 
-async function savePdfViaServer(number, clientName, htmlContent, docType) {
+async function savePdfViaServer(number, clientName, htmlContent, docType, clientEmail) {
   try {
+    var payload = {
+      number: number,
+      clientName: clientName,
+      htmlContent: htmlContent,
+      docType: docType || 'PRESUPUESTO_COMPLETO'
+    };
+    if (clientEmail && clientEmail.includes('@')) {
+      payload.clientEmail = clientEmail;
+    }
     var res = await fetch(RAILWAY_API + '/api/pdf/generate-and-save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        number: number,
-        clientName: clientName,
-        htmlContent: htmlContent,
-        docType: docType || 'PRESUPUESTO_COMPLETO'
-      })
+      body: JSON.stringify(payload)
     });
     var data = await res.json();
     return data;
