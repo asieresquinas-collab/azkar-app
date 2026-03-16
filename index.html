@@ -2930,10 +2930,28 @@ ST = function(tab) {
         <div class="fi"><label>DNI</label><input type="text" id="tx-dni"></div>
       </div>
 
-      <!-- Direcciones -->
-      <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px;">
-        <div class="fi"><label>Dirección recogida</label><input type="text" id="tx-recogida"></div>
-        <div class="fi"><label>Dirección entrega</label><input type="text" id="tx-entrega"></div>
+      <!-- Direcciones con Street View -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div>
+          <div class="fi"><label>Dirección recogida</label><input type="text" id="tx-recogida" placeholder="Ej: Calle Gran Vía 50, Bilbao"></div>
+          <div id="sv-recogida" style="margin-top:6px;display:none;">
+            <div style="display:flex;gap:6px;">
+              <iframe id="sv-recogida-street" style="width:50%;height:220px;border:2px solid var(--gb);border-radius:4px;" allowfullscreen></iframe>
+              <iframe id="sv-recogida-map" style="width:50%;height:220px;border:2px solid var(--gb);border-radius:4px;" allowfullscreen></iframe>
+            </div>
+            <p style="font-size:10px;color:var(--gm);margin-top:4px;text-align:center;">📷 Street View + Mapa de recogida (haz clic para navegar)</p>
+          </div>
+        </div>
+        <div>
+          <div class="fi"><label>Dirección entrega</label><input type="text" id="tx-entrega" placeholder="Ej: Avenida Lehendakari Aguirre 12, Bilbao"></div>
+          <div id="sv-entrega" style="margin-top:6px;display:none;">
+            <div style="display:flex;gap:6px;">
+              <iframe id="sv-entrega-street" style="width:50%;height:220px;border:2px solid var(--gb);border-radius:4px;" allowfullscreen></iframe>
+              <iframe id="sv-entrega-map" style="width:50%;height:220px;border:2px solid var(--gb);border-radius:4px;" allowfullscreen></iframe>
+            </div>
+            <p style="font-size:10px;color:var(--gm);margin-top:4px;text-align:center;">📷 Street View + Mapa de entrega (haz clic para navegar)</p>
+          </div>
+        </div>
       </div>
 
       <!-- Servicio -->
@@ -3224,6 +3242,91 @@ function txCreatePresupuesto() {
     }
   }, 2000);
 }
+
+// ── STREET VIEW + MAPA para direcciones ──────────────────
+(function() {
+  let svTimerRecogida = null;
+  let svTimerEntrega = null;
+
+  function loadStreetView(address, prefix) {
+    if (!address || address.trim().length < 8) {
+      document.getElementById('sv-' + prefix).style.display = 'none';
+      return;
+    }
+
+    // Añadir ", Bizkaia, España" si no tiene localidad para mejorar geolocalización
+    let fullAddress = address.trim();
+    if (!fullAddress.match(/bilbao|barakaldo|getxo|portugalete|santurtzi|basauri|galdakao|durango|gernika|leioa|erandio|sopela|mungia|bermeo|ondarroa|bizkaia|vizcaya|euskadi|españa/i)) {
+      fullAddress += ', Bizkaia, España';
+    }
+
+    const encoded = encodeURIComponent(fullAddress);
+    const container = document.getElementById('sv-' + prefix);
+    const streetFrame = document.getElementById('sv-' + prefix + '-street');
+    const mapFrame = document.getElementById('sv-' + prefix + '-map');
+
+    // Google Maps Embed API con clave (Street View + Mapa)
+    const MAPS_KEY = 'GOOGLE_MAPS_API_KEY';
+
+    if (MAPS_KEY === 'GOOGLE_MAPS_API_KEY') {
+      // Sin API key: usar enlaces directos de Google Maps en iframes
+      streetFrame.src = 'https://www.google.com/maps/embed?pb=!4v0!6m8!1m7!1s!2m2!1d0!2d0!3f0!4f0!5f0.7820865974627469&q=' + encoded;
+      // Fallback: mostrar mapa normal con lugar
+      mapFrame.src = 'https://maps.google.com/maps?q=' + encoded + '&t=k&z=17&output=embed';
+      // Street View como enlace directo
+      streetFrame.src = 'https://www.google.com/maps/embed/v1/streetview?location=' + encoded + '&key=' + MAPS_KEY;
+    }
+
+    // Usar Google Maps embed sin API key (funciona para mapa y street view básico)
+    mapFrame.src = 'https://maps.google.com/maps?q=' + encoded + '&t=k&z=17&output=embed';
+    streetFrame.src = 'https://maps.google.com/maps?q=' + encoded + '&layer=c&z=17&output=embed';
+
+    container.style.display = 'block';
+  }
+
+  // Escuchar cambios en los campos de dirección (con delay de 1.5s para no cargar mientras escribe)
+  const txRecogida = document.getElementById('tx-recogida');
+  const txEntrega = document.getElementById('tx-entrega');
+
+  if (txRecogida) {
+    txRecogida.addEventListener('input', function() {
+      clearTimeout(svTimerRecogida);
+      svTimerRecogida = setTimeout(function() {
+        loadStreetView(txRecogida.value, 'recogida');
+      }, 1500);
+    });
+    // También cargar al perder foco
+    txRecogida.addEventListener('blur', function() {
+      clearTimeout(svTimerRecogida);
+      loadStreetView(txRecogida.value, 'recogida');
+    });
+  }
+
+  if (txEntrega) {
+    txEntrega.addEventListener('input', function() {
+      clearTimeout(svTimerEntrega);
+      svTimerEntrega = setTimeout(function() {
+        loadStreetView(txEntrega.value, 'entrega');
+      }, 1500);
+    });
+    txEntrega.addEventListener('blur', function() {
+      clearTimeout(svTimerEntrega);
+      loadStreetView(txEntrega.value, 'entrega');
+    });
+  }
+
+  // Si al cargar datos del cliente ya hay direcciones, mostrar Street View
+  const origPopulate = window.populateFormFromTranscription;
+  if (origPopulate) {
+    window.populateFormFromTranscription = function(d) {
+      origPopulate(d);
+      setTimeout(function() {
+        if (txRecogida && txRecogida.value) loadStreetView(txRecogida.value, 'recogida');
+        if (txEntrega && txEntrega.value) loadStreetView(txEntrega.value, 'entrega');
+      }, 500);
+    };
+  }
+})();
 </script>
 
 </body>
