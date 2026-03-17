@@ -567,7 +567,17 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     </div>
 
     <!-- BOTONES DE ACCIÓN -->
-    <div style='margin-top:16px'>
+    <!-- VISTA PREVIA -->
+    <div style='margin-top:16px;padding:14px;background:#e8f0fe;border-radius:8px;border:1px solid #c5d9f7'>
+      <p style='font-size:12px;color:#1B4F8A;font-weight:700;margin-bottom:8px'>PASO 1: Comprueba el documento antes de enviar</p>
+      <button class='perm-btn' style='background:#2376C5' onclick='permVistaPrevia("com")'>👁️ Ver solicitud (COM)</button>
+      <button class='perm-btn' style='background:#7d6608' onclick='permVistaPrevia("anu")'>👁️ Ver anulación (ANU)</button>
+      <button class='perm-btn' style='background:#27ae60' onclick='permVistaPrevia("policia")'>👁️ Ver comunicación policía</button>
+    </div>
+
+    <!-- ENVÍOS -->
+    <div style='margin-top:12px;padding:14px;background:#fef9e7;border-radius:8px;border:1px solid #f9e79f'>
+      <p style='font-size:12px;color:#7d6608;font-weight:700;margin-bottom:8px'>PASO 2: Cuando estés seguro, envía</p>
       <button class='perm-btn perm-btn-save' onclick='permGuardar()'>💾 Guardar (sin enviar)</button>
       <button class='perm-btn perm-btn-send' onclick='permEnviar()'>📧 Enviar solicitud</button>
       <button class='perm-btn perm-btn-police' onclick='permEnviarPolicia()'>👮 Comunicar policía</button>
@@ -580,6 +590,15 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     <h3>Rellenar desde presupuesto</h3>
     <p style='font-size:12px;color:#666;margin-bottom:10px'>Si tienes un presupuesto abierto, pulsa para copiar la dirección y fecha de servicio:</p>
     <button class='perm-btn perm-btn-preview' onclick='permDesdePresupuesto()'>📋 Copiar datos del presupuesto</button>
+  </div>
+
+  <!-- REGISTRO DE ENVÍOS -->
+  <div class='perm-card'>
+    <h3>Registro de envíos (verificación)</h3>
+    <p style='font-size:11px;color:#666;margin-bottom:10px'>Aquí se registran TODOS los emails enviados (permisos y presupuestos) para que puedas comprobar que se han mandado correctamente.</p>
+    <div id='envios-list'>
+      <p style='color:#888;font-size:12px;text-align:center;padding:20px'>No hay envíos registrados</p>
+    </div>
   </div>
 
   <!-- HISTORIAL DE PERMISOS -->
@@ -823,7 +842,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   </div>
 
   <div style='text-align:center;padding:20px;color:#999;font-size:11px'>
-    AZKAR APP v45 · Desarrollado por Aitor (Tilla)
+    AZKAR APP v46 · Desarrollado por Aitor (Tilla)
   </div>
 </div>
 </div>
@@ -1051,17 +1070,22 @@ async function PA(){
       // Mensaje según si se envió email o no
       if (result.email && result.email.success) {
         showSyncStatus('✅ PDF guardado en Drive + Email enviado a ' + result.email.to, 8000);
+        if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', [result.email.to, 'info@azkarmudanzas.com (BCC)'], (clientName || '').toUpperCase(), number, 'OK', 'PDF guardado en Drive + Email enviado');
       } else if (result.email && !result.email.success) {
         showSyncStatus('✅ PDF guardado en Drive. ⚠ Email falló: ' + (result.email.error || 'error desconocido'), 8000);
+        if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', [clientEmail], (clientName || '').toUpperCase(), number, 'ERROR', 'PDF en Drive OK pero email falló: ' + (result.email.error || ''));
       } else {
         showSyncStatus('✅ PDF guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase(), 6000);
+        if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', ['Solo Drive (sin email)'], (clientName || '').toUpperCase(), number, 'OK', 'PDF guardado en Drive sin envío de email');
       }
     } else {
       showSyncStatus('❌ Error: ' + (result ? (result.error || result.details || 'sin respuesta del servidor') : 'sin conexión al servidor'), 8000);
+      if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', [clientEmail || ''], (clientName || '').toUpperCase(), number, 'ERROR', result ? (result.error || 'error') : 'sin conexión');
     }
   } catch(e) {
     console.error('[PDF] Error:', e);
     showSyncStatus('❌ Error de conexión: ' + e.message, 8000);
+    if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', [clientEmail || ''], (clientName || '').toUpperCase(), number, 'ERROR', 'Conexión: ' + e.message);
   }
 }
 // ══════════════════════════════════════════════════════════════
@@ -1479,7 +1503,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v45';
+var APP_VERSION = 'v46';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -4437,14 +4461,17 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
         permisosGuardados.push(datos);
         permGuardarLocal();
         permRenderLista();
+        enviosRegistrar('permiso-com', data.destinatarios, datos.direccion, datos.fecha_inicio, 'OK', 'Email ID: ' + (data.emailId || '-'));
         alert('Solicitud enviada correctamente a:\n' + data.destinatarios.join('\n'));
       } else {
+        enviosRegistrar('permiso-com', [], datos.direccion, datos.fecha_inicio, 'ERROR', data.error || 'Error desconocido');
         alert('Error: ' + (data.error || 'Error desconocido'));
       }
     })
     .catch(function(err) {
       btn.disabled = false;
       btn.textContent = '📧 Enviar solicitud';
+      enviosRegistrar('permiso-com', [], datos.direccion, datos.fecha_inicio, 'ERROR', err.message);
       alert('Error de conexión: ' + err.message);
     });
   };
@@ -4489,14 +4516,17 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
         permisosGuardados.push(datos);
         permGuardarLocal();
         permRenderLista();
+        enviosRegistrar('permiso-anu', data.destinatarios, datos.direccion, datos.fecha_inicio, 'OK', 'Email ID: ' + (data.emailId || '-'));
         alert('Anulación enviada correctamente.');
       } else {
+        enviosRegistrar('permiso-anu', [], datos.direccion, datos.fecha_inicio, 'ERROR', data.error || 'Error desconocido');
         alert('Error: ' + (data.error || 'Error desconocido'));
       }
     })
     .catch(function(err) {
       btn.disabled = false;
       btn.textContent = '❌ Anular permiso';
+      enviosRegistrar('permiso-anu', [], datos.direccion, datos.fecha_inicio, 'ERROR', err.message);
       alert('Error de conexión: ' + err.message);
     });
   };
@@ -4542,9 +4572,10 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
         permisosGuardados.push(datos);
         permGuardarLocal();
         permRenderLista();
+        enviosRegistrar('permiso-policia', data.destinatarios, datos.direccion, datos.fecha_inicio, 'OK', 'Email ID: ' + (data.emailId || '-'));
         alert('Comunicación a policía enviada correctamente.');
       } else {
-        alert('Error: ' + (data.error || 'Error desconocido'));
+        enviosRegistrar('permiso-policia', [], datos.direccion, datos.fecha_inicio, 'ERROR', data.error || 'Error desconocido');
       }
     })
     .catch(function(err) {
@@ -4617,9 +4648,158 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     container.innerHTML = html;
   };
 
+  // ============================================================
+  // VISTA PREVIA (descargar docx sin enviar)
+  // ============================================================
+  window.permVistaPrevia = function(tipoDoc) {
+    var datos = permRecogerDatos();
+    if (!datos) return;
+
+    var bodyData;
+    if (tipoDoc === 'policia') {
+      if (!datos.vehiculos) {
+        alert('Rellena el campo de vehículos para ver la comunicación policía.');
+        return;
+      }
+      bodyData = {
+        ayuntamiento: datos.ayuntamiento,
+        tipo_doc: 'policia',
+        datos: {
+          fecha: datos.fecha_inicio,
+          hora: datos.hora_reserva,
+          horario: datos.horario,
+          direccion: datos.direccion,
+          num_dias: datos.num_dias,
+          vehiculos: datos.vehiculos,
+          tipo: datos.tipo
+        }
+      };
+    } else {
+      bodyData = {
+        ayuntamiento: datos.ayuntamiento,
+        tipo_doc: tipoDoc,
+        datos: {
+          fecha_inicio: datos.fecha_inicio,
+          fecha_fin: datos.fecha_fin,
+          num_dias: datos.num_dias,
+          horario: datos.horario,
+          direccion: datos.direccion,
+          fecha_reserva: datos.fecha_inicio,
+          hora_reserva: datos.hora_reserva,
+          metros: datos.metros,
+          tipo: datos.tipo,
+          observaciones: datos.observaciones
+        }
+      };
+    }
+
+    var nombres = { com: 'SOLICITUD', anu: 'ANULACION', policia: 'COMUNICACION_POLICIA' };
+    alert('Generando documento de vista previa...');
+
+    fetch(PERM_RAILWAY + '/api/permisos/generar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': PERM_API_KEY },
+      body: JSON.stringify(bodyData)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok && data.doc) {
+        // Convertir base64 a blob y descargar
+        var byteChars = atob(data.doc);
+        var byteArray = new Uint8Array(byteChars.length);
+        for (var i = 0; i < byteChars.length; i++) {
+          byteArray[i] = byteChars.charCodeAt(i);
+        }
+        var blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'VISTA_PREVIA_' + nombres[tipoDoc] + '_' + datos.direccion.replace(/\s+/g, '_') + '.docx';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert('Documento descargado. Ábrelo para comprobar que está bien rellenado.\n\nSi todo está correcto, vuelve aquí y pulsa el botón de enviar.');
+      } else {
+        alert('Error generando documento: ' + (data.error || 'Error desconocido'));
+      }
+    })
+    .catch(function(err) {
+      alert('Error de conexión: ' + err.message);
+    });
+  };
+
+  // ============================================================
+  // REGISTRO DE ENVÍOS (verificación de emails)
+  // ============================================================
+  var enviosRegistro = [];
+
+  function enviosCargar() {
+    try {
+      var data = localStorage.getItem('azkar-envios');
+      if (data) enviosRegistro = JSON.parse(data);
+    } catch(e) { enviosRegistro = []; }
+  }
+
+  window.enviosRegistrar = function(tipo, destinatarios, direccion, fecha, estado, detalle) {
+    enviosRegistro.push({
+      id: Date.now().toString(36),
+      timestamp: new Date().toISOString(),
+      tipo: tipo,
+      destinatarios: destinatarios,
+      direccion: direccion,
+      fecha: fecha,
+      estado: estado,
+      detalle: detalle || ''
+    });
+    try {
+      localStorage.setItem('azkar-envios', JSON.stringify(enviosRegistro));
+    } catch(e) {}
+    enviosRenderLista();
+  };
+
+  window.enviosRenderLista = function() {
+    var container = document.getElementById('envios-list');
+    if (!container) return;
+    if (!enviosRegistro.length) {
+      container.innerHTML = '<p style="color:#888;font-size:12px;text-align:center;padding:20px">No hay envíos registrados</p>';
+      return;
+    }
+
+    var html = '';
+    var sorted = enviosRegistro.slice().reverse().slice(0, 50); // últimos 50
+    for (var i = 0; i < sorted.length; i++) {
+      var e = sorted[i];
+      var ts = new Date(e.timestamp);
+      var fechaStr = ts.toLocaleDateString('es-ES') + ' ' + ts.toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'});
+      var colorBg = e.estado === 'OK' ? '#e8f5ee' : '#fde8e8';
+      var colorText = e.estado === 'OK' ? '#1a7a3f' : '#c0392b';
+      var iconoTipo = {
+        'permiso-com': '🏛️ Solicitud',
+        'permiso-anu': '🏛️ Anulación',
+        'permiso-policia': '👮 Policía',
+        'presupuesto': '📄 Presupuesto',
+        'email': '📧 Email'
+      }[e.tipo] || e.tipo;
+
+      html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 14px;border:1px solid #e0e0e0;border-radius:8px;margin-bottom:6px;background:#fafafa;font-size:12px">'
+        + '<div style="flex:1">'
+        + '<strong style="color:#333">' + iconoTipo + '</strong>'
+        + '<span style="color:#888;margin-left:8px">' + fechaStr + '</span>'
+        + '<br><span style="color:#555">' + (e.direccion || '') + ' ' + (e.fecha || '') + '</span>'
+        + '<br><span style="color:#888;font-size:10px">→ ' + (Array.isArray(e.destinatarios) ? e.destinatarios.join(', ') : (e.destinatarios || '')) + '</span>'
+        + (e.detalle ? '<br><span style="color:#888;font-size:10px">' + e.detalle + '</span>' : '')
+        + '</div>'
+        + '<span style="background:' + colorBg + ';color:' + colorText + ';font-weight:700;font-size:10px;padding:3px 8px;border-radius:10px;white-space:nowrap">' + e.estado + '</span>'
+        + '</div>';
+    }
+    container.innerHTML = html;
+  };
+
   // Cargar al inicio
   permCargarLocal();
-  setTimeout(function() { permRenderLista(); }, 500);
+  enviosCargar();
+  setTimeout(function() { permRenderLista(); enviosRenderLista(); }, 500);
 })();
 </script>
 
