@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  AZKAR PWA · Service Worker · Offline-first
 // ══════════════════════════════════════════════════════════════
-const CACHE_NAME = 'azkar-pwa-v30';
+const CACHE_NAME = 'azkar-pwa-v31';
 const ASSETS = [
   './',
   './index.html',
@@ -33,7 +33,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
   // API calls (Firebase + Railway) + CDN scripts: network only, never cache
-  if (url.hostname.includes('firestore') || url.hostname.includes('firebase') || url.hostname.includes('railway.app') || url.hostname.includes('cdnjs.cloudflare.com')) {
+  if (url.hostname.includes('firestore') || url.hostname.includes('firebase') || url.hostname.includes('railway.app') || url.hostname.includes('cdnjs.cloudflare.com') || url.hostname.includes('nominatim') || url.hostname.includes('project-osrm') || url.hostname.includes('maps.google')) {
     e.respondWith(fetch(e.request).catch(() => new Response('{"offline":true}', {
       headers: { 'Content-Type': 'application/json' }
     })));

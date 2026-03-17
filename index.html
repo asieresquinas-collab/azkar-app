@@ -3347,8 +3347,178 @@ function txCreatePresupuesto() {
       setTimeout(function() {
         if (fRec && fRec.value) loadStreetView(fRec.value, 'recogida');
         if (fEnt && fEnt.value) loadStreetView(fEnt.value, 'entrega');
+        // También calcular distancia tras rellenar transcripción
+        if (fRec && fRec.value && fEnt && fEnt.value) {
+          if (typeof window._calcDistancia === 'function') window._calcDistancia();
+        }
       }, 500);
     };
+  }
+})();
+
+// ── CALCULADORA DE DISTANCIA (Nominatim + OSRM) ──────────────
+(function() {
+  var distTimer = null;
+
+  // Crear el contenedor de distancia y insertarlo después de f_ent
+  function createDistanciaBox() {
+    var box = document.createElement('div');
+    box.id = 'distancia-box';
+    box.style.cssText = 'margin:10px 0;padding:12px 16px;background:linear-gradient(135deg,#e8f6f3,#d5f5e3);border:2px solid #1a5276;border-radius:8px;display:none;font-family:Arial,sans-serif;';
+    box.innerHTML = '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">'
+      + '<div style="font-size:22px;">🚛</div>'
+      + '<div id="dist-km" style="font-size:18px;font-weight:bold;color:#1a5276;">-- km</div>'
+      + '<div style="width:2px;height:28px;background:#1a5276;border-radius:1px;"></div>'
+      + '<div id="dist-tiempo" style="font-size:16px;color:#2c3e50;">-- min</div>'
+      + '<div style="width:2px;height:28px;background:#1a5276;border-radius:1px;"></div>'
+      + '<div id="dist-ruta" style="font-size:12px;color:#7f8c8d;flex:1;">Distancia entre recogida y entrega</div>'
+      + '</div>';
+    return box;
+  }
+
+  // Geocodificar dirección con Nominatim (OpenStreetMap)
+  function geocode(address) {
+    var fullAddr = address.trim();
+    // Añadir contexto geográfico si no lo tiene
+    if (!fullAddr.match(/bilbao|barakaldo|getxo|portugalete|santurtzi|basauri|galdakao|durango|gernika|leioa|erandio|sopela|mungia|bermeo|ondarroa|bizkaia|vizcaya|vitoria|gasteiz|donostia|san\s*sebasti|irún|irun|eibar|mondragón|mondragon|arrasate|tolosa|zarautz|rentería|renteria|álava|alava|araba|gipuzkoa|guipúzcoa|guipuzcoa|cantabria|santander|torrelavega|castro\s*urdiales|burgos|logroño|logro|miranda|haro|pamplona|iruña|tudela|navarra|nafarroa|madrid|barcelona|zaragoza|valladolid|león|leon|euskadi|españa|spain/i)) {
+      fullAddr += ', Bizkaia, España';
+    }
+    return fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(fullAddr), {
+      headers: { 'Accept': 'application/json' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data && data.length > 0) {
+        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), display: data[0].display_name };
+      }
+      return null;
+    });
+  }
+
+  // Calcular ruta con OSRM (gratuito, sin API key)
+  function calcRoute(from, to) {
+    var url = 'https://router.project-osrm.org/route/v1/driving/'
+      + from.lon + ',' + from.lat + ';' + to.lon + ',' + to.lat
+      + '?overview=false';
+    return fetch(url)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
+          var route = data.routes[0];
+          return {
+            distancia: route.distance, // metros
+            duracion: route.duration   // segundos
+          };
+        }
+        return null;
+      });
+  }
+
+  // Función principal
+  function calcularDistancia() {
+    var fRec = document.getElementById('f_rec');
+    var fEnt = document.getElementById('f_ent');
+    var box = document.getElementById('distancia-box');
+    if (!fRec || !fEnt || !box) return;
+
+    var addrRec = fRec.value.trim();
+    var addrEnt = fEnt.value.trim();
+
+    if (addrRec.length < 8 || addrEnt.length < 8) {
+      box.style.display = 'none';
+      return;
+    }
+
+    // Mostrar cargando
+    box.style.display = 'block';
+    document.getElementById('dist-km').textContent = '⏳ Calculando...';
+    document.getElementById('dist-tiempo').textContent = '';
+    document.getElementById('dist-ruta').textContent = 'Buscando las direcciones...';
+
+    Promise.all([geocode(addrRec), geocode(addrEnt)])
+      .then(function(coords) {
+        var from = coords[0];
+        var to = coords[1];
+
+        if (!from || !to) {
+          document.getElementById('dist-km').textContent = '⚠ No encontrado';
+          document.getElementById('dist-tiempo').textContent = '';
+          document.getElementById('dist-ruta').textContent =
+            (!from ? '❌ Recogida no encontrada' : '✅ Recogida OK') + ' | ' +
+            (!to ? '❌ Entrega no encontrada' : '✅ Entrega OK');
+          return;
+        }
+
+        document.getElementById('dist-ruta').textContent = 'Calculando ruta...';
+
+        return calcRoute(from, to).then(function(ruta) {
+          if (!ruta) {
+            document.getElementById('dist-km').textContent = '⚠ Sin ruta';
+            document.getElementById('dist-tiempo').textContent = '';
+            document.getElementById('dist-ruta').textContent = 'No se pudo calcular la ruta entre ambas direcciones';
+            return;
+          }
+
+          var km = (ruta.distancia / 1000).toFixed(1);
+          var minutos = Math.round(ruta.duracion / 60);
+          var horas = Math.floor(minutos / 60);
+          var mins = minutos % 60;
+          var tiempoStr = horas > 0 ? horas + 'h ' + mins + 'min' : mins + ' min';
+
+          document.getElementById('dist-km').textContent = km + ' km';
+          document.getElementById('dist-tiempo').textContent = '🕐 ' + tiempoStr;
+          document.getElementById('dist-ruta').textContent = 'Distancia en carretera entre recogida y entrega';
+
+          // Guardar en campo oculto para usar en presupuesto
+          var hiddenDist = document.getElementById('f_distancia');
+          if (!hiddenDist) {
+            hiddenDist = document.createElement('input');
+            hiddenDist.type = 'hidden';
+            hiddenDist.id = 'f_distancia';
+            hiddenDist.name = 'f_distancia';
+            document.querySelector('form') ? document.querySelector('form').appendChild(hiddenDist) : document.body.appendChild(hiddenDist);
+          }
+          hiddenDist.value = km;
+        });
+      })
+      .catch(function(err) {
+        console.error('[Distancia] Error:', err);
+        document.getElementById('dist-km').textContent = '❌ Error';
+        document.getElementById('dist-tiempo').textContent = '';
+        document.getElementById('dist-ruta').textContent = 'Error de conexión: ' + err.message;
+      });
+  }
+
+  // Exponer para uso externo (transcripción)
+  window._calcDistancia = calcularDistancia;
+
+  // Insertar el box después del campo de entrega
+  var fEntField = document.getElementById('f_ent');
+  if (fEntField) {
+    var parentEnt = fEntField.closest('.fg') || fEntField.parentElement;
+    // Buscar si ya existe sv-main-entrega (Street View) e insertar después
+    var svEntrega = document.getElementById('sv-main-entrega');
+    var insertAfter = svEntrega || parentEnt;
+    var distBox = createDistanciaBox();
+    insertAfter.parentElement.insertBefore(distBox, insertAfter.nextSibling);
+  }
+
+  // Escuchar cambios en ambos campos
+  var fRecField = document.getElementById('f_rec');
+  var fEntField2 = document.getElementById('f_ent');
+
+  function onAddressChange() {
+    clearTimeout(distTimer);
+    distTimer = setTimeout(calcularDistancia, 2000);
+  }
+
+  if (fRecField) {
+    fRecField.addEventListener('input', onAddressChange);
+    fRecField.addEventListener('blur', function() { clearTimeout(distTimer); calcularDistancia(); });
+  }
+  if (fEntField2) {
+    fEntField2.addEventListener('input', onAddressChange);
+    fEntField2.addEventListener('blur', function() { clearTimeout(distTimer); calcularDistancia(); });
   }
 })();
 </script>
