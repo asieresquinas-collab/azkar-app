@@ -1509,7 +1509,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v49';
+var APP_VERSION = 'v50';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -4397,29 +4397,37 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
 
   // Copiar datos desde el presupuesto actual
   window.permDesdePresupuesto = function(tipo) {
-    var dir;
+    var dir, dirVal;
     if (tipo === 'entrega') {
+      // Buscar primero en dossier (tx-entrega), luego en presupuesto clásico (f_ent)
       dir = document.getElementById('tx-entrega');
-      if (dir && dir.value) {
-        document.getElementById('perm_direccion').value = dir.value.toUpperCase();
+      dirVal = (dir && dir.value) ? dir.value : '';
+      if (!dirVal) { dir = document.getElementById('f_ent'); dirVal = (dir && dir.value) ? dir.value : ''; }
+      if (dirVal) {
+        document.getElementById('perm_direccion').value = dirVal.toUpperCase();
       } else {
-        alert('No hay dirección de entrega en el presupuesto');
+        alert('No hay dirección de entrega en el presupuesto. Rellena primero la dirección de entrega en el dossier o presupuesto.');
         return;
       }
     } else {
+      // Buscar primero en dossier (tx-recogida), luego en presupuesto clásico (f_rec)
       dir = document.getElementById('tx-recogida');
-      if (dir && dir.value) {
-        document.getElementById('perm_direccion').value = dir.value.toUpperCase();
+      dirVal = (dir && dir.value) ? dir.value : '';
+      if (!dirVal) { dir = document.getElementById('f_rec'); dirVal = (dir && dir.value) ? dir.value : ''; }
+      if (dirVal) {
+        document.getElementById('perm_direccion').value = dirVal.toUpperCase();
       } else {
-        alert('No hay dirección de recogida en el presupuesto');
+        alert('No hay dirección de recogida en el presupuesto. Rellena primero la dirección de recogida en el dossier o presupuesto.');
         return;
       }
     }
-    // Fecha de servicio
+    // Fecha de servicio: buscar en dossier (tx-fecha) o presupuesto clásico (f_fserv)
     var fserv = document.getElementById('tx-fecha');
-    if (fserv && fserv.value) {
-      document.getElementById('perm_fecha').value = fserv.value;
-      document.getElementById('perm_fecha_fin').value = fserv.value;
+    var fechaVal = (fserv && fserv.value) ? fserv.value : '';
+    if (!fechaVal) { fserv = document.getElementById('f_fserv'); fechaVal = (fserv && fserv.value) ? fserv.value : ''; }
+    if (fechaVal) {
+      document.getElementById('perm_fecha').value = fechaVal;
+      document.getElementById('perm_fecha_fin').value = fechaVal;
       permCalcPlazos();
     }
     var label = tipo === 'entrega' ? 'ENTREGA' : 'RECOGIDA';
@@ -4428,13 +4436,14 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
 
   // Crear dos permisos (recogida + entrega) de golpe
   window.permCrearDoble = function() {
-    var dirRec = document.getElementById('tx-recogida');
-    var dirEnt = document.getElementById('tx-entrega');
-    var fserv = document.getElementById('tx-fecha');
+    // Buscar direcciones: primero dossier (tx-), luego presupuesto clásico (f_)
+    var recVal = (document.getElementById('tx-recogida') || {}).value || (document.getElementById('f_rec') || {}).value || '';
+    var entVal = (document.getElementById('tx-entrega') || {}).value || (document.getElementById('f_ent') || {}).value || '';
+    var fechaVal = (document.getElementById('tx-fecha') || {}).value || (document.getElementById('f_fserv') || {}).value || '';
 
-    if (!dirRec || !dirRec.value) { alert('No hay dirección de recogida en el presupuesto'); return; }
-    if (!dirEnt || !dirEnt.value) { alert('No hay dirección de entrega en el presupuesto'); return; }
-    if (!fserv || !fserv.value) { alert('No hay fecha de servicio en el presupuesto'); return; }
+    if (!recVal) { alert('No hay dirección de recogida en el presupuesto'); return; }
+    if (!entVal) { alert('No hay dirección de entrega en el presupuesto'); return; }
+    if (!fechaVal) { alert('No hay fecha de servicio en el presupuesto'); return; }
 
     var tipo = document.getElementById('perm_tipo').value;
     var ayto = document.getElementById('perm_ayto').value;
@@ -4446,8 +4455,8 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     // Permiso 1: Recogida
     var p1 = {
       ayuntamiento: ayto, tipo: tipo,
-      direccion: dirRec.value.toUpperCase(),
-      fecha_inicio: fserv.value, fecha_fin: fserv.value,
+      direccion: recVal.toUpperCase(),
+      fecha_inicio: fechaVal, fecha_fin: fechaVal,
       num_dias: dias, horario: horario, hora_reserva: hora,
       metros: metros, vehiculos: '', observaciones: 'RECOGIDA',
       estado: 'preparado', id: Date.now().toString(36) + 'a',
@@ -4457,8 +4466,8 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     // Permiso 2: Entrega
     var p2 = {
       ayuntamiento: ayto, tipo: tipo,
-      direccion: dirEnt.value.toUpperCase(),
-      fecha_inicio: fserv.value, fecha_fin: fserv.value,
+      direccion: entVal.toUpperCase(),
+      fecha_inicio: fechaVal, fecha_fin: fechaVal,
       num_dias: dias, horario: horario, hora_reserva: hora,
       metros: metros, vehiculos: '', observaciones: 'ENTREGA',
       estado: 'preparado', id: Date.now().toString(36) + 'b',
