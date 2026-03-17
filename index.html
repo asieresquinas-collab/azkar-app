@@ -661,6 +661,44 @@ async function PA(){
     showSyncStatus('❌ Error de conexión: ' + e.message, 8000);
   }
 }
+// ══════════════════════════════════════════════════════════════
+//  SOLO GUARDAR PDF EN DRIVE (sin enviar email al cliente)
+// ══════════════════════════════════════════════════════════════
+async function PA_SOLO_DRIVE(){
+  const number = document.getElementById('f_ref') ? document.getElementById('f_ref').value : '';
+  const clientName = document.getElementById('f_nom') ? document.getElementById('f_nom').value : '';
+  const numRef = parseInt(number, 10);
+
+  if (!number || !number.trim() || numRef < 1000) {
+    showSyncStatus('⚠ Sin nº cliente. Pulsa "+ Nuevo" primero', 4000);
+    return;
+  }
+
+  showSyncStatus('⏳ Guardando PDF en Drive (sin enviar email)...', 0);
+
+  try {
+    // Renombrar carpeta con nombre del cliente
+    if (clientName && clientName.trim()) {
+      await renameDriveFolder(numRef, clientName);
+    }
+
+    // Construir HTML completo
+    var completeHTML = buildCompleteHTML(['page-dossier', 'page-presupuesto', 'page-contrato']);
+
+    // Enviar SIN email (no se pasa clientEmail)
+    var result = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO', '');
+
+    if (result && result.success) {
+      showSyncStatus('✅ PDF guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase() + ' (sin email)', 6000);
+    } else {
+      showSyncStatus('❌ Error: ' + (result ? (result.error || result.details || 'sin respuesta') : 'sin conexión'), 8000);
+    }
+  } catch(e) {
+    console.error('[PDF Solo Drive] Error:', e);
+    showSyncStatus('❌ Error de conexión: ' + e.message, 8000);
+  }
+}
+
 /* beforeprint: browser fires this BEFORE rendering print — show all pages */
 var _printMode = 'pdf'; // 'pdf' or 'parte'
 window.addEventListener('beforeprint', function(){
@@ -1038,7 +1076,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v40';
+var APP_VERSION = 'v41';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2073,6 +2111,15 @@ window.addEventListener('DOMContentLoaded', function() {
     driveBtn.innerHTML = '💾 GUARDAR EN DRIVE';
     driveBtn.onclick = window.saveAllToDrive;
     acts.insertBefore(driveBtn, acts.firstChild);
+
+    // Botón "Solo Drive" (guardar PDF sin enviar email)
+    const soloDriveBtn = document.createElement('button');
+    soloDriveBtn.className = 'nbtn';
+    soloDriveBtn.style.cssText = 'background:#8e44ad;color:#fff;margin-right:4px;';
+    soloDriveBtn.innerHTML = '📁 SOLO DRIVE';
+    soloDriveBtn.title = 'Guarda el PDF en Drive SIN enviar email al cliente';
+    soloDriveBtn.onclick = PA_SOLO_DRIVE;
+    acts.insertBefore(soloDriveBtn, acts.firstChild);
 
     // Botón "Nueva Llamada" para transcripciones
     const callBtn = document.createElement('button');
