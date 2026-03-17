@@ -1038,7 +1038,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v39';
+var APP_VERSION = 'v40';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -3838,6 +3838,97 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
   if (fEntField2) {
     fEntField2.addEventListener('input', onAddressChange);
     fEntField2.addEventListener('blur', function() { clearTimeout(distTimer); calcularDistancia(); });
+  }
+})();
+</script>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  CONSULTA DE DISPONIBILIDAD EN CALENDARIO (toni@azkarmudanzas.com)
+// ══════════════════════════════════════════════════════════════
+(function() {
+  var fserv = document.getElementById('f_fserv');
+  if (!fserv) return;
+
+  // Crear indicador visual debajo del campo fecha
+  var calBox = document.createElement('div');
+  calBox.id = 'cal-disponibilidad';
+  calBox.style.cssText = 'display:none;margin-top:6px;padding:10px 14px;border-radius:8px;font-family:Arial,sans-serif;font-size:13px;line-height:1.5;';
+  var parent = fserv.closest('.fi') || fserv.parentElement;
+  parent.appendChild(calBox);
+
+  var calTimer = null;
+
+  fserv.addEventListener('change', function() {
+    clearTimeout(calTimer);
+    calTimer = setTimeout(consultarCalendario, 300);
+  });
+
+  async function consultarCalendario() {
+    var fecha = fserv.value;
+    if (!fecha) { calBox.style.display = 'none'; return; }
+
+    calBox.style.display = 'block';
+    calBox.style.background = '#f0f4f8';
+    calBox.style.border = '2px solid #ccc';
+    calBox.innerHTML = '📅 Consultando calendario...';
+
+    try {
+      var controller = new AbortController();
+      var tid = setTimeout(function() { controller.abort(); }, 15000);
+      var res = await fetch(RAILWAY_API + '/api/calendar/check?date=' + fecha, { signal: controller.signal });
+      clearTimeout(tid);
+
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var data = await res.json();
+
+      if (data.busy) {
+        // Día ocupado
+        calBox.style.background = 'linear-gradient(135deg, #ffeaa7, #fdcb6e)';
+        calBox.style.border = '2px solid #e17055';
+        var html = '⚠️ <b>' + formatFecha(fecha) + '</b> — Ocupado (' + data.events.length + ' servicio' + (data.events.length > 1 ? 's' : '') + ')';
+        html += '<div style="margin-top:6px;font-size:12px;">';
+        data.events.forEach(function(ev) {
+          var hora = ev.allDay ? 'Todo el día' : formatHora(ev.start) + ' - ' + formatHora(ev.end);
+          html += '• <b>' + ev.summary + '</b> — ' + hora + '<br>';
+        });
+        html += '</div>';
+        if (data.suggestions && data.suggestions.length > 0) {
+          html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e17055;font-size:12px;">';
+          html += '✅ <b>Días libres cercanos:</b><br>';
+          data.suggestions.forEach(function(s) {
+            html += '• <span style="cursor:pointer;color:#0984e3;text-decoration:underline;" onclick="document.getElementById(\'f_fserv\').value=\'' + s.date + '\';document.getElementById(\'f_fserv\').dispatchEvent(new Event(\'change\'));">' + s.dayName + ' ' + formatFecha(s.date) + '</span> (' + s.offset + ')<br>';
+          });
+          html += '</div>';
+        }
+        calBox.innerHTML = html;
+      } else {
+        // Día libre
+        calBox.style.background = 'linear-gradient(135deg, #d5f5e3, #a3e4d7)';
+        calBox.style.border = '2px solid #27ae60';
+        calBox.innerHTML = '✅ <b>' + formatFecha(fecha) + '</b> — Disponible, no hay servicios ese día';
+      }
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        calBox.innerHTML = '⚠️ Tiempo agotado consultando calendario';
+      } else {
+        calBox.style.background = '#f8d7da';
+        calBox.style.border = '2px solid #e74c3c';
+        calBox.innerHTML = '❌ Error consultando calendario: ' + e.message;
+      }
+    }
+  }
+
+  function formatFecha(dateStr) {
+    var d = new Date(dateStr + 'T12:00:00');
+    var dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    return dias[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear();
+  }
+
+  function formatHora(dateTimeStr) {
+    if (!dateTimeStr || dateTimeStr.length <= 10) return '';
+    var d = new Date(dateTimeStr);
+    return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
   }
 })();
 </script>
