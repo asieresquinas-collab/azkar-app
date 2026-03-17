@@ -3431,33 +3431,65 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
   // Pequeña pausa (para respetar 1 petición/s de Nominatim)
   function esperar(ms) { return new Promise(function(ok) { setTimeout(ok, ms); }); }
 
-  // Geocodificar dirección con Nominatim (OpenStreetMap)
-  function geocode(address) {
-    var fullAddr = address.trim();
-    // Añadir contexto geográfico si no lo tiene
-    if (!fullAddr.match(/bilbao|barakaldo|getxo|portugalete|santurtzi|basauri|galdakao|durango|gernika|leioa|erandio|sopela|mungia|bermeo|ondarroa|bizkaia|vizcaya|vitoria|gasteiz|donostia|san\s*sebasti|irún|irun|eibar|mondragón|mondragon|arrasate|tolosa|zarautz|rentería|renteria|álava|alava|araba|gipuzkoa|guipúzcoa|guipuzcoa|cantabria|santander|torrelavega|castro\s*urdiales|burgos|logroño|logro|miranda|haro|pamplona|iruña|tudela|navarra|nafarroa|madrid|barcelona|zaragoza|valladolid|león|leon|euskadi|españa|spain/i)) {
-      fullAddr += ', Bizkaia, España';
+  // Limpiar prefijos de calle que confunden a Nominatim
+  // "Calle Gran Vía 1" → "Gran Vía 1" (OSM usa el nombre oficial, no el genérico)
+  function limpiarDireccion(addr) {
+    return addr
+      .replace(/^(calle|c\/|c\.|cl\.|avda\.?|avenida|av\.|plaza|pza\.?|plza\.?|paseo|pº|travesía|trav\.?|camino|cno\.?|carretera|ctra\.?|ronda|glorieta|urbanización|urb\.?)\s+/i, '')
+      .trim();
+  }
+
+  // Añadir contexto geográfico si la dirección no incluye ciudad conocida
+  function addContexto(addr) {
+    if (!addr.match(/bilbao|barakaldo|getxo|portugalete|santurtzi|basauri|galdakao|durango|gernika|leioa|erandio|sopela|mungia|bermeo|ondarroa|bizkaia|vizcaya|vitoria|gasteiz|donostia|san\s*sebasti|irún|irun|eibar|mondragón|mondragon|arrasate|tolosa|zarautz|rentería|renteria|álava|alava|araba|gipuzkoa|guipúzcoa|guipuzcoa|cantabria|santander|torrelavega|castro\s*urdiales|burgos|logroño|logro|miranda|haro|pamplona|iruña|tudela|navarra|nafarroa|madrid|barcelona|zaragoza|valladolid|león|leon|euskadi|españa|spain/i)) {
+      return addr + ', Bizkaia, España';
     }
+    return addr;
+  }
+
+  // Buscar en Nominatim (una sola petición)
+  function nominatimSearch(query) {
     var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1'
       + '&email=info@azkarmudanzas.com'
       + '&countrycodes=es'
-      + '&q=' + encodeURIComponent(fullAddr);
+      + '&q=' + encodeURIComponent(query);
     return fetch(url, {
-      headers: { 'Accept': 'application/json', 'User-Agent': 'AzkarMudanzas/1.0' }
+      headers: { 'Accept': 'application/json' }
     })
     .then(function(r) {
       if (!r.ok) { console.error('[Geocode] HTTP', r.status); return []; }
       return r.json();
     })
-    .then(function(data) {
+    .catch(function(err) {
+      console.error('[Geocode] Error:', err);
+      return [];
+    });
+  }
+
+  // Geocodificar con reintentos inteligentes
+  function geocode(address) {
+    var original = addContexto(address.trim());
+    var limpia = addContexto(limpiarDireccion(address.trim()));
+
+    // Intento 1: dirección original
+    return nominatimSearch(original).then(function(data) {
       if (data && data.length > 0) {
         return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), display: data[0].display_name };
       }
-      console.warn('[Geocode] Sin resultados para:', fullAddr);
-      return null;
-    })
-    .catch(function(err) {
-      console.error('[Geocode] Error:', err);
+      // Intento 2: sin prefijo de calle (esperar 1.1s por rate limit)
+      if (limpia !== original) {
+        console.log('[Geocode] Reintentando sin prefijo:', limpia);
+        return esperar(1100).then(function() {
+          return nominatimSearch(limpia);
+        }).then(function(data2) {
+          if (data2 && data2.length > 0) {
+            return { lat: parseFloat(data2[0].lat), lon: parseFloat(data2[0].lon), display: data2[0].display_name };
+          }
+          console.warn('[Geocode] Sin resultados para:', original, 'ni', limpia);
+          return null;
+        });
+      }
+      console.warn('[Geocode] Sin resultados para:', original);
       return null;
     });
   }
