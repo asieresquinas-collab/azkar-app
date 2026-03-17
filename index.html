@@ -1076,13 +1076,13 @@ async function PA(){
       // Mensaje según si se envió email o no
       if (result.email && result.email.success) {
         showSyncStatus('✅ PDF guardado en Drive + Email enviado a ' + result.email.to, 8000);
-        if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', [result.email.to, 'info@azkarmudanzas.com (BCC)'], (clientName || '').toUpperCase(), number, 'OK', 'PDF guardado en Drive + Email enviado');
+        if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', [result.email.to, 'info@azkarmudanzas.com (BCC)'], (clientName || '').toUpperCase(), number, 'OK', '', result.email.messageId || '');
       } else if (result.email && !result.email.success) {
         showSyncStatus('✅ PDF guardado en Drive. ⚠ Email falló: ' + (result.email.error || 'error desconocido'), 8000);
-        if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', [clientEmail], (clientName || '').toUpperCase(), number, 'ERROR', 'PDF en Drive OK pero email falló: ' + (result.email.error || ''));
+        if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', [clientEmail], (clientName || '').toUpperCase(), number, 'ERROR', 'Email falló: ' + (result.email.error || ''), '');
       } else {
         showSyncStatus('✅ PDF guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase(), 6000);
-        if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', ['Solo Drive (sin email)'], (clientName || '').toUpperCase(), number, 'OK', 'PDF guardado en Drive sin envío de email');
+        if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', ['Solo Drive (sin email)'], (clientName || '').toUpperCase(), number, 'OK', 'Sin envío de email', '');
       }
     } else {
       showSyncStatus('❌ Error: ' + (result ? (result.error || result.details || 'sin respuesta del servidor') : 'sin conexión al servidor'), 8000);
@@ -1509,7 +1509,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v50';
+var APP_VERSION = 'v51';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -4537,10 +4537,10 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
         permisosGuardados.push(datos);
         permGuardarLocal();
         permRenderLista();
-        enviosRegistrar('permiso-com', data.destinatarios, datos.direccion, datos.fecha_inicio, 'OK', 'Email ID: ' + (data.emailId || '-'));
+        enviosRegistrar('permiso-com', data.destinatarios, datos.direccion, datos.fecha_inicio, 'OK', '', data.emailId || '');
         alert('Solicitud enviada correctamente a:\n' + data.destinatarios.join('\n'));
       } else {
-        enviosRegistrar('permiso-com', [], datos.direccion, datos.fecha_inicio, 'ERROR', data.error || 'Error desconocido');
+        enviosRegistrar('permiso-com', [], datos.direccion, datos.fecha_inicio, 'ERROR', data.error || 'Error desconocido', '');
         alert('Error: ' + (data.error || 'Error desconocido'));
       }
     })
@@ -4592,7 +4592,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
         permisosGuardados.push(datos);
         permGuardarLocal();
         permRenderLista();
-        enviosRegistrar('permiso-anu', data.destinatarios, datos.direccion, datos.fecha_inicio, 'OK', 'Email ID: ' + (data.emailId || '-'));
+        enviosRegistrar('permiso-anu', data.destinatarios, datos.direccion, datos.fecha_inicio, 'OK', '', data.emailId || '');
         alert('Anulación enviada correctamente.');
       } else {
         enviosRegistrar('permiso-anu', [], datos.direccion, datos.fecha_inicio, 'ERROR', data.error || 'Error desconocido');
@@ -4648,7 +4648,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
         permisosGuardados.push(datos);
         permGuardarLocal();
         permRenderLista();
-        enviosRegistrar('permiso-policia', data.destinatarios, datos.direccion, datos.fecha_inicio, 'OK', 'Email ID: ' + (data.emailId || '-'));
+        enviosRegistrar('permiso-policia', data.destinatarios, datos.direccion, datos.fecha_inicio, 'OK', '', data.emailId || '');
         alert('Comunicación a policía enviada correctamente.');
       } else {
         enviosRegistrar('permiso-policia', [], datos.direccion, datos.fecha_inicio, 'ERROR', data.error || 'Error desconocido');
@@ -4841,7 +4841,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     } catch(e) { enviosRegistro = []; }
   }
 
-  window.enviosRegistrar = function(tipo, destinatarios, direccion, fecha, estado, detalle) {
+  window.enviosRegistrar = function(tipo, destinatarios, direccion, fecha, estado, detalle, emailId) {
     enviosRegistro.push({
       id: Date.now().toString(36),
       timestamp: new Date().toISOString(),
@@ -4850,12 +4850,63 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
       direccion: direccion,
       fecha: fecha,
       estado: estado,
-      detalle: detalle || ''
+      detalle: detalle || '',
+      emailId: emailId || '',
+      emailStatus: ''
     });
     try {
       localStorage.setItem('azkar-envios', JSON.stringify(enviosRegistro));
     } catch(e) {}
     enviosRenderLista();
+    // Verificar estado automáticamente tras 5 segundos
+    if (emailId) {
+      setTimeout(function() { enviosVerificarTodos(); }, 5000);
+    }
+  };
+
+  // Estados de email y sus colores/textos
+  var EMAIL_STATUS = {
+    'sent':              { txt: '📤 Enviado',    bg: '#fff3cd', color: '#856404' },
+    'delivered':         { txt: '✅ Entregado',  bg: '#d4edda', color: '#155724' },
+    'delivery_delayed':  { txt: '⏳ Retrasado',  bg: '#fff3cd', color: '#856404' },
+    'bounced':           { txt: '❌ Rebotado',   bg: '#f8d7da', color: '#721c24' },
+    'opened':            { txt: '👁️ Abierto',   bg: '#cce5ff', color: '#004085' },
+    'clicked':           { txt: '🔗 Enlace abierto', bg: '#cce5ff', color: '#004085' },
+    'complained':        { txt: '⚠️ Spam',       bg: '#f8d7da', color: '#721c24' }
+  };
+
+  // Consultar estado de un email por ID
+  window.enviosVerificarEmail = async function(emailId) {
+    try {
+      var res = await fetch(PERM_RAILWAY + '/api/permisos/email-status/' + emailId, {
+        headers: { 'x-api-key': PERM_API_KEY }
+      });
+      if (!res.ok) return null;
+      var data = await res.json();
+      return data.ok ? data.status : null;
+    } catch(e) {
+      return null;
+    }
+  };
+
+  // Verificar TODOS los envíos que tienen emailId y no están ya en estado final
+  window.enviosVerificarTodos = async function() {
+    var changed = false;
+    var finales = ['delivered', 'bounced', 'opened', 'clicked', 'complained'];
+    for (var i = 0; i < enviosRegistro.length; i++) {
+      var e = enviosRegistro[i];
+      if (e.emailId && !finales.includes(e.emailStatus)) {
+        var status = await enviosVerificarEmail(e.emailId);
+        if (status && status !== e.emailStatus) {
+          enviosRegistro[i].emailStatus = status;
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      try { localStorage.setItem('azkar-envios', JSON.stringify(enviosRegistro)); } catch(e) {}
+      enviosRenderLista();
+    }
   };
 
   window.enviosRenderLista = function() {
@@ -4882,15 +4933,26 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
         'email': '📧 Email'
       }[e.tipo] || e.tipo;
 
+      // Badge de estado de entrega (automático de Resend)
+      var deliveryBadge = '';
+      if (e.emailId && e.emailStatus) {
+        var st = EMAIL_STATUS[e.emailStatus] || { txt: e.emailStatus, bg: '#f0f0f0', color: '#666' };
+        deliveryBadge = '<span style="background:' + st.bg + ';color:' + st.color + ';font-weight:700;font-size:10px;padding:3px 8px;border-radius:10px;white-space:nowrap;margin-left:4px">' + st.txt + '</span>';
+      } else if (e.emailId && !e.emailStatus) {
+        deliveryBadge = '<span style="background:#f0f0f0;color:#888;font-size:10px;padding:3px 8px;border-radius:10px;white-space:nowrap;margin-left:4px">⏳ Verificando...</span>';
+      }
+
       html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 14px;border:1px solid #e0e0e0;border-radius:8px;margin-bottom:6px;background:#fafafa;font-size:12px">'
         + '<div style="flex:1">'
         + '<strong style="color:#333">' + iconoTipo + '</strong>'
         + '<span style="color:#888;margin-left:8px">' + fechaStr + '</span>'
         + '<br><span style="color:#555">' + (e.direccion || '') + ' ' + (e.fecha || '') + '</span>'
         + '<br><span style="color:#888;font-size:10px">→ ' + (Array.isArray(e.destinatarios) ? e.destinatarios.join(', ') : (e.destinatarios || '')) + '</span>'
-        + (e.detalle ? '<br><span style="color:#888;font-size:10px">' + e.detalle + '</span>' : '')
         + '</div>'
+        + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'
         + '<span style="background:' + colorBg + ';color:' + colorText + ';font-weight:700;font-size:10px;padding:3px 8px;border-radius:10px;white-space:nowrap">' + e.estado + '</span>'
+        + deliveryBadge
+        + '</div>'
         + '</div>';
     }
     container.innerHTML = html;
@@ -4900,6 +4962,8 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
   permCargarLocal();
   enviosCargar();
   setTimeout(function() { permRenderLista(); enviosRenderLista(); }, 500);
+  // Verificar estados pendientes al abrir la app
+  setTimeout(function() { enviosVerificarTodos(); }, 3000);
 })();
 </script>
 
