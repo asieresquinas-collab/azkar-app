@@ -3356,6 +3356,57 @@ function txCreatePresupuesto() {
   }
 })();
 
+// ── LÍNEA DE KM EN PRESUPUESTO ──────────────────────────────
+function actualizarLineaKm(kmNum, precioKm, kmGratis) {
+  // Buscar si ya existe una fila de "Desplazamiento" en el presupuesto
+  var rows = document.querySelectorAll('#tb .cr');
+  var filaKmExistente = null;
+  for (var i = 0; i < rows.length; i++) {
+    var firstInput = rows[i].querySelector('input');
+    if (firstInput && firstInput.value.match(/^Desplazamiento/i)) {
+      filaKmExistente = rows[i];
+      break;
+    }
+  }
+
+  if (kmNum <= kmGratis) {
+    // Menos de 15 km: si existe la fila, ponerla a 0€ con nota
+    if (filaKmExistente) {
+      var inputs = filaKmExistente.querySelectorAll('input');
+      if (inputs.length >= 4) {
+        inputs[0].value = 'Desplazamiento (' + kmNum.toFixed(1) + ' km) - SIN CARGO';
+        inputs[1].value = '0'; // uds
+        inputs[2].value = '0'; // precio
+        inputs[3].value = '0'; // descuento
+      }
+      if (typeof CA === 'function') CA();
+    }
+    // Si no existe, no añadir nada (menos de 15km = gratis, no hace falta línea)
+    return;
+  }
+
+  // Más de 15 km: añadir o actualizar
+  var kmRedondeados = Math.round(kmNum);
+  var concepto = 'Desplazamiento (' + kmNum.toFixed(1) + ' km)';
+
+  if (filaKmExistente) {
+    // Actualizar la fila existente
+    var inputs = filaKmExistente.querySelectorAll('input');
+    if (inputs.length >= 4) {
+      inputs[0].value = concepto;
+      inputs[1].value = kmRedondeados; // uds = km
+      inputs[2].value = precioKm.toFixed(2); // precio = 2€
+      inputs[3].value = '0'; // descuento
+    }
+    if (typeof CA === 'function') CA();
+  } else {
+    // Crear nueva fila usando AR (Add Row)
+    if (typeof AR === 'function') {
+      AR(concepto, 'Transporte', kmRedondeados, precioKm.toFixed(2), '0');
+    }
+  }
+}
+
 // ── CALCULADORA DE DISTANCIA (Nominatim + OSRM) ──────────────
 (function() {
   var distTimer = null;
@@ -3367,12 +3418,13 @@ function txCreatePresupuesto() {
     box.style.cssText = 'margin:10px 0;padding:12px 16px;background:linear-gradient(135deg,#e8f6f3,#d5f5e3);border:2px solid #1a5276;border-radius:8px;display:none;font-family:Arial,sans-serif;';
     box.innerHTML = '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">'
       + '<div style="font-size:22px;">🚛</div>'
-      + '<div id="dist-km" style="font-size:18px;font-weight:bold;color:#1a5276;">-- km</div>'
+      + '<div id="dist-km" style="font-size:20px;font-weight:bold;color:#1a5276;">-- km</div>'
       + '<div style="width:2px;height:28px;background:#1a5276;border-radius:1px;"></div>'
       + '<div id="dist-tiempo" style="font-size:16px;color:#2c3e50;">-- min</div>'
       + '<div style="width:2px;height:28px;background:#1a5276;border-radius:1px;"></div>'
-      + '<div id="dist-ruta" style="font-size:12px;color:#7f8c8d;flex:1;">Distancia entre recogida y entrega</div>'
-      + '</div>';
+      + '<div id="dist-coste" style="font-size:16px;font-weight:bold;color:#27ae60;">--</div>'
+      + '</div>'
+      + '<div id="dist-ruta" style="font-size:11px;color:#7f8c8d;margin-top:6px;">Distancia entre recogida y entrega</div>';
     return box;
   }
 
@@ -3433,6 +3485,7 @@ function txCreatePresupuesto() {
     box.style.display = 'block';
     document.getElementById('dist-km').textContent = '⏳ Calculando...';
     document.getElementById('dist-tiempo').textContent = '';
+    document.getElementById('dist-coste').textContent = '';
     document.getElementById('dist-ruta').textContent = 'Buscando las direcciones...';
 
     Promise.all([geocode(addrRec), geocode(addrEnt)])
@@ -3443,6 +3496,7 @@ function txCreatePresupuesto() {
         if (!from || !to) {
           document.getElementById('dist-km').textContent = '⚠ No encontrado';
           document.getElementById('dist-tiempo').textContent = '';
+          document.getElementById('dist-coste').textContent = '';
           document.getElementById('dist-ruta').textContent =
             (!from ? '❌ Recogida no encontrada' : '✅ Recogida OK') + ' | ' +
             (!to ? '❌ Entrega no encontrada' : '✅ Entrega OK');
@@ -3455,6 +3509,7 @@ function txCreatePresupuesto() {
           if (!ruta) {
             document.getElementById('dist-km').textContent = '⚠ Sin ruta';
             document.getElementById('dist-tiempo').textContent = '';
+            document.getElementById('dist-coste').textContent = '';
             document.getElementById('dist-ruta').textContent = 'No se pudo calcular la ruta entre ambas direcciones';
             return;
           }
@@ -3465,9 +3520,26 @@ function txCreatePresupuesto() {
           var mins = minutos % 60;
           var tiempoStr = horas > 0 ? horas + 'h ' + mins + 'min' : mins + ' min';
 
+          var kmNum = parseFloat(km);
           document.getElementById('dist-km').textContent = km + ' km';
           document.getElementById('dist-tiempo').textContent = '🕐 ' + tiempoStr;
-          document.getElementById('dist-ruta').textContent = 'Distancia en carretera entre recogida y entrega';
+
+          // Lógica de precio por km: >15km = 2€/km, ≤15km = gratis
+          var PRECIO_KM = 2;
+          var KM_GRATIS = 15;
+          var costeEl = document.getElementById('dist-coste');
+          var rutaEl = document.getElementById('dist-ruta');
+
+          if (kmNum > KM_GRATIS) {
+            var costeKm = Math.round(kmNum) * PRECIO_KM;
+            costeEl.textContent = '💰 ' + costeKm.toFixed(2) + ' €';
+            costeEl.style.color = '#e67e22';
+            rutaEl.textContent = Math.round(kmNum) + ' km × ' + PRECIO_KM + ' €/km = ' + costeKm.toFixed(2) + ' € (se añade al presupuesto)';
+          } else {
+            costeEl.textContent = '✅ GRATIS';
+            costeEl.style.color = '#27ae60';
+            rutaEl.textContent = 'Menos de ' + KM_GRATIS + ' km → sin cargo por desplazamiento';
+          }
 
           // Guardar en campo oculto para usar en presupuesto
           var hiddenDist = document.getElementById('f_distancia');
@@ -3479,6 +3551,9 @@ function txCreatePresupuesto() {
             document.querySelector('form') ? document.querySelector('form').appendChild(hiddenDist) : document.body.appendChild(hiddenDist);
           }
           hiddenDist.value = km;
+
+          // Auto-añadir o actualizar línea de km en el presupuesto
+          actualizarLineaKm(kmNum, PRECIO_KM, KM_GRATIS);
         });
       })
       .catch(function(err) {
