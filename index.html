@@ -588,8 +588,14 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <!-- RELLENAR DESDE PRESUPUESTO -->
   <div class='perm-card'>
     <h3>Rellenar desde presupuesto</h3>
-    <p style='font-size:12px;color:#666;margin-bottom:10px'>Si tienes un presupuesto abierto, pulsa para copiar la dirección y fecha de servicio:</p>
-    <button class='perm-btn perm-btn-preview' onclick='permDesdePresupuesto()'>📋 Copiar datos del presupuesto</button>
+    <p style='font-size:12px;color:#666;margin-bottom:10px'>Si tienes un presupuesto abierto, copia la dirección y fecha:</p>
+    <button class='perm-btn perm-btn-preview' onclick='permDesdePresupuesto("recogida")'>📋 Dirección de RECOGIDA</button>
+    <button class='perm-btn' style='background:#1B4F8A;color:#fff' onclick='permDesdePresupuesto("entrega")'>📋 Dirección de ENTREGA</button>
+    <div style='margin-top:10px;padding:10px;background:#e8f0fe;border-radius:8px;border:1px solid #c5d9f7'>
+      <p style='font-size:11px;color:#1B4F8A;margin-bottom:6px'><strong>¿Necesitas permiso en recogida Y entrega?</strong></p>
+      <p style='font-size:11px;color:#555;margin-bottom:8px'>Pulsa el botón de abajo para crear los dos permisos de golpe. Se te rellenarán dos formularios, uno con cada dirección.</p>
+      <button class='perm-btn' style='background:#8e44ad;color:#fff' onclick='permCrearDoble()'>🏠🏠 Crear permiso RECOGIDA + ENTREGA</button>
+    </div>
   </div>
 
   <!-- REGISTRO DE ENVÍOS -->
@@ -1503,7 +1509,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v46';
+var APP_VERSION = 'v47';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -4390,11 +4396,24 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
   };
 
   // Copiar datos desde el presupuesto actual
-  window.permDesdePresupuesto = function() {
-    // Dirección de recogida
-    var dir = document.getElementById('f_drecogida');
-    if (dir && dir.value) {
-      document.getElementById('perm_direccion').value = dir.value.toUpperCase();
+  window.permDesdePresupuesto = function(tipo) {
+    var dir;
+    if (tipo === 'entrega') {
+      dir = document.getElementById('f_dentrega');
+      if (dir && dir.value) {
+        document.getElementById('perm_direccion').value = dir.value.toUpperCase();
+      } else {
+        alert('No hay dirección de entrega en el presupuesto');
+        return;
+      }
+    } else {
+      dir = document.getElementById('f_drecogida');
+      if (dir && dir.value) {
+        document.getElementById('perm_direccion').value = dir.value.toUpperCase();
+      } else {
+        alert('No hay dirección de recogida en el presupuesto');
+        return;
+      }
     }
     // Fecha de servicio
     var fserv = document.getElementById('f_fserv');
@@ -4403,7 +4422,55 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
       document.getElementById('perm_fecha_fin').value = fserv.value;
       permCalcPlazos();
     }
-    alert('Datos del presupuesto copiados al formulario de permisos');
+    var label = tipo === 'entrega' ? 'ENTREGA' : 'RECOGIDA';
+    alert('Dirección de ' + label + ' copiada al formulario de permisos');
+  };
+
+  // Crear dos permisos (recogida + entrega) de golpe
+  window.permCrearDoble = function() {
+    var dirRec = document.getElementById('f_drecogida');
+    var dirEnt = document.getElementById('f_dentrega');
+    var fserv = document.getElementById('f_fserv');
+
+    if (!dirRec || !dirRec.value) { alert('No hay dirección de recogida en el presupuesto'); return; }
+    if (!dirEnt || !dirEnt.value) { alert('No hay dirección de entrega en el presupuesto'); return; }
+    if (!fserv || !fserv.value) { alert('No hay fecha de servicio en el presupuesto'); return; }
+
+    var tipo = document.getElementById('perm_tipo').value;
+    var ayto = document.getElementById('perm_ayto').value;
+    var horario = document.getElementById('perm_horario').value || '8:00-20:00';
+    var hora = document.getElementById('perm_hora').value || '8:00';
+    var metros = parseInt(document.getElementById('perm_metros').value) || 8;
+    var dias = parseInt(document.getElementById('perm_dias').value) || 1;
+
+    // Permiso 1: Recogida
+    var p1 = {
+      ayuntamiento: ayto, tipo: tipo,
+      direccion: dirRec.value.toUpperCase(),
+      fecha_inicio: fserv.value, fecha_fin: fserv.value,
+      num_dias: dias, horario: horario, hora_reserva: hora,
+      metros: metros, vehiculos: '', observaciones: 'RECOGIDA',
+      estado: 'preparado', id: Date.now().toString(36) + 'a',
+      fecha_creacion: new Date().toISOString()
+    };
+
+    // Permiso 2: Entrega
+    var p2 = {
+      ayuntamiento: ayto, tipo: tipo,
+      direccion: dirEnt.value.toUpperCase(),
+      fecha_inicio: fserv.value, fecha_fin: fserv.value,
+      num_dias: dias, horario: horario, hora_reserva: hora,
+      metros: metros, vehiculos: '', observaciones: 'ENTREGA',
+      estado: 'preparado', id: Date.now().toString(36) + 'b',
+      fecha_creacion: new Date().toISOString()
+    };
+
+    permisosGuardados.push(p1);
+    permisosGuardados.push(p2);
+    permGuardarLocal();
+    permRenderLista();
+
+    alert('Se han creado 2 permisos:\n\n1. RECOGIDA: ' + p1.direccion + '\n2. ENTREGA: ' + p2.direccion + '\n\nRevísalos en el historial y envía cada uno cuando estés listo.');
   };
 
   // Guardar permiso localmente (sin enviar)
@@ -4637,15 +4704,39 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
       var p = sorted[i];
       var statusClass = p.estado || 'preparado';
       var statusText = { preparado: 'Preparado', enviado: 'Enviado', anulado: 'Anulado', policia: 'Policía' }[statusClass] || statusClass;
-      html += '<div class="perm-list-item">'
+      var obs = p.observaciones ? ' (' + p.observaciones + ')' : '';
+      html += '<div class="perm-list-item" style="cursor:pointer" onclick=\'permCargarDesdeHistorial(' + JSON.stringify(JSON.stringify(p)) + ')\'>'
         + '<div class="perm-info">'
-        + '<strong>' + p.direccion + '</strong>'
+        + '<strong>' + p.direccion + obs + '</strong>'
         + '<small>' + (p.ayuntamiento || 'bilbao').toUpperCase() + ' | ' + p.tipo + ' | ' + p.fecha_inicio + ' | ' + p.num_dias + ' día(s)</small>'
+        + '<small style="color:#2376C5;font-size:10px">Pulsa para cargar en el formulario</small>'
         + '</div>'
         + '<span class="perm-status ' + statusClass + '">' + statusText + '</span>'
         + '</div>';
     }
     container.innerHTML = html;
+  };
+
+  // Cargar permiso del historial al formulario
+  window.permCargarDesdeHistorial = function(jsonStr) {
+    try {
+      var p = JSON.parse(jsonStr);
+      document.getElementById('perm_ayto').value = p.ayuntamiento || 'bilbao';
+      document.getElementById('perm_tipo').value = p.tipo || 'ota';
+      document.getElementById('perm_direccion').value = p.direccion || '';
+      document.getElementById('perm_fecha').value = p.fecha_inicio || '';
+      document.getElementById('perm_fecha_fin').value = p.fecha_fin || '';
+      document.getElementById('perm_dias').value = p.num_dias || 1;
+      document.getElementById('perm_horario').value = p.horario || '8:00-20:00';
+      document.getElementById('perm_hora').value = p.hora_reserva || '8:00';
+      document.getElementById('perm_metros').value = p.metros || 8;
+      document.getElementById('perm_vehiculos').value = p.vehiculos || '';
+      document.getElementById('perm_observaciones').value = p.observaciones || '';
+      permCalcPlazos();
+      // Scroll arriba al formulario
+      document.getElementById('perm-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      alert('Permiso cargado en el formulario: ' + p.direccion + (p.observaciones ? ' (' + p.observaciones + ')' : ''));
+    } catch(e) { alert('Error cargando permiso'); }
   };
 
   // ============================================================
