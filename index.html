@@ -28,7 +28,7 @@
 @media print{#page-parte .sheet{box-shadow:none!important;border:none!important;margin:0!important;border-radius:0!important}#page-parte .pt-field{border:1px solid #ccc!important}#page-parte .shead{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}
 @media print{
 /* Ocultar UI */
-#topnav,.tact,.bdel,.bq,.ntab,.acts,.pak-btns,.stop,#pwa-install-banner,#sync-status,#offline-indicator,#mgr-panel,#fb-config-overlay,#page-parte,#page-fichaje,#page-permisos,#page-ayuda,#cal-disponibilidad,#sv-recogida,#sv-entrega{display:none!important}
+#topnav,.tact,.bdel,.bq,.ntab,.acts,.pak-btns,.stop,#pwa-install-banner,#sync-status,#offline-indicator,#mgr-panel,#fb-config-overlay,#page-parte,#page-fichaje,#page-permisos,#page-ayuda,#cal-disponibilidad{display:none!important}
 body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;margin:0!important;padding:0!important}
 .page{padding:0!important;margin:0!important}
 .page{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;overflow:visible!important;position:relative!important}
@@ -2214,7 +2214,7 @@ function buildCompleteHTML(pageIds) {
   // IMPORTANTE: forzar display:block en TODOS los page-* con máxima especificidad
   return '<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>AZKAR Mudanzas</title>\n'
     + links + '\n' + styles + '\n'
-    + '<style>body{margin:0;padding:0;background:#fff}#page-dossier,#page-presupuesto,#page-contrato,#page-parte{display:block!important}#topnav,.tact,.bdel,.bq,.ntab,.acts,.pak-btns,.stop,#pwa-install-banner,#sync-status,#offline-indicator,#mgr-panel,#fb-config-overlay,#cal-disponibilidad,#sv-recogida,#sv-entrega{display:none!important}@media print{body{margin:0}}</style>\n'
+    + '<style>body{margin:0;padding:0;background:#fff}#page-dossier,#page-presupuesto,#page-contrato,#page-parte{display:block!important}#topnav,.tact,.bdel,.bq,.ntab,.acts,.pak-btns,.stop,#pwa-install-banner,#sync-status,#offline-indicator,#mgr-panel,#fb-config-overlay,#cal-disponibilidad{display:none!important}@media print{body{margin:0}}</style>\n'
     + '</head><body>\n' + body + '\n</body></html>';
 }
 
