@@ -1035,7 +1035,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v34';
+var APP_VERSION = 'v35';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -3491,7 +3491,15 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
   // "Calle Gran Vía 1" → "Gran Vía 1" (OSM usa el nombre oficial, no el genérico)
   function limpiarDireccion(addr) {
     return addr
+      // 1) Quitar prefijos de calle: "Calle", "C/", "Avda", "Plaza"...
       .replace(/^(calle|c\/|c\.|cl\.|avda\.?|avenida|av\.|plaza|pza\.?|plza\.?|paseo|pº|travesía|trav\.?|camino|cno\.?|carretera|ctra\.?|ronda|glorieta|urbanización|urb\.?)\s+/i, '')
+      // 2) Quitar piso/puerta/escalera: "2c", "3ºA", "piso 2", "esc. B", "pta 1", "bajo dcha"
+      .replace(/\s+(piso|pta\.?|puerta|esc\.?|escalera|bajo|entreplanta|entresuelo|entlo\.?|bjo\.?|sob?re?ático|sático)\s*\S*/gi, '')
+      // 3) Quitar letra de piso pegada al número: "n2 2c" → "2", "nº3 1ºB" → "3"
+      .replace(/\s+\d+\s*[ºª]?\s*[a-zA-Z](?:\s|,|$)/g, ' ')
+      // 4) Quitar "nº" o "n" delante del número: "n2" → "2", "nº 5" → "5"
+      .replace(/\bn[ºª]?\s*(\d)/gi, '$1')
+      .replace(/\s+/g, ' ')
       .trim();
   }
 
