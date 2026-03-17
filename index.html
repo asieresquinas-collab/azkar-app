@@ -1509,7 +1509,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v47';
+var APP_VERSION = 'v48';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -4399,7 +4399,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
   window.permDesdePresupuesto = function(tipo) {
     var dir;
     if (tipo === 'entrega') {
-      dir = document.getElementById('f_dentrega');
+      dir = document.getElementById('tx-entrega');
       if (dir && dir.value) {
         document.getElementById('perm_direccion').value = dir.value.toUpperCase();
       } else {
@@ -4407,7 +4407,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
         return;
       }
     } else {
-      dir = document.getElementById('f_drecogida');
+      dir = document.getElementById('tx-recogida');
       if (dir && dir.value) {
         document.getElementById('perm_direccion').value = dir.value.toUpperCase();
       } else {
@@ -4416,7 +4416,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
       }
     }
     // Fecha de servicio
-    var fserv = document.getElementById('f_fserv');
+    var fserv = document.getElementById('tx-fecha');
     if (fserv && fserv.value) {
       document.getElementById('perm_fecha').value = fserv.value;
       document.getElementById('perm_fecha_fin').value = fserv.value;
@@ -4428,9 +4428,9 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
 
   // Crear dos permisos (recogida + entrega) de golpe
   window.permCrearDoble = function() {
-    var dirRec = document.getElementById('f_drecogida');
-    var dirEnt = document.getElementById('f_dentrega');
-    var fserv = document.getElementById('f_fserv');
+    var dirRec = document.getElementById('tx-recogida');
+    var dirEnt = document.getElementById('tx-entrega');
+    var fserv = document.getElementById('tx-fecha');
 
     if (!dirRec || !dirRec.value) { alert('No hay dirección de recogida en el presupuesto'); return; }
     if (!dirEnt || !dirEnt.value) { alert('No hay dirección de entrega en el presupuesto'); return; }
