@@ -95,6 +95,7 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 .tots{page-break-before:avoid!important;page-break-inside:avoid!important}
 .firmas{page-break-inside:avoid!important;margin-top:8px!important}
 #page-presupuesto .tots,.firmas{page-break-before:avoid!important}
+#distancia-box{margin-top:10mm!important;page-break-inside:avoid!important}
 
 /* ========== CONTRATO: TODO en última página ========== */
 #page-contrato{page-break-before:always!important}
@@ -1037,7 +1038,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v38';
+var APP_VERSION = 'v39';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
