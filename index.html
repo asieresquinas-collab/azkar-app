@@ -1076,7 +1076,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v41';
+var APP_VERSION = 'v42';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -1085,6 +1085,11 @@ if (window.location.search.indexOf('clear=1') > -1) {
     var regs = await navigator.serviceWorker.getRegistrations();
     for (var i = 0; i < regs.length; i++) await regs[i].unregister();
     localStorage.removeItem('azkar-app-version');
+    localStorage.setItem('azkar-app-version', APP_VERSION);
+    // Re-registrar SW inmediatamente antes de redirigir
+    if ('serviceWorker' in navigator) {
+      await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+    }
     window.location.href = window.location.pathname;
   })();
 }
