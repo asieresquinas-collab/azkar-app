@@ -1035,7 +1035,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v36';
+var APP_VERSION = 'v37';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -1467,6 +1467,8 @@ async function delPresupuesto(id) {
       await window._fb.deleteDoc(window._fb.doc(window._fb.db, 'presupuestos', id));
     } catch(e) {}
   }
+  // Auto-backup tras eliminar
+  scheduleBackup();
   openMgr();
 }
 
@@ -1526,12 +1528,120 @@ async function saveFirebaseConfig() {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  BACKUP AUTOMÁTICO A GOOGLE DRIVE (blindado anti-pérdida)
+// ══════════════════════════════════════════════════════════════
+const RAILWAY_API = 'https://azkar-presupuestos-production.up.railway.app';
+var _backupTimer = null;
+var _backupInProgress = false;
+var _lastBackupHash = '';
+
+// Backup automático: sube TODOS los presupuestos a Drive como JSON
+async function backupToDrive() {
+  if (_backupInProgress) return;
+  _backupInProgress = true;
+  try {
+    var all = await getAllPresupuestos();
+    if (!all || all.length === 0) { _backupInProgress = false; return; }
+
+    // Evitar backup si no ha cambiado nada (hash simple)
+    var hash = all.length + '_' + all.map(function(p) { return p.id + (p.timestamp || 0); }).join(',');
+    if (hash === _lastBackupHash) { _backupInProgress = false; return; }
+
+    var controller = new AbortController();
+    var tid = setTimeout(function() { controller.abort(); }, 30000);
+    var res = await fetch(RAILWAY_API + '/api/drive/backup-presupuestos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ presupuestos: all }),
+      signal: controller.signal
+    });
+    clearTimeout(tid);
+    if (res.ok) {
+      var data = await res.json();
+      if (data.success) {
+        _lastBackupHash = hash;
+        localStorage.setItem('azkar-last-backup', Date.now().toString());
+        console.log('[Backup] OK: ' + data.count + ' presupuestos (' + data.sizeKB + ' KB)');
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') console.warn('[Backup] Error:', e.message);
+  }
+  _backupInProgress = false;
+}
+
+// Programar backup con debounce (5 segundos después del último guardado)
+function scheduleBackup() {
+  if (_backupTimer) clearTimeout(_backupTimer);
+  _backupTimer = setTimeout(backupToDrive, 5000);
+}
+
+// Restaurar desde Drive si IndexedDB está vacía
+async function restoreFromDriveIfNeeded() {
+  try {
+    var all = await getAllPresupuestos();
+    if (all && all.length > 0) {
+      console.log('[Restore] IndexedDB tiene ' + all.length + ' presupuestos, no hace falta restaurar');
+      // Programar un backup de seguridad al arrancar
+      setTimeout(backupToDrive, 10000);
+      return;
+    }
+
+    console.log('[Restore] IndexedDB vacía — intentando restaurar desde Drive...');
+    showSyncStatus('🔄 Restaurando presupuestos desde Drive...', 0);
+
+    var controller = new AbortController();
+    var tid = setTimeout(function() { controller.abort(); }, 30000);
+    var res = await fetch(RAILWAY_API + '/api/drive/restore-presupuestos', { signal: controller.signal });
+    clearTimeout(tid);
+
+    if (!res.ok) {
+      showSyncStatus('⚠ Error conectando con backup', 4000);
+      return;
+    }
+
+    var data = await res.json();
+    if (!data.success || !data.found || !data.presupuestos || data.presupuestos.length === 0) {
+      showSyncStatus('ℹ No hay backup en Drive', 3000);
+      return;
+    }
+
+    // Restaurar cada presupuesto en IndexedDB
+    var count = 0;
+    for (var i = 0; i < data.presupuestos.length; i++) {
+      var p = data.presupuestos[i];
+      if (p && p.id) {
+        await savePresupuesto(p);
+        count++;
+      }
+    }
+
+    var fecha = data.backupTimestamp ? new Date(data.backupTimestamp).toLocaleString('es-ES') : 'reciente';
+    showSyncStatus('✅ Restaurados ' + count + ' presupuestos (backup ' + fecha + ')', 6000);
+    console.log('[Restore] OK: ' + count + ' presupuestos restaurados desde Drive');
+
+    // También sincronizar con Firebase si está configurado
+    if (firebaseConfigured && window._fb) {
+      try { await syncToFirebase(); } catch(e) {}
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      console.warn('[Restore] Error:', e.message);
+      showSyncStatus('⚠ Error restaurando backup', 4000);
+    }
+  }
+}
+
+// Ejecutar restore al arrancar la app
+window.addEventListener('DOMContentLoaded', function() {
+  // Esperar 2 segundos para que IndexedDB esté lista
+  setTimeout(restoreFromDriveIfNeeded, 2000);
+});
+
+// ══════════════════════════════════════════════════════════════
 //  OVERRIDE: Guardar y Cargar con IndexedDB + Firebase
 // ══════════════════════════════════════════════════════════════
 const _originalGD = typeof GD === 'function' ? GD : null;
-
-// ── DRIVE CAPTACIÓN CONFIG ──────────────────────────────
-const RAILWAY_API = 'https://azkar-presupuestos-production.up.railway.app';
 
 async function getDriveNextNumber() {
   try {
@@ -1869,6 +1979,10 @@ window.GD = async function() {
     } else {
       showSyncStatus('💾 Guardado localmente (Nº ' + ref + ')');
     }
+
+    // ── AUTO-BACKUP A DRIVE (automático, sin intervención del usuario) ──
+    scheduleBackup();
+
   } catch (e) {
     console.error('[Azkar] Error guardando:', e);
     showSyncStatus('⚠ Error al guardar', 4000);
