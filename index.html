@@ -1035,11 +1035,30 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v12';
+var APP_VERSION = 'v33';
 if ('serviceWorker' in navigator) {
-  // Forzar comprobación de actualizaciones (sin usar caché HTTP para el SW)
+  // ── Auto-actualización forzada ────────────────────────────
+  // Si la versión de la app no coincide con lo guardado, limpiar todo y recargar
+  var storedVersion = localStorage.getItem('azkar-app-version');
+  if (storedVersion && storedVersion !== APP_VERSION) {
+    console.log('[Azkar] Nueva versión detectada:', storedVersion, '→', APP_VERSION);
+    caches.keys().then(function(names) {
+      return Promise.all(names.map(function(n) { return caches.delete(n); }));
+    }).then(function() {
+      return navigator.serviceWorker.getRegistrations();
+    }).then(function(regs) {
+      return Promise.all(regs.map(function(r) { return r.unregister(); }));
+    }).then(function() {
+      localStorage.setItem('azkar-app-version', APP_VERSION);
+      window.location.reload();
+    });
+  } else {
+    localStorage.setItem('azkar-app-version', APP_VERSION);
+  }
+
+  // Registrar SW
   navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(function(reg) {
-    console.log('[Azkar PWA] Service Worker registrado:', reg.scope);
+    console.log('[Azkar PWA] Service Worker ' + APP_VERSION + ' registrado');
 
     // Comprobar actualizaciones cada 30 segundos
     setInterval(function() { reg.update(); }, 30000);
@@ -1049,7 +1068,6 @@ if ('serviceWorker' in navigator) {
       var nw = reg.installing;
       nw.addEventListener('statechange', function() {
         if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-          // Hay nueva versión lista → recargar automáticamente
           showSyncStatus('🔄 Actualizando app...', 2000);
           setTimeout(function() { window.location.reload(); }, 1500);
         }
