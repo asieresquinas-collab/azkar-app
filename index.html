@@ -1035,7 +1035,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v35';
+var APP_VERSION = 'v36';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -3619,12 +3619,14 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
         var to = coords[1];
 
         if (!from || !to) {
-          document.getElementById('dist-km').textContent = '⚠ No encontrado';
+          document.getElementById('dist-km').textContent = '⚠ No encontrada';
           document.getElementById('dist-tiempo').textContent = '';
           document.getElementById('dist-coste').textContent = '';
-          document.getElementById('dist-ruta').textContent =
-            (!from ? '❌ Recogida no encontrada' : '✅ Recogida OK') + ' | ' +
-            (!to ? '❌ Entrega no encontrada' : '✅ Entrega OK');
+          var rutaEl = document.getElementById('dist-ruta');
+          rutaEl.innerHTML =
+            (!from ? '❌ <b>Recogida</b> no encontrada' : '✅ Recogida OK') + ' · ' +
+            (!to ? '❌ <b>Entrega</b> no encontrada' : '✅ Entrega OK') +
+            '<br><span style="color:#e67e22;font-size:10px;">Revisa la ortografía de la calle (el mapa tolera erratas pero la distancia no)</span>';
           return;
         }
 
