@@ -1076,19 +1076,19 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v42';
+var APP_VERSION = 'v43';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
+    // Solo limpiar caches, NO desregistrar el SW (rompe la instalación PWA en Android)
     var names = await caches.keys();
     for (var i = 0; i < names.length; i++) await caches.delete(names[i]);
-    var regs = await navigator.serviceWorker.getRegistrations();
-    for (var i = 0; i < regs.length; i++) await regs[i].unregister();
     localStorage.removeItem('azkar-app-version');
     localStorage.setItem('azkar-app-version', APP_VERSION);
-    // Re-registrar SW inmediatamente antes de redirigir
+    // Forzar actualización del SW sin desregistrarlo
     if ('serviceWorker' in navigator) {
-      await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+      var regs = await navigator.serviceWorker.getRegistrations();
+      for (var i = 0; i < regs.length; i++) await regs[i].update();
     }
     window.location.href = window.location.pathname;
   })();
@@ -1126,12 +1126,14 @@ if ('serviceWorker' in navigator) {
   var storedVersion = localStorage.getItem('azkar-app-version');
   if (storedVersion && storedVersion !== APP_VERSION) {
     console.log('[Azkar] Nueva versión detectada:', storedVersion, '→', APP_VERSION);
+    // Solo limpiar caches, NO desregistrar SW (rompe PWA en Android)
     caches.keys().then(function(names) {
       return Promise.all(names.map(function(n) { return caches.delete(n); }));
     }).then(function() {
+      // Forzar update del SW en vez de desregistrarlo
       return navigator.serviceWorker.getRegistrations();
     }).then(function(regs) {
-      return Promise.all(regs.map(function(r) { return r.unregister(); }));
+      return Promise.all(regs.map(function(r) { return r.update(); }));
     }).then(function() {
       localStorage.setItem('azkar-app-version', APP_VERSION);
       window.location.reload();
