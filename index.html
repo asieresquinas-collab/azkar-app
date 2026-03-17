@@ -90,9 +90,11 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 .shead{page-break-after:avoid!important}
 .slogo{max-height:40px!important}
 .stitle{page-break-after:avoid!important;font-size:12px!important}
-.cr,.cl{page-break-inside:avoid}
-.tots{page-break-inside:avoid!important}
+.cr,.cl{page-break-inside:avoid!important}
+#tb{page-break-inside:avoid!important}
+.tots{page-break-before:avoid!important;page-break-inside:avoid!important}
 .firmas{page-break-inside:avoid!important;margin-top:8px!important}
+#page-presupuesto .tots,.firmas{page-break-before:avoid!important}
 
 /* ========== CONTRATO: TODO en última página ========== */
 #page-contrato{page-break-before:always!important}
@@ -1035,7 +1037,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v37';
+var APP_VERSION = 'v38';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
