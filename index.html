@@ -3428,6 +3428,9 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     return box;
   }
 
+  // Pequeña pausa (para respetar 1 petición/s de Nominatim)
+  function esperar(ms) { return new Promise(function(ok) { setTimeout(ok, ms); }); }
+
   // Geocodificar dirección con Nominatim (OpenStreetMap)
   function geocode(address) {
     var fullAddr = address.trim();
@@ -3435,14 +3438,26 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     if (!fullAddr.match(/bilbao|barakaldo|getxo|portugalete|santurtzi|basauri|galdakao|durango|gernika|leioa|erandio|sopela|mungia|bermeo|ondarroa|bizkaia|vizcaya|vitoria|gasteiz|donostia|san\s*sebasti|irún|irun|eibar|mondragón|mondragon|arrasate|tolosa|zarautz|rentería|renteria|álava|alava|araba|gipuzkoa|guipúzcoa|guipuzcoa|cantabria|santander|torrelavega|castro\s*urdiales|burgos|logroño|logro|miranda|haro|pamplona|iruña|tudela|navarra|nafarroa|madrid|barcelona|zaragoza|valladolid|león|leon|euskadi|españa|spain/i)) {
       fullAddr += ', Bizkaia, España';
     }
-    return fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(fullAddr), {
-      headers: { 'Accept': 'application/json' }
+    var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1'
+      + '&email=info@azkarmudanzas.com'
+      + '&countrycodes=es'
+      + '&q=' + encodeURIComponent(fullAddr);
+    return fetch(url, {
+      headers: { 'Accept': 'application/json', 'User-Agent': 'AzkarMudanzas/1.0' }
     })
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+      if (!r.ok) { console.error('[Geocode] HTTP', r.status); return []; }
+      return r.json();
+    })
     .then(function(data) {
       if (data && data.length > 0) {
         return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), display: data[0].display_name };
       }
+      console.warn('[Geocode] Sin resultados para:', fullAddr);
+      return null;
+    })
+    .catch(function(err) {
+      console.error('[Geocode] Error:', err);
       return null;
     });
   }
@@ -3453,7 +3468,10 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
       + from.lon + ',' + from.lat + ';' + to.lon + ',' + to.lat
       + '?overview=false';
     return fetch(url)
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (!r.ok) { console.error('[OSRM] HTTP', r.status); return { code: 'Error' }; }
+        return r.json();
+      })
       .then(function(data) {
         if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
           var route = data.routes[0];
@@ -3462,6 +3480,10 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
             duracion: route.duration   // segundos
           };
         }
+        return null;
+      })
+      .catch(function(err) {
+        console.error('[OSRM] Error:', err);
         return null;
       });
   }
@@ -3488,7 +3510,14 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     document.getElementById('dist-coste').textContent = '';
     document.getElementById('dist-ruta').textContent = 'Buscando las direcciones...';
 
-    Promise.all([geocode(addrRec), geocode(addrEnt)])
+    // Geocodificar UNA a UNA (Nominatim exige max 1 petición/segundo)
+    geocode(addrRec).then(function(from) {
+      return esperar(1100).then(function() {
+        return geocode(addrEnt).then(function(to) {
+          return [from, to];
+        });
+      });
+    })
       .then(function(coords) {
         var from = coords[0];
         var to = coords[1];
