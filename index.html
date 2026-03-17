@@ -1035,10 +1035,48 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v33';
+var APP_VERSION = 'v34';
+// ── Limpieza forzada con ?clear=1 ──────────────────────
+if (window.location.search.indexOf('clear=1') > -1) {
+  (async function() {
+    var names = await caches.keys();
+    for (var i = 0; i < names.length; i++) await caches.delete(names[i]);
+    var regs = await navigator.serviceWorker.getRegistrations();
+    for (var i = 0; i < regs.length; i++) await regs[i].unregister();
+    localStorage.removeItem('azkar-app-version');
+    window.location.href = window.location.pathname;
+  })();
+}
+// ── Modo diagnóstico con ?debug=1 ──────────────────────
+if (window.location.search.indexOf('debug=1') > -1) {
+  window.addEventListener('DOMContentLoaded', async function() {
+    var info = document.createElement('div');
+    info.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1a5276;color:#fff;padding:12px;font-size:13px;font-family:monospace;';
+    var dbCount = 0;
+    try {
+      var dbs = await indexedDB.databases();
+      var dbReq = indexedDB.open('AzkarDB', 1);
+      dbCount = await new Promise(function(ok) {
+        dbReq.onsuccess = function(e) {
+          var db = e.target.result;
+          if (!db.objectStoreNames.contains('presupuestos')) { ok(0); return; }
+          var tx = db.transaction('presupuestos','readonly');
+          var req = tx.objectStore('presupuestos').count();
+          req.onsuccess = function() { ok(req.result); };
+          req.onerror = function() { ok(-1); };
+        };
+        dbReq.onerror = function() { ok(-1); };
+      });
+    } catch(e) { dbCount = 'error: ' + e.message; }
+    var swState = navigator.serviceWorker.controller ? 'activo' : 'no';
+    var cacheList = await caches.keys();
+    info.textContent = 'v=' + APP_VERSION + ' | SW=' + swState + ' | Caches=' + cacheList.join(',') + ' | Presupuestos=' + dbCount;
+    info.onclick = function() { info.remove(); };
+    document.body.prepend(info);
+  });
+}
 if ('serviceWorker' in navigator) {
   // ── Auto-actualización forzada ────────────────────────────
-  // Si la versión de la app no coincide con lo guardado, limpiar todo y recargar
   var storedVersion = localStorage.getItem('azkar-app-version');
   if (storedVersion && storedVersion !== APP_VERSION) {
     console.log('[Azkar] Nueva versión detectada:', storedVersion, '→', APP_VERSION);
