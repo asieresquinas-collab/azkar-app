@@ -33,11 +33,11 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 .page{padding:0!important;margin:0!important}
 .page{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;overflow:visible!important;position:relative!important}
 
-/* ========== DOSSIER: portada + quiénes somos + footer en 1 página ========== */
-#page-dossier{margin:0!important;padding:0!important}
-/* Portada: ~35% de la página */
-.portada{margin:0!important;box-shadow:none!important;border-radius:0!important;max-height:35vh!important;overflow:hidden!important}
-.pfoto{max-height:35vh!important;width:100%!important;object-fit:cover!important;object-position:center 40%!important}
+/* ========== DOSSIER: portada + quiénes somos + footer = 1 página completa ========== */
+#page-dossier{margin:0!important;padding:0!important;height:100vh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+/* Portada: ~38% de la página */
+.portada{margin:0!important;box-shadow:none!important;border-radius:0!important;height:38vh!important;max-height:38vh!important;min-height:38vh!important;overflow:hidden!important;flex-shrink:0!important}
+.pfoto{height:100%!important;width:100%!important;object-fit:cover!important;object-position:center 40%!important;max-height:none!important}
 .pover{background:linear-gradient(to bottom,rgba(27,79,138,.0),rgba(27,79,138,.75))!important}
 .pcont{padding:10px 16px 8px!important}
 .ptag{font-size:26px!important}
@@ -45,18 +45,18 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 .sv{font-size:15px!important}
 .sl{font-size:6px!important}
 .pline{height:2px!important;margin-bottom:8px!important}
-/* Info strip compacto */
-.istrip{box-shadow:none!important;margin:0!important;border-radius:0!important;padding:1px 0!important;font-size:8px!important}
+/* Info strip */
+.istrip{box-shadow:none!important;margin:0!important;border-radius:0!important;padding:1px 0!important;font-size:8px!important;flex-shrink:0!important}
 .istrip div{padding:1px 4px!important}
 .itel{font-size:15px!important}
 .nv{font-size:14px!important}
 .nl{font-size:7px!important}
-/* Quiénes somos: ultra compacto */
-.dsh{box-shadow:none!important;margin:0!important;border-radius:0!important;overflow:hidden!important}
-.dnar{height:2px!important}
-.dhead{display:flex!important;visibility:visible!important;overflow:visible!important;padding:3px 8px!important}
+/* Quiénes somos: se estira para llenar el resto de la página */
+.dsh{box-shadow:none!important;margin:0!important;border-radius:0!important;overflow:hidden!important;flex:1!important;display:flex!important;flex-direction:column!important}
+.dnar{height:2px!important;flex-shrink:0!important}
+.dhead{display:flex!important;visibility:visible!important;overflow:visible!important;padding:3px 8px!important;flex-shrink:0!important}
 .dlogo{height:16px!important}
-.dbody{display:grid!important;grid-template-columns:1fr 1fr!important;min-height:auto!important}
+.dbody{display:grid!important;grid-template-columns:1fr 1fr!important;min-height:auto!important;flex:1!important}
 .dleft{padding:4px 8px!important}
 .kick{font-size:7px!important;margin-bottom:2px!important}
 .btit{font-size:14px!important;margin-bottom:2px!important}
@@ -73,9 +73,9 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 .df1,.df2{width:100%!important;flex:1!important;object-fit:cover!important;display:block!important;visibility:visible!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 .dsh h2{font-size:9px!important;margin:1px 0!important;padding:1px 4px!important}
 .dsh p,.dsh li,.dsh td{font-size:7px!important;line-height:1.2!important;margin:1px 0!important;padding:0 1px!important}
-/* Footer del dossier: VISIBLE y compacto */
-.dft{font-size:6px!important;padding:2px 8px!important}
-.sfb{height:2px!important}
+/* Footer del dossier: pegado abajo */
+.dft{font-size:6px!important;padding:2px 8px!important;flex-shrink:0!important}
+.sfb{height:2px!important;flex-shrink:0!important}
 #page-dossier .sfoot{font-size:6px!important;padding:2px 8px!important}
 /* OCULTAR solo packs y CTA (NO el footer) */
 .pgrid{display:none!important}
@@ -1540,7 +1540,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v63';
+var APP_VERSION = 'v64';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
