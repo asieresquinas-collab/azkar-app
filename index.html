@@ -141,8 +141,7 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 /* Sheets general */
 .sheet{max-width:100%!important;margin:0!important;box-shadow:none!important;border-radius:0!important}
 
-@page{margin:5mm 7mm}
-@page:first{margin:0!important}
+@page{margin:0}
 
 /* Parte print mode override */
 body.print-parte #page-parte{display:block!important}
@@ -1538,7 +1537,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v60';
+var APP_VERSION = 'v61';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
