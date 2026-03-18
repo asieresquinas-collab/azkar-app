@@ -33,55 +33,57 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 .page{padding:0!important;margin:0!important}
 .page{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;overflow:visible!important;position:relative!important}
 
-/* ========== DOSSIER: portada + quiénes somos en 1 página, sin márgenes ========== */
+/* ========== DOSSIER: portada + quiénes somos + footer en 1 página ========== */
 #page-dossier{margin:0!important;padding:0!important}
-.portada{margin:0!important;box-shadow:none!important;border-radius:0!important;max-height:45vh!important;overflow:hidden!important}
-.pfoto{max-height:45vh!important;width:100%!important;object-fit:cover!important;object-position:center 40%!important}
+/* Portada: ~35% de la página */
+.portada{margin:0!important;box-shadow:none!important;border-radius:0!important;max-height:35vh!important;overflow:hidden!important}
+.pfoto{max-height:35vh!important;width:100%!important;object-fit:cover!important;object-position:center 40%!important}
 .pover{background:linear-gradient(to bottom,rgba(27,79,138,.0),rgba(27,79,138,.75))!important}
-.pcont{padding:14px 20px 12px!important}
-.ptag{font-size:30px!important}
-.pstats .sbox{padding:5px 10px!important}
-.sv{font-size:17px!important}
-.sl{font-size:7px!important}
-.istrip{box-shadow:none!important;margin:0!important;border-radius:0!important;padding:2px 0!important;font-size:9px!important}
-.istrip div{padding:2px 5px!important}
-.itel{font-size:18px!important}
-.nv{font-size:17px!important}
-/* Quiénes somos: compacto para caber debajo de portada */
+.pcont{padding:10px 16px 8px!important}
+.ptag{font-size:26px!important}
+.pstats .sbox{padding:4px 8px!important}
+.sv{font-size:15px!important}
+.sl{font-size:6px!important}
+.pline{height:2px!important;margin-bottom:8px!important}
+/* Info strip compacto */
+.istrip{box-shadow:none!important;margin:0!important;border-radius:0!important;padding:1px 0!important;font-size:8px!important}
+.istrip div{padding:1px 4px!important}
+.itel{font-size:15px!important}
+.nv{font-size:14px!important}
+.nl{font-size:7px!important}
+/* Quiénes somos: ultra compacto */
 .dsh{box-shadow:none!important;margin:0!important;border-radius:0!important;overflow:hidden!important}
 .dnar{height:2px!important}
-.dhead{display:flex!important;visibility:visible!important;overflow:visible!important;padding:4px 10px!important}
-.dlogo{height:18px!important}
+.dhead{display:flex!important;visibility:visible!important;overflow:visible!important;padding:3px 8px!important}
+.dlogo{height:16px!important}
 .dbody{display:grid!important;grid-template-columns:1fr 1fr!important;min-height:auto!important}
-.dleft{padding:6px 10px!important}
-.kick{font-size:8px!important;margin-bottom:3px!important}
-.btit{font-size:16px!important;margin-bottom:4px!important}
-.bpar{font-size:8px!important;line-height:1.3!important;margin-bottom:6px!important}
-.vgrid{gap:3px!important;margin-bottom:6px!important}
-.vi{padding:3px 5px!important;border-top-width:2px!important}
-.vit{font-size:8px!important}
-.vis{font-size:7px!important}
-.sgrid{gap:3px 6px!important}
-.sd{width:4px!important;height:4px!important;margin-top:2px!important}
-.st{font-size:8px!important}
-.ss{font-size:7px!important;line-height:1.3!important}
+.dleft{padding:4px 8px!important}
+.kick{font-size:7px!important;margin-bottom:2px!important}
+.btit{font-size:14px!important;margin-bottom:2px!important}
+.bpar{font-size:7px!important;line-height:1.2!important;margin-bottom:4px!important}
+.vgrid{gap:2px!important;margin-bottom:4px!important}
+.vi{padding:2px 4px!important;border-top-width:1px!important}
+.vit{font-size:7px!important}
+.vis{font-size:6px!important}
+.sgrid{gap:2px 4px!important}
+.sd{width:3px!important;height:3px!important;margin-top:2px!important}
+.st{font-size:7px!important}
+.ss{font-size:6px!important;line-height:1.2!important}
 .dright{display:flex!important;flex-direction:column!important;overflow:hidden!important}
 .df1,.df2{width:100%!important;flex:1!important;object-fit:cover!important;display:block!important;visibility:visible!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-.dft{display:none!important}
-.dsh h2{font-size:10px!important;margin:2px 0!important;padding:2px 6px!important}
-.dsh p,.dsh li,.dsh td{font-size:8px!important;line-height:1.3!important;margin:1px 0!important;padding:1px 2px!important}
-/* OCULTAR packs, CTA, footers y rayas del dossier */
+.dsh h2{font-size:9px!important;margin:1px 0!important;padding:1px 4px!important}
+.dsh p,.dsh li,.dsh td{font-size:7px!important;line-height:1.2!important;margin:1px 0!important;padding:0 1px!important}
+/* Footer del dossier: VISIBLE y compacto */
+.dft{font-size:6px!important;padding:2px 8px!important}
+.sfb{height:2px!important}
+#page-dossier .sfoot{font-size:6px!important;padding:2px 8px!important}
+/* OCULTAR solo packs y CTA (NO el footer) */
 .pgrid{display:none!important}
 .pcta{display:none!important}
 .pcard{display:none!important}
 .pkname{display:none!important}
 .pkdesc{display:none!important}
 #azkar-paks{display:none!important}
-#page-dossier .sfoot{display:none!important}
-#page-dossier .foot{display:none!important}
-#page-dossier .sfb{display:none!important}
-#page-dossier .dft{display:none!important}
-#page-dossier .dft+div{display:none!important}
 #page-dossier div[style*="padding:22px 26px"]{display:none!important}
 #page-dossier div[style*="padding: 22px 26px"]{display:none!important}
 
@@ -1538,7 +1540,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v62';
+var APP_VERSION = 'v63';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2250,7 +2252,7 @@ function buildCompleteHTML(pageIds) {
   // IMPORTANTE: forzar display:block en TODOS los page-* con máxima especificidad
   return '<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>AZKAR Mudanzas</title>\n'
     + links + '\n' + styles + '\n'
-    + '<style>body{margin:0;padding:0;background:#fff}#page-dossier,#page-presupuesto,#page-contrato,#page-parte{display:block!important}#topnav,.tact,.bdel,.bq,.ntab,.acts,.pak-btns,.stop,#pwa-install-banner,#sync-status,#offline-indicator,#mgr-panel,#fb-config-overlay,#cal-disponibilidad,#azkar-paks,.pgrid,.pcta,.pcard{display:none!important}#page-dossier .sfb,#page-dossier .dft,#page-dossier .sfoot,#page-dossier div[style*="padding:22px 26px"]{display:none!important}@media print{body{margin:0}}</style>\n'
+    + '<style>body{margin:0;padding:0;background:#fff}#page-dossier,#page-presupuesto,#page-contrato,#page-parte{display:block!important}#topnav,.tact,.bdel,.bq,.ntab,.acts,.pak-btns,.stop,#pwa-install-banner,#sync-status,#offline-indicator,#mgr-panel,#fb-config-overlay,#cal-disponibilidad,#azkar-paks,.pgrid,.pcta,.pcard{display:none!important}#page-dossier div[style*="padding:22px 26px"]{display:none!important}@media print{body{margin:0}}</style>\n'
     + '</head><body>\n' + body + '\n</body></html>';
 }
 
