@@ -33,50 +33,51 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 .page{padding:0!important;margin:0!important}
 .page{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;overflow:visible!important;position:relative!important}
 
-/* ========== DOSSIER: portada a página completa ========== */
-.portada{margin:0!important;box-shadow:none!important;border-radius:0!important;max-height:none!important;height:100vh!important;overflow:hidden!important;page-break-after:always!important}
-.pfoto{height:100%!important;width:100%!important;object-fit:cover!important;max-height:none!important}
+/* ========== DOSSIER: portada + quiénes somos en 1 página, sin márgenes ========== */
+#page-dossier{margin:0!important;padding:0!important}
+.portada{margin:0!important;box-shadow:none!important;border-radius:0!important;max-height:45vh!important;overflow:hidden!important}
+.pfoto{max-height:45vh!important;width:100%!important;object-fit:cover!important;object-position:center 40%!important}
 .pover{background:linear-gradient(to bottom,rgba(27,79,138,.0),rgba(27,79,138,.75))!important}
-.pcont{padding:30px 40px 30px!important;position:absolute!important;bottom:0!important;left:0!important;right:0!important}
-.ptag{font-size:38px!important}
-.pstats .sbox{padding:8px 14px!important}
-.sv{font-size:20px!important}
-.sl{font-size:8px!important}
-.istrip{box-shadow:none!important;margin:0 auto!important;border-radius:0!important;padding:4px!important;font-size:10px!important}
-.istrip div{padding:4px 8px!important}
-.itel{font-size:22px!important}
-.nv{font-size:20px!important}
-/* Quiénes somos + servicios: más grande, sin packs */
-.dsh{box-shadow:none!important;margin:0 auto!important;border-radius:0!important;overflow:visible!important}
-.dnar{height:3px!important}
-.dhead{display:flex!important;visibility:visible!important;overflow:visible!important;padding:8px 18px!important}
-.dlogo{height:24px!important}
+.pcont{padding:14px 20px 12px!important}
+.ptag{font-size:30px!important}
+.pstats .sbox{padding:5px 10px!important}
+.sv{font-size:17px!important}
+.sl{font-size:7px!important}
+.istrip{box-shadow:none!important;margin:0!important;border-radius:0!important;padding:2px 0!important;font-size:9px!important}
+.istrip div{padding:2px 5px!important}
+.itel{font-size:18px!important}
+.nv{font-size:17px!important}
+/* Quiénes somos: compacto para caber debajo de portada */
+.dsh{box-shadow:none!important;margin:0!important;border-radius:0!important;overflow:hidden!important}
+.dnar{height:2px!important}
+.dhead{display:flex!important;visibility:visible!important;overflow:visible!important;padding:4px 10px!important}
+.dlogo{height:18px!important}
 .dbody{display:grid!important;grid-template-columns:1fr 1fr!important;min-height:auto!important}
-.dleft{padding:14px 18px!important}
-.kick{font-size:9px!important;margin-bottom:6px!important}
-.btit{font-size:22px!important;margin-bottom:8px!important}
-.bpar{font-size:10px!important;line-height:1.5!important;margin-bottom:14px!important}
-.vgrid{gap:6px!important;margin-bottom:14px!important}
-.vi{padding:6px 8px!important;border-top-width:2px!important}
-.vit{font-size:10px!important}
-.vis{font-size:9px!important}
-.sgrid{gap:6px 10px!important}
-.sd{width:6px!important;height:6px!important;margin-top:3px!important}
-.st{font-size:10px!important}
-.ss{font-size:9px!important;line-height:1.4!important}
-.dright{display:flex!important;flex-direction:column!important;overflow:visible!important}
-.df1,.df2{width:100%!important;max-height:180px!important;object-fit:cover!important;display:block!important;visibility:visible!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-.dft{font-size:8px!important;padding:4px 12px!important}
-.dsh h2{font-size:14px!important;margin:4px 0!important;padding:4px 10px!important}
-.dsh p,.dsh li,.dsh td{font-size:10px!important;line-height:1.4!important;margin:2px 0!important;padding:2px 3px!important}
-/* OCULTAR packs y CTA del dossier en impresión */
+.dleft{padding:6px 10px!important}
+.kick{font-size:8px!important;margin-bottom:3px!important}
+.btit{font-size:16px!important;margin-bottom:4px!important}
+.bpar{font-size:8px!important;line-height:1.3!important;margin-bottom:6px!important}
+.vgrid{gap:3px!important;margin-bottom:6px!important}
+.vi{padding:3px 5px!important;border-top-width:2px!important}
+.vit{font-size:8px!important}
+.vis{font-size:7px!important}
+.sgrid{gap:3px 6px!important}
+.sd{width:4px!important;height:4px!important;margin-top:2px!important}
+.st{font-size:8px!important}
+.ss{font-size:7px!important;line-height:1.3!important}
+.dright{display:flex!important;flex-direction:column!important;overflow:hidden!important}
+.df1,.df2{width:100%!important;flex:1!important;object-fit:cover!important;display:block!important;visibility:visible!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+.dft{display:none!important}
+.dsh h2{font-size:10px!important;margin:2px 0!important;padding:2px 6px!important}
+.dsh p,.dsh li,.dsh td{font-size:8px!important;line-height:1.3!important;margin:1px 0!important;padding:1px 2px!important}
+/* OCULTAR packs, CTA y footer del dossier */
 .pgrid{display:none!important}
 .pcta{display:none!important}
 .pcard{display:none!important}
 .pkname{display:none!important}
 .pkdesc{display:none!important}
-#page-dossier .foot{font-size:7px!important;padding:2px!important}
-#page-dossier .sfoot{font-size:7px!important;padding:3px 10px!important}
+#page-dossier .sfoot{display:none!important}
+#page-dossier .foot{display:none!important}
 
 /* ========== PRESUPUESTO: hoja propia ========== */
 #page-presupuesto{page-break-before:always!important}
@@ -136,6 +137,7 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 .sheet{max-width:100%!important;margin:0!important;box-shadow:none!important;border-radius:0!important}
 
 @page{margin:5mm 7mm}
+@page:first{margin:0!important}
 
 /* Parte print mode override */
 body.print-parte #page-parte{display:block!important}
@@ -1531,7 +1533,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v58';
+var APP_VERSION = 'v59';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2235,7 +2237,8 @@ function buildCompleteHTML(pageIds) {
     });
     // Capturar HTML y quitar display:none inline del elemento
     var html = el.outerHTML.replace(/style\s*=\s*["'][^"']*display\s*:\s*none[^"']*["']/gi, 'style="display:block"');
-    body += '<div style="display:block;page-break-before:always">' + html + '</div>\n';
+    var isFirst = (body === '');
+    body += '<div style="display:block;' + (isFirst ? '' : 'page-break-before:always') + '">' + html + '</div>\n';
   });
 
   // Montar documento HTML completo
