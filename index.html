@@ -101,8 +101,8 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 #distancia-box{margin-top:10mm!important;page-break-inside:avoid!important}
 
 /* ========== CONTRATO: ocupa toda la página sin hueco abajo ========== */
-#page-contrato{page-break-before:always!important;height:297mm!important;min-height:297mm!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;margin:0!important;padding:0!important}
-#page-contrato .sheet{box-shadow:none!important;border:none!important;padding:0!important;border-radius:0!important;margin:0!important;flex:1!important;display:flex!important;flex-direction:column!important}
+#page-contrato{page-break-before:always!important;margin:0!important;padding:0!important;background:linear-gradient(to bottom,#ffffff 60%,#1B4F8A 100%)!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+#page-contrato .sheet{box-shadow:none!important;border:none!important;padding:0!important;border-radius:0!important;margin:0!important;background:transparent!important}
 #page-contrato .stop{height:2px!important}
 #page-contrato .slogo{max-height:26px!important}
 #page-contrato .shead{padding:4px 10px!important}
@@ -1544,7 +1544,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v68';
+var APP_VERSION = 'v69';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
