@@ -34,7 +34,7 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 .page{display:block!important;visibility:visible!important;opacity:1!important;height:auto!important;overflow:visible!important;position:relative!important}
 
 /* ========== DOSSIER: portada + quiénes somos + footer = 1 página completa ========== */
-#page-dossier{margin:0!important;padding:0!important;height:100vh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+#page-dossier{margin:0!important;padding:0!important;height:297mm!important;min-height:297mm!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
 /* Portada: ~38% de la página */
 .portada{margin:0!important;box-shadow:none!important;border-radius:0!important;height:38vh!important;max-height:38vh!important;min-height:38vh!important;overflow:hidden!important;flex-shrink:0!important}
 .pfoto{height:100%!important;width:100%!important;object-fit:cover!important;object-position:center 40%!important;max-height:none!important}
@@ -101,7 +101,7 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 #distancia-box{margin-top:10mm!important;page-break-inside:avoid!important}
 
 /* ========== CONTRATO: ocupa toda la página sin hueco abajo ========== */
-#page-contrato{page-break-before:always!important;height:100vh!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;margin:0!important;padding:0!important}
+#page-contrato{page-break-before:always!important;height:297mm!important;min-height:297mm!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;margin:0!important;padding:0!important}
 #page-contrato .sheet{box-shadow:none!important;border:none!important;padding:0!important;border-radius:0!important;margin:0!important;flex:1!important;display:flex!important;flex-direction:column!important}
 #page-contrato .stop{height:2px!important}
 #page-contrato .slogo{max-height:26px!important}
@@ -1544,7 +1544,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v67';
+var APP_VERSION = 'v68';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
