@@ -76,8 +76,13 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 .pcard{display:none!important}
 .pkname{display:none!important}
 .pkdesc{display:none!important}
+#azkar-paks{display:none!important}
 #page-dossier .sfoot{display:none!important}
 #page-dossier .foot{display:none!important}
+/* Ocultar la sección título de packs (div sin clase, entre dsh footer y pgrid) */
+#page-dossier .dft+div{display:none!important}
+#page-dossier div[style*="padding:22px 26px"]{display:none!important}
+#page-dossier div[style*="padding: 22px 26px"]{display:none!important}
 
 /* ========== PRESUPUESTO: hoja propia ========== */
 #page-presupuesto{page-break-before:always!important}
@@ -1533,7 +1538,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v59';
+var APP_VERSION = 'v60';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2245,7 +2250,7 @@ function buildCompleteHTML(pageIds) {
   // IMPORTANTE: forzar display:block en TODOS los page-* con máxima especificidad
   return '<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>AZKAR Mudanzas</title>\n'
     + links + '\n' + styles + '\n'
-    + '<style>body{margin:0;padding:0;background:#fff}#page-dossier,#page-presupuesto,#page-contrato,#page-parte{display:block!important}#topnav,.tact,.bdel,.bq,.ntab,.acts,.pak-btns,.stop,#pwa-install-banner,#sync-status,#offline-indicator,#mgr-panel,#fb-config-overlay,#cal-disponibilidad{display:none!important}@media print{body{margin:0}}</style>\n'
+    + '<style>body{margin:0;padding:0;background:#fff}#page-dossier,#page-presupuesto,#page-contrato,#page-parte{display:block!important}#topnav,.tact,.bdel,.bq,.ntab,.acts,.pak-btns,.stop,#pwa-install-banner,#sync-status,#offline-indicator,#mgr-panel,#fb-config-overlay,#cal-disponibilidad,#azkar-paks,.pgrid,.pcta,.pcard{display:none!important}#page-dossier div[style*="padding:22px 26px"]{display:none!important}@media print{body{margin:0}}</style>\n'
     + '</head><body>\n' + body + '\n</body></html>';
 }
 
