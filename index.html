@@ -918,6 +918,7 @@ function QA(c,z){ AR(c,z); }
 function DR(id){
   var r=document.getElementById('r'+id);
   if(!r) return;
+  if(r.getAttribute('data-fijo')) return; // No se puede borrar fila fija
   r.style.opacity='0'; r.style.transition='.15s';
   setTimeout(function(){
     if(r.parentNode) r.parentNode.removeChild(r);
@@ -1275,6 +1276,32 @@ function AR(c,z,u,p,d){
   CA();
 }
 
+// ── Añadir línea FIJA de Salida (no borrable, siempre presente) ──
+function AR_SALIDA(){
+  // No duplicar si ya existe
+  if(document.querySelector('[data-fijo="salida"]')) return;
+  var ph=document.getElementById('rph');
+  if(ph) ph.parentNode.removeChild(ph);
+  rid++;
+  var id=rid;
+  var div=document.createElement('div');
+  rid++;
+  var sid=rid;
+  div.className='cr'; div.id='r'+sid;
+  div.setAttribute('data-fijo','salida');
+  div.style.background='#e8f0fe';
+  div.innerHTML='<input list="dl" value="Salida" readonly style="font-weight:700;color:#1B4F8A;background:transparent;cursor:default">'
+    +'<select disabled>'+ZO('Servicio adicional')+'</select>'
+    +'<input type="number" value="1" readonly style="background:transparent;cursor:default">'
+    +'<input type="number" value="80" readonly style="font-weight:700;background:transparent;cursor:default">'
+    +'<input type="number" value="0" readonly style="background:transparent;cursor:default">'
+    +'<div class="ctot" id="t'+sid+'" style="font-weight:700">80,00</div>'
+    +'<div style="width:27px;text-align:center;color:#1B4F8A;font-size:11px" title="Coste fijo">🔒</div>';
+  var tb=document.getElementById('tb');
+  if(tb) tb.insertBefore(div, tb.firstChild);
+  CA();
+}
+
 // ── Añadir línea marcada como PAK ────────────────────────────
 function AR_PAK(c,z,u,p,d){
   AR(c,z,u,p,d);
@@ -1345,7 +1372,8 @@ function LD(){
       if(el&&data[fields[i]]!==undefined) el.value=data[fields[i]];
     }
     if(data.rows&&data.rows.length)
-      for(var i=0;i<data.rows.length;i++){var r=data.rows[i];AR(r.c,r.z,r.u,r.p,r.d);}
+      for(var i=0;i<data.rows.length;i++){var r=data.rows[i]; if(r.c!=='Salida') AR(r.c,r.z,r.u,r.p,r.d);}
+    if(typeof AR_SALIDA==='function') AR_SALIDA();
     CA(); SY();
   }catch(e){}
 }
@@ -1509,7 +1537,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v55';
+var APP_VERSION = 'v56';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -1706,8 +1734,9 @@ function restoreFormData(data) {
     if (el && data[id] !== undefined) el.value = data[id];
   });
   if (data.rows && data.rows.length && typeof AR === 'function') {
-    data.rows.forEach(r => AR(r.c, r.z, r.u, r.p, r.d));
+    data.rows.forEach(r => { if (r.c !== 'Salida') AR(r.c, r.z, r.u, r.p, r.d); });
   }
+  if (typeof AR_SALIDA === 'function') AR_SALIDA();
   if (typeof CA === 'function') CA();
   if (typeof SY === 'function') SY();
 }
@@ -1917,7 +1946,12 @@ async function newPresupuesto() {
   const fields = ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_obs'];
   fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.querySelectorAll('#tbl .tr').forEach(tr => tr.remove());
+  // Limpiar tabla de conceptos
+  var tbReset = document.getElementById('tb');
+  if (tbReset) tbReset.querySelectorAll('.cr').forEach(function(r) { r.remove(); });
+  rid = 0;
   if (typeof AUTO_INIT === 'function') AUTO_INIT();
+  if (typeof AR_SALIDA === 'function') AR_SALIDA();
   closeMgr();
   if (typeof ST === 'function') ST('presupuesto');
 
@@ -3899,6 +3933,9 @@ function txCreatePresupuesto() {
         }
       }
     });
+
+    // Añadir Salida fija
+    if (typeof AR_SALIDA === 'function') AR_SALIDA();
 
     // Recalcular totales
     if (typeof CA === 'function') CA();
