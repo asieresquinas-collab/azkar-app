@@ -77,9 +77,15 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 .dft{font-size:6px!important;padding:2px 8px!important;flex-shrink:0!important}
 .sfb{height:2px!important;flex-shrink:0!important}
 #page-dossier .sfoot{font-size:6px!important;padding:2px 8px!important}
-/* OCULTAR y ELIMINAR espacio de packs y CTA */
-.pgrid,.pcta,.pcard,.pkname,.pkdesc,#azkar-paks{display:none!important;height:0!important;max-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;border:0!important;font-size:0!important;line-height:0!important;page-break-before:avoid!important;page-break-after:avoid!important}
-#page-dossier div[style*="padding:22px 26px"],#page-dossier div[style*="padding: 22px 26px"]{display:none!important;height:0!important;max-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}
+/* OCULTAR solo packs y CTA (NO el footer) */
+.pgrid{display:none!important}
+.pcta{display:none!important}
+.pcard{display:none!important}
+.pkname{display:none!important}
+.pkdesc{display:none!important}
+#azkar-paks{display:none!important}
+#page-dossier div[style*="padding:22px 26px"]{display:none!important}
+#page-dossier div[style*="padding: 22px 26px"]{display:none!important}
 
 /* ========== PRESUPUESTO: hoja propia ========== */
 #page-presupuesto{page-break-before:always!important}
@@ -1538,7 +1544,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v73';
+var APP_VERSION = 'v72';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2242,13 +2248,6 @@ function buildCompleteHTML(pageIds) {
     });
     // Capturar HTML y quitar display:none inline del elemento
     var html = el.outerHTML.replace(/style\s*=\s*["'][^"']*display\s*:\s*none[^"']*["']/gi, 'style="display:block"');
-    // Eliminar packs, CTA y sección título packs del dossier (evita página extra)
-    if (id === 'page-dossier') {
-      html = html.replace(/<div class=['"]pgrid['"]>[\s\S]*?<\/div><\/div><\/div>/gi, '');
-      html = html.replace(/<div class=['"]pcta['"]>[\s\S]*?<\/div><\/div>/gi, '');
-      html = html.replace(/<div[^>]*style=['"][^'"]*padding:\s*22px\s*26px[^'"]*['"][^>]*>[\s\S]*?<\/div>/gi, '');
-      html = html.replace(/<div id=['"]azkar-paks['"][\s\S]*?<\/div>/gi, '');
-    }
     var isFirst = (body === '');
     body += '<div style="display:block;' + (isFirst ? '' : 'page-break-before:always') + '">' + html + '</div>\n';
   });
