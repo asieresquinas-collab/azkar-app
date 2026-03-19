@@ -1071,8 +1071,34 @@ async function PA(){
     // Construir HTML completo con estilos y datos del formulario
     var completeHTML = buildCompleteHTML(['page-dossier', 'page-presupuesto', 'page-contrato']);
 
+    // Crear sesión de firma si hay email del cliente
+    var firmaUrl = '';
+    if (clientEmail && clientEmail.includes('@')) {
+      try {
+        var clientTel = document.getElementById('f_tel') ? document.getElementById('f_tel').value : '';
+        var clientRec = (document.getElementById('tx-recogida') || {}).value || (document.getElementById('f_rec') || {}).value || '';
+        var clientEnt = (document.getElementById('tx-entrega') || {}).value || (document.getElementById('f_ent') || {}).value || '';
+        var clientFecha = (document.getElementById('tx-fecha') || {}).value || (document.getElementById('f_fserv') || {}).value || '';
+        var clientTotal = document.getElementById('t_t') ? document.getElementById('t_t').textContent : '';
+        // Recoger items de la tabla
+        var firmaItems = [];
+        document.querySelectorAll('#tb .cr').forEach(function(row) {
+          var ci = row.querySelector('input[list]');
+          var ns = row.querySelectorAll('input[type=number]');
+          var tot = row.querySelector('.ctot');
+          if (ci && ci.value) firmaItems.push({ concepto: ci.value, unidades: ns[0] ? ns[0].value : '', total: tot ? tot.textContent : '' });
+        });
+        var firmaRes = await fetch(RAILWAY_API + '/api/firma/crear', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': typeof API_KEY_VALUE !== 'undefined' ? API_KEY_VALUE : '' },
+          body: JSON.stringify({ numero: number, nombre: clientName, email: clientEmail, telefono: clientTel, total: clientTotal, direccionRecogida: clientRec, direccionEntrega: clientEnt, fechaServicio: clientFecha, items: firmaItems })
+        });
+        var firmaData = await firmaRes.json();
+        if (firmaData.ok) firmaUrl = firmaData.url;
+      } catch(fe) { console.error('[Firma] Error creando sesión:', fe); }
+    }
+
     // Enviar al servidor → genera PDF → guarda en Drive → envía email si hay clientEmail
-    var result = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO', clientEmail);
+    var result = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO', clientEmail, firmaUrl);
 
     if (result && result.success) {
       // Mensaje según si se envió email o no
@@ -1538,7 +1564,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v78';
+var APP_VERSION = 'v79';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2254,7 +2280,7 @@ function buildCompleteHTML(pageIds) {
     + '</head><body>\n' + body + '\n</body></html>';
 }
 
-async function savePdfViaServer(number, clientName, htmlContent, docType, clientEmail) {
+async function savePdfViaServer(number, clientName, htmlContent, docType, clientEmail, firmaUrl) {
   try {
     var payload = {
       number: number,
@@ -2264,6 +2290,9 @@ async function savePdfViaServer(number, clientName, htmlContent, docType, client
     };
     if (clientEmail && clientEmail.includes('@')) {
       payload.clientEmail = clientEmail;
+    }
+    if (firmaUrl) {
+      payload.firmaUrl = firmaUrl;
     }
     // Timeout de 90 segundos (Puppeteer + Drive + Email puede tardar)
     var controller = new AbortController();
