@@ -79,7 +79,7 @@ body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!importa
 #page-dossier .sfoot{font-size:6px!important;padding:2px 8px!important}
 /* OCULTAR packs y CTA - sin ocupar espacio */
 .pgrid,.pcta,.pcard,.pkname,.pkdesc,#azkar-paks{display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;border:none!important}
-#page-dossier div[style*="padding:22px 26px"],#page-dossier div[style*="padding: 22px 26px"]{display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}
+#page-dossier div[style*="padding:22px 26px"],#page-dossier div[style*="padding: 22px 26px"],#page-dossier div[style*="padding:22px 26px 14px"],#page-dossier div[style*="padding: 22px 26px 14px"]{display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}
 
 /* ========== PRESUPUESTO: hoja propia ========== */
 #page-presupuesto{page-break-before:always!important}
@@ -1538,7 +1538,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v76';
+var APP_VERSION = 'v77';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2250,7 +2250,7 @@ function buildCompleteHTML(pageIds) {
   // IMPORTANTE: forzar display:block en TODOS los page-* con máxima especificidad
   return '<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>AZKAR Mudanzas</title>\n'
     + links + '\n' + styles + '\n'
-    + '<style>body{margin:0;padding:0;background:#fff}#page-dossier,#page-presupuesto,#page-contrato,#page-parte{display:block!important}#topnav,.tact,.bdel,.bq,.ntab,.acts,.pak-btns,.stop,#pwa-install-banner,#sync-status,#offline-indicator,#mgr-panel,#fb-config-overlay,#cal-disponibilidad,#azkar-paks,.pgrid,.pcta,.pcard{display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}#page-dossier div[style*="padding:22px 26px"]{display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}@media print{body{margin:0}}</style>\n'
+    + '<style>body{margin:0;padding:0;background:#fff}#page-dossier,#page-presupuesto,#page-contrato,#page-parte{display:block!important}#topnav,.tact,.bdel,.bq,.ntab,.acts,.pak-btns,.stop,#pwa-install-banner,#sync-status,#offline-indicator,#mgr-panel,#fb-config-overlay,#cal-disponibilidad,#azkar-paks,.pgrid,.pcta,.pcard{display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}#page-dossier div[style*="padding:22px 26px"],#page-dossier div[style*="padding:22px 26px 14px"]{display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}@media print{body{margin:0}}</style>\n'
     + '</head><body>\n' + body + '\n</body></html>';
 }
 
