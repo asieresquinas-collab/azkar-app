@@ -1564,7 +1564,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v80';
+var APP_VERSION = 'v81';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2268,6 +2268,17 @@ function buildCompleteHTML(pageIds) {
     });
     // Capturar HTML y quitar display:none inline del elemento
     var html = el.outerHTML.replace(/style\s*=\s*["'][^"']*display\s*:\s*none[^"']*["']/gi, 'style="display:block"');
+    // Inyectar sello digital de Azkar en el recuadro de firma de la empresa
+    var selloSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" style="width:65px;height:65px"><circle cx="100" cy="100" r="92" fill="none" stroke="#1B4F8A" stroke-width="4"/><circle cx="100" cy="100" r="80" fill="none" stroke="#1B4F8A" stroke-width="1.5"/><text x="100" y="48" text-anchor="middle" font-size="11" font-weight="700" fill="#1B4F8A" font-family="Arial">AZKAR MUDANZAS</text><text x="100" y="64" text-anchor="middle" font-size="9" fill="#1B4F8A" font-family="Arial">DE BIZKAIA SL</text><text x="100" y="85" text-anchor="middle" font-size="8" fill="#E85C0D" font-family="Arial">CIF B05308838</text><text x="100" y="108" text-anchor="middle" font-size="18" font-weight="800" fill="#1B4F8A" font-family="Arial">SELLADO</text><text x="100" y="130" text-anchor="middle" font-size="7" fill="#1B4F8A" font-family="Arial">Pol. Martiartu Pab.44</text><text x="100" y="143" text-anchor="middle" font-size="7" fill="#1B4F8A" font-family="Arial">Arrigorriaga · Bizkaia</text><text x="100" y="160" text-anchor="middle" font-size="7" fill="#1B4F8A" font-family="Arial">946 959 400</text></svg>';
+    html = html.replace(
+      /<div class='ft'>Sello y firma — Azkar Mudanzas<\/div><div class='fa'><\/div>/g,
+      "<div class='ft'>Sello y firma — Azkar Mudanzas</div><div class='fa' style='display:flex;align-items:center;justify-content:center;padding:2px'>" + selloSvg + "</div>"
+    );
+    // También en el contrato
+    html = html.replace(
+      /<div class='cft'>Azkar Mudanzas de Bizkaia SL<\/div><div class='cfn'>AZKAR MUDANZAS DE BIZKAIA SL<\/div><div class='cfa'><\/div>/g,
+      "<div class='cft'>Azkar Mudanzas de Bizkaia SL</div><div class='cfn'>AZKAR MUDANZAS DE BIZKAIA SL</div><div class='cfa' style='display:flex;align-items:center;justify-content:center;padding:2px'>" + selloSvg + "</div>"
+    );
     var isFirst = (body === '');
     body += '<div style="display:block;' + (isFirst ? '' : 'page-break-before:always') + '">' + html + '</div>\n';
   });
