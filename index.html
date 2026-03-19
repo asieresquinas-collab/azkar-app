@@ -1090,7 +1090,7 @@ async function PA(){
         });
         var firmaRes = await fetch(RAILWAY_API + '/api/firma/crear', {
           method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': typeof API_KEY_VALUE !== 'undefined' ? API_KEY_VALUE : '' },
-          body: JSON.stringify({ numero: number, nombre: clientName, email: clientEmail, telefono: clientTel, total: clientTotal, direccionRecogida: clientRec, direccionEntrega: clientEnt, fechaServicio: clientFecha, items: firmaItems })
+          body: JSON.stringify({ numero: number, nombre: clientName, email: clientEmail, telefono: clientTel, total: clientTotal, direccionRecogida: clientRec, direccionEntrega: clientEnt, fechaServicio: clientFecha, items: firmaItems, presupuestoHtml: completeHTML })
         });
         var firmaData = await firmaRes.json();
         if (firmaData.ok) firmaUrl = firmaData.url;
@@ -1564,7 +1564,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v79';
+var APP_VERSION = 'v80';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
