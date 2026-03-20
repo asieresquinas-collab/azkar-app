@@ -978,25 +978,24 @@ function CT(){
   }
 
   // 2. Tiempo de pisos (bajar en recogida + subir en entrega)
-  // Cada operario lleva ~2 bultos por viaje (ida+vuelta = 1 viaje)
-  // Nº viajes = totalBultos / (operarios × 2 bultos por viaje), redondeado arriba
+  // Referencia real: mudanza completa (~30 bultos), 4º piso sin ascensor, 2 ops = ~2 horas
+  // → 1 min por bulto por piso sin ascensor (con 2 ops)
+  // → 0.4 min por bulto por piso con ascensor (con 2 ops)
+  // Se escala con operarios: más ops = más rápido
   var pisoRec=parseInt((document.getElementById('t_piso_rec')||{}).value)||0;
   var ascRec=(document.getElementById('t_asc_rec')||{}).value==='si';
   var pisoEnt=parseInt((document.getElementById('t_piso_ent')||{}).value)||0;
   var ascEnt=(document.getElementById('t_asc_ent')||{}).value==='si';
 
-  var minPorPisoBajar=ascRec?TIEMPO_PISO_CON_ASCENSOR:TIEMPO_PISO_SIN_ASCENSOR;
-  var minPorPisoSubir=ascEnt?TIEMPO_PISO_CON_ASCENSOR:TIEMPO_PISO_SIN_ASCENSOR;
-
   var opSel=document.getElementById('num-operarios');
   var ops=opSel?parseInt(opSel.value)||2:2;
 
-  // Viajes = bultos / (operarios × 2 bultos por viaje por operario)
-  var viajesBajar=totalBultos>0?Math.ceil(totalBultos/(ops*2)):0;
-  var viajesSubir=viajesBajar; // misma cantidad de bultos
-  // Tiempo = viajes × pisos × min/piso
-  var tiempoBajar=viajesBajar*pisoRec*minPorPisoBajar;
-  var tiempoSubir=viajesSubir*pisoEnt*minPorPisoSubir;
+  // min por bulto por piso (base con 2 operarios)
+  var factorBajar=ascRec?0.4:1;
+  var factorSubir=ascEnt?0.4:1;
+  // Escalar por operarios (referencia = 2 ops)
+  var tiempoBajar=Math.round(totalBultos*pisoRec*factorBajar*(2/ops));
+  var tiempoSubir=Math.round(totalBultos*pisoEnt*factorSubir*(2/ops));
   var totalPisosMin=tiempoBajar+tiempoSubir;
 
   // 3. Tiempo de transporte (ida solamente, no depende de operarios)
@@ -1005,7 +1004,7 @@ function CT(){
 
   // 4. Cálculo final
   // Trabajo manual se divide entre operarios
-  // Pisos ya están calculados con los viajes reales (ya tienen en cuenta operarios)
+  // Pisos ya escalados con operarios arriba
   // Transporte NO se divide (todos van en el mismo camión)
   var tiempoTrabajoReal=Math.ceil(totalTrabajoMin/ops);
   var tiempoTotal=tiempoTrabajoReal+totalPisosMin+tiempoTransporte;
