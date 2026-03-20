@@ -1156,7 +1156,7 @@ async function PA(){
           if (ci && ci.value) firmaItems.push({ concepto: ci.value, unidades: ns[0] ? ns[0].value : '', total: tot ? tot.textContent : '' });
         });
         var firmaRes = await fetch(RAILWAY_API + '/api/firma/crear', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': typeof API_KEY_VALUE !== 'undefined' ? API_KEY_VALUE : '' },
+          method: 'POST', headers: apiHeaders(),
           body: JSON.stringify({ numero: number, nombre: clientName, email: clientEmail, telefono: clientTel, total: clientTotal, direccionRecogida: clientRec, direccionEntrega: clientEnt, fechaServicio: clientFecha, items: firmaItems, presupuestoHtml: completeHTML })
         });
         var firmaData = await firmaRes.json();
@@ -1909,7 +1909,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v93';
+var APP_VERSION = 'v94';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2236,7 +2236,7 @@ async function fetchFirmaStatus() {
   }
   try {
     var r = await fetch(RAILWAY_API + '/api/drive/captacion/firma-status', {
-      headers: { 'x-api-key': localStorage.getItem('azkar-api-key') || '' }
+      headers: apiHeaders()
     });
     var d = await r.json();
     if (d.success && d.firmados) {
@@ -2449,7 +2449,7 @@ async function moverEnMarcha(ref) {
   try {
     var res = await fetch(RAILWAY_API + '/api/drive/captacion/move-en-marcha', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': typeof API_KEY_VALUE !== 'undefined' ? API_KEY_VALUE : '' },
+      headers: apiHeaders(),
       body: JSON.stringify({ number: ref })
     });
     var data = await res.json();
@@ -2534,6 +2534,16 @@ async function saveFirebaseConfig() {
 //  BACKUP AUTOMÁTICO A GOOGLE DRIVE (blindado anti-pérdida)
 // ══════════════════════════════════════════════════════════════
 const RAILWAY_API = 'https://azkar-presupuestos-production.up.railway.app';
+
+// ── Helper: cabeceras comunes para TODAS las llamadas al backend ──
+function apiHeaders(extra) {
+  var h = { 'Content-Type': 'application/json' };
+  var key = localStorage.getItem('azkar-api-key') || '';
+  if (key) h['x-api-key'] = key;
+  if (extra) { for (var k in extra) h[k] = extra[k]; }
+  return h;
+}
+
 var _backupTimer = null;
 var _backupInProgress = false;
 var _lastBackupHash = '';
@@ -2554,7 +2564,7 @@ async function backupToDrive() {
     var tid = setTimeout(function() { controller.abort(); }, 30000);
     var res = await fetch(RAILWAY_API + '/api/drive/backup-presupuestos', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: JSON.stringify({ presupuestos: all }),
       signal: controller.signal
     });
@@ -2595,7 +2605,7 @@ async function restoreFromDriveIfNeeded() {
 
     var controller = new AbortController();
     var tid = setTimeout(function() { controller.abort(); }, 30000);
-    var res = await fetch(RAILWAY_API + '/api/drive/restore-presupuestos', { signal: controller.signal });
+    var res = await fetch(RAILWAY_API + '/api/drive/restore-presupuestos', { headers: apiHeaders(), signal: controller.signal });
     clearTimeout(tid);
 
     if (!res.ok) {
@@ -2648,7 +2658,7 @@ const _originalGD = typeof GD === 'function' ? GD : null;
 
 async function getDriveNextNumber() {
   try {
-    const res = await fetch(RAILWAY_API + '/api/drive/captacion/next-number');
+    const res = await fetch(RAILWAY_API + '/api/drive/captacion/next-number', { headers: apiHeaders() });
     if (!res.ok) { console.error('[Drive] HTTP', res.status); return null; }
     const data = await res.json();
     if (data.success) return data;
@@ -2664,7 +2674,7 @@ async function createDriveFolder(number) {
   try {
     const res = await fetch(RAILWAY_API + '/api/drive/captacion/create-folder', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: JSON.stringify({ number: number })
     });
     if (!res.ok) { console.error('[Drive] Create HTTP', res.status); return null; }
@@ -2680,7 +2690,7 @@ async function renameDriveFolder(number, clientName) {
   try {
     const res = await fetch(RAILWAY_API + '/api/drive/captacion/rename-folder', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: JSON.stringify({ number: number, clientName: clientName })
     });
     if (!res.ok) { console.error('[Drive] Rename HTTP', res.status); return null; }
@@ -2774,7 +2784,7 @@ async function savePdfViaServer(number, clientName, htmlContent, docType, client
     var timeoutId = setTimeout(function() { controller.abort(); }, 90000);
     var res = await fetch(RAILWAY_API + '/api/pdf/generate-and-save', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: JSON.stringify(payload),
       signal: controller.signal
     });
@@ -2795,7 +2805,7 @@ async function saveToDrive(number, clientName, htmlContent, docType) {
     const fileName = number + '_' + docType + '.html';
     const res = await fetch(RAILWAY_API + '/api/drive/captacion/save', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: JSON.stringify({
         number: number,
         clientName: clientName,
@@ -2817,7 +2827,7 @@ async function savePdfToDrive(number, clientName, pdfBase64, docType) {
     const fileName = number + "_" + docType + ".pdf";
     const res = await fetch(RAILWAY_API + "/api/drive/captacion/save", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: apiHeaders(),
       body: JSON.stringify({
         number: number,
         clientName: clientName,
@@ -4329,7 +4339,7 @@ async function analyzeTranscription() {
   try {
     var res = await fetch(TX_API + '/api/transcription/parse', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: JSON.stringify({ transcription: input })
     });
 
@@ -4955,7 +4965,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
 // ══════════════════════════════════════════════════════════════
 (function() {
   var PERM_RAILWAY = 'https://azkar-presupuestos-production.up.railway.app';
-  var PERM_API_KEY = (typeof API_KEY_VALUE !== 'undefined') ? API_KEY_VALUE : '';
+  var PERM_API_KEY = localStorage.getItem('azkar-api-key') || '';
   var permisosGuardados = [];
 
   // Base de plazos local (para no depender del servidor)
@@ -5621,7 +5631,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     try {
       var controller = new AbortController();
       var tid = setTimeout(function() { controller.abort(); }, 15000);
-      var res = await fetch(RAILWAY_API + '/api/calendar/check?date=' + fecha, { signal: controller.signal });
+      var res = await fetch(RAILWAY_API + '/api/calendar/check?date=' + fecha, { headers: apiHeaders(), signal: controller.signal });
       clearTimeout(tid);
 
       if (!res.ok) throw new Error('HTTP ' + res.status);
