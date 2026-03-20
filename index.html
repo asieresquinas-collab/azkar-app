@@ -1902,7 +1902,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v87';
+var APP_VERSION = 'v88';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2278,20 +2278,24 @@ async function openMgr() {
     function renderItem(p, isVersion) {
       const ref = p.f_ref || p._versionOf || '';
       const isFirmado = !isVersion && firmaData[ref];
-      const bgGrad = isVersion ? 'linear-gradient(135deg,#888,#aaa)' : (isFirmado ? 'linear-gradient(135deg,#1a7a3f,#27ae60)' : 'linear-gradient(135deg,#1B4F8A,#2376C5)');
+      const isEnMarcha = !isVersion && p._enMarcha;
+      const bgGrad = isVersion ? 'linear-gradient(135deg,#888,#aaa)' : (isEnMarcha ? 'linear-gradient(135deg,#E85C0D,#f39c12)' : (isFirmado ? 'linear-gradient(135deg,#1a7a3f,#27ae60)' : 'linear-gradient(135deg,#1B4F8A,#2376C5)'));
       const versionLabel = isVersion ? '<span style="background:#f0ad4e;color:#fff;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;margin-left:4px;">ANTERIOR</span>' : '';
       const firmadoLabel = isFirmado ? '<span style="background:#1a7a3f;color:#fff;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;margin-left:4px;" title="Firmado: ' + (isFirmado.fechaFirma ? new Date(isFirmado.fechaFirma).toLocaleDateString('es-ES') : '') + '">FIRMADO</span>' : '';
+      const enMarchaLabel = isEnMarcha ? '<span style="background:#E85C0D;color:#fff;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;margin-left:4px;">EN MARCHA</span>' : '';
       const dateLabel = isVersion && p.timestamp ? ' · Guardado: ' + formatDate(p.timestamp) : '';
-      const borderColor = isFirmado ? '#b8e6c8' : (isVersion ? '#f0e0c0' : '#e0e4ea');
-      const bgColor = isFirmado ? '#f0faf4' : (isVersion ? '#fffdf5' : '#fff');
-      const hoverColor = isFirmado ? '#e0f5ea' : (isVersion ? '#fff8e1' : '#EBF3FD');
+      const borderColor = isEnMarcha ? '#fdd0a8' : (isFirmado ? '#b8e6c8' : (isVersion ? '#f0e0c0' : '#e0e4ea'));
+      const bgColor = isEnMarcha ? '#fef5ed' : (isFirmado ? '#f0faf4' : (isVersion ? '#fffdf5' : '#fff'));
+      const hoverColor = isEnMarcha ? '#fde8d5' : (isFirmado ? '#e0f5ea' : (isVersion ? '#fff8e1' : '#EBF3FD'));
+      const enMarchaBtn = (!isVersion && !isEnMarcha) ? '<button onclick="event.stopPropagation();moverEnMarcha(\'' + ref + '\')" style="background:#E85C0D;border:none;color:#fff;padding:6px 8px;border-radius:5px;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;" title="Mover carpeta a 2 En Marcha en Drive">🚚 EN MARCHA</button>' : '';
       return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:' + (isVersion ? '4' : '8') + 'px;border:1px solid ' + borderColor + ';border-radius:8px;cursor:pointer;transition:.15s;background:' + bgColor + ';" onmouseover="this.style.background=\'' + hoverColor + '\'" onmouseout="this.style.background=\'' + bgColor + '\'" onclick="loadPresupuesto(\'' + p.id + '\')">'
-        + '<div style="width:42px;height:42px;background:' + bgGrad + ';border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">' + (isFirmado ? '✓' : ref.slice(-4) || 'N/A') + '</div>'
+        + '<div style="width:42px;height:42px;background:' + bgGrad + ';border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">' + (isEnMarcha ? '🚚' : (isFirmado ? '✓' : ref.slice(-4) || 'N/A')) + '</div>'
         + '<div style="flex:1;min-width:0;">'
-        + '<div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.f_nom || 'Sin nombre') + firmadoLabel + versionLabel + '</div>'
+        + '<div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.f_nom || 'Sin nombre') + enMarchaLabel + firmadoLabel + versionLabel + '</div>'
         + '<div style="font-size:11px;color:#888;margin-top:1px;">' + (ref || 'Sin ref') + ' · ' + (p.f_fecha || 'Sin fecha') + dateLabel + '</div>'
         + '</div>'
         + '<div style="text-align:right;font-size:11px;color:#888;">' + (p.f_rec ? (p.f_rec.length > 20 ? p.f_rec.substring(0,20)+'...' : p.f_rec) : '') + '</div>'
+        + enMarchaBtn
         + '<button onclick="event.stopPropagation();delPresupuesto(\'' + p.id + '\')" style="background:#fee;border:1px solid #fcc;color:#c0392b;padding:6px 10px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;">x</button>'
         + '</div>';
     }
@@ -2388,6 +2392,45 @@ async function delPresupuesto(id) {
 
 // ══════════════════════════════════════════════════════════════
 //  FIREBASE CONFIG PANEL
+// ══════════════════════════════════════════════════════════════
+//  MOVER A "2 EN MARCHA"
+// ══════════════════════════════════════════════════════════════
+async function moverEnMarcha(ref) {
+  if (!ref) return;
+  if (!confirm('¿Mover la carpeta del cliente ' + ref + ' de Captación a "2 En Marcha"?\n\nEsto mueve TODA la carpeta con todos sus documentos.')) return;
+
+  showSyncStatus('🚚 Moviendo carpeta a En Marcha...', 0);
+  try {
+    var res = await fetch(RAILWAY_API + '/api/drive/captacion/move-en-marcha', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': typeof API_KEY_VALUE !== 'undefined' ? API_KEY_VALUE : '' },
+      body: JSON.stringify({ number: ref })
+    });
+    var data = await res.json();
+    if (data.success) {
+      // Marcar como en_marcha en IndexedDB
+      var pres = await getPresupuesto(ref);
+      if (pres) {
+        pres._enMarcha = true;
+        pres._enMarchaDate = Date.now();
+        await savePresupuesto(pres);
+        // Sync a Firebase
+        if (firebaseConfigured && window._fb) {
+          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres);
+        }
+      }
+      showSyncStatus('✅ Carpeta ' + (data.folderName || ref) + ' movida a "2 En Marcha"', 5000);
+      // Refrescar el gestor
+      openMgr();
+    } else {
+      showSyncStatus('❌ Error: ' + (data.error || 'No se pudo mover'), 6000);
+    }
+  } catch(e) {
+    console.error('[EnMarcha] Error:', e);
+    showSyncStatus('❌ Error de conexión: ' + e.message, 6000);
+  }
+}
+
 // ══════════════════════════════════════════════════════════════
 function openFirebaseConfig() {
   let saved = {};
