@@ -1909,7 +1909,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v92';
+var APP_VERSION = 'v93';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2410,8 +2410,29 @@ async function delPresupuesto(id) {
       await window._fb.deleteDoc(window._fb.doc(window._fb.db, 'presupuestos', id));
     } catch(e) {}
   }
-  // Auto-backup tras eliminar
-  scheduleBackup();
+  // ── LIMPIAR localStorage si referencia al cliente borrado ──
+  try {
+    var backupRef = localStorage.getItem('azkar_backup_ref');
+    if (backupRef === id) {
+      localStorage.removeItem('azkar_backup_ref');
+      localStorage.removeItem('azkar_backup_data');
+      localStorage.removeItem('azkar_backup_time');
+      console.log('[Azkar] localStorage limpiado tras eliminar presupuesto ' + id);
+    }
+  } catch(e) {}
+  // ── Limpiar formulario si el presupuesto eliminado estaba cargado ──
+  try {
+    var refEl = document.getElementById('f_ref');
+    if (refEl && refEl.value === id) {
+      var clearFields = ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs'];
+      clearFields.forEach(function(fid) { var el = document.getElementById(fid); if (el) el.value = ''; });
+      var tbReset = document.getElementById('tb');
+      if (tbReset) tbReset.querySelectorAll('.cr').forEach(function(r) { r.remove(); });
+    }
+  } catch(e) {}
+  // Auto-backup INMEDIATO tras eliminar (sin esperar 5 segundos)
+  if (_backupTimer) clearTimeout(_backupTimer);
+  try { await backupToDrive(); } catch(e) { console.warn('[Azkar] Error backup tras delete:', e); }
   openMgr();
 }
 
@@ -3243,11 +3264,25 @@ window.addEventListener('DOMContentLoaded', function() {
       if (ref && !ref.value) {
         // No hay nada cargado, restaurar desde backup
         if (backupRef && backupData) {
-          const data = JSON.parse(backupData);
-          const age = Date.now() - parseInt(backupTime || '0');
-          if (age < 86400000) {
-            restoreFormData(data);
-            showSyncStatus('♻️ Presupuesto restaurado (Nº ' + backupRef + ')');
+          // ── Verificar que el presupuesto aún existe en IndexedDB antes de restaurar ──
+          var existsInDB = false;
+          try {
+            var checkData = await getPresupuesto(backupRef);
+            if (checkData) existsInDB = true;
+          } catch(e) {}
+          if (!existsInDB) {
+            // El presupuesto fue eliminado, limpiar localStorage
+            localStorage.removeItem('azkar_backup_ref');
+            localStorage.removeItem('azkar_backup_data');
+            localStorage.removeItem('azkar_backup_time');
+            console.log('[Azkar] Backup descartado: presupuesto ' + backupRef + ' ya no existe');
+          } else {
+            const data = JSON.parse(backupData);
+            const age = Date.now() - parseInt(backupTime || '0');
+            if (age < 86400000) {
+              restoreFormData(data);
+              showSyncStatus('♻️ Presupuesto restaurado (Nº ' + backupRef + ')');
+            }
           }
         }
       }
