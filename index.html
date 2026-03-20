@@ -1909,7 +1909,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v90';
+var APP_VERSION = 'v91';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -3012,6 +3012,20 @@ window.saveAllToDrive = async function() {
   if (!clientName || !clientName.trim()) {
     showSyncStatus('⚠ Sin nombre de cliente', 4000);
     return;
+  }
+
+  // Verificar que hay al menos algún dato en el presupuesto (dirección, concepto, teléfono...)
+  var hayDatos = false;
+  ['f_tel','f_email','f_rec','f_ent'].forEach(function(fid) {
+    var el = document.getElementById(fid);
+    if (el && el.value && el.value.trim()) hayDatos = true;
+  });
+  // También comprobar si hay conceptos en la tabla
+  document.querySelectorAll('#tb .cr input[list]').forEach(function(inp) {
+    if (inp.value && inp.value.trim()) hayDatos = true;
+  });
+  if (!hayDatos) {
+    if (!confirm('El presupuesto parece estar vacío (sin teléfono, email, direcciones ni conceptos).\n\n¿Seguro que quieres guardarlo en Drive?')) return;
   }
 
   const btn = document.querySelector('[data-save-all-drive]');
