@@ -1164,8 +1164,15 @@ async function PA(){
       } catch(fe) { console.error('[Firma] Error creando sesión:', fe); }
     }
 
+    // Detectar si el presupuesto está en "En Marcha" para personalizar el email
+    var isEnMarcha = false;
+    try {
+      var presData = await getPresupuesto(number);
+      if (presData && presData._enMarcha) isEnMarcha = true;
+    } catch(e) {}
+
     // Enviar al servidor → genera PDF → guarda en Drive → envía email si hay clientEmail
-    var result = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO', clientEmail, firmaUrl);
+    var result = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO', clientEmail, firmaUrl, isEnMarcha);
 
     if (result && result.success) {
       // Mensaje según si se envió email o no
@@ -1902,7 +1909,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v89';
+var APP_VERSION = 'v90';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2724,7 +2731,7 @@ function buildCompleteHTML(pageIds) {
     + '</head><body>\n' + body + '\n</body></html>';
 }
 
-async function savePdfViaServer(number, clientName, htmlContent, docType, clientEmail, firmaUrl) {
+async function savePdfViaServer(number, clientName, htmlContent, docType, clientEmail, firmaUrl, enMarcha) {
   try {
     var payload = {
       number: number,
@@ -2737,6 +2744,9 @@ async function savePdfViaServer(number, clientName, htmlContent, docType, client
     }
     if (firmaUrl) {
       payload.firmaUrl = firmaUrl;
+    }
+    if (enMarcha) {
+      payload.enMarcha = true;
     }
     // Timeout de 90 segundos (Puppeteer + Drive + Email puede tardar)
     var controller = new AbortController();
