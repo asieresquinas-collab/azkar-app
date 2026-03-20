@@ -978,7 +978,8 @@ function CT(){
   }
 
   // 2. Tiempo de pisos (bajar en recogida + subir en entrega)
-  // Se calcula POR BULTO y POR VIAJE: cada operario lleva ~1 bulto por viaje
+  // Cada operario lleva ~2 bultos por viaje (ida+vuelta = 1 viaje)
+  // Nº viajes = totalBultos / (operarios × 2 bultos por viaje), redondeado arriba
   var pisoRec=parseInt((document.getElementById('t_piso_rec')||{}).value)||0;
   var ascRec=(document.getElementById('t_asc_rec')||{}).value==='si';
   var pisoEnt=parseInt((document.getElementById('t_piso_ent')||{}).value)||0;
@@ -987,23 +988,27 @@ function CT(){
   var minPorPisoBajar=ascRec?TIEMPO_PISO_CON_ASCENSOR:TIEMPO_PISO_SIN_ASCENSOR;
   var minPorPisoSubir=ascEnt?TIEMPO_PISO_CON_ASCENSOR:TIEMPO_PISO_SIN_ASCENSOR;
 
-  // Tiempo total de pisos = bultos × pisos × min/piso (ida y vuelta para bajar, solo ida para subir)
-  var tiempoBajar=totalBultos*pisoRec*minPorPisoBajar;
-  var tiempoSubir=totalBultos*pisoEnt*minPorPisoSubir;
+  var opSel=document.getElementById('num-operarios');
+  var ops=opSel?parseInt(opSel.value)||2:2;
+
+  // Viajes = bultos / (operarios × 2 bultos por viaje por operario)
+  var viajesBajar=totalBultos>0?Math.ceil(totalBultos/(ops*2)):0;
+  var viajesSubir=viajesBajar; // misma cantidad de bultos
+  // Tiempo = viajes × pisos × min/piso
+  var tiempoBajar=viajesBajar*pisoRec*minPorPisoBajar;
+  var tiempoSubir=viajesSubir*pisoEnt*minPorPisoSubir;
   var totalPisosMin=tiempoBajar+tiempoSubir;
 
   // 3. Tiempo de transporte (ida solamente, no depende de operarios)
   var distSel=(document.getElementById('t_distancia')||{}).value||'bilbao';
   var tiempoTransporte=TIEMPOS_TRANSPORTE[distSel]||30;
 
-  // 4. Operarios
-  var opSel=document.getElementById('num-operarios');
-  var ops=opSel?parseInt(opSel.value)||2:2;
-
-  // El trabajo manual y los pisos se dividen entre operarios
-  // El transporte NO se divide (todos van en el mismo camión)
-  var tiempoTrabajoReal=Math.ceil((totalTrabajoMin+totalPisosMin)/ops);
-  var tiempoTotal=tiempoTrabajoReal+tiempoTransporte;
+  // 4. Cálculo final
+  // Trabajo manual se divide entre operarios
+  // Pisos ya están calculados con los viajes reales (ya tienen en cuenta operarios)
+  // Transporte NO se divide (todos van en el mismo camión)
+  var tiempoTrabajoReal=Math.ceil(totalTrabajoMin/ops);
+  var tiempoTotal=tiempoTrabajoReal+totalPisosMin+tiempoTransporte;
 
   // Formatear
   function fmtT(m){var h=Math.floor(m/60);var mm=m%60;return h>0?(h+'h '+mm+'min'):(mm+' min');}
