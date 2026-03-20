@@ -1227,6 +1227,144 @@ async function PA_SOLO_DRIVE(){
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+//  GENERAR LIQUIDACIÓN FINAL
+// ══════════════════════════════════════════════════════════════
+async function generarLiquidacion(){
+  var number = (document.getElementById('f_ref')||{}).value||'';
+  var clientName = (document.getElementById('f_nom')||{}).value||'';
+  var clientEmail = (document.getElementById('f_email')||{}).value||'';
+  var numRef = parseInt(number,10);
+  if(!number||!number.trim()||numRef<1000){
+    showSyncStatus('⚠ Sin nº cliente. Pulsa "+ Nuevo" primero',4000); return;
+  }
+  // Recoger datos del formulario
+  var clientDni = (document.getElementById('f_dni')||{}).value||'';
+  var clientTel = (document.getElementById('f_tel')||{}).value||'';
+  var dirRec = (document.getElementById('tx-recogida')||{}).value||(document.getElementById('f_rec')||{}).value||'';
+  var dirEnt = (document.getElementById('tx-entrega')||{}).value||(document.getElementById('f_ent')||{}).value||'';
+  var fechaServ = (document.getElementById('tx-fecha')||{}).value||(document.getElementById('f_fserv')||{}).value||'';
+  var horaServ = (document.getElementById('f_hserv')||{}).value||'';
+  var abono = parseFloat((document.getElementById('f_abono')||{}).value)||0;
+
+  // Recoger artículos de la tabla
+  var items=[];var base=0;
+  document.querySelectorAll('#tb .cr').forEach(function(row){
+    var ci=row.querySelector('input[list]');
+    var ns=row.querySelectorAll('input[type=number]');
+    var sel=row.querySelector('select');
+    if(!ci||!ci.value||ci.value==='Salida') return;
+    var u=parseFloat(ns[0]?ns[0].value:0)||0;
+    var p=parseFloat(ns[1]?ns[1].value:0)||0;
+    var d=parseFloat(ns[2]?ns[2].value:0)||0;
+    var tot=u*p*(1-d/100);
+    base+=tot;
+    items.push({concepto:ci.value,zona:sel?sel.value:'',u:u,p:p,d:d,tot:tot});
+  });
+  var iva=base*0.21; var total=base+iva;
+  var pendiente=total-abono; if(pendiente<0) pendiente=0;
+
+  // Formatear fecha
+  var fechaStr='';
+  if(fechaServ){try{fechaStr=new Date(fechaServ+'T12:00:00').toLocaleDateString('es-ES');}catch(e){fechaStr=fechaServ;}}
+  if(horaServ) fechaStr+=' a las '+horaServ+'h';
+  var hoy=new Date().toLocaleDateString('es-ES');
+
+  // Construir HTML de la liquidación
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8">';
+  html+='<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&display=swap" rel="stylesheet">';
+  html+='<style>';
+  html+='*{margin:0;padding:0;box-sizing:border-box}';
+  html+='body{font-family:"Barlow Condensed",sans-serif;color:#222;padding:30px 40px;max-width:800px;margin:auto}';
+  html+='.header{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1B4F8A;padding-bottom:14px;margin-bottom:20px}';
+  html+='.logo-area{font-size:22px;font-weight:800;color:#1B4F8A;letter-spacing:1px}';
+  html+='.logo-area small{display:block;font-size:11px;font-weight:400;color:#666;letter-spacing:0}';
+  html+='.doc-type{background:#1B4F8A;color:#fff;padding:8px 18px;border-radius:4px;font-size:16px;font-weight:700;letter-spacing:1px}';
+  html+='.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-bottom:18px;font-size:13px}';
+  html+='.info-grid .label{font-weight:700;color:#1B4F8A}';
+  html+='table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}';
+  html+='thead th{background:#1B4F8A;color:#fff;padding:8px 10px;text-align:left;font-weight:600}';
+  html+='tbody td{padding:7px 10px;border-bottom:1px solid #ddd}';
+  html+='tbody tr:nth-child(even){background:#f5f7fa}';
+  html+='.totals{margin:16px 0;text-align:right;font-size:14px}';
+  html+='.totals .row{display:flex;justify-content:flex-end;gap:20px;padding:4px 0}';
+  html+='.totals .row .lbl{font-weight:600;min-width:180px;text-align:right}';
+  html+='.totals .row .val{min-width:100px;text-align:right}';
+  html+='.totals .highlight{background:#1B4F8A;color:#fff;padding:8px 14px;border-radius:4px;font-size:16px;font-weight:800;margin-top:6px}';
+  html+='.totals .abono-row{background:#1a7a3f;color:#fff;padding:6px 14px;border-radius:4px;font-weight:700;margin-top:4px}';
+  html+='.totals .pendiente-row{background:#E85C0D;color:#fff;padding:8px 14px;border-radius:4px;font-size:16px;font-weight:800;margin-top:4px}';
+  html+='.totals .pagado-row{background:#1a7a3f;color:#fff;padding:8px 14px;border-radius:4px;font-size:16px;font-weight:800;margin-top:4px}';
+  html+='.footer{margin-top:30px;border-top:2px solid #1B4F8A;padding-top:10px;font-size:10px;color:#666;text-align:center}';
+  html+='.firmas{display:flex;gap:40px;margin-top:30px}';
+  html+='.firma-box{flex:1;text-align:center;padding-top:60px;border-top:1px solid #999;font-size:12px;font-weight:600;color:#555}';
+  html+='</style></head><body>';
+
+  // Header
+  html+='<div class="header"><div class="logo-area">AZKAR MUDANZAS DE BIZKAIA<small>CIF B05308838 · Pol. Martiartu, Arrigorriaga · 946 959 400</small></div>';
+  html+='<div class="doc-type">LIQUIDACIÓN FINAL</div></div>';
+
+  // Info del cliente
+  html+='<div class="info-grid">';
+  html+='<div><span class="label">Nº Presupuesto:</span> '+number+'</div>';
+  html+='<div><span class="label">Fecha liquidación:</span> '+hoy+'</div>';
+  html+='<div><span class="label">Cliente:</span> '+clientName+'</div>';
+  html+='<div><span class="label">DNI/CIF:</span> '+clientDni+'</div>';
+  html+='<div><span class="label">Teléfono:</span> '+clientTel+'</div>';
+  html+='<div><span class="label">Email:</span> '+clientEmail+'</div>';
+  html+='<div><span class="label">Recogida:</span> '+dirRec+'</div>';
+  html+='<div><span class="label">Entrega:</span> '+dirEnt+'</div>';
+  if(fechaStr) html+='<div><span class="label">Fecha servicio:</span> '+fechaStr+'</div>';
+  html+='</div>';
+
+  // Tabla de artículos
+  html+='<table><thead><tr><th>Concepto</th><th>Zona</th><th>Uds.</th><th>Precio</th><th>Dto.</th><th>Total</th></tr></thead><tbody>';
+  items.forEach(function(it){
+    html+='<tr><td>'+it.concepto+'</td><td>'+it.zona+'</td><td>'+it.u+'</td><td>'+FM(it.p)+'</td><td>'+(it.d?it.d+'%':'—')+'</td><td>'+FM(it.tot)+'</td></tr>';
+  });
+  html+='</tbody></table>';
+
+  // Totales con abono
+  html+='<div class="totals">';
+  html+='<div class="row"><span class="lbl">Base imponible:</span><span class="val">'+FM(base)+'</span></div>';
+  html+='<div class="row"><span class="lbl">IVA (21%):</span><span class="val">'+FM(iva)+'</span></div>';
+  html+='<div class="row highlight"><span class="lbl">TOTAL:</span><span class="val">'+FM(total)+'</span></div>';
+  html+='<div class="row abono-row"><span class="lbl">Abono reserva pagado:</span><span class="val">- '+FM(abono)+'</span></div>';
+  if(pendiente>0){
+    html+='<div class="row pendiente-row"><span class="lbl">PENDIENTE DE PAGO:</span><span class="val">'+FM(pendiente)+'</span></div>';
+  } else {
+    html+='<div class="row pagado-row"><span class="lbl">TOTALMENTE PAGADO</span><span class="val">0,00 €</span></div>';
+  }
+  html+='</div>';
+
+  // Firmas
+  html+='<div class="firmas"><div class="firma-box">Encargado Azkar</div><div class="firma-box">Cliente</div></div>';
+
+  // Footer
+  html+='<div class="footer">AZKAR MUDANZAS DE BIZKAIA SL · CIF B05308838 · Pol. Ind. Martiartu, Arrigorriaga, Bizkaia · Tel. 946 959 400 · info@azkarmudanzasdevizcaya.es</div>';
+  html+='</body></html>';
+
+  // Preguntar si enviar por email
+  var enviarEmail=false;
+  if(clientEmail&&clientEmail.includes('@')){
+    enviarEmail=confirm('¿Enviar la liquidación por email al cliente ('+clientEmail+')?');
+  }
+
+  showSyncStatus('⏳ Generando liquidación final...',0);
+  try{
+    if(clientName&&clientName.trim()) await renameDriveFolder(numRef,clientName);
+    var emailToSend=enviarEmail?clientEmail:'';
+    var result=await savePdfViaServer(number,clientName,html,'LIQUIDACION_FINAL',emailToSend);
+    if(result&&result.success){
+      showSyncStatus('✅ Liquidación guardada en Drive → '+number+' '+(clientName||'').toUpperCase()+(enviarEmail?' (email enviado)':''),6000);
+    } else {
+      showSyncStatus('❌ Error: '+(result?(result.error||result.details||'sin respuesta'):'sin conexión'),8000);
+    }
+  }catch(e){
+    console.error('[Liquidación] Error:',e);
+    showSyncStatus('❌ Error: '+e.message,8000);
+  }
+}
+
 /* beforeprint: browser fires this BEFORE rendering print — show all pages */
 var _printMode = 'pdf'; // 'pdf' or 'parte'
 window.addEventListener('beforeprint', function(){
@@ -1764,7 +1902,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v85';
+var APP_VERSION = 'v86';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2870,6 +3008,15 @@ window.addEventListener('DOMContentLoaded', function() {
     soloDriveBtn.title = 'Guarda el PDF en Drive SIN enviar email al cliente';
     soloDriveBtn.onclick = PA_SOLO_DRIVE;
     acts.insertBefore(soloDriveBtn, acts.firstChild);
+
+    // Botón "Liquidación Final"
+    const liqBtn = document.createElement('button');
+    liqBtn.className = 'nbtn';
+    liqBtn.style.cssText = 'background:#E85C0D;color:#fff;margin-right:4px;';
+    liqBtn.innerHTML = '📋 LIQUIDACIÓN';
+    liqBtn.title = 'Genera liquidación final descontando el abono de reserva';
+    liqBtn.onclick = generarLiquidacion;
+    acts.insertBefore(liqBtn, acts.firstChild);
 
     // Botón "Nueva Llamada" para transcripciones
     const callBtn = document.createElement('button');
