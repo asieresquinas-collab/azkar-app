@@ -964,17 +964,23 @@ function CA(){
 
 // ── Calcular tiempo total estimado ──────────────────────────
 function CT(){
-  // 1. Tiempo de artículos: trabajo + 10 min por unidad (media bajar/subir)
+  // 1. Tiempo de artículos: trabajo + acarreo (bajar/subir)
+  // Muebles/electro: 10 min por unidad (se bajan de uno en uno)
+  // Cajas/bultos: 2 min por unidad (se bajan de 3-6 a la vez)
+  var ITEMS_CAJA = ['Cajas/Maletas (max 15kg)','Bultos','Hacer cajas','Cajas'];
   var totalTrabajoMin=0;
   var totalAcarreoMin=0;
   var rows=document.querySelectorAll('.cr');
   for(var i=0;i<rows.length;i++){
     var ti=rows[i].querySelector('.tiempo-input');
     var ns=rows[i].querySelectorAll('input[type=number]');
+    var ci=rows[i].querySelector('input[list]');
     var u=parseFloat(ns[0]?ns[0].value:0)||0;
     var minPorUd=parseFloat(ti?ti.value:0)||0;
+    var concepto=ci?ci.value.trim():'';
     totalTrabajoMin+=u*minPorUd;
-    totalAcarreoMin+=u*10; // +10 min por unidad (bajar + subir media)
+    var esCaja=ITEMS_CAJA.indexOf(concepto)>=0||concepto.toLowerCase().indexOf('caja')>=0;
+    totalAcarreoMin+=u*(esCaja?2:10);
   }
 
   // 2. Transporte
