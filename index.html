@@ -964,53 +964,41 @@ function CA(){
 
 // ── Calcular tiempo total estimado ──────────────────────────
 function CT(){
-  // 1. Tiempo de artículos: trabajo + acarreo (bajar/subir)
-  // Muebles/electro: 10 min por unidad (se bajan de uno en uno)
-  // Cajas/bultos: 2 min por unidad (se bajan de 3-6 a la vez)
-  var ITEMS_CAJA = ['Cajas/Maletas (max 15kg)','Bultos','Hacer cajas','Cajas'];
-  var totalTrabajoMin=0;
-  var totalAcarreoMin=0;
+  // El campo "Min" de cada fila YA incluye TODO: desmontar, forrar, bajar, subir, montar
+  // No se suma nada aparte. Solo se divide entre operarios y se suma transporte.
+  var totalMin=0;
   var rows=document.querySelectorAll('.cr');
   for(var i=0;i<rows.length;i++){
     var ti=rows[i].querySelector('.tiempo-input');
     var ns=rows[i].querySelectorAll('input[type=number]');
-    var ci=rows[i].querySelector('input[list]');
     var u=parseFloat(ns[0]?ns[0].value:0)||0;
     var minPorUd=parseFloat(ti?ti.value:0)||0;
-    var concepto=ci?ci.value.trim():'';
-    totalTrabajoMin+=u*minPorUd;
-    var esCaja=ITEMS_CAJA.indexOf(concepto)>=0||concepto.toLowerCase().indexOf('caja')>=0;
-    totalAcarreoMin+=u*(esCaja?2:10);
+    totalMin+=u*minPorUd;
   }
 
-  // 2. Transporte
+  // Transporte
   var distSel=(document.getElementById('t_distancia')||{}).value||'bilbao';
   var tiempoTransporte=TIEMPOS_TRANSPORTE[distSel]||30;
 
-  // 3. Operarios
+  // Operarios: el trabajo se divide, el transporte no
   var opSel=document.getElementById('num-operarios');
   var ops=opSel?parseInt(opSel.value)||2:2;
-
-  // Trabajo y acarreo se dividen entre operarios
-  // Transporte NO se divide (todos van en el mismo camión)
-  var tiempoTrabajoReal=Math.ceil(totalTrabajoMin/ops);
-  var tiempoAcarreoReal=Math.ceil(totalAcarreoMin/ops);
-  var tiempoTotal=tiempoTrabajoReal+tiempoAcarreoReal+tiempoTransporte;
+  var tiempoTrabajoReal=Math.ceil(totalMin/ops);
+  var tiempoTotal=tiempoTrabajoReal+tiempoTransporte;
 
   // Formatear
   function fmtT(m){var h=Math.floor(m/60);var mm=m%60;return h>0?(h+'h '+mm+'min'):(mm+' min');}
 
   var el=document.getElementById('tiempo-total-valor');
-  if(el) el.textContent=totalTrabajoMin>0?fmtT(tiempoTotal):'—';
+  if(el) el.textContent=totalMin>0?fmtT(tiempoTotal):'—';
   var el2=document.getElementById('tiempo-bruto-valor');
-  if(el2) el2.textContent=totalTrabajoMin>0?fmtT(totalTrabajoMin):'—';
+  if(el2) el2.textContent=totalMin>0?fmtT(totalMin):'—';
 
   // Desglose
   var desg=document.getElementById('tiempo-desglose');
   if(desg){
     var parts=[];
-    if(tiempoTrabajoReal>0) parts.push('Trabajo: '+fmtT(tiempoTrabajoReal));
-    if(tiempoAcarreoReal>0) parts.push('Acarreo: '+fmtT(tiempoAcarreoReal));
+    if(tiempoTrabajoReal>0) parts.push('Servicio: '+fmtT(tiempoTrabajoReal));
     parts.push('Transporte: '+fmtT(tiempoTransporte));
     desg.textContent=parts.join(' + ');
   }
@@ -1389,10 +1377,10 @@ var TIEMPOS_BASE = {
   'Bicicletas':      [5, 0],
   'Piano pared eléctrico': [30, 0],
   'Caballetes':      [5, 0],
-  // Cajas
-  'Cajas/Maletas (max 15kg)': [2, 0],  // caja hecha = solo cargar
-  'Bultos':          [2, 0],
-  'Hacer cajas':     [10, 0],          // media: entre cristalería(15) y ropa(5)
+  // Cajas (incluye bajar+subir, se llevan de 3-6 a la vez → ~3 min por caja)
+  'Cajas/Maletas (max 15kg)': [3, 0],  // caja hecha = cargar + bajar/subir
+  'Bultos':          [3, 0],
+  'Hacer cajas':     [13, 0],          // hacer caja (10 min media) + bajar/subir (3 min)
   'Rag':             [15, 0]
 };
 
