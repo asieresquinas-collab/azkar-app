@@ -1902,7 +1902,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v86';
+var APP_VERSION = 'v87';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2946,7 +2946,40 @@ window.saveAllToDrive = async function() {
   const btn = document.querySelector('[data-save-all-drive]');
   if (btn) btn.innerHTML = '⏳ Guardando...';
 
-  // Get HTML of all 3 documents
+  // ── PASO 1: Guardar datos en IndexedDB + Firebase (para que no se pierdan) ──
+  try {
+    const formData = collectFormData();
+    formData.id = number;
+    await savePresupuesto(formData);
+    if (firebaseConfigured && window._fb) {
+      await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', number), formData);
+    }
+    console.log('[SaveAllToDrive] Datos guardados en IndexedDB + Firebase');
+  } catch(e) { console.warn('[SaveAllToDrive] Error guardando datos:', e); }
+
+  // ── PASO 2: Fijar valores de inputs en el HTML antes de capturarlo ──
+  ['page-presupuesto','page-contrato','page-parte'].forEach(function(pid) {
+    var pg = document.getElementById(pid);
+    if (!pg) return;
+    pg.querySelectorAll('input, textarea').forEach(function(inp) {
+      inp.setAttribute('value', inp.value || '');
+      if (inp.type === 'checkbox' || inp.type === 'radio') {
+        if (inp.checked) inp.setAttribute('checked', 'checked');
+        else inp.removeAttribute('checked');
+      }
+    });
+    pg.querySelectorAll('select').forEach(function(sel) {
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].selected) sel.options[i].setAttribute('selected', 'selected');
+        else sel.options[i].removeAttribute('selected');
+      }
+    });
+    pg.querySelectorAll('textarea').forEach(function(ta) {
+      ta.textContent = ta.value || '';
+    });
+  });
+
+  // ── PASO 3: Capturar HTML con valores actuales y subir a Drive ──
   const presupuesto_html = document.getElementById('page-presupuesto') ? document.getElementById('page-presupuesto').outerHTML : '';
   const contrato_html = document.getElementById('page-contrato') ? document.getElementById('page-contrato').outerHTML : '';
   const parte_html = document.getElementById('page-parte') ? document.getElementById('page-parte').outerHTML : '';
@@ -2965,16 +2998,19 @@ window.saveAllToDrive = async function() {
   const res3 = await saveToDrive(number, clientName, parte_html, 'PARTE_TRABAJO');
   if (res3 && res3.success) saved_count++;
 
+  // ── PASO 4: Backup automático a Drive ──
+  scheduleBackup();
+
   if (btn) {
     btn.innerHTML = '✓ ¡Guardados!';
     btn.style.opacity = '0.7';
     setTimeout(() => {
-      btn.innerHTML = '💾 Guardar en Drive';
+      btn.innerHTML = '💾 GUARDAR EN DRIVE';
       btn.style.opacity = '';
     }, 2000);
   }
 
-  showSyncStatus(saved_count + '/3 documentos guardados en Drive');
+  showSyncStatus('✅ ' + saved_count + '/3 documentos guardados en Drive + datos sincronizados');
 };
 
 // ══════════════════════════════════════════════════════════════
