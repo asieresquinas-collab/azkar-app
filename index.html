@@ -3034,8 +3034,11 @@ window.saveAllToDrive = async function() {
     var el = document.getElementById(fid);
     if (el && el.value && el.value.trim()) hayDatos = true;
   });
-  document.querySelectorAll('#tb .cr input[list]').forEach(function(inp) {
-    if (inp.value && inp.value.trim()) hayDatos = true;
+  document.querySelectorAll('#tb .cr').forEach(function(row) {
+    // Ignorar la fila fija de "Salida" — no cuenta como dato real
+    if (row.getAttribute('data-fijo') === 'salida') return;
+    var inp = row.querySelector('input[list]');
+    if (inp && inp.value && inp.value.trim()) hayDatos = true;
   });
 
   let saved_count = 0;
