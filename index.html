@@ -1909,7 +1909,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v91';
+var APP_VERSION = 'v92';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -3014,24 +3014,10 @@ window.saveAllToDrive = async function() {
     return;
   }
 
-  // Verificar que hay al menos algún dato en el presupuesto (dirección, concepto, teléfono...)
-  var hayDatos = false;
-  ['f_tel','f_email','f_rec','f_ent'].forEach(function(fid) {
-    var el = document.getElementById(fid);
-    if (el && el.value && el.value.trim()) hayDatos = true;
-  });
-  // También comprobar si hay conceptos en la tabla
-  document.querySelectorAll('#tb .cr input[list]').forEach(function(inp) {
-    if (inp.value && inp.value.trim()) hayDatos = true;
-  });
-  if (!hayDatos) {
-    if (!confirm('El presupuesto parece estar vacío (sin teléfono, email, direcciones ni conceptos).\n\n¿Seguro que quieres guardarlo en Drive?')) return;
-  }
-
   const btn = document.querySelector('[data-save-all-drive]');
   if (btn) btn.innerHTML = '⏳ Guardando...';
 
-  // ── PASO 1: Guardar datos en IndexedDB + Firebase (para que no se pierdan) ──
+  // ── PASO 1: SIEMPRE guardar datos en IndexedDB + Firebase (reservar el número) ──
   try {
     const formData = collectFormData();
     formData.id = number;
@@ -3042,46 +3028,68 @@ window.saveAllToDrive = async function() {
     console.log('[SaveAllToDrive] Datos guardados en IndexedDB + Firebase');
   } catch(e) { console.warn('[SaveAllToDrive] Error guardando datos:', e); }
 
-  // ── PASO 2: Fijar valores de inputs en el HTML antes de capturarlo ──
-  ['page-presupuesto','page-contrato','page-parte'].forEach(function(pid) {
-    var pg = document.getElementById(pid);
-    if (!pg) return;
-    pg.querySelectorAll('input, textarea').forEach(function(inp) {
-      inp.setAttribute('value', inp.value || '');
-      if (inp.type === 'checkbox' || inp.type === 'radio') {
-        if (inp.checked) inp.setAttribute('checked', 'checked');
-        else inp.removeAttribute('checked');
-      }
-    });
-    pg.querySelectorAll('select').forEach(function(sel) {
-      for (var i = 0; i < sel.options.length; i++) {
-        if (sel.options[i].selected) sel.options[i].setAttribute('selected', 'selected');
-        else sel.options[i].removeAttribute('selected');
-      }
-    });
-    pg.querySelectorAll('textarea').forEach(function(ta) {
-      ta.textContent = ta.value || '';
-    });
+  // Verificar si hay datos reales en el presupuesto (dirección, concepto, teléfono...)
+  var hayDatos = false;
+  ['f_tel','f_email','f_rec','f_ent'].forEach(function(fid) {
+    var el = document.getElementById(fid);
+    if (el && el.value && el.value.trim()) hayDatos = true;
   });
-
-  // ── PASO 3: Capturar HTML con valores actuales y subir a Drive ──
-  const presupuesto_html = document.getElementById('page-presupuesto') ? document.getElementById('page-presupuesto').outerHTML : '';
-  const contrato_html = document.getElementById('page-contrato') ? document.getElementById('page-contrato').outerHTML : '';
-  const parte_html = document.getElementById('page-parte') ? document.getElementById('page-parte').outerHTML : '';
+  document.querySelectorAll('#tb .cr input[list]').forEach(function(inp) {
+    if (inp.value && inp.value.trim()) hayDatos = true;
+  });
 
   let saved_count = 0;
 
-  // Save PRESUPUESTO
-  const res1 = await saveToDrive(number, clientName, presupuesto_html, 'PRESUPUESTO');
-  if (res1 && res1.success) saved_count++;
+  if (hayDatos) {
+    // ── PASO 2: Fijar valores de inputs en el HTML antes de capturarlo ──
+    ['page-presupuesto','page-contrato','page-parte'].forEach(function(pid) {
+      var pg = document.getElementById(pid);
+      if (!pg) return;
+      pg.querySelectorAll('input, textarea').forEach(function(inp) {
+        inp.setAttribute('value', inp.value || '');
+        if (inp.type === 'checkbox' || inp.type === 'radio') {
+          if (inp.checked) inp.setAttribute('checked', 'checked');
+          else inp.removeAttribute('checked');
+        }
+      });
+      pg.querySelectorAll('select').forEach(function(sel) {
+        for (var i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].selected) sel.options[i].setAttribute('selected', 'selected');
+          else sel.options[i].removeAttribute('selected');
+        }
+      });
+      pg.querySelectorAll('textarea').forEach(function(ta) {
+        ta.textContent = ta.value || '';
+      });
+    });
 
-  // Save CONTRATO
-  const res2 = await saveToDrive(number, clientName, contrato_html, 'CONTRATO');
-  if (res2 && res2.success) saved_count++;
+    // ── PASO 3: Capturar HTML con valores actuales y subir a Drive ──
+    const presupuesto_html = document.getElementById('page-presupuesto') ? document.getElementById('page-presupuesto').outerHTML : '';
+    const contrato_html = document.getElementById('page-contrato') ? document.getElementById('page-contrato').outerHTML : '';
+    const parte_html = document.getElementById('page-parte') ? document.getElementById('page-parte').outerHTML : '';
 
-  // Save PARTE_TRABAJO
-  const res3 = await saveToDrive(number, clientName, parte_html, 'PARTE_TRABAJO');
-  if (res3 && res3.success) saved_count++;
+    // Save PRESUPUESTO
+    const res1 = await saveToDrive(number, clientName, presupuesto_html, 'PRESUPUESTO');
+    if (res1 && res1.success) saved_count++;
+
+    // Save CONTRATO
+    const res2 = await saveToDrive(number, clientName, contrato_html, 'CONTRATO');
+    if (res2 && res2.success) saved_count++;
+
+    // Save PARTE_TRABAJO
+    const res3 = await saveToDrive(number, clientName, parte_html, 'PARTE_TRABAJO');
+    if (res3 && res3.success) saved_count++;
+  } else {
+    // Sin datos reales: solo crear la carpeta en Drive (reservar número) sin subir archivos vacíos
+    try {
+      const numRef = parseInt(number, 10);
+      if (numRef >= 1000) {
+        await createDriveFolder(numRef);
+        await renameDriveFolder(numRef, clientName);
+        console.log('[SaveAllToDrive] Carpeta creada/renombrada en Drive (sin archivos HTML)');
+      }
+    } catch(e) { console.warn('[SaveAllToDrive] Error creando carpeta:', e); }
+  }
 
   // ── PASO 4: Backup automático a Drive ──
   scheduleBackup();
