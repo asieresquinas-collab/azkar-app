@@ -1909,7 +1909,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v99';
+var APP_VERSION = 'v100';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2622,7 +2622,7 @@ function abrirWhatsApp() {
   // Quitar el + si lo tiene
   num = num.replace(/^\+/, '');
   var nombre = (document.getElementById('f_nom') || {}).value || '';
-  var texto = nombre ? 'Hola ' + nombre + ', le escribo desde Azkar Mudanzas de Vizcaya.' : '';
+  var texto = 'Hola buenos días, mi nombre es Asier de Azkar Mudanzas, ¿con quién tengo el gusto de hablar? Disculpa no haberte podido contestar, estaba en otra llamada.';
   var textoEnc = texto ? encodeURIComponent(texto) : '';
   // En Android: abrir WhatsApp Business directamente (paquete com.whatsapp.w4b)
   var isAndroid = /android/i.test(navigator.userAgent);
