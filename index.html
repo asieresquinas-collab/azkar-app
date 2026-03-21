@@ -1909,7 +1909,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v97';
+var APP_VERSION = 'v98';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2609,7 +2609,7 @@ function apiHeaders(extra) {
   return h;
 }
 
-// ── WhatsApp: abrir conversación con el número del cliente ──
+// ── WhatsApp Business: abrir conversación con el número del cliente ──
 function abrirWhatsApp() {
   var tel = (document.getElementById('f_tel') || {}).value || '';
   if (!tel || tel.trim().length < 6) { alert('Escribe primero el número de teléfono del cliente'); return; }
@@ -2622,10 +2622,17 @@ function abrirWhatsApp() {
   // Quitar el + si lo tiene
   num = num.replace(/^\+/, '');
   var nombre = (document.getElementById('f_nom') || {}).value || '';
-  var url = 'https://wa.me/' + num;
-  // Si hay nombre, precargar un saludo
-  if (nombre) url += '?text=' + encodeURIComponent('Hola ' + nombre + ', le escribo desde Azkar Mudanzas de Vizcaya.');
-  window.open(url, '_blank');
+  var texto = nombre ? 'Hola ' + nombre + ', le escribo desde Azkar Mudanzas de Vizcaya.' : '';
+  var textoEnc = texto ? encodeURIComponent(texto) : '';
+  // En Android: abrir WhatsApp Business directamente (paquete com.whatsapp.w4b)
+  var isAndroid = /android/i.test(navigator.userAgent);
+  if (isAndroid) {
+    var intentUrl = 'intent://send/' + num + (textoEnc ? '?text=' + textoEnc : '') + '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=' + encodeURIComponent('https://wa.me/' + num + (textoEnc ? '?text=' + textoEnc : '')) + ';end';
+    window.location.href = intentUrl;
+  } else {
+    // iOS u otros: usar wa.me (no hay forma de forzar Business en iOS)
+    window.open('https://wa.me/' + num + (textoEnc ? '?text=' + textoEnc : ''), '_blank');
+  }
 }
 
 var _backupTimer = null;
