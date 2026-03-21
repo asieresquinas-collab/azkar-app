@@ -1909,22 +1909,87 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v95';
+var APP_VERSION = 'v96';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
-    // Solo limpiar caches, NO desregistrar el SW (rompe la instalación PWA en Android)
+    // Limpiar TODO: caches + desregistrar SW + localStorage de versión
     var names = await caches.keys();
     for (var i = 0; i < names.length; i++) await caches.delete(names[i]);
     localStorage.removeItem('azkar-app-version');
-    localStorage.setItem('azkar-app-version', APP_VERSION);
-    // Forzar actualización del SW sin desregistrarlo
+    // Desregistrar SW y volver a registrar (más agresivo para móvil)
     if ('serviceWorker' in navigator) {
       var regs = await navigator.serviceWorker.getRegistrations();
-      for (var i = 0; i < regs.length; i++) await regs[i].update();
+      for (var i = 0; i < regs.length; i++) await regs[i].unregister();
     }
+    // Pequeña pausa para que el SW se desregistre completamente
+    await new Promise(function(r) { setTimeout(r, 300); });
     window.location.href = window.location.pathname;
   })();
+}
+// ── Test de conexión con ?test=1 ──────────────────────
+if (window.location.search.indexOf('test=1') > -1) {
+  window.addEventListener('DOMContentLoaded', async function() {
+    var panel = document.createElement('div');
+    panel.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#1a2a4a;color:#fff;padding:20px;font-family:monospace;font-size:14px;overflow-y:auto;';
+    panel.innerHTML = '<h2 style="color:#E85C0D;margin:0 0 15px;">🔧 AZKAR - Test de Conexión</h2><div id="test-log"></div>';
+    document.body.innerHTML = '';
+    document.body.appendChild(panel);
+    var log = document.getElementById('test-log');
+    function addLog(msg, color) { log.innerHTML += '<div style="margin:6px 0;color:'+(color||'#fff')+'">'+msg+'</div>'; }
+    addLog('📱 App Version: ' + APP_VERSION, '#4fc3f7');
+    addLog('🌐 User Agent: ' + navigator.userAgent.substring(0,80), '#90a4ae');
+    addLog('📡 Online: ' + navigator.onLine, navigator.onLine ? '#66bb6a' : '#ef5350');
+    // SW status
+    try {
+      var regs = await navigator.serviceWorker.getRegistrations();
+      addLog('⚙️ Service Workers: ' + regs.length, '#4fc3f7');
+      regs.forEach(function(r,i) { addLog('  SW['+i+']: ' + (r.active ? 'activo' : r.installing ? 'instalando' : r.waiting ? 'esperando' : 'inactivo'), '#b0bec5'); });
+    } catch(e) { addLog('⚙️ SW Error: ' + e.message, '#ef5350'); }
+    // Cache status
+    try {
+      var cacheNames = await caches.keys();
+      addLog('📦 Caches: ' + (cacheNames.length ? cacheNames.join(', ') : 'ninguno'), '#4fc3f7');
+    } catch(e) { addLog('📦 Cache Error: ' + e.message, '#ef5350'); }
+    // Test 1: Health check
+    addLog('<br><b>── Tests de conexión ──</b>', '#E85C0D');
+    try {
+      addLog('🔄 Test 1: Health check...', '#fff59d');
+      var t0 = Date.now();
+      var r1 = await fetch(RAILWAY_API + '/api/health');
+      var d1 = await r1.json();
+      addLog('✅ Health: ' + d1.status + ' v' + d1.version + ' (' + (Date.now()-t0) + 'ms)', '#66bb6a');
+    } catch(e) { addLog('❌ Health FALLÓ: ' + e.message, '#ef5350'); }
+    // Test 2: CORS preflight
+    try {
+      addLog('🔄 Test 2: CORS (POST con headers)...', '#fff59d');
+      var t1 = Date.now();
+      var r2 = await fetch(RAILWAY_API + '/api/health', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      addLog('✅ CORS POST: HTTP ' + r2.status + ' (' + (Date.now()-t1) + 'ms)', '#66bb6a');
+    } catch(e) { addLog('❌ CORS POST FALLÓ: ' + e.message, '#ef5350'); }
+    // Test 3: Firma endpoint
+    try {
+      addLog('🔄 Test 3: Firma crear (sin datos)...', '#fff59d');
+      var t2 = Date.now();
+      var r3 = await fetch(RAILWAY_API + '/api/firma/crear', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({numero:'TEST',nombre:'TEST'}) });
+      var d3 = await r3.json();
+      addLog((r3.ok ? '✅' : '⚠️') + ' Firma: HTTP ' + r3.status + ' (' + (Date.now()-t2) + 'ms) → ' + JSON.stringify(d3).substring(0,100), r3.ok ? '#66bb6a' : '#ffb74d');
+    } catch(e) { addLog('❌ Firma FALLÓ: ' + e.message, '#ef5350'); }
+    // Test 4: Drive folders
+    try {
+      addLog('🔄 Test 4: Drive folders...', '#fff59d');
+      var t3 = Date.now();
+      var r4 = await fetch(RAILWAY_API + '/api/drive/folders', { headers: apiHeaders() });
+      addLog((r4.ok ? '✅' : '⚠️') + ' Drive: HTTP ' + r4.status + ' (' + (Date.now()-t3) + 'ms)', r4.ok ? '#66bb6a' : '#ffb74d');
+    } catch(e) { addLog('❌ Drive FALLÓ: ' + e.message, '#ef5350'); }
+    // localStorage check
+    addLog('<br><b>── LocalStorage ──</b>', '#E85C0D');
+    addLog('azkar-app-version: ' + (localStorage.getItem('azkar-app-version') || 'NO SET'), '#4fc3f7');
+    addLog('azkar-api-key: ' + (localStorage.getItem('azkar-api-key') ? 'SET (' + localStorage.getItem('azkar-api-key').length + ' chars)' : 'NO SET (no requerido)'), '#4fc3f7');
+    // Botón para limpiar y recargar
+    addLog('<br><button onclick="caches.keys().then(function(n){return Promise.all(n.map(function(k){return caches.delete(k)}))}).then(function(){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(reg){reg.unregister()});localStorage.removeItem(\'azkar-app-version\');setTimeout(function(){window.location.href=window.location.pathname},500)})})" style="background:#E85C0D;color:#fff;border:none;padding:12px 24px;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;margin-top:10px;">🔄 LIMPIAR TODO Y RECARGAR</button>', '#fff');
+    addLog('<button onclick="window.location.href=window.location.pathname" style="background:#1B4F8A;color:#fff;border:none;padding:12px 24px;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;margin-top:10px;margin-left:10px;">← VOLVER A LA APP</button>', '#fff');
+  });
 }
 // ── Modo diagnóstico con ?debug=1 ──────────────────────
 if (window.location.search.indexOf('debug=1') > -1) {
