@@ -1909,7 +1909,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v98';
+var APP_VERSION = 'v99';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2627,7 +2627,7 @@ function abrirWhatsApp() {
   // En Android: abrir WhatsApp Business directamente (paquete com.whatsapp.w4b)
   var isAndroid = /android/i.test(navigator.userAgent);
   if (isAndroid) {
-    var intentUrl = 'intent://send/' + num + (textoEnc ? '?text=' + textoEnc : '') + '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=' + encodeURIComponent('https://wa.me/' + num + (textoEnc ? '?text=' + textoEnc : '')) + ';end';
+    var intentUrl = 'intent://send?phone=' + num + (textoEnc ? '&text=' + textoEnc : '') + '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=' + encodeURIComponent('https://wa.me/' + num + (textoEnc ? '?text=' + textoEnc : '')) + ';end';
     window.location.href = intentUrl;
   } else {
     // iOS u otros: usar wa.me (no hay forma de forzar Business en iOS)
