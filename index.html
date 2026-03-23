@@ -179,6 +179,10 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 <div class='fi'><label>OBSERVACIONES</label><div class='pt-field pt-obs' id='pt_obs'>—</div></div>
 </div>
 </div>
+<div id="pt-zbe-info" class='sec' style='display:none;'>
+<div class='sbar'>Zona de Bajas Emisiones (ZBE)</div>
+<div id="pt-zbe-content" style="padding:8px 12px;font-size:13px;"></div>
+</div>
 <div class='sec'>
 <div class='sbar'>Listado de enseres a trasladar</div>
 <div id='pt_table'>
@@ -1909,7 +1913,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v102';
+var APP_VERSION = 'v103';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -4850,6 +4854,36 @@ function txCreatePresupuesto() {
 
     window._verificarZBE = verificarZBE;
     window._ZBE_DB = ZBE_DB;
+
+    // === ZBE en Parte de Trabajo ===
+    (function() {
+      var _origPrintParte = window.PRINT_PARTE;
+      if (!_origPrintParte) return;
+      window.PRINT_PARTE = async function() {
+        var zbePtDiv = document.getElementById('pt-zbe-info');
+        var zbePtContent = document.getElementById('pt-zbe-content');
+        if (zbePtDiv && zbePtContent) {
+          var zbeRec = document.getElementById('zbe-f-recogida');
+          var zbeEnt = document.getElementById('zbe-f-entrega');
+          var html = '';
+          if (zbeRec && zbeRec.style.display !== 'none' && zbeRec.innerHTML.length > 10) {
+            html += '<div style="margin-bottom:6px;"><strong>Recogida:</strong></div>' + zbeRec.innerHTML;
+          }
+          if (zbeEnt && zbeEnt.style.display !== 'none' && zbeEnt.innerHTML.length > 10) {
+            html += '<div style="margin-bottom:6px;margin-top:8px;"><strong>Entrega:</strong></div>' + zbeEnt.innerHTML;
+          }
+          if (html) {
+            zbePtContent.innerHTML = html;
+            zbePtDiv.style.display = 'block';
+          }
+        }
+        try {
+          return await _origPrintParte.apply(this, arguments);
+        } finally {
+          if (zbePtDiv) { zbePtDiv.style.display = 'none'; }
+        }
+      };
+    })();
 })();
 
 // ── LÍNEA DE KM EN PRESUPUESTO ──────────────────────────────
