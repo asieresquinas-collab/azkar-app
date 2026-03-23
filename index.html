@@ -1138,17 +1138,17 @@ async function PA(){
     }
 
     // Construir HTML completo con estilos y datos del formulario
-    // === v105: Ocultar ZBE del presupuesto (solo visible en Parte de Trabajo) ===
+    // === v105b: Ocultar ZBE del presupuesto vaciando innerHTML (buildCompleteHTML revierte display:none) ===
     var zbeRec = document.getElementById('zbe-f-recogida');
     var zbeEnt = document.getElementById('zbe-f-entrega');
-    var zbeRecDisplay = zbeRec ? zbeRec.style.display : '';
-    var zbeEntDisplay = zbeEnt ? zbeEnt.style.display : '';
-    if (zbeRec) zbeRec.style.display = 'none';
-    if (zbeEnt) zbeEnt.style.display = 'none';
+    var zbeRecHTML = zbeRec ? zbeRec.innerHTML : '';
+    var zbeEntHTML = zbeEnt ? zbeEnt.innerHTML : '';
+    if (zbeRec) zbeRec.innerHTML = '';
+    if (zbeEnt) zbeEnt.innerHTML = '';
     var completeHTML = buildCompleteHTML(['page-dossier', 'page-presupuesto', 'page-contrato']);
     // Restaurar ZBE despues de capturar HTML
-    if (zbeRec) zbeRec.style.display = zbeRecDisplay;
-    if (zbeEnt) zbeEnt.style.display = zbeEntDisplay;
+    if (zbeRec) zbeRec.innerHTML = zbeRecHTML;
+    if (zbeEnt) zbeEnt.innerHTML = zbeEntHTML;
 
     // Crear sesión de firma si hay email del cliente
     var firmaUrl = '';
