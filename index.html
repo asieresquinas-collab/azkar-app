@@ -1909,7 +1909,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v101';
+var APP_VERSION = 'v102';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -4292,7 +4292,6 @@ ST = function(tab) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
         <div>
           <div class="fi"><label>Dirección recogida</label><input type="text" id="tx-recogida" placeholder="Ej: Calle Gran Vía 50, Bilbao"></div>
-          <div id="zbe-recogida" style="display:none;"></div>
           <div id="sv-recogida" style="margin-top:6px;display:none;">
             <div style="display:flex;gap:6px;">
               <iframe id="sv-recogida-street" style="width:50%;height:220px;border:2px solid var(--gb);border-radius:4px;" allowfullscreen></iframe>
@@ -4303,7 +4302,6 @@ ST = function(tab) {
         </div>
         <div>
           <div class="fi"><label>Dirección entrega</label><input type="text" id="tx-entrega" placeholder="Ej: Avenida Lehendakari Aguirre 12, Bilbao"></div>
-          <div id="zbe-entrega" style="display:none;"></div>
           <div id="sv-entrega" style="margin-top:6px;display:none;">
             <div style="display:flex;gap:6px;">
               <iframe id="sv-entrega-street" style="width:50%;height:220px;border:2px solid var(--gb);border-radius:4px;" allowfullscreen></iframe>
@@ -4815,29 +4813,43 @@ function txCreatePresupuesto() {
     else { container.innerHTML = ''; container.style.display = 'none'; }
   }
 
-  var txRec = document.getElementById('tx-recogida');
-  var txEnt = document.getElementById('tx-entrega');
-  var zbeTimerRec = null; var zbeTimerEnt = null;
-  if (txRec) {
-    txRec.addEventListener('input', function() { clearTimeout(zbeTimerRec); zbeTimerRec = setTimeout(function() { verificarZBE(txRec.value, 'zbe-recogida'); }, 1200); });
-    txRec.addEventListener('blur', function() { clearTimeout(zbeTimerRec); verificarZBE(txRec.value, 'zbe-recogida'); });
-  }
-  if (txEnt) {
-    txEnt.addEventListener('input', function() { clearTimeout(zbeTimerEnt); zbeTimerEnt = setTimeout(function() { verificarZBE(txEnt.value, 'zbe-entrega'); }, 1200); });
-    txEnt.addEventListener('blur', function() { clearTimeout(zbeTimerEnt); verificarZBE(txEnt.value, 'zbe-entrega'); });
-  }
-  var origZbePopulate = window.populateFormFromTranscription;
-  if (origZbePopulate) {
-    window.populateFormFromTranscription = function(d) {
-      origZbePopulate(d);
-      setTimeout(function() {
-        if (txRec && txRec.value) verificarZBE(txRec.value, 'zbe-recogida');
-        if (txEnt && txEnt.value) verificarZBE(txEnt.value, 'zbe-entrega');
-      }, 600);
-    };
-  }
-  window._verificarZBE = verificarZBE;
-  window._ZBE_DB = ZBE_DB;
+  var fRec = document.getElementById('f_rec');
+    var fEnt = document.getElementById('f_ent');
+    var zbeTimerFRec = null; var zbeTimerFEnt = null;
+
+    function crearContenedorZBE(campo, idC) {
+      if (!campo || document.getElementById(idC)) return;
+      var div = document.createElement('div');
+      div.id = idC;
+      div.style.display = 'none';
+      var parent = campo.closest('.fi') || campo.parentElement;
+      if (parent && parent.parentElement) parent.parentElement.insertBefore(div, parent.nextSibling);
+    }
+    crearContenedorZBE(fRec, 'zbe-f-recogida');
+    crearContenedorZBE(fEnt, 'zbe-f-entrega');
+
+    if (fRec) {
+      fRec.addEventListener('input', function() { clearTimeout(zbeTimerFRec); zbeTimerFRec = setTimeout(function() { verificarZBE(fRec.value, 'zbe-f-recogida'); }, 1200); });
+      fRec.addEventListener('blur', function() { clearTimeout(zbeTimerFRec); verificarZBE(fRec.value, 'zbe-f-recogida'); });
+    }
+    if (fEnt) {
+      fEnt.addEventListener('input', function() { clearTimeout(zbeTimerFEnt); zbeTimerFEnt = setTimeout(function() { verificarZBE(fEnt.value, 'zbe-f-entrega'); }, 1200); });
+      fEnt.addEventListener('blur', function() { clearTimeout(zbeTimerFEnt); verificarZBE(fEnt.value, 'zbe-f-entrega'); });
+    }
+
+    var origZbePopulate = window.populateFormFromTranscription;
+    if (origZbePopulate) {
+      window.populateFormFromTranscription = function(d) {
+        origZbePopulate(d);
+        setTimeout(function() {
+          if (fRec && fRec.value) verificarZBE(fRec.value, 'zbe-f-recogida');
+          if (fEnt && fEnt.value) verificarZBE(fEnt.value, 'zbe-f-entrega');
+        }, 600);
+      };
+    }
+
+    window._verificarZBE = verificarZBE;
+    window._ZBE_DB = ZBE_DB;
 })();
 
 // ── LÍNEA DE KM EN PRESUPUESTO ──────────────────────────────
