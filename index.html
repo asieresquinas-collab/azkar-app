@@ -2164,6 +2164,11 @@ function collectFormData() {
   });
   data.rows = rows;
   data.timestamp = Date.now();
+  // Preservar _enMarcha si el presupuesto ya estaba en marcha
+  if (window._currentEnMarcha) {
+    data._enMarcha = true;
+    if (window._currentEnMarchaDate) data._enMarchaDate = window._currentEnMarchaDate;
+  }
   return data;
 }
 
@@ -2433,6 +2438,9 @@ async function loadPresupuesto(id) {
   document.querySelectorAll('#tb .cr').forEach(cr => cr.remove());
   rid = 0;
   restoreFormData(data);
+  // Preservar estado en marcha del presupuesto cargado
+  window._currentEnMarcha = !!data._enMarcha;
+  window._currentEnMarchaDate = data._enMarchaDate || null;
   closeMgr();
   if (typeof ST === 'function') ST('presupuesto');
   showSyncStatus('📄 Presupuesto cargado');
@@ -2447,6 +2455,8 @@ async function newPresupuesto() {
   var tbReset = document.getElementById('tb');
   if (tbReset) tbReset.querySelectorAll('.cr').forEach(function(r) { r.remove(); });
   rid = 0;
+  window._currentEnMarcha = false;
+  window._currentEnMarchaDate = null;
   if (typeof AUTO_INIT === 'function') AUTO_INIT();
   if (typeof AR_SALIDA === 'function') AR_SALIDA();
   closeMgr();
