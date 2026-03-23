@@ -1909,7 +1909,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v100';
+var APP_VERSION = 'v101';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -4292,6 +4292,7 @@ ST = function(tab) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
         <div>
           <div class="fi"><label>Dirección recogida</label><input type="text" id="tx-recogida" placeholder="Ej: Calle Gran Vía 50, Bilbao"></div>
+          <div id="zbe-recogida" style="display:none;"></div>
           <div id="sv-recogida" style="margin-top:6px;display:none;">
             <div style="display:flex;gap:6px;">
               <iframe id="sv-recogida-street" style="width:50%;height:220px;border:2px solid var(--gb);border-radius:4px;" allowfullscreen></iframe>
@@ -4302,6 +4303,7 @@ ST = function(tab) {
         </div>
         <div>
           <div class="fi"><label>Dirección entrega</label><input type="text" id="tx-entrega" placeholder="Ej: Avenida Lehendakari Aguirre 12, Bilbao"></div>
+          <div id="zbe-entrega" style="display:none;"></div>
           <div id="sv-entrega" style="margin-top:6px;display:none;">
             <div style="display:flex;gap:6px;">
               <iframe id="sv-entrega-street" style="width:50%;height:220px;border:2px solid var(--gb);border-radius:4px;" allowfullscreen></iframe>
@@ -4701,6 +4703,141 @@ function txCreatePresupuesto() {
       }, 500);
     };
   }
+})();
+
+// ── DETECTOR DE ZONAS DE BAJAS EMISIONES (ZBE) ─────────────
+(function() {
+  var ZBE_DB = {
+    'bilbao': { nombre: 'Bilbao', sinEtiqueta: 'PROHIBIDO (exención grúa Azkar hasta 2029)', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón NO puede entrar. Grúa tiene exención hasta 2029 por estar modificada. Furgoneta y Mercedes sin problema.', nivel: 'warning' },
+    'vitoria': { nombre: 'Vitoria-Gasteiz', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa desde septiembre 2025. Cabezón y Grúa NO pueden entrar. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'vitoria-gasteiz': { ref: 'vitoria' }, 'gasteiz': { ref: 'vitoria' },
+    'donostia': { nombre: 'Donostia-San Sebastián', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa desde diciembre 2024. Cabezón y Grúa NO pueden entrar. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'san sebastian': { ref: 'donostia' }, 'san sebastián': { ref: 'donostia' },
+    'madrid': { nombre: 'Madrid', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO (restricciones en Distrito Centro)', etiquetaC: 'PERMITIDO', notas: 'ZBE todo el municipio. Cabezón y Grúa NO pueden entrar. Furgoneta con precaución en centro. Mercedes sin problema.', nivel: 'danger' },
+    'barcelona': { nombre: 'Barcelona', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO (prohibido en episodios contaminación, prohibido total desde 2028)', etiquetaC: 'PERMITIDO', notas: 'ZBE Rondas. Cabezón y Grúa NO. Furgoneta OK pero limitada en episodios de contaminación y prohibida desde 2028. Mercedes OK.', nivel: 'danger' },
+    'valencia': { nombre: 'Valencia', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO pueden entrar. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'sevilla': { nombre: 'Sevilla', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO pueden entrar. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'málaga': { nombre: 'Málaga', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa desde noviembre 2025. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'malaga': { ref: 'málaga' },
+    'zaragoza': { nombre: 'Zaragoza', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa desde diciembre 2025. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'granada': { nombre: 'Granada', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa desde octubre 2025. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'córdoba': { nombre: 'Córdoba', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'cordoba': { ref: 'córdoba' },
+    'pontevedra': { nombre: 'Pontevedra', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'a coruña': { nombre: 'A Coruña', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'coruña': { ref: 'a coruña' },
+    'valladolid': { nombre: 'Valladolid', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'badalona': { nombre: 'Badalona', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO (prohibido total desde 2028)', etiquetaC: 'PERMITIDO', notas: 'ZBE metropolitana Barcelona. Mismas normas que Barcelona.', nivel: 'danger' },
+    'sabadell': { nombre: 'Sabadell', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO (prohibido total desde 2028)', etiquetaC: 'PERMITIDO', notas: 'ZBE activa desde diciembre 2025. Mismas normas que Barcelona.', nivel: 'danger' },
+    'hospitalet': { nombre: "L'Hospitalet de Llobregat", sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO (prohibido total desde 2028)', etiquetaC: 'PERMITIDO', notas: 'ZBE metropolitana Barcelona.', nivel: 'danger' },
+    'murcia': { nombre: 'Murcia', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'palma': { nombre: 'Palma de Mallorca', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'palma de mallorca': { ref: 'palma' },
+    'las palmas': { nombre: 'Las Palmas de Gran Canaria', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'gijón': { nombre: 'Gijón', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'gijon': { ref: 'gijón' },
+    'santander': { nombre: 'Santander', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'pamplona': { nombre: 'Pamplona', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'logroño': { nombre: 'Logroño', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
+    'burgos': { nombre: 'Burgos', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' }
+  };
+
+  var VEHICULOS = [
+    { nombre: 'Mercedes (camión)', etiqueta: 'C', icono: '🟢' },
+    { nombre: 'Furgoneta', etiqueta: 'B', icono: '🟡' },
+    { nombre: 'Cabezón (camión)', etiqueta: null, icono: '🔴' },
+    { nombre: 'Grúa', etiqueta: null, icono: '🔴', excepcionBilbao: true }
+  ];
+
+  function extraerCiudad(direccion) {
+    if (!direccion || direccion.trim().length < 3) return null;
+    var dir = direccion.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    var ciudades = Object.keys(ZBE_DB);
+    var encontrada = null;
+    var maxLen = 0;
+    for (var i = 0; i < ciudades.length; i++) {
+      var c = ciudades[i];
+      var cNorm = c.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      var regex = new RegExp('(?:,\\s*|\\b)' + cNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\// ── LÍNEA DE KM EN PRESUPUESTO') + '(?:\\s*,|\\s*$|\\b)', 'i');
+      if (regex.test(dir) && c.length > maxLen) { encontrada = c; maxLen = c.length; }
+    }
+    return encontrada;
+  }
+
+  function getZBE(ciudad) {
+    if (!ciudad) return null;
+    var entry = ZBE_DB[ciudad];
+    if (!entry) return null;
+    if (entry.ref) entry = ZBE_DB[entry.ref];
+    return entry || null;
+  }
+
+  function generarAvisoZBE(zbe, ciudadKey) {
+    var esBilbao = (ciudadKey === 'bilbao');
+    var color = zbe.nivel === 'danger' ? '#D32F2F' : '#E65100';
+    var bgColor = zbe.nivel === 'danger' ? '#FFEBEE' : '#FFF3E0';
+    var borderColor = zbe.nivel === 'danger' ? '#EF9A9A' : '#FFE0B2';
+    var html = '<div style="margin:6px 0;padding:8px 10px;background:' + bgColor + ';border:2px solid ' + borderColor + ';border-radius:8px;font-size:12px;">';
+    html += '<div style="font-weight:bold;color:' + color + ';font-size:13px;margin-bottom:6px;">⚠️ ZONA DE BAJAS EMISIONES — ' + zbe.nombre + '</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;">';
+    for (var i = 0; i < VEHICULOS.length; i++) {
+      var v = VEHICULOS[i];
+      var puede = false; var texto = '';
+      if (v.etiqueta === 'C') { puede = true; texto = 'PUEDE ENTRAR'; }
+      else if (v.etiqueta === 'B') {
+        puede = true; var zbeBInfo = zbe.etiquetaB || 'PERMITIDO';
+        if (zbeBInfo.indexOf('prohibido') > -1 || zbeBInfo.indexOf('PROHIBIDO') > -1) { texto = zbeBInfo; puede = false; }
+        else { texto = 'PUEDE ENTRAR'; }
+      } else {
+        if (v.excepcionBilbao && esBilbao) { puede = true; texto = 'PUEDE (exención hasta 2029)'; }
+        else { puede = false; texto = 'NO PUEDE ENTRAR'; }
+      }
+      var itemBg = puede ? '#E8F5E9' : '#FFCDD2';
+      var itemColor = puede ? '#2E7D32' : '#C62828';
+      html += '<div style="background:' + itemBg + ';padding:4px 6px;border-radius:4px;display:flex;align-items:center;gap:4px;">';
+      html += '<span>' + v.icono + '</span>';
+      html += '<span style="font-size:11px;"><b>' + v.nombre + '</b><br><span style="color:' + itemColor + ';">' + texto + '</span></span>';
+      html += '</div>';
+    }
+    html += '</div>';
+    html += '<div style="margin-top:6px;font-size:11px;color:#555;border-top:1px solid ' + borderColor + ';padding-top:4px;">💡 ' + zbe.notas + '</div>';
+    html += '<div style="font-size:10px;color:#999;margin-top:3px;">Multa por acceso sin etiqueta: 200€ (100€ pago anticipado)</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function verificarZBE(direccion, containerId) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var ciudad = extraerCiudad(direccion);
+    var zbe = getZBE(ciudad);
+    if (zbe) { container.innerHTML = generarAvisoZBE(zbe, ciudad); container.style.display = 'block'; }
+    else { container.innerHTML = ''; container.style.display = 'none'; }
+  }
+
+  var txRec = document.getElementById('tx-recogida');
+  var txEnt = document.getElementById('tx-entrega');
+  var zbeTimerRec = null; var zbeTimerEnt = null;
+  if (txRec) {
+    txRec.addEventListener('input', function() { clearTimeout(zbeTimerRec); zbeTimerRec = setTimeout(function() { verificarZBE(txRec.value, 'zbe-recogida'); }, 1200); });
+    txRec.addEventListener('blur', function() { clearTimeout(zbeTimerRec); verificarZBE(txRec.value, 'zbe-recogida'); });
+  }
+  if (txEnt) {
+    txEnt.addEventListener('input', function() { clearTimeout(zbeTimerEnt); zbeTimerEnt = setTimeout(function() { verificarZBE(txEnt.value, 'zbe-entrega'); }, 1200); });
+    txEnt.addEventListener('blur', function() { clearTimeout(zbeTimerEnt); verificarZBE(txEnt.value, 'zbe-entrega'); });
+  }
+  var origZbePopulate = window.populateFormFromTranscription;
+  if (origZbePopulate) {
+    window.populateFormFromTranscription = function(d) {
+      origZbePopulate(d);
+      setTimeout(function() {
+        if (txRec && txRec.value) verificarZBE(txRec.value, 'zbe-recogida');
+        if (txEnt && txEnt.value) verificarZBE(txEnt.value, 'zbe-entrega');
+      }, 600);
+    };
+  }
+  window._verificarZBE = verificarZBE;
+  window._ZBE_DB = ZBE_DB;
 })();
 
 // ── LÍNEA DE KM EN PRESUPUESTO ──────────────────────────────
