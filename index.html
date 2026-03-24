@@ -1555,7 +1555,8 @@ var PRECIOS_FLAT = {
   'Tendedero':14.55,'Armario escobero':58.67,
   'Mesa niño':29.83,'Hacer cajas':17.00,'Bicicletas':15.68,
   'Guardamuebles (mes)':227.16,'Plataforma elevadora 2h':210.20,
-  'Sillas':13.33,'Espejo':34.84,'Cuadros':12.16,'Lámpara mesa':8.57
+  'Sillas':13.33,'Espejo':34.84,'Cuadros':12.16,'Lámpara mesa':8.57,
+  'Permiso CON señalización':90.00,'Permiso SIN señalización':50.00
 };
 
 // ── Overrides por zona (mismo artículo, precio diferente según habitación) ──
@@ -2814,8 +2815,7 @@ async function loadPresupuesto(id) {
   rid = 0;
   // v109: Flag para no cambiar la fecha al cargar un presupuesto existente
   window._presupuestoLoading = true;
-  restoreFormData(data);
-  window._presupuestoLoading = false;
+  try { restoreFormData(data); } finally { window._presupuestoLoading = false; }
   restoreFechaAbierta();
   // Preservar estado en marcha del presupuesto cargado
   window._currentEnMarcha = !!data._enMarcha;
