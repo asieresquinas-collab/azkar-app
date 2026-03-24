@@ -2281,7 +2281,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v103';
+var APP_VERSION = 'v118';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2636,18 +2636,31 @@ async function initFirebase(config) {
     // Store Firebase modules globally
     window._fb = { collection, doc, setDoc, getDocs, deleteDoc, onSnapshot, db: firestoreDB };
     
-    // Listen for real-time changes (baja datos de la nube al dispositivo)
+    // v118: Listen for real-time changes (baja datos de la nube al dispositivo)
+    // Corregido: usar for...of en vez de forEach(async) para esperar correctamente
     const colRef = collection(firestoreDB, 'presupuestos');
     let firstSync = true;
     onSnapshot(colRef, async snapshot => {
-      snapshot.docChanges().forEach(async change => {
+      const changes = snapshot.docChanges();
+      let hasChanges = false;
+      for (const change of changes) {
         if (change.type === 'added' || change.type === 'modified') {
           await savePresupuesto({ ...change.doc.data(), id: change.doc.id });
+          hasChanges = true;
         }
         if (change.type === 'removed') {
           await deletePresupuesto(change.doc.id);
+          hasChanges = true;
         }
-      });
+      }
+      // v118: Refrescar panel de presupuestos si está abierto y hay cambios
+      if (hasChanges) {
+        const mgrPanel = document.getElementById('mgr-panel');
+        if (mgrPanel && mgrPanel.style.display !== 'none') {
+          console.log('[Azkar] Firebase trajo cambios, refrescando panel...');
+          openMgr(); // Re-render del panel con datos actualizados
+        }
+      }
       // Después de recibir datos de la nube, subir los locales que no estén
       if (firstSync) {
         firstSync = false;
@@ -3777,13 +3790,19 @@ window.addEventListener('DOMContentLoaded', function() {
   };
   initFirebase(azkarFirebaseConfig);
   
-  // Auto-save every 60 seconds
-  setInterval(() => {
+  // v118: Auto-save every 60 seconds (IndexedDB + Firebase)
+  setInterval(async () => {
     const ref = document.getElementById('f_ref');
     if (ref && ref.value) {
-      const data = collectFormData();
-      data.id = ref.value;
-      savePresupuesto(data).catch(() => {});
+      try {
+        const data = collectFormData();
+        data.id = ref.value;
+        await savePresupuesto(data);
+        // También sincronizar con Firebase
+        if (firebaseConfigured && window._fb) {
+          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref.value), data);
+        }
+      } catch(e) { console.warn('[Azkar] Auto-save error:', e); }
     }
   }, 60000);
 
