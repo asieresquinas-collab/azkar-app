@@ -2297,7 +2297,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v121';
+var APP_VERSION = 'v121b';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2488,13 +2488,33 @@ function openDB() {
 // ══════════════════════════════════════════════════════════════
 //  v120: CATÁLOGO INTELIGENTE — Recuerda artículos y precios
 // ══════════════════════════════════════════════════════════════
-var _catalogoCache = null; // Cache en memoria para no leer IDB cada vez
+// v121b: Catálogo inteligente — FIREBASE como almacén principal, IndexedDB solo cache offline
+var _catalogoCache = null;
 
 async function getCatalogo() {
   if (_catalogoCache) return _catalogoCache;
+
+  // 1. Intentar leer de Firebase (fuente de verdad)
+  if (firebaseConfigured && window._fb) {
+    try {
+      const docRef = window._fb.doc(window._fb.db, 'config', 'catalogo_personalizado');
+      const colRef = window._fb.collection(window._fb.db, 'config');
+      const docs = await window._fb.getDocs(colRef);
+      let found = null;
+      docs.forEach(d => { if (d.id === 'catalogo_personalizado') found = d.data(); });
+      if (found && found.items) {
+        _catalogoCache = found.items;
+        // Guardar copia en IndexedDB como cache offline
+        _guardarCatalogoLocal(found.items);
+        return _catalogoCache;
+      }
+    } catch(e) { console.warn('[Catálogo] Firebase read falló, usando cache local:', e.message); }
+  }
+
+  // 2. Fallback: leer de IndexedDB (cache offline)
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const tx = db.transaction('catalogo', 'readonly');
       const req = tx.objectStore('catalogo').getAll();
       req.onsuccess = () => { _catalogoCache = req.result || []; resolve(_catalogoCache); };
@@ -2503,14 +2523,56 @@ async function getCatalogo() {
   } catch(e) { return []; }
 }
 
-async function saveCatalogoItem(item) {
-  // item = { nombre: 'Artículo', precio: 99.99, zona: 'Salón', usos: 5, ultimoUso: Date.now() }
+// Guardar copia local en IndexedDB (solo cache, no fuente de verdad)
+async function _guardarCatalogoLocal(items) {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    const tx = db.transaction('catalogo', 'readwrite');
+    const store = tx.objectStore('catalogo');
+    // Limpiar y reescribir todo
+    store.clear();
+    for (const item of items) { store.put(item); }
+  } catch(e) {}
+}
+
+async function saveCatalogoItem(item) {
+  // Guardar en Firebase como fuente principal
+  _catalogoCache = null; // Invalidar cache
+
+  if (firebaseConfigured && window._fb) {
+    try {
+      // Leer catálogo actual de Firebase
+      let items = [];
+      try {
+        const colRef = window._fb.collection(window._fb.db, 'config');
+        const docs = await window._fb.getDocs(colRef);
+        docs.forEach(d => { if (d.id === 'catalogo_personalizado' && d.data().items) items = d.data().items; });
+      } catch(e) {}
+
+      // Actualizar o añadir el item
+      const idx = items.findIndex(i => i.nombre === item.nombre);
+      if (idx >= 0) { items[idx] = item; } else { items.push(item); }
+
+      // Escribir de vuelta a Firebase
+      await window._fb.setDoc(
+        window._fb.doc(window._fb.db, 'config', 'catalogo_personalizado'),
+        { items: items, updated: Date.now() }
+      );
+      _catalogoCache = items;
+
+      // Actualizar cache local
+      _guardarCatalogoLocal(items);
+      return;
+    } catch(e) { console.warn('[Catálogo] Firebase write falló, guardando local:', e.message); }
+  }
+
+  // Fallback: guardar solo en IndexedDB
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
       const tx = db.transaction('catalogo', 'readwrite');
       tx.objectStore('catalogo').put(item);
-      tx.oncomplete = () => { _catalogoCache = null; resolve(); }; // Invalidar cache
+      tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
     });
   } catch(e) {}
@@ -2523,64 +2585,78 @@ async function catalogoAprender(rows) {
   const existingMap = {};
   catalogo.forEach(c => { existingMap[c.nombre] = c; });
 
+  let changed = false;
+  const updatedItems = [...catalogo];
+
   for (const row of rows) {
     const nombre = (row.c || '').trim();
     const precio = parseFloat(row.p);
     const zona = row.z || '';
     if (!nombre || isNaN(precio) || precio <= 0) continue;
 
-    // No aprender artículos que ya están en el catálogo fijo (PRECIOS_FLAT)
-    // EXCEPTO si el precio es diferente al del catálogo fijo (personalizado)
+    // No aprender artículos que ya están en el catálogo fijo con mismo precio
     const precioFijo = PRECIOS_FLAT[nombre];
     if (precioFijo !== undefined && Math.abs(precioFijo - precio) < 0.01) continue;
 
     const existing = existingMap[nombre];
     if (existing) {
-      // Actualizar: incrementar usos, guardar último precio
       existing.precio = precio;
       existing.zona = zona;
       existing.usos = (existing.usos || 0) + 1;
       existing.ultimoUso = Date.now();
-      await saveCatalogoItem(existing);
+      const idx = updatedItems.findIndex(i => i.nombre === nombre);
+      if (idx >= 0) updatedItems[idx] = existing;
+      changed = true;
     } else {
-      // Nuevo artículo
-      await saveCatalogoItem({
-        nombre: nombre,
-        precio: precio,
-        zona: zona,
-        usos: 1,
-        ultimoUso: Date.now()
-      });
+      const newItem = { nombre, precio, zona, usos: 1, ultimoUso: Date.now() };
+      updatedItems.push(newItem);
+      existingMap[nombre] = newItem;
+      changed = true;
     }
   }
 
-  // Actualizar datalist con los nuevos artículos
-  await actualizarDatalist();
+  if (!changed) return;
 
-  // Sync catálogo a Firebase si disponible
+  // Guardar todo de golpe en Firebase (una sola escritura)
   if (firebaseConfigured && window._fb) {
     try {
-      const updated = await getCatalogo();
       await window._fb.setDoc(
         window._fb.doc(window._fb.db, 'config', 'catalogo_personalizado'),
-        { items: updated, updated: Date.now() }
+        { items: updatedItems, updated: Date.now() }
       );
-    } catch(e) { console.warn('[Catálogo] Error sync Firebase:', e.message); }
+      _catalogoCache = updatedItems;
+      _guardarCatalogoLocal(updatedItems);
+      console.log('[Catálogo] Guardado en Firebase:', updatedItems.length, 'artículos');
+    } catch(e) {
+      console.warn('[Catálogo] Firebase write falló:', e.message);
+      // Fallback: guardar cada item en IndexedDB
+      for (const item of updatedItems) {
+        try {
+          const db = await openDB();
+          await new Promise(r => {
+            const tx = db.transaction('catalogo', 'readwrite');
+            tx.objectStore('catalogo').put(item);
+            tx.oncomplete = () => r();
+            tx.onerror = () => r();
+          });
+        } catch(e2) {}
+      }
+    }
   }
+
+  await actualizarDatalist();
 }
 
-// Actualizar el datalist <dl> con artículos del catálogo fijo + personalizado
+// Actualizar el datalist con artículos del catálogo fijo + personalizado
 async function actualizarDatalist() {
   var dl = document.getElementById('dl');
   if (!dl) return;
 
-  // Artículos del catálogo fijo
   var all = Object.keys(PRECIOS_FLAT).slice();
   Object.values(PRECIOS_ZONA).forEach(function(z) {
     Object.keys(z).forEach(function(k) { if (all.indexOf(k) < 0) all.push(k); });
   });
 
-  // Añadir artículos personalizados del catálogo
   try {
     var custom = await getCatalogo();
     custom.forEach(function(item) {
@@ -3118,30 +3194,13 @@ async function initFirebase(config) {
     console.log('[Azkar] Firebase conectado');
     showSyncStatus('☁️ Firebase conectado');
 
-    // v120: Sincronizar catálogo personalizado desde Firebase
-    try {
-      const catDoc = await getDocs(collection(firestoreDB, 'config'));
-      catDoc.forEach(async (d) => {
-        if (d.id === 'catalogo_personalizado' && d.data().items) {
-          const cloudItems = d.data().items;
-          const localItems = await getCatalogo();
-          const localMap = {};
-          localItems.forEach(i => { localMap[i.nombre] = i; });
-          let merged = 0;
-          for (const ci of cloudItems) {
-            const local = localMap[ci.nombre];
-            if (!local || (ci.ultimoUso || 0) > (local.ultimoUso || 0)) {
-              await saveCatalogoItem(ci);
-              merged++;
-            }
-          }
-          if (merged > 0) {
-            console.log('[Catálogo] Sincronizados', merged, 'artículos desde Firebase');
-            actualizarDatalist();
-          }
-        }
-      });
-    } catch(e) { console.warn('[Catálogo] Error sync desde Firebase:', e.message); }
+    // v121b: Cargar catálogo personalizado desde Firebase (fuente principal) y actualizar datalist
+    getCatalogo().then(items => {
+      if (items.length > 0) {
+        console.log('[Catálogo] Cargados', items.length, 'artículos desde Firebase');
+        actualizarDatalist();
+      }
+    }).catch(e => console.warn('[Catálogo] Error cargando:', e.message));
   } catch (e) {
     console.warn('[Azkar] Firebase no configurado:', e.message);
   }
