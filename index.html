@@ -2295,7 +2295,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v119';
+var APP_VERSION = 'v120';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2565,8 +2565,11 @@ async function processOfflineQueue() {
   }
 }
 
-// Procesar cola cuando vuelve la conexión
-window.addEventListener('online', () => { setTimeout(processOfflineQueue, 2000); });
+// Procesar cola cuando vuelve la conexión + auto-repair
+window.addEventListener('online', () => {
+  setTimeout(processOfflineQueue, 2000);
+  setTimeout(autoRepair, 5000); // Auto-repair 5s después de reconectar
+});
 // Procesar cada 30 segundos si hay algo pendiente
 setInterval(processOfflineQueue, 30000);
 
@@ -2600,6 +2603,163 @@ async function checkAppHealth() {
   }
 
   return _appHealth;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  v120: AUTO-REPAIR — Detecta y corrige problemas automáticamente
+// ══════════════════════════════════════════════════════════════
+var _autoRepairRunning = false;
+
+async function autoRepair() {
+  if (_autoRepairRunning || !navigator.onLine) return;
+  _autoRepairRunning = true;
+  let fixes = 0;
+
+  try {
+    console.log('[AutoRepair] Iniciando revisión...');
+
+    // ── FIX 1: Recuperar backups de emergencia de localStorage ──
+    try {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('azkar_emergency_'));
+      for (const key of keys) {
+        const ref = key.replace('azkar_emergency_', '');
+        const data = JSON.parse(localStorage.getItem(key));
+        if (data && data.id) {
+          await savePresupuesto(data);
+          localStorage.removeItem(key);
+          console.log('[AutoRepair] Recuperado backup emergencia:', ref);
+          fixes++;
+        }
+      }
+    } catch(e) { console.warn('[AutoRepair] Error en FIX 1:', e.message); }
+
+    // ── FIX 2: Reconciliar IndexedDB ↔ Firebase (sync bidireccional) ──
+    if (firebaseConfigured && window._fb) {
+      try {
+        const local = await getAllPresupuestos();
+        const localMap = {};
+        local.forEach(p => { localMap[p.id] = p; });
+
+        // Obtener todos los docs de Firebase
+        const colRef = window._fb.collection(window._fb.db, 'presupuestos');
+        const cloudDocs = await window._fb.getDocs(colRef);
+        const cloudMap = {};
+        cloudDocs.forEach(d => { cloudMap[d.id] = d.data(); });
+
+        // Subir presupuestos que están en local pero NO en Firebase
+        let uploaded = 0;
+        for (const p of local) {
+          if (!cloudMap[p.id]) {
+            try {
+              await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', p.id), p);
+              uploaded++;
+              fixes++;
+            } catch(e) { /* skip if fails */ }
+          }
+        }
+        if (uploaded > 0) console.log('[AutoRepair] Subidos', uploaded, 'presupuestos locales a Firebase');
+
+        // Bajar presupuestos que están en Firebase pero NO en local
+        let downloaded = 0;
+        for (const [id, data] of Object.entries(cloudMap)) {
+          if (!localMap[id]) {
+            try {
+              await savePresupuesto({ ...data, id: id });
+              downloaded++;
+              fixes++;
+            } catch(e) { /* skip if fails */ }
+          }
+        }
+        if (downloaded > 0) console.log('[AutoRepair] Bajados', downloaded, 'presupuestos de Firebase a local');
+
+        // Detectar presupuestos con datos más recientes en un lado
+        let updated = 0;
+        for (const p of local) {
+          const cloud = cloudMap[p.id];
+          if (cloud && p.timestamp && cloud.timestamp) {
+            if (p.timestamp > cloud.timestamp) {
+              // Local más reciente → subir a Firebase
+              try {
+                await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', p.id), p);
+                updated++;
+                fixes++;
+              } catch(e) {}
+            } else if (cloud.timestamp > p.timestamp) {
+              // Firebase más reciente → bajar a local
+              try {
+                await savePresupuesto({ ...cloud, id: p.id });
+                updated++;
+                fixes++;
+              } catch(e) {}
+            }
+          }
+        }
+        if (updated > 0) console.log('[AutoRepair] Actualizados', updated, 'presupuestos (sync timestamps)');
+
+      } catch(e) { console.warn('[AutoRepair] Error en FIX 2:', e.message); }
+    }
+
+    // ── FIX 3: Limpiar cola offline atascada (items > 1 hora) ──
+    try {
+      const now = Date.now();
+      const before = _offlineQueue.items.length;
+      _offlineQueue.items = _offlineQueue.items.filter(op => {
+        if (op.ts && (now - op.ts) > 3600000) {
+          console.log('[AutoRepair] Eliminado de cola (>1h):', op.label);
+          return false;
+        }
+        return true;
+      });
+      const removed = before - _offlineQueue.items.length;
+      if (removed > 0) {
+        _saveOfflineQueue();
+        fixes += removed;
+      }
+    } catch(e) {}
+
+    // ── FIX 4: Verificar integridad IndexedDB ──
+    try {
+      const all = await getAllPresupuestos();
+      let cleaned = 0;
+      for (const p of all) {
+        // Si un presupuesto no tiene ni id ni f_ref, es basura
+        if (!p.id && !p.f_ref) {
+          await deletePresupuesto(p.id);
+          cleaned++;
+          fixes++;
+        }
+      }
+      if (cleaned > 0) console.log('[AutoRepair] Eliminados', cleaned, 'registros corruptos');
+    } catch(e) { console.warn('[AutoRepair] Error en FIX 4:', e.message); }
+
+    // ── FIX 5: Reconectar Firebase si se desconectó ──
+    if (!firebaseConfigured && window._fb === null) {
+      try {
+        const saved = localStorage.getItem('azkar-firebase-config');
+        if (saved) {
+          const config = JSON.parse(saved);
+          await initFirebase(config);
+          if (firebaseConfigured) {
+            console.log('[AutoRepair] Firebase reconectado');
+            fixes++;
+          }
+        }
+      } catch(e) {}
+    }
+
+    if (fixes > 0) {
+      console.log('[AutoRepair] Completado:', fixes, 'correcciones aplicadas');
+      showSyncStatus('🔧 Auto-reparación: ' + fixes + ' corrección(es) aplicada(s)', 5000);
+    } else {
+      console.log('[AutoRepair] Todo OK, sin correcciones necesarias');
+    }
+
+  } catch(e) {
+    console.warn('[AutoRepair] Error general:', e.message);
+  } finally {
+    _autoRepairRunning = false;
+  }
+  return fixes;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -3941,6 +4101,10 @@ window.addEventListener('DOMContentLoaded', function() {
 
   // v119: Health check al abrir — verificar backend y Firebase tras 3s
   setTimeout(checkAppHealth, 3000);
+
+  // v120: Auto-repair — primera revisión a los 10s, luego cada 5 minutos
+  setTimeout(autoRepair, 10000);
+  setInterval(autoRepair, 300000); // Cada 5 minutos
 
   // v119: Auto-save every 60 seconds (cadena completa con cola offline)
   setInterval(async () => {
