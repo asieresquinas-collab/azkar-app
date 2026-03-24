@@ -5830,6 +5830,12 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
         var from = coords[0];
         var to = coords[1];
 
+        // v117: Guardar coordenadas en sv-main para que el backend las use en el PDF
+        var svRec = document.getElementById('sv-main-recogida');
+        var svEnt = document.getElementById('sv-main-entrega');
+        if (svRec && from) { svRec.setAttribute('data-lat', from.lat); svRec.setAttribute('data-lon', from.lon); }
+        if (svEnt && to) { svEnt.setAttribute('data-lat', to.lat); svEnt.setAttribute('data-lon', to.lon); }
+
         if (!from || !to) {
           document.getElementById('dist-km').textContent = '⚠ No encontrada';
           document.getElementById('dist-tiempo').textContent = '';
