@@ -1243,10 +1243,32 @@ async function PA(){
     var zbeEntHTML = zbeEnt ? zbeEnt.innerHTML : '';
     if (zbeRec) zbeRec.innerHTML = '';
     if (zbeEnt) zbeEnt.innerHTML = '';
+    // === v112: Ocultar campos f_rec/f_ent y mapas originales cuando hay paradas ===
+    var fRecFg = null, fEntFg = null, svMainRec = null, svMainEnt = null;
+    var fRecFgHTML = '', fEntFgHTML = '', svMainRecHTML = '', svMainEntHTML = '';
+    if (window._paradasMode) {
+      var fRecEl = document.getElementById('f_rec');
+      var fEntEl = document.getElementById('f_ent');
+      fRecFg = fRecEl ? fRecEl.closest('.fg') : null;
+      fEntFg = fEntEl ? fEntEl.closest('.fg') : null;
+      svMainRec = document.getElementById('sv-main-recogida');
+      svMainEnt = document.getElementById('sv-main-entrega');
+      if (fRecFg) { fRecFgHTML = fRecFg.innerHTML; fRecFg.innerHTML = ''; }
+      if (fEntFg) { fEntFgHTML = fEntFg.innerHTML; fEntFg.innerHTML = ''; }
+      if (svMainRec) { svMainRecHTML = svMainRec.innerHTML; svMainRec.innerHTML = ''; }
+      if (svMainEnt) { svMainEntHTML = svMainEnt.innerHTML; svMainEnt.innerHTML = ''; }
+    }
     var completeHTML = buildCompleteHTML(['page-dossier', 'page-presupuesto', 'page-contrato']);
     // Restaurar ZBE despues de capturar HTML
     if (zbeRec) zbeRec.innerHTML = zbeRecHTML;
     if (zbeEnt) zbeEnt.innerHTML = zbeEntHTML;
+    // Restaurar campos f_rec/f_ent y mapas originales
+    if (window._paradasMode) {
+      if (fRecFg) fRecFg.innerHTML = fRecFgHTML;
+      if (fEntFg) fEntFg.innerHTML = fEntFgHTML;
+      if (svMainRec) svMainRec.innerHTML = svMainRecHTML;
+      if (svMainEnt) svMainEnt.innerHTML = svMainEntHTML;
+    }
 
     // Crear sesión de firma si hay email del cliente
     var firmaUrl = '';
@@ -1329,8 +1351,33 @@ async function PA_SOLO_DRIVE(){
       await renameDriveFolder(numRef, clientName);
     }
 
-    // Construir HTML completo
+    // Construir HTML completo (con mismas protecciones ZBE + paradas que GD)
+    var zbeRec2 = document.getElementById('zbe-f-recogida');
+    var zbeEnt2 = document.getElementById('zbe-f-entrega');
+    var zbeRecHTML2 = zbeRec2 ? zbeRec2.innerHTML : '';
+    var zbeEntHTML2 = zbeEnt2 ? zbeEnt2.innerHTML : '';
+    if (zbeRec2) zbeRec2.innerHTML = '';
+    if (zbeEnt2) zbeEnt2.innerHTML = '';
+    var fRecFg2 = null, fEntFg2 = null, svMR2 = null, svME2 = null;
+    var fRecFgH2 = '', fEntFgH2 = '', svMRH2 = '', svMEH2 = '';
+    if (window._paradasMode) {
+      var fR2 = document.getElementById('f_rec'); var fE2 = document.getElementById('f_ent');
+      fRecFg2 = fR2 ? fR2.closest('.fg') : null; fEntFg2 = fE2 ? fE2.closest('.fg') : null;
+      svMR2 = document.getElementById('sv-main-recogida'); svME2 = document.getElementById('sv-main-entrega');
+      if (fRecFg2) { fRecFgH2 = fRecFg2.innerHTML; fRecFg2.innerHTML = ''; }
+      if (fEntFg2) { fEntFgH2 = fEntFg2.innerHTML; fEntFg2.innerHTML = ''; }
+      if (svMR2) { svMRH2 = svMR2.innerHTML; svMR2.innerHTML = ''; }
+      if (svME2) { svMEH2 = svME2.innerHTML; svME2.innerHTML = ''; }
+    }
     var completeHTML = buildCompleteHTML(['page-dossier', 'page-presupuesto', 'page-contrato']);
+    if (zbeRec2) zbeRec2.innerHTML = zbeRecHTML2;
+    if (zbeEnt2) zbeEnt2.innerHTML = zbeEntHTML2;
+    if (window._paradasMode) {
+      if (fRecFg2) fRecFg2.innerHTML = fRecFgH2;
+      if (fEntFg2) fEntFg2.innerHTML = fEntFgH2;
+      if (svMR2) svMR2.innerHTML = svMRH2;
+      if (svME2) svME2.innerHTML = svMEH2;
+    }
 
     // Enviar SIN email (no se pasa clientEmail)
     var result = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO', '');
@@ -1783,6 +1830,33 @@ function createParadaSection(tipo, address, paradaId){
     +'</div>'
     +'<div class="parada-items" id="items-'+paradaId+'"></div>'
     +'<div class="parada-add"><button onclick="AR(\'\',\'Salón\',\'\',\'\',\'\',\'\',\''+paradaId+'\')">+ Añadir concepto</button></div>';
+  // v112: Añadir mapa Street View para cada parada
+  var svContainer=document.createElement('div');
+  svContainer.className='parada-sv';
+  svContainer.id='sv-parada-'+paradaId;
+  svContainer.style.cssText='margin:6px 8px;display:none;';
+  svContainer.innerHTML='<div style="display:flex;gap:6px;">'
+    +'<iframe id="sv-parada-'+paradaId+'-street" style="width:50%;height:180px;border:2px solid '+(tipo==='recogida'?'#2980b9':'#e67e22')+';border-radius:4px;" allowfullscreen></iframe>'
+    +'<iframe id="sv-parada-'+paradaId+'-map" style="width:50%;height:180px;border:2px solid '+(tipo==='recogida'?'#2980b9':'#e67e22')+';border-radius:4px;" allowfullscreen></iframe>'
+    +'</div>'
+    +'<p style="font-size:9px;color:#999;margin-top:3px;text-align:center;">📷 Street View + Mapa '+(tipo==='recogida'?'recogida':'entrega')+' (haz clic para navegar)</p>';
+  section.insertBefore(svContainer,section.querySelector('.parada-items'));
+  // Listener con debounce para cargar mapa
+  var dirInput=section.querySelector('.parada-dir');
+  var svTimer=null;
+  function loadParadaSV(){
+    var addr=dirInput.value;
+    if(!addr||addr.trim().length<8){ svContainer.style.display='none'; return; }
+    var fullAddr=addr.trim();
+    if(!fullAddr.match(/bilbao|bizkaia|vizcaya|vitoria|donostia|madrid|barcelona|cantabria|burgos|navarra|españa|spain/i)) fullAddr+=', Bizkaia, España';
+    var enc=encodeURIComponent(fullAddr);
+    document.getElementById('sv-parada-'+paradaId+'-street').src='https://maps.google.com/maps?q='+enc+'&layer=c&z=17&output=embed';
+    document.getElementById('sv-parada-'+paradaId+'-map').src='https://maps.google.com/maps?q='+enc+'&t=k&z=17&output=embed';
+    svContainer.style.display='block';
+  }
+  dirInput.addEventListener('input',function(){ clearTimeout(svTimer); svTimer=setTimeout(loadParadaSV,1500); });
+  dirInput.addEventListener('blur',function(){ clearTimeout(svTimer); loadParadaSV(); });
+  if(address && address.trim().length>=8) setTimeout(loadParadaSV,500);
   return section;
 }
 
@@ -1868,6 +1942,11 @@ function syncParadaDirs(){
   if(fRec && firstRec) fRec.value=firstRec.value;
   if(fEnt && firstEnt) fEnt.value=firstEnt.value;
   if(typeof SY==='function') SY();
+  // v112: Recargar mapas Street View con las direcciones de las paradas
+  if(typeof window.loadStreetView==='function'){
+    if(firstRec && firstRec.value) window.loadStreetView(firstRec.value,'recogida');
+    if(firstEnt && firstEnt.value) window.loadStreetView(firstEnt.value,'entrega');
+  }
 }
 
 function hideOriginalAddressFields(hide){
@@ -1876,6 +1955,11 @@ function hideOriginalAddressFields(hide){
   var fEntDiv=document.getElementById('f_ent');
   if(fRecDiv) { var fg=fRecDiv.closest('.fg'); if(fg) fg.style.display=hide?'none':''; }
   if(fEntDiv) { var fg=fEntDiv.closest('.fg'); if(fg) fg.style.display=hide?'none':''; }
+  // v112: Ocultar/mostrar mapas originales (ahora cada parada tiene los suyos)
+  var svRec=document.getElementById('sv-main-recogida');
+  var svEnt=document.getElementById('sv-main-entrega');
+  if(svRec) svRec.style.display=hide?'none':'';
+  if(svEnt) svEnt.style.display=hide?'none':'';
 }
 
 function deactivateParadasMode(){
@@ -5317,6 +5401,7 @@ function txCreatePresupuesto() {
     return container;
   }
 
+  window.loadStreetView = loadStreetView;
   function loadStreetView(address, prefix) {
     const container = document.getElementById('sv-main-' + prefix);
     if (!container) return;
