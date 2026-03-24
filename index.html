@@ -1002,6 +1002,8 @@ function CA(){
   SE('t_t',tot?FM(tot):'—'); SE('t_d',dep?FM(dep):'—'); SE('t_s',dep?FM(dep):'—');
   SE('c_tot',tot?FM(tot):'—');
   calcAbono();
+  // v109: Actualizar fecha al editar ítems
+  updateFechaModificacion();
 }
 
 function calcAbono(){
@@ -1060,6 +1062,17 @@ function CT(){
   }
 }
 
+// v109: Auto-actualizar fecha del presupuesto al editar
+window._presupuestoLoading = false; // flag para evitar actualizar fecha al cargar
+
+function updateFechaModificacion(){
+  if(window._presupuestoLoading) return; // No actualizar mientras se carga un presupuesto
+  var fd = document.getElementById('f_fecha');
+  var ref = document.getElementById('f_ref');
+  if(!fd || !ref || !ref.value) return; // Sin presupuesto activo, no hacer nada
+  fd.value = new Date().toISOString().slice(0,10);
+}
+
 function SY(){
   function G(id){ var e=document.getElementById(id); return e?e.value:''; }
   function S(id,v){ var e=document.getElementById(id); if(e) e.textContent=v||'—'; }
@@ -1073,6 +1086,8 @@ function SY(){
   if(fechaStr&&hs) fechaStr+=' a las '+hs+'h';
   S('c_fserv',fechaStr);
   S('cf_nom',G('f_nom'));
+  // Actualizar fecha al editar datos del cliente
+  updateFechaModificacion();
 }
 
 function RF(){
@@ -1962,6 +1977,7 @@ function GD(){
 // ── Override LD() para cargar campos extra ────────────────────
 function LD(){
   var sd=document.getElementById('sd'); if(!sd) return;
+  window._presupuestoLoading = true;
   try{
     var data=JSON.parse(sd.textContent);
     var fields=['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email',
@@ -1999,6 +2015,7 @@ function LD(){
     if(typeof AR_SALIDA==='function') AR_SALIDA();
     CA(); SY(); CT();
   }catch(e){}
+  window._presupuestoLoading = false;
 }
 
 // ── Auto-init ─────────────────────────────────────────────────
@@ -2748,7 +2765,10 @@ async function loadPresupuesto(id) {
   // Clear existing rows (rows have class 'cr' inside container 'tb')
   document.querySelectorAll('#tb .cr').forEach(cr => cr.remove());
   rid = 0;
+  // v109: Flag para no cambiar la fecha al cargar un presupuesto existente
+  window._presupuestoLoading = true;
   restoreFormData(data);
+  window._presupuestoLoading = false;
   // Preservar estado en marcha del presupuesto cargado
   window._currentEnMarcha = !!data._enMarcha;
   window._currentEnMarchaDate = data._enMarchaDate || null;
