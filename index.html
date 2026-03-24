@@ -1758,8 +1758,15 @@ function PL_LOOKUP(inp){
   var priceInp=row.querySelectorAll('input[type=number]')[1];
   if(!priceInp||priceInp.value) return;
   var name=inp.value.trim(), zone=zoneSel?zoneSel.value:'', price=null;
+  // 1. Buscar en precios por zona
   if(PRECIOS_ZONA[zone]&&PRECIOS_ZONA[zone][name]!==undefined) price=PRECIOS_ZONA[zone][name];
+  // 2. Buscar en catálogo fijo
   if(price===null&&PRECIOS_FLAT[name]!==undefined) price=PRECIOS_FLAT[name];
+  // 3. v120: Buscar en catálogo personalizado (artículos aprendidos)
+  if(price===null&&_catalogoCache){
+    var found=_catalogoCache.find(function(c){return c.nombre===name;});
+    if(found) price=found.precio;
+  }
   if(price!==null){priceInp.value=price; CA();}
   // Auto-rellenar tiempo
   TL_LOOKUP(inp);
@@ -2171,17 +2178,12 @@ function AUTO_INIT(){
     g4.insertAdjacentElement('afterend',row);
   }
 
-  // Actualizar datalist con todos los artículos del catálogo
-  var dl=document.getElementById('dl');
-  if(dl){
-    var all=Object.keys(PRECIOS_FLAT).slice();
-    Object.values(PRECIOS_ZONA).forEach(function(z){
-      Object.keys(z).forEach(function(k){if(all.indexOf(k)<0) all.push(k);});
-    });
-    all.sort();
-    dl.innerHTML='';
-    all.forEach(function(n){var o=document.createElement('option');o.value=n;dl.appendChild(o);});
-  }
+  // v120: Actualizar datalist con catálogo fijo + personalizado
+  actualizarDatalist();
+  // Cargar catálogo personalizado en memoria al arrancar
+  getCatalogo().then(function(items) {
+    if (items.length > 0) console.log('[Catálogo] Cargados', items.length, 'artículos personalizados');
+  });
 
   // PAKs: inyectar selector encima de la tabla
   var cw=document.querySelector('#page-presupuesto .cw');
@@ -2295,7 +2297,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v120';
+var APP_VERSION = 'v121';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2455,7 +2457,7 @@ if ('serviceWorker' in navigator) {
 //  INDEXEDDB — Persistencia local
 // ══════════════════════════════════════════════════════════════
 const DB_NAME = 'AzkarDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // v120: Añadir catalogo
 let azkarDB = null;
 
 function openDB() {
@@ -2472,9 +2474,126 @@ function openDB() {
       if (!db.objectStoreNames.contains('config')) {
         db.createObjectStore('config', { keyPath: 'key' });
       }
+      // v120: Catálogo personalizado de artículos
+      if (!db.objectStoreNames.contains('catalogo')) {
+        const catStore = db.createObjectStore('catalogo', { keyPath: 'nombre' });
+        catStore.createIndex('usos', 'usos', { unique: false });
+      }
     };
     req.onsuccess = e => { azkarDB = e.target.result; resolve(azkarDB); };
     req.onerror = e => reject(e.target.error);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  v120: CATÁLOGO INTELIGENTE — Recuerda artículos y precios
+// ══════════════════════════════════════════════════════════════
+var _catalogoCache = null; // Cache en memoria para no leer IDB cada vez
+
+async function getCatalogo() {
+  if (_catalogoCache) return _catalogoCache;
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('catalogo', 'readonly');
+      const req = tx.objectStore('catalogo').getAll();
+      req.onsuccess = () => { _catalogoCache = req.result || []; resolve(_catalogoCache); };
+      req.onerror = () => resolve([]);
+    });
+  } catch(e) { return []; }
+}
+
+async function saveCatalogoItem(item) {
+  // item = { nombre: 'Artículo', precio: 99.99, zona: 'Salón', usos: 5, ultimoUso: Date.now() }
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('catalogo', 'readwrite');
+      tx.objectStore('catalogo').put(item);
+      tx.oncomplete = () => { _catalogoCache = null; resolve(); }; // Invalidar cache
+      tx.onerror = () => resolve();
+    });
+  } catch(e) {}
+}
+
+// Aprender artículos de un presupuesto (se llama al guardar)
+async function catalogoAprender(rows) {
+  if (!rows || rows.length === 0) return;
+  const catalogo = await getCatalogo();
+  const existingMap = {};
+  catalogo.forEach(c => { existingMap[c.nombre] = c; });
+
+  for (const row of rows) {
+    const nombre = (row.c || '').trim();
+    const precio = parseFloat(row.p);
+    const zona = row.z || '';
+    if (!nombre || isNaN(precio) || precio <= 0) continue;
+
+    // No aprender artículos que ya están en el catálogo fijo (PRECIOS_FLAT)
+    // EXCEPTO si el precio es diferente al del catálogo fijo (personalizado)
+    const precioFijo = PRECIOS_FLAT[nombre];
+    if (precioFijo !== undefined && Math.abs(precioFijo - precio) < 0.01) continue;
+
+    const existing = existingMap[nombre];
+    if (existing) {
+      // Actualizar: incrementar usos, guardar último precio
+      existing.precio = precio;
+      existing.zona = zona;
+      existing.usos = (existing.usos || 0) + 1;
+      existing.ultimoUso = Date.now();
+      await saveCatalogoItem(existing);
+    } else {
+      // Nuevo artículo
+      await saveCatalogoItem({
+        nombre: nombre,
+        precio: precio,
+        zona: zona,
+        usos: 1,
+        ultimoUso: Date.now()
+      });
+    }
+  }
+
+  // Actualizar datalist con los nuevos artículos
+  await actualizarDatalist();
+
+  // Sync catálogo a Firebase si disponible
+  if (firebaseConfigured && window._fb) {
+    try {
+      const updated = await getCatalogo();
+      await window._fb.setDoc(
+        window._fb.doc(window._fb.db, 'config', 'catalogo_personalizado'),
+        { items: updated, updated: Date.now() }
+      );
+    } catch(e) { console.warn('[Catálogo] Error sync Firebase:', e.message); }
+  }
+}
+
+// Actualizar el datalist <dl> con artículos del catálogo fijo + personalizado
+async function actualizarDatalist() {
+  var dl = document.getElementById('dl');
+  if (!dl) return;
+
+  // Artículos del catálogo fijo
+  var all = Object.keys(PRECIOS_FLAT).slice();
+  Object.values(PRECIOS_ZONA).forEach(function(z) {
+    Object.keys(z).forEach(function(k) { if (all.indexOf(k) < 0) all.push(k); });
+  });
+
+  // Añadir artículos personalizados del catálogo
+  try {
+    var custom = await getCatalogo();
+    custom.forEach(function(item) {
+      if (all.indexOf(item.nombre) < 0) all.push(item.nombre);
+    });
+  } catch(e) {}
+
+  all.sort();
+  dl.innerHTML = '';
+  all.forEach(function(n) {
+    var o = document.createElement('option');
+    o.value = n;
+    dl.appendChild(o);
   });
 }
 
@@ -2998,6 +3117,31 @@ async function initFirebase(config) {
 
     console.log('[Azkar] Firebase conectado');
     showSyncStatus('☁️ Firebase conectado');
+
+    // v120: Sincronizar catálogo personalizado desde Firebase
+    try {
+      const catDoc = await getDocs(collection(firestoreDB, 'config'));
+      catDoc.forEach(async (d) => {
+        if (d.id === 'catalogo_personalizado' && d.data().items) {
+          const cloudItems = d.data().items;
+          const localItems = await getCatalogo();
+          const localMap = {};
+          localItems.forEach(i => { localMap[i.nombre] = i; });
+          let merged = 0;
+          for (const ci of cloudItems) {
+            const local = localMap[ci.nombre];
+            if (!local || (ci.ultimoUso || 0) > (local.ultimoUso || 0)) {
+              await saveCatalogoItem(ci);
+              merged++;
+            }
+          }
+          if (merged > 0) {
+            console.log('[Catálogo] Sincronizados', merged, 'artículos desde Firebase');
+            actualizarDatalist();
+          }
+        }
+      });
+    } catch(e) { console.warn('[Catálogo] Error sync desde Firebase:', e.message); }
   } catch (e) {
     console.warn('[Azkar] Firebase no configurado:', e.message);
   }
@@ -3912,6 +4056,11 @@ window.GD = async function() {
 
     // v119: Guardar con confirmación en cadena (IndexedDB → Firebase → cola si falla)
     await savePresupuestoFull(data);
+
+    // v120: Aprender artículos del presupuesto para el catálogo inteligente
+    if (data.rows && data.rows.length > 0) {
+      catalogoAprender(data.rows).catch(e => console.warn('[Catálogo] Error aprendiendo:', e));
+    }
 
     // Renombrar carpeta en Drive con el nombre del cliente (si tiene nombre)
     const clientName = document.getElementById('f_nom') ? document.getElementById('f_nom').value : '';
