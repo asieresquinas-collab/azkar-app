@@ -1308,6 +1308,20 @@ async function PA(){
       if (result.email && result.email.success) {
         showSyncStatus('✅ PDF guardado en Drive + Email enviado a ' + result.email.to, 8000);
         if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', [result.email.to, 'info@azkarmudanzas.com (BCC)'], (clientName || '').toUpperCase(), number, 'OK', '', result.email.messageId || '');
+        // v119: Verificar entrega del email 30s después
+        if (result.email.messageId) {
+          setTimeout(async () => {
+            try {
+              var statusRes = await fetch(RAILWAY_API + '/api/email/status/' + result.email.messageId, { headers: apiHeaders() });
+              var statusData = await statusRes.json();
+              if (statusData.status === 'bounced') {
+                showSyncStatus('⚠ El email a ' + result.email.to + ' REBOTÓ — verifica la dirección', 10000);
+              } else if (statusData.status === 'delivered') {
+                showSyncStatus('✓ Email entregado correctamente a ' + result.email.to, 4000);
+              }
+            } catch(e) { /* silenciar si falla la verificación */ }
+          }, 30000);
+        }
       } else if (result.email && !result.email.success) {
         showSyncStatus('✅ PDF guardado en Drive. ⚠ Email falló: ' + (result.email.error || 'error desconocido'), 8000);
         if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', [clientEmail], (clientName || '').toUpperCase(), number, 'ERROR', 'Email falló: ' + (result.email.error || ''), '');
@@ -2281,7 +2295,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v118';
+var APP_VERSION = 'v119';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2502,6 +2516,139 @@ async function deletePresupuesto(id) {
     tx.oncomplete = () => resolve();
     tx.onerror = e => reject(e.target.error);
   });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  v119: COLA OFFLINE — Operaciones que fallaron se reintentan automáticamente
+// ══════════════════════════════════════════════════════════════
+const _offlineQueue = { items: [], processing: false };
+
+function queueOfflineOp(op) {
+  // op = { type: 'firebase'|'drive'|'email', fn: async function, label: string }
+  _offlineQueue.items.push(op);
+  _saveOfflineQueue();
+  console.log('[Azkar Queue] Añadido:', op.label, '(total:', _offlineQueue.items.length, ')');
+  showSyncStatus('⏳ ' + op.label + ' pendiente — se reintentará automáticamente', 4000);
+}
+
+function _saveOfflineQueue() {
+  // Solo guardar metadata (no la función), para persistir labels
+  try {
+    const meta = _offlineQueue.items.map(i => ({ type: i.type, label: i.label, ts: i.ts || Date.now() }));
+    localStorage.setItem('azkar_offline_queue', JSON.stringify(meta));
+  } catch(e) {}
+}
+
+async function processOfflineQueue() {
+  if (_offlineQueue.processing || _offlineQueue.items.length === 0 || !navigator.onLine) return;
+  _offlineQueue.processing = true;
+  console.log('[Azkar Queue] Procesando', _offlineQueue.items.length, 'operaciones pendientes...');
+
+  const failed = [];
+  for (const op of _offlineQueue.items) {
+    try {
+      await op.fn();
+      console.log('[Azkar Queue] OK:', op.label);
+    } catch(e) {
+      console.warn('[Azkar Queue] Fallo:', op.label, e.message);
+      failed.push(op);
+    }
+  }
+  _offlineQueue.items = failed;
+  _offlineQueue.processing = false;
+  _saveOfflineQueue();
+
+  if (failed.length > 0) {
+    showSyncStatus('⚠ ' + failed.length + ' operación(es) pendiente(s) de sincronizar', 5000);
+  } else {
+    showSyncStatus('✓ Todo sincronizado', 3000);
+  }
+}
+
+// Procesar cola cuando vuelve la conexión
+window.addEventListener('online', () => { setTimeout(processOfflineQueue, 2000); });
+// Procesar cada 30 segundos si hay algo pendiente
+setInterval(processOfflineQueue, 30000);
+
+// ══════════════════════════════════════════════════════════════
+//  v119: HEALTH CHECK al abrir la app
+// ══════════════════════════════════════════════════════════════
+var _appHealth = { backend: null, firebase: null, checked: false };
+
+async function checkAppHealth() {
+  if (_appHealth.checked) return _appHealth;
+  _appHealth.checked = true;
+
+  // Check backend
+  try {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 8000);
+    const r = await fetch(RAILWAY_API + '/api/health', { signal: controller.signal });
+    _appHealth.backend = r.ok;
+  } catch(e) {
+    _appHealth.backend = false;
+  }
+
+  // Check Firebase
+  _appHealth.firebase = firebaseConfigured && !!window._fb;
+
+  // Mostrar banner si algo falla
+  if (!_appHealth.backend) {
+    showSyncStatus('⚠ Sin conexión al servidor — los datos se guardarán localmente', 8000);
+  } else if (!_appHealth.firebase) {
+    showSyncStatus('⚠ Firebase no conectado — sincronización entre dispositivos desactivada', 8000);
+  }
+
+  return _appHealth;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  v119: GUARDADO EN CADENA con confirmación (IndexedDB → Firebase → cola si falla)
+// ══════════════════════════════════════════════════════════════
+async function savePresupuestoFull(data) {
+  const ref = data.id || data.f_ref;
+  let savedIDB = false, savedFB = false;
+
+  // Paso 1: IndexedDB (siempre funciona offline)
+  try {
+    await savePresupuesto(data);
+    savedIDB = true;
+  } catch(e) {
+    console.error('[Azkar] Error IndexedDB:', e);
+    // Fallback: localStorage
+    try { localStorage.setItem('azkar_emergency_' + ref, JSON.stringify(data)); } catch(e2) {}
+  }
+
+  // Paso 2: Firebase (si está disponible)
+  if (firebaseConfigured && window._fb) {
+    try {
+      await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), data);
+      savedFB = true;
+    } catch(e) {
+      console.warn('[Azkar] Firebase falló, añadiendo a cola:', e.message);
+      queueOfflineOp({
+        type: 'firebase',
+        label: 'Sync Firebase ' + ref,
+        ts: Date.now(),
+        fn: async () => {
+          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), data);
+        }
+      });
+    }
+  }
+
+  // Feedback al usuario según resultado
+  if (savedIDB && savedFB) {
+    showSyncStatus('✓ Guardado y sincronizado (Nº ' + ref + ')');
+  } else if (savedIDB && !savedFB && firebaseConfigured) {
+    showSyncStatus('💾 Guardado local — pendiente sincronizar con la nube', 4000);
+  } else if (savedIDB) {
+    showSyncStatus('💾 Guardado localmente (Nº ' + ref + ')');
+  } else {
+    showSyncStatus('⚠ Error al guardar — intentando recuperar...', 5000);
+  }
+
+  return { savedIDB, savedFB };
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -3603,8 +3750,8 @@ window.GD = async function() {
       }
     }
 
-    // Guardar versión actual en IndexedDB
-    await savePresupuesto(data);
+    // v119: Guardar con confirmación en cadena (IndexedDB → Firebase → cola si falla)
+    await savePresupuestoFull(data);
 
     // Renombrar carpeta en Drive con el nombre del cliente (si tiene nombre)
     const clientName = document.getElementById('f_nom') ? document.getElementById('f_nom').value : '';
@@ -3613,22 +3760,24 @@ window.GD = async function() {
       const driveInfo = window._driveInfo;
       if (driveInfo && driveInfo.needsCreate) {
         if (btn) btn.innerHTML = '📁 Creando carpeta...';
-        await createDriveFolder(numRef);
-        window._driveInfo.needsCreate = false; // Ya creada, no repetir
+        try {
+          await createDriveFolder(numRef);
+          window._driveInfo.needsCreate = false;
+        } catch(driveErr) {
+          console.warn('[Azkar] Error creando carpeta Drive, cola offline:', driveErr.message);
+          queueOfflineOp({ type: 'drive', label: 'Crear carpeta ' + numRef, ts: Date.now(), fn: async () => { await createDriveFolder(numRef); } });
+        }
       }
       if (btn) btn.innerHTML = '📝 Renombrando carpeta...';
-      const renameResult = await renameDriveFolder(numRef, clientName);
-      if (renameResult && renameResult.success) {
-        showSyncStatus('📁 Carpeta: ' + ref + ' ' + clientName.toUpperCase());
+      try {
+        const renameResult = await renameDriveFolder(numRef, clientName);
+        if (renameResult && renameResult.success) {
+          showSyncStatus('📁 Carpeta: ' + ref + ' ' + clientName.toUpperCase());
+        }
+      } catch(renameErr) {
+        console.warn('[Azkar] Error renombrando carpeta, cola offline:', renameErr.message);
+        queueOfflineOp({ type: 'drive', label: 'Renombrar ' + numRef + ' ' + clientName, ts: Date.now(), fn: async () => { await renameDriveFolder(numRef, clientName); } });
       }
-    }
-
-    // Sync to Firebase if configured
-    if (firebaseConfigured && window._fb) {
-      await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), data);
-      showSyncStatus('✓ Guardado y sincronizado (Nº ' + ref + ')');
-    } else {
-      showSyncStatus('💾 Guardado localmente (Nº ' + ref + ')');
     }
 
     // ── AUTO-BACKUP A DRIVE (automático, sin intervención del usuario) ──
@@ -3789,19 +3938,18 @@ window.addEventListener('DOMContentLoaded', function() {
     appId: "1:1057774147621:web:0a29da12018adafaff87cc"
   };
   initFirebase(azkarFirebaseConfig);
-  
-  // v118: Auto-save every 60 seconds (IndexedDB + Firebase)
+
+  // v119: Health check al abrir — verificar backend y Firebase tras 3s
+  setTimeout(checkAppHealth, 3000);
+
+  // v119: Auto-save every 60 seconds (cadena completa con cola offline)
   setInterval(async () => {
     const ref = document.getElementById('f_ref');
     if (ref && ref.value) {
       try {
         const data = collectFormData();
         data.id = ref.value;
-        await savePresupuesto(data);
-        // También sincronizar con Firebase
-        if (firebaseConfigured && window._fb) {
-          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref.value), data);
-        }
+        await savePresupuestoFull(data);
       } catch(e) { console.warn('[Azkar] Auto-save error:', e); }
     }
   }, 60000);
