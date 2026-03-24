@@ -1947,6 +1947,16 @@ function syncParadaDirs(){
     if(firstRec && firstRec.value) window.loadStreetView(firstRec.value,'recogida');
     if(firstEnt && firstEnt.value) window.loadStreetView(firstEnt.value,'entrega');
   }
+  // v113: Recalcular distancia km cuando cambian direcciones de paradas
+  if(typeof window._calcDistancia==='function'){
+    clearTimeout(window._paradaDistTimer);
+    window._paradaDistTimer=setTimeout(window._calcDistancia,2000);
+  }
+  // v113: Verificar ZBE con direcciones de paradas
+  if(typeof window._verificarZBE==='function'){
+    if(fRec && fRec.value) window._verificarZBE(fRec.value,'zbe-f-recogida');
+    if(fEnt && fEnt.value) window._verificarZBE(fEnt.value,'zbe-f-entrega');
+  }
 }
 
 function hideOriginalAddressFields(hide){
@@ -5580,6 +5590,8 @@ function txCreatePresupuesto() {
     if (zbe) { container.innerHTML = generarAvisoZBE(zbe, ciudad); container.style.display = 'block'; }
     else { container.innerHTML = ''; container.style.display = 'none'; }
   }
+  // v113: Exponer verificarZBE para que syncParadaDirs pueda actualizarla
+  window._verificarZBE = verificarZBE;
 
   var fRec = document.getElementById('f_rec');
     var fEnt = document.getElementById('f_ent');
