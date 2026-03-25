@@ -2305,7 +2305,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v123c';
+var APP_VERSION = 'v123d';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2854,7 +2854,7 @@ async function autoRepair() {
         for (const p of local) {
           if (!cloudMap[p.id]) {
             try {
-              await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', p.id), p);
+              await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', p.id), p, { merge: true });
               uploaded++;
               fixes++;
             } catch(e) { /* skip if fails */ }
@@ -2883,7 +2883,7 @@ async function autoRepair() {
             if (p.timestamp > cloud.timestamp) {
               // Local más reciente → subir a Firebase
               try {
-                await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', p.id), p);
+                await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', p.id), p, { merge: true });
                 updated++;
                 fixes++;
               } catch(e) {}
@@ -2983,9 +2983,10 @@ async function savePresupuestoFull(data) {
   }
 
   // Paso 2: Firebase (si está disponible)
+  // v123c: Usar merge:true para NO borrar campos de estado (_enMarcha, _pagado, etc.)
   if (firebaseConfigured && window._fb) {
     try {
-      await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), data);
+      await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), data, { merge: true });
       savedFB = true;
     } catch(e) {
       console.warn('[Azkar] Firebase falló, añadiendo a cola:', e.message);
@@ -2994,7 +2995,7 @@ async function savePresupuestoFull(data) {
         label: 'Sync Firebase ' + ref,
         ts: Date.now(),
         fn: async () => {
-          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), data);
+          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), data, { merge: true });
         }
       });
     }
@@ -3218,7 +3219,7 @@ async function initFirebase(config) {
             let uploaded = 0;
             for (const p of local) {
               if (!cloudIds.has(p.id)) {
-                await setDoc(doc(firestoreDB, 'presupuestos', p.id), p);
+                await setDoc(doc(firestoreDB, 'presupuestos', p.id), p, { merge: true });
                 uploaded++;
               }
             }
@@ -3253,7 +3254,7 @@ async function syncToFirebase() {
     const all = await getAllPresupuestos();
     const { doc, setDoc } = window._fb;
     for (const p of all) {
-      await setDoc(doc(window._fb.db, 'presupuestos', p.id), p);
+      await setDoc(doc(window._fb.db, 'presupuestos', p.id), p, { merge: true });
     }
     showSyncStatus('✓ Sincronizado con la nube');
   } catch (e) {
@@ -3569,11 +3570,14 @@ async function moverEnMarcha(ref) {
         await savePresupuesto(pres);
         // Sync a Firebase
         if (firebaseConfigured && window._fb) {
-          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres);
+          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
         }
       }
+      // v123c: Guardar estados en localStorage como backup persistente
+      window._currentEnMarcha = true;
+      window._currentEnMarchaDate = Date.now();
+      try { localStorage.setItem('azkar_estado_' + ref, JSON.stringify({ _enMarcha: true, _enMarchaDate: Date.now() })); } catch(e) {}
       showSyncStatus('✅ Carpeta ' + (data.folderName || ref) + ' movida a "2 En Marcha"', 5000);
-      // Refrescar el gestor
       openMgr();
     } else {
       showSyncStatus('❌ Error: ' + (data.error || 'No se pudo mover'), 6000);
@@ -3608,11 +3612,14 @@ async function moverPagadoFinalizado(ref) {
         await savePresupuesto(pres);
         // Sync a Firebase
         if (firebaseConfigured && window._fb) {
-          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres);
+          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
         }
       }
+      // v123c: Guardar estados en localStorage como backup persistente
+      window._currentPagado = true;
+      window._currentPagadoDate = Date.now();
+      try { localStorage.setItem('azkar_estado_' + ref, JSON.stringify({ _enMarcha: true, _enMarchaDate: window._currentEnMarchaDate, _pagadoFinalizado: true, _pagadoFinalizadoDate: Date.now() })); } catch(e) {}
       showSyncStatus('✅ Carpeta ' + (data.folderName || ref) + ' movida a "PAGADO FINALIZADO"', 5000);
-      // Refrescar el gestor
       openMgr();
     } else {
       showSyncStatus('❌ Error: ' + (data.error || 'No se pudo mover'), 6000);
@@ -3644,7 +3651,7 @@ async function moverPagadoAnual(ref) {
         pres._archivadoDate = Date.now();
         await savePresupuesto(pres);
         if (firebaseConfigured && window._fb) {
-          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres);
+          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
         }
       }
       showSyncStatus('✅ Carpeta ' + (data.folderName || ref) + ' archivada en "2026 PAGADO"', 5000);
@@ -3682,7 +3689,7 @@ async function moverGuardamueblesEnMarcha(ref) {
         pres._guardamueblesDate = Date.now();
         await savePresupuesto(pres);
         if (firebaseConfigured && window._fb) {
-          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres);
+          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
         }
       }
       showSyncStatus('✅ Carpeta ' + (data.folderName || ref) + ' devuelta a "EN MARCHA" (guardamuebles)', 5000);
@@ -4369,7 +4376,7 @@ window.saveAllToDrive = async function() {
     formData.id = number;
     await savePresupuesto(formData);
     if (firebaseConfigured && window._fb) {
-      await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', number), formData);
+      await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', number), formData, { merge: true });
     }
     console.log('[SaveAllToDrive] Datos guardados en IndexedDB + Firebase');
   } catch(e) { console.warn('[SaveAllToDrive] Error guardando datos:', e); }
@@ -4543,6 +4550,19 @@ window.addEventListener('DOMContentLoaded', function() {
       const data = collectFormData();
       data.id = ref.value;
       data.timestamp = Date.now();
+      // v123c: SIEMPRE preservar estados — si no están en variables globales, leer de localStorage backup
+      if (!data._enMarcha && !window._currentEnMarcha) {
+        try {
+          var oldBackup = localStorage.getItem('azkar_estado_' + ref.value);
+          if (oldBackup) {
+            var estados = JSON.parse(oldBackup);
+            if (estados._enMarcha) { data._enMarcha = true; data._enMarchaDate = estados._enMarchaDate; }
+            if (estados._pagadoFinalizado) { data._pagadoFinalizado = true; data._pagadoFinalizadoDate = estados._pagadoFinalizadoDate; }
+            if (estados._guardamuebles) data._guardamuebles = true;
+            if (estados._archivado2026) data._archivado2026 = true;
+          }
+        } catch(e) {}
+      }
       // Guardado síncrono en localStorage (siempre funciona al cerrar)
       try {
         localStorage.setItem('azkar_backup_ref', ref.value);
@@ -4876,7 +4896,7 @@ async function generarRelacionPDF(enviarEmail){
         });
         await savePresupuesto(pres);
         if(firebaseConfigured && window._fb){
-          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres);
+          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
         }
       }
       var msg = '✅ Relación de enseres guardada en Drive → carpeta ' + ref;
@@ -4959,7 +4979,7 @@ async function fichaje_getCollection(name) {
 async function fichaje_saveDoc(collName, docId, data) {
   if (!window._fb) return;
   try {
-    await window._fb.setDoc(window._fb.doc(window._fb.db, collName, docId), data);
+    await window._fb.setDoc(window._fb.doc(window._fb.db, collName, docId), data, { merge: true });
   } catch(e) { console.warn('[Fichaje] Error save', e); }
 }
 
