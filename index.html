@@ -330,6 +330,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 .fch-hist-row{grid-template-columns:80px 1fr 70px!important;font-size:11px!important}
 .fch-hist-row .corrected{display:none!important}
 }
+@keyframes waFlash{0%,100%{transform:scale(1)}50%{transform:scale(1.25);filter:brightness(1.3)}}
 </style>
 
 <div class="fch-container">
@@ -1304,6 +1305,13 @@ async function PA(){
     var result = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO', clientEmail, firmaUrl, isEnMarcha);
 
     if (result && result.success) {
+      // v121: Ofrecer envío por WhatsApp si hay teléfono y enlace al PDF
+      var clientTelWA = (document.getElementById('f_tel') || {}).value || '';
+      var pdfLink = result.drive && result.drive.webViewLink ? result.drive.webViewLink : '';
+      if (clientTelWA && pdfLink) {
+        _ofrecerWhatsApp(clientTelWA, clientName, number, pdfLink);
+      }
+
       // Mensaje según si se envió email o no
       if (result.email && result.email.success) {
         showSyncStatus('✅ PDF guardado en Drive + Email enviado a ' + result.email.to, 8000);
@@ -2297,7 +2305,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v121b';
+var APP_VERSION = 'v122';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -3643,28 +3651,85 @@ function apiHeaders(extra) {
 }
 
 // ── WhatsApp Business: abrir conversación con el número del cliente ──
+// v122: Variable global para enlace PDF pendiente de enviar por WhatsApp
+var _whatsappPdfLink = null;
+var _whatsappClientName = '';
+var _whatsappClientNum = '';
+
+// v122: Crear botón "Enviar Presupuesto" por WhatsApp (se inyecta al lado del botón existente)
+function _crearBtnWAPdf() {
+  if (document.getElementById('btn-wa-pdf')) return; // ya existe
+  var btnOriginal = document.querySelector('button[onclick="abrirWhatsApp()"]');
+  if (!btnOriginal) return;
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'btn-wa-pdf';
+  btn.onclick = function() { enviarPresupuestoWhatsApp(); };
+  btn.title = 'Enviar presupuesto por WhatsApp';
+  btn.style.cssText = 'background:#128C7E;color:#fff;border:none;border-radius:3px;padding:0 8px;cursor:pointer;font-size:11px;display:none;align-items:center;min-width:38px;justify-content:center;font-weight:700;gap:3px;white-space:nowrap;height:100%';
+  btn.innerHTML = '📄 PDF';
+  btnOriginal.parentNode.insertBefore(btn, btnOriginal.nextSibling);
+}
+
+// v122: Cuando se genera un PDF, mostrar el botón de enviar presupuesto
+function _ofrecerWhatsApp(tel, clientName, clientNum, pdfLink) {
+  if (!tel || !pdfLink) return;
+  _whatsappPdfLink = pdfLink;
+  _whatsappClientName = clientName || '';
+  _whatsappClientNum = clientNum || '';
+  // Crear/mostrar botón de enviar presupuesto
+  _crearBtnWAPdf();
+  var btn = document.getElementById('btn-wa-pdf');
+  if (btn) {
+    btn.style.display = 'flex';
+    btn.style.animation = 'waFlash 1s ease 3';
+  }
+  showSyncStatus('📱 Pulsa "📄 PDF" junto al WhatsApp para enviar el presupuesto', 6000);
+}
+
+// v122: Enviar presupuesto por WhatsApp (botón dedicado)
+function enviarPresupuestoWhatsApp() {
+  var tel = (document.getElementById('f_tel') || {}).value || '';
+  if (!tel || tel.trim().length < 6) { alert('Escribe primero el número de teléfono del cliente'); return; }
+  if (!_whatsappPdfLink) { alert('Primero genera el presupuesto (botón GUARDAR)'); return; }
+  var num = tel.replace(/[\s\-\(\)\.]/g, '');
+  if (num.startsWith('0')) num = '34' + num.substring(1);
+  if (!num.startsWith('+') && !num.startsWith('34')) num = '34' + num;
+  num = num.replace(/^\+/, '');
+  var nombre = (document.getElementById('f_nom') || {}).value || '';
+  var primerNombre = nombre ? nombre.split(' ')[0] : '';
+  var texto = 'Buenos días' + (primerNombre ? ' ' + primerNombre : '') + ', le envío el presupuesto de su mudanza con Azkar Mudanzas.\n\n📄 Presupuesto: ' + _whatsappPdfLink + '\n\nPara cualquier duda estamos a su disposición. ¡Un saludo!';
+  var textoEnc = encodeURIComponent(texto);
+  var isAndroid = /android/i.test(navigator.userAgent);
+  if (isAndroid) {
+    var intentUrl = 'intent://send?phone=' + num + '&text=' + textoEnc + '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=' + encodeURIComponent('https://wa.me/' + num + '?text=' + textoEnc) + ';end';
+    window.location.href = intentUrl;
+  } else {
+    window.open('https://wa.me/' + num + '?text=' + textoEnc, '_blank');
+  }
+  // Limpiar y ocultar botón
+  _whatsappPdfLink = null;
+  _whatsappClientName = '';
+  _whatsappClientNum = '';
+  var btn = document.getElementById('btn-wa-pdf');
+  if (btn) { btn.style.display = 'none'; btn.style.animation = ''; }
+}
+
 function abrirWhatsApp() {
   var tel = (document.getElementById('f_tel') || {}).value || '';
   if (!tel || tel.trim().length < 6) { alert('Escribe primero el número de teléfono del cliente'); return; }
-  // Limpiar: quitar espacios, guiones, paréntesis
   var num = tel.replace(/[\s\-\(\)\.]/g, '');
-  // Si empieza por 0, quitar el 0 y poner 34 (España)
   if (num.startsWith('0')) num = '34' + num.substring(1);
-  // Si no tiene prefijo internacional, asumir España (+34)
   if (!num.startsWith('+') && !num.startsWith('34')) num = '34' + num;
-  // Quitar el + si lo tiene
   num = num.replace(/^\+/, '');
-  var nombre = (document.getElementById('f_nom') || {}).value || '';
   var texto = 'Hola buenos días, mi nombre es Asier de Azkar Mudanzas, ¿con quién tengo el gusto de hablar? Disculpa no haberte podido contestar, estaba en otra llamada.';
-  var textoEnc = texto ? encodeURIComponent(texto) : '';
-  // En Android: abrir WhatsApp Business directamente (paquete com.whatsapp.w4b)
+  var textoEnc = encodeURIComponent(texto);
   var isAndroid = /android/i.test(navigator.userAgent);
   if (isAndroid) {
-    var intentUrl = 'intent://send?phone=' + num + (textoEnc ? '&text=' + textoEnc : '') + '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=' + encodeURIComponent('https://wa.me/' + num + (textoEnc ? '?text=' + textoEnc : '')) + ';end';
+    var intentUrl = 'intent://send?phone=' + num + '&text=' + textoEnc + '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=' + encodeURIComponent('https://wa.me/' + num + '?text=' + textoEnc) + ';end';
     window.location.href = intentUrl;
   } else {
-    // iOS u otros: usar wa.me (no hay forma de forzar Business en iOS)
-    window.open('https://wa.me/' + num + (textoEnc ? '?text=' + textoEnc : ''), '_blank');
+    window.open('https://wa.me/' + num + '?text=' + textoEnc, '_blank');
   }
 }
 
