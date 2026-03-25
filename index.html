@@ -2305,7 +2305,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v123';
+var APP_VERSION = 'v123b';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -3331,6 +3331,9 @@ async function openMgr() {
       const hoverColor = isPagado ? '#d5f5e0' : (isEnMarcha ? '#fde8d5' : (isFirmado ? '#e0f5ea' : (isVersion ? '#fff8e1' : '#EBF3FD')));
       const enMarchaBtn = (!isVersion && !isEnMarcha && !isPagado) ? '<button onclick="event.stopPropagation();moverEnMarcha(\'' + ref + '\')" style="background:#E85C0D;border:none;color:#fff;padding:6px 8px;border-radius:5px;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;" title="Mover carpeta a 2 En Marcha en Drive">🚚 EN MARCHA</button>' : '';
       const pagadoBtn = (isEnMarcha && !isPagado) ? '<button onclick="event.stopPropagation();moverPagadoFinalizado(\'' + ref + '\')" style="background:#27ae60;border:none;color:#fff;padding:6px 8px;border-radius:5px;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;" title="Mover carpeta a PAGADO FINALIZADO en Drive">💰 PAGADO</button>' : '';
+      // v123: Botones post-pago: archivar en 2026 o devolver a En Marcha (guardamuebles)
+      const pagadoAnualBtn = isPagado ? '<button onclick="event.stopPropagation();moverPagadoAnual(\'' + ref + '\')" style="background:#1B4F8A;border:none;color:#fff;padding:6px 8px;border-radius:5px;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;" title="Archivar en carpeta 2026 PAGADO">📁 2026</button>' : '';
+      const guardamueblesBtn = isPagado ? '<button onclick="event.stopPropagation();moverGuardamueblesEnMarcha(\'' + ref + '\')" style="background:#8e44ad;border:none;color:#fff;padding:6px 8px;border-radius:5px;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;" title="Guardamuebles: devolver a En Marcha">🏠 GUARD.</button>' : '';
       return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:' + (isVersion ? '4' : '8') + 'px;border:1px solid ' + borderColor + ';border-radius:8px;cursor:pointer;transition:.15s;background:' + bgColor + ';" onmouseover="this.style.background=\'' + hoverColor + '\'" onmouseout="this.style.background=\'' + bgColor + '\'" onclick="loadPresupuesto(\'' + p.id + '\')">'
         + '<div style="width:42px;height:42px;background:' + bgGrad + ';border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">' + (isPagado ? '💰' : (isEnMarcha ? '🚚' : (isFirmado ? '✓' : ref.slice(-4) || 'N/A'))) + '</div>'
         + '<div style="flex:1;min-width:0;">'
@@ -3340,6 +3343,8 @@ async function openMgr() {
         + '<div style="text-align:right;font-size:11px;color:#888;">' + (p.f_rec ? (p.f_rec.length > 20 ? p.f_rec.substring(0,20)+'...' : p.f_rec) : '') + '</div>'
         + enMarchaBtn
         + pagadoBtn
+        + pagadoAnualBtn
+        + guardamueblesBtn
         + '<button onclick="event.stopPropagation();delPresupuesto(\'' + p.id + '\')" style="background:#fee;border:1px solid #fcc;color:#c0392b;padding:6px 10px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;">x</button>'
         + '</div>';
     }
@@ -3579,6 +3584,79 @@ async function moverPagadoFinalizado(ref) {
     }
   } catch(e) {
     console.error('[PagadoFinalizado] Error:', e);
+    showSyncStatus('❌ Error de conexión: ' + e.message, 6000);
+  }
+}
+
+// v123: Mover de "Pagado Finalizado" a "2026 Pagado" (archivar)
+async function moverPagadoAnual(ref) {
+  if (!ref) return;
+  if (!confirm('¿Archivar la carpeta del cliente ' + ref + ' en "2026 PAGADO"?\n\nEsto archiva el cliente como finalizado y pagado para este año.')) return;
+
+  showSyncStatus('📁 Moviendo carpeta a 2026 Pagado...', 0);
+  try {
+    var res = await fetch(RAILWAY_API + '/api/drive/captacion/move-pagado-anual', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({ number: ref })
+    });
+    var data = await res.json();
+    if (data.success) {
+      // Marcar como archivado en IndexedDB
+      var pres = await getPresupuesto(ref);
+      if (pres) {
+        pres._archivado2026 = true;
+        pres._archivadoDate = Date.now();
+        await savePresupuesto(pres);
+        if (firebaseConfigured && window._fb) {
+          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres);
+        }
+      }
+      showSyncStatus('✅ Carpeta ' + (data.folderName || ref) + ' archivada en "2026 PAGADO"', 5000);
+      openMgr();
+    } else {
+      showSyncStatus('❌ Error: ' + (data.error || 'No se pudo mover'), 6000);
+    }
+  } catch(e) {
+    console.error('[PagadoAnual] Error:', e);
+    showSyncStatus('❌ Error de conexión: ' + e.message, 6000);
+  }
+}
+
+// v123: Mover de "Pagado Finalizado" a "En Marcha" (guardamuebles — servicio sigue activo)
+async function moverGuardamueblesEnMarcha(ref) {
+  if (!ref) return;
+  if (!confirm('¿Mover la carpeta del cliente ' + ref + ' de vuelta a "EN MARCHA"?\n\nUsa esto cuando el cliente tiene GUARDAMUEBLES y el servicio de almacenaje sigue activo.')) return;
+
+  showSyncStatus('🏠 Moviendo carpeta a En Marcha (guardamuebles)...', 0);
+  try {
+    var res = await fetch(RAILWAY_API + '/api/drive/captacion/move-guardamuebles-enmarcha', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({ number: ref })
+    });
+    var data = await res.json();
+    if (data.success) {
+      // Quitar marca de pagado, poner en marcha otra vez
+      var pres = await getPresupuesto(ref);
+      if (pres) {
+        pres._pagadoFinalizado = false;
+        delete pres._pagadoFinalizadoDate;
+        pres._enMarcha = true;
+        pres._guardamuebles = true;
+        pres._guardamueblesDate = Date.now();
+        await savePresupuesto(pres);
+        if (firebaseConfigured && window._fb) {
+          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres);
+        }
+      }
+      showSyncStatus('✅ Carpeta ' + (data.folderName || ref) + ' devuelta a "EN MARCHA" (guardamuebles)', 5000);
+      openMgr();
+    } else {
+      showSyncStatus('❌ Error: ' + (data.error || 'No se pudo mover'), 6000);
+    }
+  } catch(e) {
+    console.error('[GuardamueblesEnMarcha] Error:', e);
     showSyncStatus('❌ Error de conexión: ' + e.message, 6000);
   }
 }
