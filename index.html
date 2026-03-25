@@ -2305,7 +2305,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v123d';
+var APP_VERSION = 'v123e';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -3158,6 +3158,8 @@ async function initFirebase(config) {
     const colRef = collection(firestoreDB, 'presupuestos');
     let firstSync = true;
     onSnapshot(colRef, async snapshot => {
+      // v123e: NUNCA procesar cambios mientras se está cargando un presupuesto
+      if (window._presupuestoLoading) return;
       const changes = snapshot.docChanges();
       let hasChanges = false;
       for (const change of changes) {
@@ -3415,6 +3417,11 @@ function closeMgr() {
 }
 
 async function loadPresupuesto(id) {
+  // v123e: Cancelar cualquier auto-save pendiente antes de cargar otro cliente
+  if (typeof _saveTimeout !== 'undefined') clearTimeout(_saveTimeout);
+  // v123e: Marcar que NO necesita crear carpeta (ya existe para clientes guardados)
+  if (window._driveInfo) window._driveInfo.needsCreate = false;
+
   let data = await getPresupuesto(id);
   if (!data) return alert('Presupuesto no encontrado');
 
@@ -4520,6 +4527,8 @@ window.addEventListener('DOMContentLoaded', function() {
 
   // v119: Auto-save every 60 seconds (cadena completa con cola offline)
   setInterval(async () => {
+    // v123e: NUNCA guardar mientras se está cargando un presupuesto
+    if (window._presupuestoLoading) return;
     const ref = document.getElementById('f_ref');
     if (ref && ref.value) {
       try {
@@ -4545,6 +4554,8 @@ window.addEventListener('DOMContentLoaded', function() {
   // ── MEJORA 1: Guardar al refrescar/cerrar la página ──
   // Función para guardar INMEDIATAMENTE (sin debounce)
   function saveNow() {
+    // v123e: NUNCA guardar mientras se está cargando un presupuesto
+    if (window._presupuestoLoading) return null;
     const ref = document.getElementById('f_ref');
     if (ref && ref.value) {
       const data = collectFormData();
@@ -4584,8 +4595,11 @@ window.addEventListener('DOMContentLoaded', function() {
   // ── MEJORA 2: Guardado automático al cambiar campos (debounced 2s) ──
   let _saveTimeout = null;
   function debouncedAutoSave() {
+    // v123e: NUNCA guardar mientras se está cargando un presupuesto
+    if (window._presupuestoLoading) return;
     clearTimeout(_saveTimeout);
     _saveTimeout = setTimeout(() => {
+      if (window._presupuestoLoading) return;
       saveNow();
     }, 2000);
   }
