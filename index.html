@@ -2305,7 +2305,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v123b';
+var APP_VERSION = 'v123c';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -3071,15 +3071,21 @@ function collectFormData() {
   }
 
   data.timestamp = Date.now();
-  // Preservar _enMarcha si el presupuesto ya estaba en marcha
+  // v123: Preservar TODOS los campos de estado — leer de variable global O de IndexedDB
+  // Esto evita que el auto-save borre el estado si no se cargó desde el gestor
   if (window._currentEnMarcha) {
     data._enMarcha = true;
     if (window._currentEnMarchaDate) data._enMarchaDate = window._currentEnMarchaDate;
   }
-  // Preservar _pagadoFinalizado si ya estaba pagado
   if (window._currentPagado) {
     data._pagadoFinalizado = true;
     if (window._currentPagadoDate) data._pagadoFinalizadoDate = window._currentPagadoDate;
+  }
+  if (window._currentGuardamuebles) {
+    data._guardamuebles = true;
+  }
+  if (window._currentArchivado2026) {
+    data._archivado2026 = true;
   }
   return data;
 }
@@ -3155,7 +3161,34 @@ async function initFirebase(config) {
       let hasChanges = false;
       for (const change of changes) {
         if (change.type === 'added' || change.type === 'modified') {
-          await savePresupuesto({ ...change.doc.data(), id: change.doc.id });
+          // v123: Merge con datos locales para no perder campos de estado
+          const fbData = { ...change.doc.data(), id: change.doc.id };
+          try {
+            const localData = await getPresupuesto(change.doc.id);
+            if (localData) {
+              // Preservar campos de estado: usar el más reciente (timestamp más alto)
+              const fbTs = fbData.timestamp || 0;
+              const localTs = localData.timestamp || 0;
+              if (fbTs >= localTs) {
+                // Firebase es más reciente: usar Firebase pero preservar estados locales si Firebase no los tiene
+                if (!fbData._enMarcha && localData._enMarcha) fbData._enMarcha = localData._enMarcha;
+                if (!fbData._enMarchaDate && localData._enMarchaDate) fbData._enMarchaDate = localData._enMarchaDate;
+                if (!fbData._pagadoFinalizado && localData._pagadoFinalizado) fbData._pagadoFinalizado = localData._pagadoFinalizado;
+                if (!fbData._pagadoFinalizadoDate && localData._pagadoFinalizadoDate) fbData._pagadoFinalizadoDate = localData._pagadoFinalizadoDate;
+                if (!fbData._guardamuebles && localData._guardamuebles) fbData._guardamuebles = localData._guardamuebles;
+                if (!fbData._archivado2026 && localData._archivado2026) fbData._archivado2026 = localData._archivado2026;
+              } else {
+                // Local es más reciente: mantener local, solo actualizar si Firebase tiene campos de estado que local no
+                if (fbData._enMarcha && !localData._enMarcha) localData._enMarcha = fbData._enMarcha;
+                if (fbData._pagadoFinalizado && !localData._pagadoFinalizado) localData._pagadoFinalizado = fbData._pagadoFinalizado;
+                // No sobrescribir con Firebase si local es más nuevo
+                continue;
+              }
+            }
+          } catch(mergeErr) {
+            console.warn('[Firebase Sync] Error en merge:', mergeErr.message);
+          }
+          await savePresupuesto(fbData);
           hasChanges = true;
         }
         if (change.type === 'removed') {
@@ -3414,6 +3447,8 @@ async function loadPresupuesto(id) {
   window._currentEnMarchaDate = data._enMarchaDate || null;
   window._currentPagado = !!data._pagadoFinalizado;
   window._currentPagadoDate = data._pagadoFinalizadoDate || null;
+  window._currentGuardamuebles = !!data._guardamuebles;
+  window._currentArchivado2026 = !!data._archivado2026;
   closeMgr();
   if (typeof ST === 'function') ST('presupuesto');
   showSyncStatus('📄 Presupuesto cargado');
@@ -4457,11 +4492,42 @@ window.addEventListener('DOMContentLoaded', function() {
   setTimeout(autoRepair, 10000);
   setInterval(autoRepair, 300000); // Cada 5 minutos
 
+  // v123: Al arrancar, recuperar estados (_enMarcha, _pagado, etc.) del presupuesto en formulario
+  setTimeout(async () => {
+    try {
+      const refEl = document.getElementById('f_ref');
+      if (refEl && refEl.value) {
+        const existing = await getPresupuesto(refEl.value);
+        if (existing) {
+          window._currentEnMarcha = !!existing._enMarcha;
+          window._currentEnMarchaDate = existing._enMarchaDate || null;
+          window._currentPagado = !!existing._pagadoFinalizado;
+          window._currentPagadoDate = existing._pagadoFinalizadoDate || null;
+          window._currentGuardamuebles = !!existing._guardamuebles;
+          window._currentArchivado2026 = !!existing._archivado2026;
+          console.log('[Azkar] Estados recuperados para', refEl.value, '→ enMarcha:', !!existing._enMarcha, 'pagado:', !!existing._pagadoFinalizado);
+        }
+      }
+    } catch(e) { console.warn('[Azkar] Error recuperando estados:', e); }
+  }, 2000);
+
   // v119: Auto-save every 60 seconds (cadena completa con cola offline)
   setInterval(async () => {
     const ref = document.getElementById('f_ref');
     if (ref && ref.value) {
       try {
+        // v123: Antes de guardar, asegurar que tenemos los estados del presupuesto
+        if (window._currentEnMarcha === undefined) {
+          const existing = await getPresupuesto(ref.value);
+          if (existing) {
+            window._currentEnMarcha = !!existing._enMarcha;
+            window._currentEnMarchaDate = existing._enMarchaDate || null;
+            window._currentPagado = !!existing._pagadoFinalizado;
+            window._currentPagadoDate = existing._pagadoFinalizadoDate || null;
+            window._currentGuardamuebles = !!existing._guardamuebles;
+            window._currentArchivado2026 = !!existing._archivado2026;
+          }
+        }
         const data = collectFormData();
         data.id = ref.value;
         await savePresupuestoFull(data);
