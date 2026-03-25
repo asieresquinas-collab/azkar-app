@@ -2305,7 +2305,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v122';
+var APP_VERSION = 'v123';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -6047,41 +6047,140 @@ function txCreatePresupuesto() {
   }
 })();
 
-// ── DETECTOR DE ZONAS DE BAJAS EMISIONES (ZBE) ─────────────
+// ── DETECTOR DE ZONAS DE BAJAS EMISIONES (ZBE) v123 ─────────────
+// v123: Detección por POLÍGONO GPS real — ya no trata todo Bilbao como ZBE
 (function() {
-  var ZBE_DB = {
-    'bilbao': { nombre: 'Bilbao', sinEtiqueta: 'PROHIBIDO (exención grúa Azkar hasta 2029)', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón NO puede entrar. Grúa tiene exención hasta 2029 por estar modificada. Furgoneta y Mercedes sin problema.', nivel: 'warning' },
-    'vitoria': { nombre: 'Vitoria-Gasteiz', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa desde septiembre 2025. Cabezón y Grúa NO pueden entrar. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'vitoria-gasteiz': { ref: 'vitoria' }, 'gasteiz': { ref: 'vitoria' },
-    'donostia': { nombre: 'Donostia-San Sebastián', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa desde diciembre 2024. Cabezón y Grúa NO pueden entrar. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'san sebastian': { ref: 'donostia' }, 'san sebastián': { ref: 'donostia' },
-    'madrid': { nombre: 'Madrid', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO (restricciones en Distrito Centro)', etiquetaC: 'PERMITIDO', notas: 'ZBE todo el municipio. Cabezón y Grúa NO pueden entrar. Furgoneta con precaución en centro. Mercedes sin problema.', nivel: 'danger' },
-    'barcelona': { nombre: 'Barcelona', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO (prohibido en episodios contaminación, prohibido total desde 2028)', etiquetaC: 'PERMITIDO', notas: 'ZBE Rondas. Cabezón y Grúa NO. Furgoneta OK pero limitada en episodios de contaminación y prohibida desde 2028. Mercedes OK.', nivel: 'danger' },
-    'valencia': { nombre: 'Valencia', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO pueden entrar. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'sevilla': { nombre: 'Sevilla', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO pueden entrar. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'málaga': { nombre: 'Málaga', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa desde noviembre 2025. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'malaga': { ref: 'málaga' },
-    'zaragoza': { nombre: 'Zaragoza', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa desde diciembre 2025. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'granada': { nombre: 'Granada', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa desde octubre 2025. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'córdoba': { nombre: 'Córdoba', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'cordoba': { ref: 'córdoba' },
-    'pontevedra': { nombre: 'Pontevedra', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'a coruña': { nombre: 'A Coruña', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'coruña': { ref: 'a coruña' },
-    'valladolid': { nombre: 'Valladolid', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'badalona': { nombre: 'Badalona', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO (prohibido total desde 2028)', etiquetaC: 'PERMITIDO', notas: 'ZBE metropolitana Barcelona. Mismas normas que Barcelona.', nivel: 'danger' },
-    'sabadell': { nombre: 'Sabadell', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO (prohibido total desde 2028)', etiquetaC: 'PERMITIDO', notas: 'ZBE activa desde diciembre 2025. Mismas normas que Barcelona.', nivel: 'danger' },
-    'hospitalet': { nombre: "L'Hospitalet de Llobregat", sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO (prohibido total desde 2028)', etiquetaC: 'PERMITIDO', notas: 'ZBE metropolitana Barcelona.', nivel: 'danger' },
-    'murcia': { nombre: 'Murcia', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'palma': { nombre: 'Palma de Mallorca', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'palma de mallorca': { ref: 'palma' },
-    'las palmas': { nombre: 'Las Palmas de Gran Canaria', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'gijón': { nombre: 'Gijón', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'gijon': { ref: 'gijón' },
-    'santander': { nombre: 'Santander', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'pamplona': { nombre: 'Pamplona', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'logroño': { nombre: 'Logroño', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' },
-    'burgos': { nombre: 'Burgos', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Cabezón y Grúa NO. Furgoneta y Mercedes sí.', nivel: 'warning' }
+
+  // ── Reglas de restricción por ciudad (sin polígono aquí, solo normas) ──
+  var ZBE_REGLAS = {
+    'bilbao': { nombre: 'Bilbao (Abando)', sinEtiqueta: 'PROHIBIDO (exención grúa Azkar hasta 2029)', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE Abando: ría al norte, Sabino Arana/Ferrocarril al oeste, Autonomía al sur, Bailén al este. L-V 7:00-20:00. Cabezón NO puede entrar. Grúa exención hasta 2029. Furgoneta y Mercedes sin problema.', nivel: 'warning' },
+    'vitoria': { nombre: 'Vitoria-Gasteiz (Casco Medieval + Ensanche)', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE fase 1: Casco Medieval + parte del Ensanche (0.64 km²). San Ignacio, Francia, Paz, Dato, Florida, Ramón y Cajal, Cercas Bajas. L-V 7:00-20:00.', nivel: 'warning' },
+    'donostia': { nombre: 'Donostia-San Sebastián (Centro)', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE centro: Parte Vieja, Paseo Nuevo hasta La Concha, Amara Viejo (1.2 km²). 10 cámaras de control. Multas desde marzo 2025.', nivel: 'warning' },
+    'madrid': { nombre: 'Madrid (todo el municipio)', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO (restricciones en Distrito Centro ZBEDEP)', etiquetaC: 'PERMITIDO', notas: 'ZBE todo el municipio de Madrid. Distrito Centro (ZBEDEP): Alberto Aguilera, Sagasta, Recoletos, Prado, Atocha, Toledo, Bailén, Princesa. Cabezón y Grúa NO pueden entrar a Madrid.', nivel: 'danger' },
+    'barcelona': { nombre: 'Barcelona (entre Rondas)', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO (prohibido episodios contaminación, prohibido total desde 2028)', etiquetaC: 'PERMITIDO', notas: 'ZBE entre Ronda de Dalt y Ronda del Litoral (95 km²). Rondas de libre circulación. Excluidos: Vallvidrera, Tibidabo, Zona Franca. L-V 7:00-20:00.', nivel: 'danger' },
+    'valencia': { nombre: 'Valencia (centro ampliado)', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE 27.8 km²: Ronda Norte, Av. Naranjos, Serrería, Bulevar Sur. Ciutat Vella zona especial (0.3 km²). Sanciones desde dic 2025.', nivel: 'warning' },
+    'sevilla': { nombre: 'Sevilla (centro)', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE centro de Sevilla. Funciona L-V 7:00-19:00 (no festivos). Se activa en episodios de alta contaminación.', nivel: 'warning' },
+    'malaga': { nombre: 'Málaga (centro)', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE centro: Paseo Marítimo A. Machado, Av. Andalucía, Alameda Capuchinos, Paseo Marítimo P.R. Picasso. Activa desde nov 2025.', nivel: 'warning' },
+    'zaragoza': { nombre: 'Zaragoza (casco histórico)', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE casco histórico: Paseo Echegaray, Coso, Plaza España, Conde Aranda. Sanciones desde dic 2025.', nivel: 'warning' },
+    'granada': { nombre: 'Granada', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa desde abril 2025. Centro histórico.', nivel: 'warning' },
+    'valladolid': { nombre: 'Valladolid', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Centro urbano.', nivel: 'warning' },
+    'murcia': { nombre: 'Murcia', sinEtiqueta: 'PROHIBIDO', etiquetaB: 'PERMITIDO', etiquetaC: 'PERMITIDO', notas: 'ZBE activa. Centro urbano.', nivel: 'warning' }
+  };
+
+  // ── POLÍGONOS GPS de cada ZBE ──
+  // Coordenadas [lat, lon] del perímetro real de cada zona
+  // Para ciudades donde ZBE = todo el municipio, usamos un polígono grande o detección por nombre
+  var ZBE_POLIGONOS = {
+    // BILBAO: Abando (~2 km²) — ría al N, Sabino Arana/Ferrocarril al W, Autonomía al S, Bailén al E
+    'bilbao': [
+      [43.2632, -2.9398], // Sabino Arana / ría (NW)
+      [43.2630, -2.9350], // Av. Ferrocarril / ría
+      [43.2645, -2.9290], // Puente Deusto / ría
+      [43.2625, -2.9240], // Ría a la altura de Abandoibarra
+      [43.2610, -2.9200], // Museo Guggenheim
+      [43.2590, -2.9150], // Puente La Salve / ría
+      [43.2572, -2.9130], // Puente Arenal / ría (NE)
+      [43.2555, -2.9150], // Bailén (E)
+      [43.2540, -2.9170], // Bailén / San Francisco
+      [43.2530, -2.9200], // San Francisco / Autonomía (SE)
+      [43.2535, -2.9250], // Autonomía (S)
+      [43.2540, -2.9300], // Autonomía / Hurtado de Amézaga
+      [43.2545, -2.9350], // Autonomía / Plaza Circular
+      [43.2555, -2.9380], // Av. Ferrocarril (SW)
+      [43.2580, -2.9395], // Sabino Arana (W)
+      [43.2610, -2.9400], // Sabino Arana / San Mamés
+      [43.2632, -2.9398]  // Cierre al punto inicial
+    ],
+    // VITORIA: Casco Medieval + Ensanche (fase 1, 0.64 km²)
+    'vitoria': [
+      [42.8510, -2.6770], // San Ignacio (N)
+      [42.8505, -2.6725], // Francia (NE)
+      [42.8490, -2.6710], // Paz (E)
+      [42.8475, -2.6710], // Ramón Ortiz de Zárate
+      [42.8460, -2.6720], // Dato (SE)
+      [42.8445, -2.6735], // Florida (S)
+      [42.8440, -2.6750], // Ramón y Cajal
+      [42.8445, -2.6770], // Luis Heintz
+      [42.8455, -2.6790], // Magdalena (SW)
+      [42.8470, -2.6800], // Vicente Goikoetxea
+      [42.8485, -2.6800], // Cercas Bajas (W)
+      [42.8500, -2.6790], // Portal de Arriaga (NW)
+      [42.8510, -2.6770]  // Cierre
+    ],
+    // DONOSTIA: Centro + Parte Vieja + Amara Viejo (1.2 km²)
+    'donostia': [
+      [43.3260, -1.9890], // Paseo Nuevo (N - costa)
+      [43.3240, -1.9830], // Parte Vieja / Boulevard (NE)
+      [43.3220, -1.9810], // Puente Zurriola
+      [43.3200, -1.9820], // Santa Catalina
+      [43.3180, -1.9830], // San Martín / Árbol de Gernika
+      [43.3160, -1.9850], // Plaza Centenario / Easo (SE)
+      [43.3140, -1.9870], // Rotonda Autonomía (S)
+      [43.3130, -1.9900], // Amara Viejo / San Roque
+      [43.3135, -1.9940], // Paseo Beloka
+      [43.3150, -1.9960], // Aldapeta / Paseo de la Fe (SW)
+      [43.3180, -1.9970], // La Concha (W)
+      [43.3210, -1.9960], // Miraconcha / Villa Almudena
+      [43.3240, -1.9940], // La Concha (NW)
+      [43.3260, -1.9910], // Paseo Nuevo (N)
+      [43.3260, -1.9890]  // Cierre
+    ],
+    // VALENCIA: ZBE ampliada (27.8 km²) — Ronda Norte, Naranjos, Serrería, Bulevar Sur
+    'valencia': [
+      [39.4900, -0.3950], // Ronda Norte (NW)
+      [39.4900, -0.3700], // Ronda Norte (N)
+      [39.4850, -0.3500], // Av. Naranjos (NE)
+      [39.4750, -0.3450], // Serrería (E)
+      [39.4600, -0.3500], // Serrería (SE)
+      [39.4500, -0.3600], // Bulevar Sur (S)
+      [39.4500, -0.3800], // Bulevar Sur (SW)
+      [39.4550, -0.3950], // Ronda Norte vuelta (W)
+      [39.4700, -0.4000], // W
+      [39.4800, -0.3980], // NW
+      [39.4900, -0.3950]  // Cierre
+    ],
+    // MÁLAGA: centro (~4 km²)
+    'malaga': [
+      [36.7250, -4.4350], // Paseo Marítimo A. Machado (W costa)
+      [36.7230, -4.4250], // Av. Ingeniero Garnica
+      [36.7210, -4.4200], // Explanada Estación
+      [36.7195, -4.4150], // Av. Andalucía
+      [36.7200, -4.4100], // Alameda Capuchinos (E)
+      [36.7220, -4.4080], // Plaza Olletas
+      [36.7240, -4.4070], // Paseo Salvador Rueda
+      [36.7260, -4.4080], // Paseo Marítimo Picasso (E costa)
+      [36.7265, -4.4120], // Costa (NE)
+      [36.7260, -4.4200], // Costa (N)
+      [36.7255, -4.4300], // Costa (NW)
+      [36.7250, -4.4350]  // Cierre
+    ],
+    // ZARAGOZA: casco histórico (~0.5 km²)
+    'zaragoza': [
+      [41.6560, -0.8790], // Paseo Echegaray (N - río)
+      [41.6540, -0.8760], // San Vicente de Paúl (NE)
+      [41.6520, -0.8770], // Coso (E)
+      [41.6510, -0.8790], // Plaza España (SE)
+      [41.6515, -0.8820], // Conde Aranda (S)
+      [41.6525, -0.8840], // Santo Domingo (SW)
+      [41.6540, -0.8840], // Ramón Celma (W)
+      [41.6555, -0.8820], // Echegaray (NW)
+      [41.6560, -0.8790]  // Cierre
+    ],
+    // BARCELONA: entre Rondas (~95 km²) — polígono simplificado
+    'barcelona': [
+      [41.4530, 2.1850],  // Ronda Litoral (S costa)
+      [41.4550, 2.2050],  // Litoral (SE)
+      [41.4600, 2.2150],  // Sant Adrià (E)
+      [41.4700, 2.2100],  // Ronda Dalt (NE)
+      [41.4400, 2.1700],  // Dalt (N)
+      [41.4350, 2.1500],  // Dalt (NW)
+      [41.4200, 2.1200],  // Esplugues/Cornellà (W)
+      [41.3900, 2.1100],  // Hospitalet (SW)
+      [41.3700, 2.1400],  // Litoral (S)
+      [41.4530, 2.1850]   // Cierre
+    ]
+    // Madrid: NO tiene polígono — es todo el municipio, se detecta por nombre
+    // Sevilla, Granada, Valladolid, Murcia: se detectan por nombre (ZBE = centro amplio)
   };
 
   var VEHICULOS = [
@@ -6091,27 +6190,49 @@ function txCreatePresupuesto() {
     { nombre: 'Grúa', etiqueta: null, icono: '🔴', excepcionBilbao: true }
   ];
 
-  function extraerCiudad(direccion) {
-    if (!direccion || direccion.trim().length < 3) return null;
-    var dir = direccion.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    var ciudades = Object.keys(ZBE_DB);
-    var encontrada = null;
-    var maxLen = 0;
-    for (var i = 0; i < ciudades.length; i++) {
-      var c = ciudades[i];
-      var cNorm = c.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      var regex = new RegExp('(?:,\\s*|\\b)' + cNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\// ── LÍNEA DE KM EN PRESUPUESTO') + '(?:\\s*,|\\s*$|\\b)', 'i');
-      if (regex.test(dir) && c.length > maxLen) { encontrada = c; maxLen = c.length; }
+  // ── Algoritmo Ray-casting para saber si un punto está dentro de un polígono ──
+  function puntoEnPoligono(lat, lon, poligono) {
+    var dentro = false;
+    for (var i = 0, j = poligono.length - 1; i < poligono.length; j = i++) {
+      var yi = poligono[i][0], xi = poligono[i][1];
+      var yj = poligono[j][0], xj = poligono[j][1];
+      if (((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi)) {
+        dentro = !dentro;
+      }
     }
-    return encontrada;
+    return dentro;
   }
 
-  function getZBE(ciudad) {
+  // ── Ciudades que se detectan SOLO por nombre (ZBE = todo municipio o sin polígono definido) ──
+  var ZBE_POR_NOMBRE = ['madrid', 'sevilla', 'granada', 'valladolid', 'murcia'];
+
+  // ── Buscar ciudad en dirección (para las que van por nombre) ──
+  function extraerCiudadPorNombre(direccion) {
+    if (!direccion || direccion.trim().length < 3) return null;
+    var dir = direccion.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    for (var i = 0; i < ZBE_POR_NOMBRE.length; i++) {
+      var c = ZBE_POR_NOMBRE[i];
+      var cNorm = c.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (dir.indexOf(cNorm) > -1) return c;
+    }
+    return null;
+  }
+
+  // ── Verificar si coordenadas caen en algún polígono ZBE ──
+  function buscarZBEporCoordenadas(lat, lon) {
+    var ciudades = Object.keys(ZBE_POLIGONOS);
+    for (var i = 0; i < ciudades.length; i++) {
+      var ciudad = ciudades[i];
+      if (puntoEnPoligono(lat, lon, ZBE_POLIGONOS[ciudad])) {
+        return ciudad;
+      }
+    }
+    return null;
+  }
+
+  function getReglas(ciudad) {
     if (!ciudad) return null;
-    var entry = ZBE_DB[ciudad];
-    if (!entry) return null;
-    if (entry.ref) entry = ZBE_DB[entry.ref];
-    return entry || null;
+    return ZBE_REGLAS[ciudad] || null;
   }
 
   function generarAvisoZBE(zbe, ciudadKey) {
@@ -6148,16 +6269,64 @@ function txCreatePresupuesto() {
     return html;
   }
 
+  // ── v123: Verificación por GPS — geocodifica la dirección y comprueba polígonos ──
   function verificarZBE(direccion, containerId) {
     var container = document.getElementById(containerId);
     if (!container) return;
-    var ciudad = extraerCiudad(direccion);
-    var zbe = getZBE(ciudad);
-    if (zbe) { container.innerHTML = generarAvisoZBE(zbe, ciudad); container.style.display = 'block'; }
-    else { container.innerHTML = ''; container.style.display = 'none'; }
+    if (!direccion || direccion.trim().length < 5) { container.innerHTML = ''; container.style.display = 'none'; return; }
+
+    // 1) Comprobar ciudades por nombre (Madrid = todo municipio, etc.)
+    var ciudadNombre = extraerCiudadPorNombre(direccion);
+    if (ciudadNombre) {
+      var reglas = getReglas(ciudadNombre);
+      if (reglas) { container.innerHTML = generarAvisoZBE(reglas, ciudadNombre); container.style.display = 'block'; return; }
+    }
+
+    // 2) Geocodificar y comprobar polígonos GPS (Bilbao, Vitoria, Donostia, etc.)
+    container.innerHTML = '<div style="font-size:11px;color:#888;padding:4px;">Comprobando ZBE...</div>';
+    container.style.display = 'block';
+
+    // Usar Nominatim para obtener coordenadas
+    var query = direccion.trim();
+    // Añadir contexto geográfico si no tiene
+    if (!/espa|spain|bizkaia|vizcaya|gipuzkoa|guipuzcoa|araba|alava|navarra|catalun|valenci|andalu|aragon|castilla|galici|asturia|cantabri|murcia|balear/i.test(query)) {
+      query += ', España';
+    }
+    fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(query), {
+      headers: { 'Accept': 'application/json' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data || data.length === 0) {
+        container.innerHTML = ''; container.style.display = 'none';
+        return;
+      }
+      var lat = parseFloat(data[0].lat);
+      var lon = parseFloat(data[0].lon);
+
+      // Buscar en qué polígono ZBE cae
+      var ciudadZBE = buscarZBEporCoordenadas(lat, lon);
+      if (ciudadZBE) {
+        var reglas = getReglas(ciudadZBE);
+        if (reglas) {
+          container.innerHTML = generarAvisoZBE(reglas, ciudadZBE);
+          container.style.display = 'block';
+          return;
+        }
+      }
+      // No está en ninguna ZBE
+      container.innerHTML = '';
+      container.style.display = 'none';
+    })
+    .catch(function(err) {
+      console.warn('[ZBE] Error geocodificando:', err);
+      container.innerHTML = ''; container.style.display = 'none';
+    });
   }
-  // v113: Exponer verificarZBE para que syncParadaDirs pueda actualizarla
+
   window._verificarZBE = verificarZBE;
+  window._ZBE_REGLAS = ZBE_REGLAS;
+  window._ZBE_POLIGONOS = ZBE_POLIGONOS;
 
   var fRec = document.getElementById('f_rec');
     var fEnt = document.getElementById('f_ent');
@@ -6175,11 +6344,11 @@ function txCreatePresupuesto() {
     crearContenedorZBE(fEnt, 'zbe-f-entrega');
 
     if (fRec) {
-      fRec.addEventListener('input', function() { clearTimeout(zbeTimerFRec); zbeTimerFRec = setTimeout(function() { verificarZBE(fRec.value, 'zbe-f-recogida'); }, 1200); });
+      fRec.addEventListener('input', function() { clearTimeout(zbeTimerFRec); zbeTimerFRec = setTimeout(function() { verificarZBE(fRec.value, 'zbe-f-recogida'); }, 1500); });
       fRec.addEventListener('blur', function() { clearTimeout(zbeTimerFRec); verificarZBE(fRec.value, 'zbe-f-recogida'); });
     }
     if (fEnt) {
-      fEnt.addEventListener('input', function() { clearTimeout(zbeTimerFEnt); zbeTimerFEnt = setTimeout(function() { verificarZBE(fEnt.value, 'zbe-f-entrega'); }, 1200); });
+      fEnt.addEventListener('input', function() { clearTimeout(zbeTimerFEnt); zbeTimerFEnt = setTimeout(function() { verificarZBE(fEnt.value, 'zbe-f-entrega'); }, 1500); });
       fEnt.addEventListener('blur', function() { clearTimeout(zbeTimerFEnt); verificarZBE(fEnt.value, 'zbe-f-entrega'); });
     }
 
@@ -6195,7 +6364,7 @@ function txCreatePresupuesto() {
     }
 
     window._verificarZBE = verificarZBE;
-    window._ZBE_DB = ZBE_DB;
+    window._ZBE_DB = ZBE_REGLAS; // Retrocompatibilidad
 
     // === ZBE en Parte de Trabajo ===
     (function() {
