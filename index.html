@@ -1305,9 +1305,9 @@ async function PA(){
     var result = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO', clientEmail, firmaUrl, isEnMarcha);
 
     if (result && result.success) {
-      // v121: Ofrecer envío por WhatsApp si hay teléfono y enlace al PDF
+      // v122: Ofrecer envío por WhatsApp si hay teléfono y enlace al PDF
       var clientTelWA = (document.getElementById('f_tel') || {}).value || '';
-      var pdfLink = result.drive && result.drive.webViewLink ? result.drive.webViewLink : '';
+      var pdfLink = result.drive && result.drive.pdfProxyLink ? result.drive.pdfProxyLink : (result.drive && result.drive.webViewLink ? result.drive.webViewLink : '');
       if (clientTelWA && pdfLink) {
         _ofrecerWhatsApp(clientTelWA, clientName, number, pdfLink);
       }
