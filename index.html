@@ -2305,7 +2305,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v123e';
+var APP_VERSION = 'v123f';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -3094,9 +3094,10 @@ function collectFormData() {
 function restoreFormData(data) {
   if (!data) return;
   const fields = ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'];
+  // v123f: SIEMPRE limpiar todos los campos primero para evitar datos fantasma del cliente anterior
   fields.forEach(id => {
     const el = document.getElementById(id);
-    if (el && data[id] !== undefined) el.value = data[id];
+    if (el) el.value = (data[id] !== undefined && data[id] !== null) ? data[id] : '';
   });
 
   // Si tiene paradas → modo paradas
@@ -3443,8 +3444,15 @@ async function loadPresupuesto(id) {
     }
   } catch(e) { console.warn('[Azkar] Error comprobando backup:', e); }
 
+  // v123f: LIMPIAR TODO el formulario antes de cargar — evita datos fantasma del cliente anterior
+  ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'].forEach(fid => {
+    var el = document.getElementById(fid); if (el) el.value = '';
+  });
   // Clear existing rows (rows have class 'cr' inside container 'tb')
   document.querySelectorAll('#tb .cr').forEach(cr => cr.remove());
+  // Limpiar paradas si estaban activas
+  document.querySelectorAll('.parada-section').forEach(s => s.remove());
+  window._paradasMode = false;
   rid = 0;
   // v109: Flag para no cambiar la fecha al cargar un presupuesto existente
   window._presupuestoLoading = true;
