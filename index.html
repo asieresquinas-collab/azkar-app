@@ -2094,7 +2094,38 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v126c';
+var APP_VERSION = 'v127';
+
+// ── v127: Comprobación agresiva de versión por red ─────────────
+// Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
+(function() {
+  try {
+    fetch('./version.json?_=' + Date.now(), { cache: 'no-store' })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data || !data.version) return;
+        if (data.version !== APP_VERSION) {
+          console.log('[Azkar] Version servidor=' + data.version + ' local=' + APP_VERSION + ' → forzando actualización');
+          // Limpiar todas las caches
+          caches.keys().then(function(names) {
+            return Promise.all(names.map(function(n) { return caches.delete(n); }));
+          }).then(function() {
+            // Forzar update del SW
+            if ('serviceWorker' in navigator) {
+              return navigator.serviceWorker.getRegistrations().then(function(regs) {
+                return Promise.all(regs.map(function(r) { return r.unregister(); }));
+              });
+            }
+          }).then(function() {
+            localStorage.removeItem('azkar-app-version');
+            window.location.reload();
+          });
+        }
+      })
+      .catch(function(e) { console.log('[Azkar] Version check offline, skip'); });
+  } catch(e) {}
+})();
+
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {

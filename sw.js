@@ -1,11 +1,12 @@
 // ══════════════════════════════════════════════════════════════
 //  AZKAR PWA · Service Worker · Offline-first
 // ══════════════════════════════════════════════════════════════
-const CACHE_NAME = 'azkar-pwa-v116';
+const CACHE_NAME = 'azkar-pwa-v117';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './version.json',
   './icons/icon.svg',
   'https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Barlow+Condensed:wght@700;800&display=swap'
 ];
@@ -31,6 +32,14 @@ self.addEventListener('activate', e => {
 // Fetch: cache-first for app shell, network-first for API
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+
+  // version.json: SIEMPRE red, nunca cache (para auto-update)
+  if (url.pathname.endsWith('/version.json')) {
+    e.respondWith(fetch(e.request).catch(() => new Response('{}', {
+      headers: { 'Content-Type': 'application/json' }
+    })));
+    return;
+  }
 
   // API calls (Firebase + Railway) + CDN scripts: network only, never cache
   if (url.hostname.includes('firestore') || url.hostname.includes('firebase') || url.hostname.includes('railway.app') || url.hostname.includes('cdnjs.cloudflare.com') || url.hostname.includes('nominatim') || url.hostname.includes('project-osrm') || url.hostname.includes('maps.google')) {
