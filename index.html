@@ -1834,102 +1834,78 @@ function AR(c,z,u,p,d,tm,paradaId){
 }
 
 // ══════════════════════════════════════════════════════════════
-//  DRAG & DROP para reordenar filas de la tabla (v124)
+//  DRAG & DROP para reordenar filas de la tabla (v124b)
 // ══════════════════════════════════════════════════════════════
-(function(){
-  var dragRow = null;
-  var dragPlaceholder = null;
-  var touchStartY = 0;
-  var touchOffsetY = 0;
+var _dragRow = null;
+var _dragTarget = null;
 
-  // Delegar eventos en #tb
-  document.addEventListener('DOMContentLoaded', function(){
-    var tb = document.getElementById('tb');
-    if(!tb) return;
+// Delegamos en document para que funcione con filas creadas dinámicamente
+document.addEventListener('mousedown', function(e){
+  var handle = e.target.closest('.drag-handle');
+  if(!handle) return;
+  e.preventDefault();
+  _dragStart(handle.closest('.cr'), e.clientY);
+});
+document.addEventListener('mousemove', function(e){
+  if(!_dragRow) return;
+  e.preventDefault();
+  _dragMove(e.clientY);
+});
+document.addEventListener('mouseup', function(){
+  if(_dragRow) _dragEnd();
+});
+document.addEventListener('touchstart', function(e){
+  var handle = e.target.closest('.drag-handle');
+  if(!handle) return;
+  _dragStart(handle.closest('.cr'), e.touches[0].clientY);
+}, {passive: true});
+document.addEventListener('touchmove', function(e){
+  if(!_dragRow) return;
+  e.preventDefault();
+  _dragMove(e.touches[0].clientY);
+}, {passive: false});
+document.addEventListener('touchend', function(){
+  if(_dragRow) _dragEnd();
+});
 
-    // === MOUSE DRAG ===
-    tb.addEventListener('mousedown', function(e){
-      var handle = e.target.closest('.drag-handle');
-      if(!handle) return;
-      e.preventDefault();
-      startDrag(handle.closest('.cr'), e.clientY);
-    });
-    document.addEventListener('mousemove', function(e){
-      if(!dragRow) return;
-      e.preventDefault();
-      moveDrag(e.clientY);
-    });
-    document.addEventListener('mouseup', function(){
-      if(dragRow) endDrag();
-    });
-
-    // === TOUCH DRAG (móvil) ===
-    tb.addEventListener('touchstart', function(e){
-      var handle = e.target.closest('.drag-handle');
-      if(!handle) return;
-      var touch = e.touches[0];
-      startDrag(handle.closest('.cr'), touch.clientY);
-    }, {passive: false});
-    document.addEventListener('touchmove', function(e){
-      if(!dragRow) return;
-      e.preventDefault();
-      moveDrag(e.touches[0].clientY);
-    }, {passive: false});
-    document.addEventListener('touchend', function(){
-      if(dragRow) endDrag();
-    });
-  });
-
-  function startDrag(row, y){
-    if(!row || row.getAttribute('data-fijo') === 'salida') return;
-    dragRow = row;
-    dragRow.classList.add('dragging');
-    touchStartY = y;
-    var rect = row.getBoundingClientRect();
-    touchOffsetY = y - rect.top;
-  }
-
-  function moveDrag(y){
-    if(!dragRow) return;
-    var tb = document.getElementById('tb');
-    var rows = Array.from(tb.querySelectorAll('.cr:not(.dragging)'));
-    // Quitar clase drag-over de todos
-    rows.forEach(function(r){ r.classList.remove('drag-over'); });
-    // Encontrar la fila sobre la que estamos
-    for(var i = 0; i < rows.length; i++){
-      var rect = rows[i].getBoundingClientRect();
-      var mid = rect.top + rect.height / 2;
-      if(y < mid){
-        rows[i].classList.add('drag-over');
-        dragPlaceholder = rows[i];
-        return;
-      }
+function _dragStart(row, y){
+  if(!row || row.getAttribute('data-fijo') === 'salida') return;
+  _dragRow = row;
+  _dragRow.classList.add('dragging');
+  _dragTarget = null;
+}
+function _dragMove(y){
+  if(!_dragRow) return;
+  var tb = document.getElementById('tb');
+  if(!tb) return;
+  var rows = Array.from(tb.querySelectorAll('.cr:not(.dragging)'));
+  rows.forEach(function(r){ r.classList.remove('drag-over'); });
+  _dragTarget = null;
+  for(var i = 0; i < rows.length; i++){
+    var rect = rows[i].getBoundingClientRect();
+    if(y < rect.top + rect.height / 2){
+      rows[i].classList.add('drag-over');
+      _dragTarget = rows[i];
+      return;
     }
-    // Si estamos debajo de todo, marcar el último
-    dragPlaceholder = null;
   }
-
-  function endDrag(){
-    if(!dragRow) return;
-    var tb = document.getElementById('tb');
-    // Mover la fila
-    if(dragPlaceholder){
-      tb.insertBefore(dragRow, dragPlaceholder);
-    } else {
-      // Mover al final (pero antes de Salida si existe)
-      var salida = tb.querySelector('[data-fijo="salida"]');
-      if(salida) tb.insertBefore(dragRow, salida);
-      else tb.appendChild(dragRow);
-    }
-    // Limpiar
-    dragRow.classList.remove('dragging');
-    tb.querySelectorAll('.cr').forEach(function(r){ r.classList.remove('drag-over'); });
-    dragRow = null;
-    dragPlaceholder = null;
-    // Recalcular
-    if(typeof CA === 'function') CA();
+}
+function _dragEnd(){
+  if(!_dragRow) return;
+  var tb = document.getElementById('tb');
+  if(_dragTarget){
+    tb.insertBefore(_dragRow, _dragTarget);
+  } else {
+    var salida = tb.querySelector('[data-fijo="salida"]');
+    if(salida) tb.insertBefore(_dragRow, salida);
+    else tb.appendChild(_dragRow);
   }
-})();
+  _dragRow.classList.remove('dragging');
+  tb.querySelectorAll('.cr').forEach(function(r){ r.classList.remove('drag-over'); });
+  _dragRow = null;
+  _dragTarget = null;
+  if(typeof CA === 'function') CA();
+}
 
 // ══════════════════════════════════════════════════════════════
 //  SISTEMA DE PARADAS (múltiples recogidas/entregas)
