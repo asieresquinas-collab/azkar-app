@@ -2094,7 +2094,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v126';
+var APP_VERSION = 'v126a';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2761,13 +2761,35 @@ async function savePresupuestoFull(data) {
   const ref = data.id || data.f_ref;
   let savedIDB = false, savedFB = false;
 
+  // v126: Protección anti-borrado de direcciones
+  // Si f_rec o f_ent están vacíos, intentar recuperar de Firebase/IndexedDB antes de guardar
+  const camposCriticos = ['f_rec', 'f_ent', 'f_nom', 'f_tel', 'f_email'];
+  let existingData = null;
+  const missingCriticos = camposCriticos.filter(c => !data[c] || !data[c].trim());
+  if (missingCriticos.length > 0 && ref) {
+    try {
+      if (firebaseConfigured && window._fb && window._fb.getDoc) {
+        const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', ref));
+        if (snap.exists()) existingData = snap.data();
+      }
+      if (!existingData) existingData = await getPresupuesto(ref);
+    } catch(e) {}
+    if (existingData) {
+      missingCriticos.forEach(c => {
+        if ((!data[c] || !data[c].trim()) && existingData[c] && existingData[c].trim()) {
+          console.warn('[savePresupuestoFull] PROTECCIÓN: preservando ' + c + '="' + existingData[c] + '" (se iba a borrar)');
+          data[c] = existingData[c];
+        }
+      });
+    }
+  }
+
   // Paso 1: IndexedDB (siempre funciona offline)
   try {
     await savePresupuesto(data);
     savedIDB = true;
   } catch(e) {
     console.error('[Azkar] Error IndexedDB:', e);
-    // v124: Sin fallback a localStorage — todo va a Firebase
   }
 
   // Paso 2: Firebase (si está disponible)
@@ -2813,6 +2835,8 @@ function collectFormData() {
     const el = document.getElementById(id);
     if (el) data[id] = el.value;
   });
+  // v126: Log para diagnosticar pérdida de direcciones
+  console.log('[collectFormData] f_rec="' + (data.f_rec||'') + '" f_ent="' + (data.f_ent||'') + '" ref=' + (data.f_ref||''));
 
   // Collect table rows (flat - para retrocompatibilidad)
   const rows = [];
@@ -2853,6 +2877,8 @@ function collectFormData() {
 
 function restoreFormData(data) {
   if (!data) return;
+  // v126: Log para diagnosticar pérdida de direcciones
+  console.log('[restoreFormData] f_rec="' + (data.f_rec||'') + '" f_ent="' + (data.f_ent||'') + '" ref=' + (data.f_ref || data.id || ''));
   const fields = ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'];
   // v123f: SIEMPRE limpiar todos los campos primero para evitar datos fantasma del cliente anterior
   fields.forEach(id => {
@@ -3166,7 +3192,7 @@ async function loadPresupuesto(id) {
       const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', id));
       if (snap.exists()) {
         data = { ...snap.data(), id: id };
-        console.log('[Azkar] Datos cargados de Firebase (fuente de verdad)');
+        console.log('[Azkar] Datos cargados de Firebase — f_rec="' + (data.f_rec||'') + '" f_ent="' + (data.f_ent||'') + '"');
         // Actualizar IndexedDB con los datos de Firebase
         savePresupuesto(data).catch(() => {});
       }
