@@ -2044,7 +2044,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v131';</script>
+<script>document.getElementById('version-tag').textContent='v132';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2156,7 +2156,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v131';
+var APP_VERSION = 'v132';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -2981,6 +2981,14 @@ function restoreFormData(data) {
   if (typeof AR_SALIDA === 'function') AR_SALIDA();
   if (typeof CA === 'function') CA();
   if (typeof SY === 'function') SY();
+
+  // v132: Cargar mapas Street View si hay direcciones (el .value programático no dispara 'input')
+  if (typeof window.loadStreetView === 'function') {
+    var recVal = data.f_rec || '';
+    var entVal = data.f_ent || '';
+    if (recVal) setTimeout(function() { window.loadStreetView(recVal, 'recogida'); }, 500);
+    if (entVal) setTimeout(function() { window.loadStreetView(entVal, 'entrega'); }, 500);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
