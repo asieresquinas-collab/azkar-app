@@ -1064,6 +1064,8 @@ function CT(){
 
 // v109: Auto-actualizar fecha del presupuesto al editar
 window._presupuestoLoading = false; // flag para evitar actualizar fecha al cargar
+window._currentPresupuestoRef = null; // v128: ref del presupuesto abierto en pantalla
+window._lastSavedTimestamp = 0; // v128: timestamp de nuestro último guardado/carga (para detectar cambios remotos)
 
 function updateFechaModificacion(){
   if(window._presupuestoLoading) return; // No actualizar mientras se carga un presupuesto
@@ -1149,6 +1151,9 @@ function RF(){
     tb.appendChild(d);
   }
   rid=0; CA(); SY();
+  // v128: Reset tracking al limpiar
+  window._currentPresupuestoRef = null;
+  window._lastSavedTimestamp = 0;
   var fd=document.getElementById('f_fecha'); if(fd) fd.value=new Date().toISOString().slice(0,10);
 }
 
@@ -2094,7 +2099,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v127';
+var APP_VERSION = 'v128';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -2805,6 +2810,41 @@ async function savePresupuestoFull(data) {
   // Con merge:true, los campos que NO están en el objeto se mantienen intactos en Firebase
   if (firebaseConfigured && window._fb) {
     try {
+      // v128: DETECCIÓN DE CONFLICTOS — antes de guardar, comprobar si otro dispositivo guardó después de nosotros
+      if (window._fb.getDoc && window._currentPresupuestoRef === ref) {
+        try {
+          const serverSnap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', ref));
+          if (serverSnap.exists()) {
+            const serverTs = serverSnap.data().timestamp || 0;
+            if (serverTs > window._lastSavedTimestamp) {
+              // Otro dispositivo guardó datos más nuevos — NO sobrescribir
+              console.warn('[Azkar v128] CONFLICTO: servidor ts=' + serverTs + ' > local ts=' + window._lastSavedTimestamp + ' → recargando datos remotos');
+              showSyncStatus('🔄 Datos actualizados desde otro dispositivo', 3000);
+              // Recargar los datos del servidor en el formulario
+              const serverData = { ...serverSnap.data(), id: ref };
+              window._presupuestoLoading = true;
+              try {
+                // Limpiar formulario
+                ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'].forEach(fid => {
+                  var el = document.getElementById(fid); if (el) el.value = '';
+                });
+                document.querySelectorAll('#tb .cr').forEach(cr => cr.remove());
+                rid = 0;
+                restoreFormData(serverData);
+                window._lastSavedTimestamp = serverTs;
+              } finally {
+                window._presupuestoLoading = false;
+              }
+              // Guardar en IndexedDB los datos actualizados del servidor
+              await savePresupuesto(serverData);
+              return { savedIDB: true, savedFB: false, conflict: true };
+            }
+          }
+        } catch(conflictErr) {
+          console.warn('[Azkar v128] Error en check de conflicto (continuamos guardando):', conflictErr.message);
+        }
+      }
+
       const fbData = {};
       for (const key in data) {
         if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
@@ -2818,6 +2858,8 @@ async function savePresupuestoFull(data) {
       if (data.rows !== undefined) fbData.rows = data.rows;
       console.log('[savePresupuestoFull] Guardando ref=' + ref + ' campos=' + Object.keys(fbData).length + ' f_rec=' + (fbData.f_rec ? 'SÍ' : 'no') + ' f_ent=' + (fbData.f_ent ? 'SÍ' : 'no') + ' f_obs=' + (fbData.f_obs ? 'SÍ' : 'no'));
       await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), fbData, { merge: true });
+      // v128: Actualizar nuestro timestamp tras guardar con éxito
+      window._lastSavedTimestamp = fbData.timestamp;
       savedFB = true;
     } catch(e) {
       console.warn('[Azkar] Firebase falló, añadiendo a cola:', e.message);
@@ -2981,6 +3023,33 @@ async function initFirebase(config) {
         if (change.type === 'removed') {
           await deletePresupuesto(change.doc.id);
           hasChanges = true;
+        }
+      }
+      // v128: Si el presupuesto abierto cambió remotamente, actualizar el formulario en pantalla
+      if (hasChanges && window._currentPresupuestoRef) {
+        for (const change of changes) {
+          if ((change.type === 'modified') && change.doc.id === window._currentPresupuestoRef) {
+            const remoteTs = change.doc.data().timestamp || 0;
+            // Solo recargar si el cambio remoto es MÁS NUEVO que nuestro último guardado
+            if (remoteTs > window._lastSavedTimestamp) {
+              console.log('[Azkar v128] onSnapshot: presupuesto abierto actualizado remotamente, ts=' + remoteTs + ' > ' + window._lastSavedTimestamp);
+              const remoteData = { ...change.doc.data(), id: change.doc.id };
+              window._presupuestoLoading = true;
+              try {
+                ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'].forEach(fid => {
+                  var el = document.getElementById(fid); if (el) el.value = '';
+                });
+                document.querySelectorAll('#tb .cr').forEach(cr => cr.remove());
+                rid = 0;
+                restoreFormData(remoteData);
+                window._lastSavedTimestamp = remoteTs;
+              } finally {
+                window._presupuestoLoading = false;
+              }
+              showSyncStatus('🔄 Actualizado desde otro dispositivo', 3000);
+            }
+            break;
+          }
         }
       }
       // v118: Refrescar panel de presupuestos si está abierto y hay cambios
@@ -3237,6 +3306,10 @@ async function loadPresupuesto(id) {
   // v109: Flag para no cambiar la fecha al cargar un presupuesto existente
   window._presupuestoLoading = true;
   try { restoreFormData(data); } finally { window._presupuestoLoading = false; }
+  // v128: Registrar qué presupuesto está abierto y su timestamp
+  window._currentPresupuestoRef = id;
+  window._lastSavedTimestamp = data.timestamp || Date.now();
+  console.log('[Azkar v128] Presupuesto abierto ref=' + id + ' ts=' + window._lastSavedTimestamp);
   restoreFechaAbierta();
   // Preservar estado en marcha del presupuesto cargado
   window._currentEnMarcha = !!data._enMarcha;
