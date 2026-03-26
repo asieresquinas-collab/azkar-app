@@ -1595,7 +1595,7 @@ window.addEventListener('afterprint', function(){
 var PRECIOS_FLAT = {
   'Zapatero':39.78,'Taquillón':39.78,'Mampara':49.72,'Perchero':19.91,
   'Mesita auxiliar':24.88,'Vinoteca':19.91,'Cajas/Maletas (max 15kg)':5.00,'Bultos':5.00,'Rag':128.21,
-  'Televisor pequeño':34.84,'Televisor grande':64.63,'Mesa centro':24.88,
+  'Televisor pequeño':30.00,'Televisor grande':64.63,'Mesa centro':24.88,
   'Aparador':74.57,'Mesa comedor':46.74,'Sillas comedor':13.33,'Butacas':64.63,
   'Sofá dos plazas':124.38,'Sofá tres plazas':144.27,'Consola':72.57,
   'Mueble grande':273.33,'Mueble mediano':173.94,'Mueble TV pequeño':53.61,
@@ -1606,8 +1606,8 @@ var PRECIOS_FLAT = {
   'Fregadero':34.84,'Encimera':104.38,'Lavavajillas':53.61,'Lavadora':53.61,
   'Secadora':53.61,'Panificadora':16.93,'Arcón congelador':64.63,'Banco':24.88,
   'Piano pared eléctrico':124.27,'Mesa cocina':46.74,'Sillas cocina':13.33,
-  'Canapé':64.63,'Somier':19.91,'Colchón':19.91,'Mesillas':24.88,
-  'Armario módulo':89.59,'Comoda':42.80,'Cabecero':22.91,'Cuna':39.78,
+  'Canapé':64.63,'Somier':19.91,'Colchón':19.91,'Mesillas':15.00,
+  'Armario módulo':89.59,'Comoda':30.00,'Cabecero':22.91,'Cuna':39.78,
   'Cambiador':52.70,'Puf':12.95,'Canapé/Cama nido':80.60,'Cajonera':39.78,
   'Escritorio sin cajoneras':39.78,'Escritorio con cajoneras':53.61,
   'Escritorio':39.78,'Sillas escritorio':19.91,'Sillas galán':13.33,
@@ -2007,9 +2007,9 @@ function AR_SALIDA(){
   div.innerHTML='<input list="dl" value="Salida" readonly style="font-weight:700;color:#1B4F8A;background:transparent;cursor:default">'
     +'<select disabled>'+ZO('Servicio adicional')+'</select>'
     +'<input type="number" value="1" readonly style="background:transparent;cursor:default">'
-    +'<input type="number" value="80" readonly style="font-weight:700;background:transparent;cursor:default">'
+    +'<input type="number" value="70" readonly style="font-weight:700;background:transparent;cursor:default">'
     +'<input type="number" value="0" readonly style="background:transparent;cursor:default">'
-    +'<div class="ctot" id="t'+sid+'" style="font-weight:700">80,00</div>'
+    +'<div class="ctot" id="t'+sid+'" style="font-weight:700">70,00</div>'
     +'<div class="col-tiempo" style="width:55px"></div>'
     +'<div style="width:27px;text-align:center;color:#1B4F8A;font-size:11px" title="Coste fijo">🔒</div>';
   if(window._paradasMode){
