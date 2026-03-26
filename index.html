@@ -1066,6 +1066,7 @@ function CT(){
 window._presupuestoLoading = false; // flag para evitar actualizar fecha al cargar
 window._currentPresupuestoRef = null; // v128: ref del presupuesto abierto en pantalla
 window._lastSavedTimestamp = 0; // v128: timestamp de nuestro último guardado/carga (para detectar cambios remotos)
+window._initialLoadDone = false; // v130: bloquear auto-save hasta que se cargue el último presupuesto de Firebase
 
 function updateFechaModificacion(){
   if(window._presupuestoLoading) return; // No actualizar mientras se carga un presupuesto
@@ -2099,7 +2100,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v129';
+var APP_VERSION = 'v130';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -3300,6 +3301,8 @@ async function loadPresupuesto(id) {
   window._currentPagadoDate = data._pagadoFinalizadoDate || null;
   window._currentGuardamuebles = !!data._guardamuebles;
   window._currentArchivado2026 = !!data._archivado2026;
+  // v130: Permitir auto-save al cargar manualmente
+  window._initialLoadDone = true;
   closeMgr();
   if (typeof ST === 'function') ST('presupuesto');
   showSyncStatus('📄 Presupuesto cargado');
@@ -3318,6 +3321,10 @@ async function newPresupuesto() {
   window._currentEnMarchaDate = null;
   window._currentPagado = false;
   window._currentPagadoDate = null;
+  // v130: Reset tracking y permitir auto-save
+  window._currentPresupuestoRef = null;
+  window._lastSavedTimestamp = 0;
+  window._initialLoadDone = true;
   if (typeof AUTO_INIT === 'function') AUTO_INIT();
   if (typeof AR_SALIDA === 'function') AR_SALIDA();
   closeMgr();
@@ -4384,6 +4391,8 @@ window.addEventListener('DOMContentLoaded', function() {
   function saveNow() {
     // v123e: NUNCA guardar mientras se está cargando un presupuesto
     if (window._presupuestoLoading) return null;
+    // v130: NUNCA guardar antes de haber completado la carga inicial de Firebase
+    if (!window._initialLoadDone) { console.log('[Azkar v130] saveNow bloqueado — esperando carga inicial'); return null; }
     const ref = document.getElementById('f_ref');
     if (ref && ref.value) {
       const data = collectFormData();
@@ -4445,22 +4454,29 @@ window.addEventListener('DOMContentLoaded', function() {
   const tbEl = document.getElementById('tb');
   if (tbEl) tbObserver.observe(tbEl, { childList: true, subtree: true });
 
-  // ── MEJORA 3: Restaurar último presupuesto al abrir (v124: desde Firebase) ──
-  setTimeout(async () => {
+  // ── MEJORA 3: Restaurar último presupuesto al abrir (v130: esperar a Firebase) ──
+  // v130: Esperar hasta que Firebase esté listo (máximo 8 segundos), luego cargar
+  (async function waitAndRestore() {
     try {
       const ref = document.getElementById('f_ref');
       if (ref && !ref.value) {
-        // No hay nada cargado — restaurar el último presupuesto usado
         const backupRef = localStorage.getItem('azkar_backup_ref');
         if (backupRef) {
-          // v124: Cargar SIEMPRE de Firebase (fuente de verdad)
+          // v130: Esperar a que Firebase esté configurado (máx 8s)
+          let waited = 0;
+          while (!firebaseConfigured && waited < 8000) {
+            await new Promise(r => setTimeout(r, 300));
+            waited += 300;
+          }
+          console.log('[Azkar v130] Auto-restore: Firebase ' + (firebaseConfigured ? 'listo' : 'NO listo') + ' tras ' + waited + 'ms');
+
           let data = null;
           if (firebaseConfigured && window._fb && window._fb.getDoc) {
             try {
               const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', backupRef));
               if (snap.exists()) {
                 data = { ...snap.data(), id: backupRef };
-                console.log('[Azkar] Auto-restore de Firebase:', backupRef);
+                console.log('[Azkar v130] Auto-restore de Firebase:', backupRef, 'ts=' + (data.timestamp||0));
               }
             } catch(fbErr) {
               console.warn('[Azkar] Firebase no disponible para auto-restore:', fbErr.message);
@@ -4469,10 +4485,14 @@ window.addEventListener('DOMContentLoaded', function() {
           // Fallback: IndexedDB si Firebase no disponible
           if (!data) {
             data = await getPresupuesto(backupRef);
+            if (data) console.log('[Azkar v130] Auto-restore de IndexedDB (fallback):', backupRef);
           }
           if (data) {
             window._presupuestoLoading = true;
             try { restoreFormData(data); } finally { window._presupuestoLoading = false; }
+            // v130: Registrar ref y timestamp para que la detección de conflictos funcione
+            window._currentPresupuestoRef = backupRef;
+            window._lastSavedTimestamp = data.timestamp || Date.now();
             window._currentEnMarcha = !!data._enMarcha;
             window._currentPagado = !!data._pagadoFinalizado;
             window._currentGuardamuebles = !!data._guardamuebles;
@@ -4482,7 +4502,10 @@ window.addEventListener('DOMContentLoaded', function() {
         }
       }
     } catch(e) { console.warn('[Azkar] Error restaurando:', e); }
-  }, 1500);
+    // v130: Ahora sí permitir auto-guardado
+    window._initialLoadDone = true;
+    console.log('[Azkar v130] Carga inicial completada, auto-save habilitado');
+  })();
 });
 
 // === PARTE DE TRABAJO ===
