@@ -2094,7 +2094,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v126a';
+var APP_VERSION = 'v126b';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2761,30 +2761,7 @@ async function savePresupuestoFull(data) {
   const ref = data.id || data.f_ref;
   let savedIDB = false, savedFB = false;
 
-  // v126: Protección anti-borrado de direcciones
-  // Si f_rec o f_ent están vacíos, intentar recuperar de Firebase/IndexedDB antes de guardar
-  const camposCriticos = ['f_rec', 'f_ent', 'f_nom', 'f_tel', 'f_email'];
-  let existingData = null;
-  const missingCriticos = camposCriticos.filter(c => !data[c] || !data[c].trim());
-  if (missingCriticos.length > 0 && ref) {
-    try {
-      if (firebaseConfigured && window._fb && window._fb.getDoc) {
-        const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', ref));
-        if (snap.exists()) existingData = snap.data();
-      }
-      if (!existingData) existingData = await getPresupuesto(ref);
-    } catch(e) {}
-    if (existingData) {
-      missingCriticos.forEach(c => {
-        if ((!data[c] || !data[c].trim()) && existingData[c] && existingData[c].trim()) {
-          console.warn('[savePresupuestoFull] PROTECCIÓN: preservando ' + c + '="' + existingData[c] + '" (se iba a borrar)');
-          data[c] = existingData[c];
-        }
-      });
-    }
-  }
-
-  // Paso 1: IndexedDB (siempre funciona offline)
+  // Paso 1: IndexedDB (siempre funciona offline) — guarda TODO incluidos campos vacíos
   try {
     await savePresupuesto(data);
     savedIDB = true;
@@ -2793,10 +2770,23 @@ async function savePresupuestoFull(data) {
   }
 
   // Paso 2: Firebase (si está disponible)
-  // v123c: Usar merge:true para NO borrar campos de estado (_enMarcha, _pagado, etc.)
+  // v126b: Para Firebase, NO enviar campos vacíos que podrían sobrescribir datos existentes
+  // Con merge:true, los campos que NO están en el objeto se mantienen intactos en Firebase
   if (firebaseConfigured && window._fb) {
     try {
-      await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), data, { merge: true });
+      const fbData = {};
+      for (const key in data) {
+        if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
+          fbData[key] = data[key];
+        }
+      }
+      // Siempre incluir timestamp y id
+      fbData.timestamp = data.timestamp || Date.now();
+      if (data.id) fbData.id = data.id;
+      // Siempre incluir rows aunque esté vacío (para borrado intencional)
+      if (data.rows !== undefined) fbData.rows = data.rows;
+      console.log('[savePresupuestoFull] Guardando ref=' + ref + ' campos=' + Object.keys(fbData).length + ' f_rec=' + (fbData.f_rec ? 'SÍ' : 'no') + ' f_ent=' + (fbData.f_ent ? 'SÍ' : 'no') + ' f_obs=' + (fbData.f_obs ? 'SÍ' : 'no'));
+      await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), fbData, { merge: true });
       savedFB = true;
     } catch(e) {
       console.warn('[Azkar] Firebase falló, añadiendo a cola:', e.message);
