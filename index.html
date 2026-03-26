@@ -1834,34 +1834,40 @@ function AR(c,z,u,p,d,tm,paradaId){
 }
 
 // ══════════════════════════════════════════════════════════════
-//  MOVER FILAS con botones ▲ ▼ (v124c)
+//  MOVER FILAS con botones ▲ ▼ (v125)
 // ══════════════════════════════════════════════════════════════
 function moverFila(btn, dir){
   var row = btn.closest('.cr');
   if(!row) return;
-  var tb = document.getElementById('tb');
-  if(!tb) return;
+  var parent = row.parentNode;
+  if(!parent) return;
   if(dir === 'up'){
-    // Buscar el hermano anterior que sea .cr (no Salida fija)
     var prev = row.previousElementSibling;
     while(prev && (!prev.classList.contains('cr') || prev.getAttribute('data-fijo') === 'salida')){
       prev = prev.previousElementSibling;
     }
-    if(prev) tb.insertBefore(row, prev);
+    if(prev) parent.insertBefore(row, prev);
   } else {
-    // Buscar el hermano siguiente que sea .cr (no Salida fija)
     var next = row.nextElementSibling;
     while(next && (!next.classList.contains('cr') || next.getAttribute('data-fijo') === 'salida')){
       next = next.nextElementSibling;
     }
-    if(next) tb.insertBefore(next, row);
+    if(next) parent.insertBefore(next, row);
   }
-  // Flash visual para confirmar el movimiento
   row.style.transition = 'background 0.3s';
   row.style.background = '#d6e6f7';
   setTimeout(function(){ row.style.background = ''; row.style.transition = ''; }, 400);
   if(typeof CA === 'function') CA();
 }
+window.moverFila = moverFila;
+
+// Event delegation para botones ▲ ▼ (fallback si onclick no funciona)
+document.addEventListener('click', function(e){
+  var btn = e.target.closest('.move-btns button');
+  if(!btn) return;
+  var dir = btn.title === 'Subir' ? 'up' : 'down';
+  moverFila(btn, dir);
+});
 
 // ══════════════════════════════════════════════════════════════
 //  SISTEMA DE PARADAS (múltiples recogidas/entregas)
@@ -2337,7 +2343,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v124d';
+var APP_VERSION = 'v125';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
