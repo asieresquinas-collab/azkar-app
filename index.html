@@ -1804,7 +1804,7 @@ function AR(c,z,u,p,d,tm,paradaId){
   var div=document.createElement('div');
   div.className='cr'; div.id='r'+id;
   if(paradaId) div.setAttribute('data-parada', paradaId);
-  div.innerHTML='<div class="move-btns"><button onclick="moverFila(this,\'up\')" title="Subir">▲</button><button onclick="moverFila(this,\'down\')" title="Bajar">▼</button></div>'
+  div.innerHTML='<div class="move-btns"><button title="Subir" data-dir="up">▲</button><button title="Bajar" data-dir="down">▼</button></div>'
     +'<input list="dl" placeholder="Concepto..." value="'+c+'" oninput="PL_LOOKUP(this);CA()">'
     +'<select onchange="CA()">'+ZO(z)+'</select>'
     +'<input type="number" min="0" step="0.1" placeholder="0" value="'+u+'" oninput="CA()">'
@@ -1861,11 +1861,11 @@ function moverFila(btn, dir){
 }
 window.moverFila = moverFila;
 
-// Event delegation para botones ▲ ▼ (fallback si onclick no funciona)
+// Event delegation para botones ▲ ▼ (v125a — único handler, sin onclick inline)
 document.addEventListener('click', function(e){
   var btn = e.target.closest('.move-btns button');
   if(!btn) return;
-  var dir = btn.title === 'Subir' ? 'up' : 'down';
+  var dir = btn.getAttribute('data-dir') || (btn.title === 'Subir' ? 'up' : 'down');
   moverFila(btn, dir);
 });
 
@@ -2343,7 +2343,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v125';
+var APP_VERSION = 'v125a';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
