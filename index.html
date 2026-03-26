@@ -2094,7 +2094,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v126b';
+var APP_VERSION = 'v126c';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -4319,20 +4319,27 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 
   window.addEventListener('beforeunload', () => {
-    clearTimeout(_saveTimeout); // Cancelar debounce pendiente
-    saveNow(); // Guardar inmediatamente
+    clearTimeout(_saveTimeout);
+    saveNow();
   });
 
-  // ── MEJORA 2: Guardado automático al cambiar campos (debounced 2s) ──
+  // v126c: visibilitychange es más fiable que beforeunload en móvil
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      clearTimeout(_saveTimeout);
+      saveNow();
+    }
+  });
+
+  // ── MEJORA 2: Guardado automático al cambiar campos (debounced 1s) ──
   let _saveTimeout = null;
   function debouncedAutoSave() {
-    // v123e: NUNCA guardar mientras se está cargando un presupuesto
     if (window._presupuestoLoading) return;
     clearTimeout(_saveTimeout);
     _saveTimeout = setTimeout(() => {
       if (window._presupuestoLoading) return;
       saveNow();
-    }, 2000);
+    }, 1000);
   }
   // Escuchar cambios en TODOS los campos del presupuesto Y dossier
   document.querySelectorAll('#page-presupuesto input, #page-presupuesto textarea, #page-presupuesto select, #page-dossier input, #page-dossier textarea, #page-dossier select').forEach(el => {
