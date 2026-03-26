@@ -2099,7 +2099,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v128';
+var APP_VERSION = 'v129';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -2810,41 +2810,8 @@ async function savePresupuestoFull(data) {
   // Con merge:true, los campos que NO están en el objeto se mantienen intactos en Firebase
   if (firebaseConfigured && window._fb) {
     try {
-      // v128: DETECCIÓN DE CONFLICTOS — antes de guardar, comprobar si otro dispositivo guardó después de nosotros
-      if (window._fb.getDoc && window._currentPresupuestoRef === ref) {
-        try {
-          const serverSnap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', ref));
-          if (serverSnap.exists()) {
-            const serverTs = serverSnap.data().timestamp || 0;
-            if (serverTs > window._lastSavedTimestamp) {
-              // Otro dispositivo guardó datos más nuevos — NO sobrescribir
-              console.warn('[Azkar v128] CONFLICTO: servidor ts=' + serverTs + ' > local ts=' + window._lastSavedTimestamp + ' → recargando datos remotos');
-              showSyncStatus('🔄 Datos actualizados desde otro dispositivo', 3000);
-              // Recargar los datos del servidor en el formulario
-              const serverData = { ...serverSnap.data(), id: ref };
-              window._presupuestoLoading = true;
-              try {
-                // Limpiar formulario
-                ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'].forEach(fid => {
-                  var el = document.getElementById(fid); if (el) el.value = '';
-                });
-                document.querySelectorAll('#tb .cr').forEach(cr => cr.remove());
-                rid = 0;
-                restoreFormData(serverData);
-                window._lastSavedTimestamp = serverTs;
-              } finally {
-                window._presupuestoLoading = false;
-              }
-              // Guardar en IndexedDB los datos actualizados del servidor
-              await savePresupuesto(serverData);
-              return { savedIDB: true, savedFB: false, conflict: true };
-            }
-          }
-        } catch(conflictErr) {
-          console.warn('[Azkar v128] Error en check de conflicto (continuamos guardando):', conflictErr.message);
-        }
-      }
-
+      // v129: NO hacer getDoc antes de guardar (causaba latencia y recargas del formulario)
+      // La detección de cambios remotos la hace onSnapshot de forma pasiva
       const fbData = {};
       for (const key in data) {
         if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
@@ -2856,10 +2823,11 @@ async function savePresupuestoFull(data) {
       if (data.id) fbData.id = data.id;
       // Siempre incluir rows aunque esté vacío (para borrado intencional)
       if (data.rows !== undefined) fbData.rows = data.rows;
-      console.log('[savePresupuestoFull] Guardando ref=' + ref + ' campos=' + Object.keys(fbData).length + ' f_rec=' + (fbData.f_rec ? 'SÍ' : 'no') + ' f_ent=' + (fbData.f_ent ? 'SÍ' : 'no') + ' f_obs=' + (fbData.f_obs ? 'SÍ' : 'no'));
-      await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), fbData, { merge: true });
-      // v128: Actualizar nuestro timestamp tras guardar con éxito
+      // v129: Actualizar _lastSavedTimestamp ANTES de escribir a Firebase
+      // Así cuando onSnapshot reciba nuestro propio cambio, lo ignorará correctamente
       window._lastSavedTimestamp = fbData.timestamp;
+      console.log('[savePresupuestoFull] Guardando ref=' + ref + ' campos=' + Object.keys(fbData).length + ' ts=' + fbData.timestamp);
+      await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), fbData, { merge: true });
       savedFB = true;
     } catch(e) {
       console.warn('[Azkar] Firebase falló, añadiendo a cola:', e.message);
@@ -3025,28 +2993,42 @@ async function initFirebase(config) {
           hasChanges = true;
         }
       }
-      // v128: Si el presupuesto abierto cambió remotamente, actualizar el formulario en pantalla
+      // v129: Si el presupuesto abierto cambió REMOTAMENTE (otro dispositivo), actualizar formulario
+      // IMPORTANTE: NO recargar si el cambio es NUESTRO (timestamp coincide con _lastSavedTimestamp)
       if (hasChanges && window._currentPresupuestoRef) {
         for (const change of changes) {
           if ((change.type === 'modified') && change.doc.id === window._currentPresupuestoRef) {
             const remoteTs = change.doc.data().timestamp || 0;
-            // Solo recargar si el cambio remoto es MÁS NUEVO que nuestro último guardado
+            // v129: Solo recargar si el timestamp remoto es ESTRICTAMENTE mayor que el nuestro
+            // (si es igual o menor, es nuestro propio guardado o datos viejos → ignorar)
             if (remoteTs > window._lastSavedTimestamp) {
-              console.log('[Azkar v128] onSnapshot: presupuesto abierto actualizado remotamente, ts=' + remoteTs + ' > ' + window._lastSavedTimestamp);
-              const remoteData = { ...change.doc.data(), id: change.doc.id };
-              window._presupuestoLoading = true;
-              try {
-                ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'].forEach(fid => {
-                  var el = document.getElementById(fid); if (el) el.value = '';
-                });
-                document.querySelectorAll('#tb .cr').forEach(cr => cr.remove());
-                rid = 0;
-                restoreFormData(remoteData);
+              console.log('[Azkar v129] onSnapshot: cambio REMOTO detectado, ts=' + remoteTs + ' > ' + window._lastSavedTimestamp);
+              // v129: NO recargar automáticamente si el usuario está editando (tiene el foco en un input)
+              var activeEl = document.activeElement;
+              var userIsEditing = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+              if (userIsEditing) {
+                // El usuario está escribiendo — solo mostrar aviso, NO recargar
+                console.log('[Azkar v129] Usuario editando, mostrando aviso sin recargar');
+                showSyncStatus('☁️ Hay cambios de otro dispositivo — guarda o recarga para verlos', 5000);
+                // Actualizar timestamp para no repetir el aviso
                 window._lastSavedTimestamp = remoteTs;
-              } finally {
-                window._presupuestoLoading = false;
+              } else {
+                // No está editando → recargar silenciosamente
+                const remoteData = { ...change.doc.data(), id: change.doc.id };
+                window._presupuestoLoading = true;
+                try {
+                  ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'].forEach(fid => {
+                    var el = document.getElementById(fid); if (el) el.value = '';
+                  });
+                  document.querySelectorAll('#tb .cr').forEach(cr => cr.remove());
+                  rid = 0;
+                  restoreFormData(remoteData);
+                  window._lastSavedTimestamp = remoteTs;
+                } finally {
+                  window._presupuestoLoading = false;
+                }
+                showSyncStatus('🔄 Actualizado desde otro dispositivo', 3000);
               }
-              showSyncStatus('🔄 Actualizado desde otro dispositivo', 3000);
             }
             break;
           }
