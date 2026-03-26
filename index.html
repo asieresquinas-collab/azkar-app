@@ -2305,7 +2305,7 @@ function showSyncStatus(msg, duration) {
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v123f';
+var APP_VERSION = 'v124';
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
   (async function() {
@@ -2978,8 +2978,7 @@ async function savePresupuestoFull(data) {
     savedIDB = true;
   } catch(e) {
     console.error('[Azkar] Error IndexedDB:', e);
-    // Fallback: localStorage
-    try { localStorage.setItem('azkar_emergency_' + ref, JSON.stringify(data)); } catch(e2) {}
+    // v124: Sin fallback a localStorage — todo va a Firebase
   }
 
   // Paso 2: Firebase (si está disponible)
@@ -3144,7 +3143,7 @@ async function initFirebase(config) {
   if (firebaseConfigured) return;
   try {
     const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, onSnapshot } = 
+    const { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot } =
       await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     
     firebaseApp = initializeApp(config);
@@ -3152,7 +3151,7 @@ async function initFirebase(config) {
     firebaseConfigured = true;
     
     // Store Firebase modules globally
-    window._fb = { collection, doc, setDoc, getDocs, deleteDoc, onSnapshot, db: firestoreDB };
+    window._fb = { collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, db: firestoreDB };
     
     // v118: Listen for real-time changes (baja datos de la nube al dispositivo)
     // Corregido: usar for...of en vez de forEach(async) para esperar correctamente
@@ -3423,26 +3422,26 @@ async function loadPresupuesto(id) {
   // v123e: Marcar que NO necesita crear carpeta (ya existe para clientes guardados)
   if (window._driveInfo) window._driveInfo.needsCreate = false;
 
-  let data = await getPresupuesto(id);
-  if (!data) return alert('Presupuesto no encontrado');
-
-  // Comprobar si localStorage tiene una versión MÁS RECIENTE de este presupuesto
-  try {
-    const backupRef = localStorage.getItem('azkar_backup_ref');
-    const backupData = localStorage.getItem('azkar_backup_data');
-    const backupTime = parseInt(localStorage.getItem('azkar_backup_time') || '0');
-    if (backupRef === id && backupData && backupTime > (data.timestamp || 0)) {
-      const lsData = JSON.parse(backupData);
-      // Solo usar si no es muy viejo (menos de 24h)
-      if (Date.now() - backupTime < 86400000) {
-        console.log('[Azkar] Usando backup localStorage (más reciente que IndexedDB)');
-        data = lsData;
-        data.id = id;
-        // Actualizar IndexedDB con los datos más recientes
+  // v124: SIEMPRE cargar de Firebase primero (fuente de verdad), fallback a IndexedDB si offline
+  let data = null;
+  if (firebaseConfigured && window._fb && window._fb.getDoc) {
+    try {
+      const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', id));
+      if (snap.exists()) {
+        data = { ...snap.data(), id: id };
+        console.log('[Azkar] Datos cargados de Firebase (fuente de verdad)');
+        // Actualizar IndexedDB con los datos de Firebase
         savePresupuesto(data).catch(() => {});
       }
+    } catch(fbErr) {
+      console.warn('[Azkar] Firebase no disponible, usando IndexedDB:', fbErr.message);
     }
-  } catch(e) { console.warn('[Azkar] Error comprobando backup:', e); }
+  }
+  // Fallback: IndexedDB si Firebase no disponible o no tiene el dato
+  if (!data) {
+    data = await getPresupuesto(id);
+  }
+  if (!data) return alert('Presupuesto no encontrado');
 
   // v123f: LIMPIAR TODO el formulario antes de cargar — evita datos fantasma del cliente anterior
   ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'].forEach(fid => {
@@ -3525,14 +3524,10 @@ async function delPresupuesto(id) {
       await window._fb.deleteDoc(window._fb.doc(window._fb.db, 'presupuestos', id));
     } catch(e) {}
   }
-  // ── LIMPIAR localStorage si referencia al cliente borrado ──
+  // v124: Limpiar referencia si el presupuesto eliminado era el último abierto
   try {
-    var backupRef = localStorage.getItem('azkar_backup_ref');
-    if (backupRef === id) {
+    if (localStorage.getItem('azkar_backup_ref') === id) {
       localStorage.removeItem('azkar_backup_ref');
-      localStorage.removeItem('azkar_backup_data');
-      localStorage.removeItem('azkar_backup_time');
-      console.log('[Azkar] localStorage limpiado tras eliminar presupuesto ' + id);
     }
   } catch(e) {}
   // ── Limpiar formulario si el presupuesto eliminado estaba cargado ──
@@ -3588,10 +3583,9 @@ async function moverEnMarcha(ref) {
           await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
         }
       }
-      // v123c: Guardar estados en localStorage como backup persistente
+      // v124: Estados en variables globales (datos van a Firebase via setDoc merge)
       window._currentEnMarcha = true;
       window._currentEnMarchaDate = Date.now();
-      try { localStorage.setItem('azkar_estado_' + ref, JSON.stringify({ _enMarcha: true, _enMarchaDate: Date.now() })); } catch(e) {}
       showSyncStatus('✅ Carpeta ' + (data.folderName || ref) + ' movida a "2 En Marcha"', 5000);
       openMgr();
     } else {
@@ -3630,10 +3624,9 @@ async function moverPagadoFinalizado(ref) {
           await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
         }
       }
-      // v123c: Guardar estados en localStorage como backup persistente
+      // v124: Estados en variables globales (datos van a Firebase via setDoc merge)
       window._currentPagado = true;
       window._currentPagadoDate = Date.now();
-      try { localStorage.setItem('azkar_estado_' + ref, JSON.stringify({ _enMarcha: true, _enMarchaDate: window._currentEnMarchaDate, _pagadoFinalizado: true, _pagadoFinalizadoDate: Date.now() })); } catch(e) {}
       showSyncStatus('✅ Carpeta ' + (data.folderName || ref) + ' movida a "PAGADO FINALIZADO"', 5000);
       openMgr();
     } else {
@@ -4514,12 +4507,21 @@ window.addEventListener('DOMContentLoaded', function() {
   setTimeout(autoRepair, 10000);
   setInterval(autoRepair, 300000); // Cada 5 minutos
 
-  // v123: Al arrancar, recuperar estados (_enMarcha, _pagado, etc.) del presupuesto en formulario
+  // v124: Al arrancar, recuperar estados del presupuesto desde Firebase (fuente de verdad)
   setTimeout(async () => {
     try {
       const refEl = document.getElementById('f_ref');
       if (refEl && refEl.value) {
-        const existing = await getPresupuesto(refEl.value);
+        let existing = null;
+        // Intentar Firebase primero
+        if (firebaseConfigured && window._fb && window._fb.getDoc) {
+          try {
+            const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', refEl.value));
+            if (snap.exists()) existing = snap.data();
+          } catch(e) {}
+        }
+        // Fallback a IndexedDB
+        if (!existing) existing = await getPresupuesto(refEl.value);
         if (existing) {
           window._currentEnMarcha = !!existing._enMarcha;
           window._currentEnMarchaDate = existing._enMarchaDate || null;
@@ -4527,7 +4529,7 @@ window.addEventListener('DOMContentLoaded', function() {
           window._currentPagadoDate = existing._pagadoFinalizadoDate || null;
           window._currentGuardamuebles = !!existing._guardamuebles;
           window._currentArchivado2026 = !!existing._archivado2026;
-          console.log('[Azkar] Estados recuperados para', refEl.value, '→ enMarcha:', !!existing._enMarcha, 'pagado:', !!existing._pagadoFinalizado);
+          console.log('[Azkar] Estados recuperados de Firebase para', refEl.value, '→ enMarcha:', !!existing._enMarcha, 'pagado:', !!existing._pagadoFinalizado);
         }
       }
     } catch(e) { console.warn('[Azkar] Error recuperando estados:', e); }
@@ -4569,27 +4571,16 @@ window.addEventListener('DOMContentLoaded', function() {
       const data = collectFormData();
       data.id = ref.value;
       data.timestamp = Date.now();
-      // v123c: SIEMPRE preservar estados — si no están en variables globales, leer de localStorage backup
-      if (!data._enMarcha && !window._currentEnMarcha) {
-        try {
-          var oldBackup = localStorage.getItem('azkar_estado_' + ref.value);
-          if (oldBackup) {
-            var estados = JSON.parse(oldBackup);
-            if (estados._enMarcha) { data._enMarcha = true; data._enMarchaDate = estados._enMarchaDate; }
-            if (estados._pagadoFinalizado) { data._pagadoFinalizado = true; data._pagadoFinalizadoDate = estados._pagadoFinalizadoDate; }
-            if (estados._guardamuebles) data._guardamuebles = true;
-            if (estados._archivado2026) data._archivado2026 = true;
-          }
-        } catch(e) {}
-      }
-      // Guardado síncrono en localStorage (siempre funciona al cerrar)
+      // v124: Solo guardar la referencia del último cliente en localStorage (NO los datos)
+      // Los datos van a IndexedDB + Firebase (fuente de verdad)
       try {
         localStorage.setItem('azkar_backup_ref', ref.value);
-        localStorage.setItem('azkar_backup_data', JSON.stringify(data));
-        localStorage.setItem('azkar_backup_time', Date.now().toString());
       } catch(e) {}
-      // Intentar IndexedDB (async, puede no completarse al cerrar)
-      savePresupuesto(data).catch(() => {});
+      // Guardar en IndexedDB (local) + Firebase (nube) via savePresupuestoFull
+      savePresupuestoFull(data).catch(() => {
+        // Si falla savePresupuestoFull, al menos guardar en IndexedDB
+        savePresupuesto(data).catch(() => {});
+      });
       return data;
     }
     return null;
@@ -4629,40 +4620,43 @@ window.addEventListener('DOMContentLoaded', function() {
   const tbEl = document.getElementById('tb');
   if (tbEl) tbObserver.observe(tbEl, { childList: true, subtree: true });
 
-  // ── MEJORA 3: Restaurar último presupuesto al abrir ──
+  // ── MEJORA 3: Restaurar último presupuesto al abrir (v124: desde Firebase) ──
   setTimeout(async () => {
     try {
-      const backupRef = localStorage.getItem('azkar_backup_ref');
-      const backupData = localStorage.getItem('azkar_backup_data');
-      const backupTime = localStorage.getItem('azkar_backup_time');
-
       const ref = document.getElementById('f_ref');
       if (ref && !ref.value) {
-        // No hay nada cargado, restaurar desde backup
-        if (backupRef && backupData) {
-          // ── Verificar que el presupuesto aún existe en IndexedDB antes de restaurar ──
-          var existsInDB = false;
-          try {
-            var checkData = await getPresupuesto(backupRef);
-            if (checkData) existsInDB = true;
-          } catch(e) {}
-          if (!existsInDB) {
-            // El presupuesto fue eliminado, limpiar localStorage
-            localStorage.removeItem('azkar_backup_ref');
-            localStorage.removeItem('azkar_backup_data');
-            localStorage.removeItem('azkar_backup_time');
-            console.log('[Azkar] Backup descartado: presupuesto ' + backupRef + ' ya no existe');
-          } else {
-            const data = JSON.parse(backupData);
-            const age = Date.now() - parseInt(backupTime || '0');
-            if (age < 86400000) {
-              restoreFormData(data);
-              showSyncStatus('♻️ Presupuesto restaurado (Nº ' + backupRef + ')');
+        // No hay nada cargado — restaurar el último presupuesto usado
+        const backupRef = localStorage.getItem('azkar_backup_ref');
+        if (backupRef) {
+          // v124: Cargar SIEMPRE de Firebase (fuente de verdad)
+          let data = null;
+          if (firebaseConfigured && window._fb && window._fb.getDoc) {
+            try {
+              const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', backupRef));
+              if (snap.exists()) {
+                data = { ...snap.data(), id: backupRef };
+                console.log('[Azkar] Auto-restore de Firebase:', backupRef);
+              }
+            } catch(fbErr) {
+              console.warn('[Azkar] Firebase no disponible para auto-restore:', fbErr.message);
             }
+          }
+          // Fallback: IndexedDB si Firebase no disponible
+          if (!data) {
+            data = await getPresupuesto(backupRef);
+          }
+          if (data) {
+            window._presupuestoLoading = true;
+            try { restoreFormData(data); } finally { window._presupuestoLoading = false; }
+            window._currentEnMarcha = !!data._enMarcha;
+            window._currentPagado = !!data._pagadoFinalizado;
+            window._currentGuardamuebles = !!data._guardamuebles;
+            window._currentArchivado2026 = !!data._archivado2026;
+            showSyncStatus('♻️ Presupuesto restaurado (Nº ' + backupRef + ')');
           }
         }
       }
-    } catch(e) { console.warn('[Azkar] Error restaurando backup:', e); }
+    } catch(e) { console.warn('[Azkar] Error restaurando:', e); }
   }, 1500);
 });
 
