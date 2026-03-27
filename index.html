@@ -1168,7 +1168,8 @@ function GD(){
     var ns=rows[i].querySelectorAll("input[type=number]");
     var ci=rows[i].querySelector("input[list=dl]");
     var se=rows[i].querySelector("select");
-    data.rows.push({c:ci?ci.value:"",z:se?se.value:"Salon",u:ns[0]?ns[0].value:"",p:ns[1]?ns[1].value:"",d:ns[2]?ns[2].value:""});
+    var tmEl=rows[i].querySelector('.tiempo-input');
+    data.rows.push({c:ci?ci.value:"",z:se?se.value:"Salon",u:ns[0]?ns[0].value:"",p:ns[1]?ns[1].value:"",d:ns[2]?ns[2].value:"",tm:tmEl?tmEl.value:""});
   }
   var html=document.documentElement.outerHTML;
   var jsonStr=JSON.stringify(data);
@@ -1197,7 +1198,7 @@ function LD(){
     var data=JSON.parse(sd.textContent);
     var fields=['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs'];
     for(var i=0;i<fields.length;i++){var el=document.getElementById(fields[i]);if(el&&data[fields[i]]!==undefined)el.value=data[fields[i]];}
-    if(data.rows&&data.rows.length)for(var i=0;i<data.rows.length;i++){var r=data.rows[i];AR(r.c,r.z,r.u,r.p,r.d);}
+    if(data.rows&&data.rows.length)for(var i=0;i<data.rows.length;i++){var r=data.rows[i];AR(r.c,r.z,r.u,r.p,r.d,r.tm||'');}
     CA(); SY();
   }catch(e){}
 }
@@ -2044,7 +2045,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v132';</script>
+<script>document.getElementById('version-tag').textContent='v133';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2156,7 +2157,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v132';
+var APP_VERSION = 'v133';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -2932,12 +2933,15 @@ function collectFormData() {
     const inputs = cr.querySelectorAll('input');
     const selects = cr.querySelectorAll('select');
     if (inputs.length >= 4 && selects.length >= 1) {
+      // v133: También guardar tiempo (inputs[4] = campo tiempo-input)
+      const tiempoEl = cr.querySelector('.tiempo-input');
       rows.push({
         c: inputs[0]?.value || '',
         z: selects[0]?.value || 'Salón',
         u: inputs[1]?.value || '',
         p: inputs[2]?.value || '',
-        d: inputs[3]?.value || ''
+        d: inputs[3]?.value || '',
+        tm: tiempoEl ? tiempoEl.value || '' : ''
       });
     }
   });
@@ -2975,7 +2979,8 @@ function restoreFormData(data) {
   });
 
   if (data.rows && data.rows.length && typeof AR === 'function') {
-    data.rows.forEach(r => { if (r.c !== 'Salida') AR(r.c, r.z, r.u, r.p, r.d); });
+    // v133: Pasar también el tiempo (r.tm) al restaurar
+    data.rows.forEach(r => { if (r.c !== 'Salida') AR(r.c, r.z, r.u, r.p, r.d, r.tm || ''); });
   }
 
   if (typeof AR_SALIDA === 'function') AR_SALIDA();
