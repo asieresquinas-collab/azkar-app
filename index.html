@@ -1155,6 +1155,13 @@ function RF(){
   // v128: Reset tracking al limpiar
   window._currentPresupuestoRef = null;
   window._lastSavedTimestamp = 0;
+  // v134: Reset TODOS los flags de estado al limpiar — evita que se hereden al siguiente presupuesto
+  window._currentEnMarcha = false;
+  window._currentEnMarchaDate = null;
+  window._currentPagado = false;
+  window._currentPagadoDate = null;
+  window._currentGuardamuebles = false;
+  window._currentArchivado2026 = false;
   var fd=document.getElementById('f_fecha'); if(fd) fd.value=new Date().toISOString().slice(0,10);
 }
 
@@ -2045,7 +2052,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v133';</script>
+<script>document.getElementById('version-tag').textContent='v134';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2157,7 +2164,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v133';
+var APP_VERSION = 'v134';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -2765,15 +2772,31 @@ async function autoRepair() {
           if (cloud && p.timestamp && cloud.timestamp) {
             if (p.timestamp > cloud.timestamp) {
               // Local más reciente → subir a Firebase
+              // v134: PRESERVAR flags de estado de Firebase que local no tenga
               try {
-                await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', p.id), p, { merge: true });
+                const toUpload = { ...p };
+                if (cloud._enMarcha && !toUpload._enMarcha) toUpload._enMarcha = cloud._enMarcha;
+                if (cloud._enMarchaDate && !toUpload._enMarchaDate) toUpload._enMarchaDate = cloud._enMarchaDate;
+                if (cloud._pagadoFinalizado && !toUpload._pagadoFinalizado) toUpload._pagadoFinalizado = cloud._pagadoFinalizado;
+                if (cloud._pagadoFinalizadoDate && !toUpload._pagadoFinalizadoDate) toUpload._pagadoFinalizadoDate = cloud._pagadoFinalizadoDate;
+                if (cloud._guardamuebles && !toUpload._guardamuebles) toUpload._guardamuebles = cloud._guardamuebles;
+                if (cloud._archivado2026 && !toUpload._archivado2026) toUpload._archivado2026 = cloud._archivado2026;
+                await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', p.id), toUpload, { merge: true });
                 updated++;
                 fixes++;
               } catch(e) {}
             } else if (cloud.timestamp > p.timestamp) {
               // Firebase más reciente → bajar a local
+              // v134: PRESERVAR flags de estado locales que Firebase no tenga
               try {
-                await savePresupuesto({ ...cloud, id: p.id });
+                const merged = { ...cloud, id: p.id };
+                if (p._enMarcha && !merged._enMarcha) merged._enMarcha = p._enMarcha;
+                if (p._enMarchaDate && !merged._enMarchaDate) merged._enMarchaDate = p._enMarchaDate;
+                if (p._pagadoFinalizado && !merged._pagadoFinalizado) merged._pagadoFinalizado = p._pagadoFinalizado;
+                if (p._pagadoFinalizadoDate && !merged._pagadoFinalizadoDate) merged._pagadoFinalizadoDate = p._pagadoFinalizadoDate;
+                if (p._guardamuebles && !merged._guardamuebles) merged._guardamuebles = p._guardamuebles;
+                if (p._archivado2026 && !merged._archivado2026) merged._archivado2026 = p._archivado2026;
+                await savePresupuesto(merged);
                 updated++;
                 fixes++;
               } catch(e) {}
@@ -3045,10 +3068,17 @@ async function initFirebase(config) {
                 if (!fbData._guardamuebles && localData._guardamuebles) fbData._guardamuebles = localData._guardamuebles;
                 if (!fbData._archivado2026 && localData._archivado2026) fbData._archivado2026 = localData._archivado2026;
               } else {
-                // Local es más reciente: mantener local, solo actualizar si Firebase tiene campos de estado que local no
+                // v134: Local es más reciente: mantener local, pero mergear estados de ambos lados
+                // Mergear TODOS los flags de estado (el que tenga true gana)
                 if (fbData._enMarcha && !localData._enMarcha) localData._enMarcha = fbData._enMarcha;
+                if (fbData._enMarchaDate && !localData._enMarchaDate) localData._enMarchaDate = fbData._enMarchaDate;
                 if (fbData._pagadoFinalizado && !localData._pagadoFinalizado) localData._pagadoFinalizado = fbData._pagadoFinalizado;
-                // No sobrescribir con Firebase si local es más nuevo
+                if (fbData._pagadoFinalizadoDate && !localData._pagadoFinalizadoDate) localData._pagadoFinalizadoDate = fbData._pagadoFinalizadoDate;
+                if (fbData._guardamuebles && !localData._guardamuebles) localData._guardamuebles = fbData._guardamuebles;
+                if (fbData._archivado2026 && !localData._archivado2026) localData._archivado2026 = fbData._archivado2026;
+                // v134: SIEMPRE guardar localData mergeado en IndexedDB (antes hacía continue y se perdían estados)
+                await savePresupuesto(localData);
+                hasChanges = true;
                 continue;
               }
             }
@@ -4436,17 +4466,15 @@ window.addEventListener('DOMContentLoaded', function() {
     const ref = document.getElementById('f_ref');
     if (ref && ref.value) {
       try {
-        // v123: Antes de guardar, asegurar que tenemos los estados del presupuesto
-        if (window._currentEnMarcha === undefined) {
-          const existing = await getPresupuesto(ref.value);
-          if (existing) {
-            window._currentEnMarcha = !!existing._enMarcha;
-            window._currentEnMarchaDate = existing._enMarchaDate || null;
-            window._currentPagado = !!existing._pagadoFinalizado;
-            window._currentPagadoDate = existing._pagadoFinalizadoDate || null;
-            window._currentGuardamuebles = !!existing._guardamuebles;
-            window._currentArchivado2026 = !!existing._archivado2026;
-          }
+        // v134: SIEMPRE verificar estados desde IndexedDB antes de guardar
+        // (antes solo lo hacía si _currentEnMarcha === undefined, lo que causaba pérdida de estados)
+        const existing = await getPresupuesto(ref.value);
+        if (existing) {
+          // v134: Mergear — si IndexedDB tiene un flag true, mantenerlo (nunca pasar de true a false)
+          if (existing._enMarcha) { window._currentEnMarcha = true; window._currentEnMarchaDate = existing._enMarchaDate || window._currentEnMarchaDate; }
+          if (existing._pagadoFinalizado) { window._currentPagado = true; window._currentPagadoDate = existing._pagadoFinalizadoDate || window._currentPagadoDate; }
+          if (existing._guardamuebles) window._currentGuardamuebles = true;
+          if (existing._archivado2026) window._currentArchivado2026 = true;
         }
         const data = collectFormData();
         data.id = ref.value;
