@@ -85,6 +85,8 @@
 .th{grid-template-columns:2.2fr 1.1fr 66px 106px 70px 108px 32px!important}
 .cr{grid-template-columns:2.2fr 1.1fr 66px 106px 70px 108px 32px!important}
 
+/* v137: Tamaño artículo en PDF */
+.tamano-select{-webkit-appearance:none;appearance:none;font-size:9px!important;padding:1px 4px!important;border:1px solid var(--gb)!important;border-radius:2px!important;color:var(--az)!important;font-weight:600!important;background:var(--azc)!important}
 /* ========== PRESUPUESTO: hoja propia ========== */
 #page-presupuesto{page-break-before:always!important}
 #page-presupuesto .sheet{box-shadow:none!important;border:none!important;padding:2mm 0!important;border-radius:0!important}
@@ -1176,7 +1178,7 @@ function GD(){
     var ci=rows[i].querySelector("input[list=dl]");
     var se=rows[i].querySelector("select");
     var tmEl=rows[i].querySelector('.tiempo-input');
-    data.rows.push({c:ci?ci.value:"",z:se?se.value:"Salon",u:ns[0]?ns[0].value:"",p:ns[1]?ns[1].value:"",d:ns[2]?ns[2].value:"",tm:tmEl?tmEl.value:""});
+    var tamEl2=rows[i].querySelector(".tamano-select");data.rows.push({c:ci?ci.value:"",z:se?se.value:"Salon",u:ns[0]?ns[0].value:"",p:ns[1]?ns[1].value:"",d:ns[2]?ns[2].value:"",tm:tmEl?tmEl.value:"",tam:tamEl2?tamEl2.value:"Estándar"});
   }
   var html=document.documentElement.outerHTML;
   var jsonStr=JSON.stringify(data);
@@ -1205,7 +1207,7 @@ function LD(){
     var data=JSON.parse(sd.textContent);
     var fields=['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs'];
     for(var i=0;i<fields.length;i++){var el=document.getElementById(fields[i]);if(el&&data[fields[i]]!==undefined)el.value=data[fields[i]];}
-    if(data.rows&&data.rows.length)for(var i=0;i<data.rows.length;i++){var r=data.rows[i];AR(r.c,r.z,r.u,r.p,r.d,r.tm||'');}
+    if(data.rows&&data.rows.length)for(var i=0;i<data.rows.length;i++){var r=data.rows[i];AR(r.c,r.z,r.u,r.p,r.d,r.tm||'',r.tam||'Estándar');}
     CA(); SY();
   }catch(e){}
 }
@@ -1774,16 +1776,17 @@ function TL_LOOKUP(inp){
 }
 
 // ── Override AR() con price-lookup ────────
-function AR(c,z,u,p,d,tm){
-  c=c||''; z=z||'Salón'; u=u||''; p=p||''; d=d||''; tm=tm||'';
+function AR(c,z,u,p,d,tm,tam){
+  c=c||''; z=z||'Salón'; u=u||''; p=p||''; d=d||''; tm=tm||''; tam=tam||'Estándar';
   var ph=document.getElementById('rph');
   if(ph) ph.parentNode.removeChild(ph);
   rid++;
   var id=rid;
   var div=document.createElement('div');
   div.className='cr'; div.id='r'+id;
+  var tamOpts='<option'+(tam==='Estándar'?' selected':'')+'>Estándar</option><option'+(tam==='Pequeño'?' selected':'')+'>Pequeño</option><option'+(tam==='Grande'?' selected':'')+'>Grande</option><option'+(tam==='Muy grande'?' selected':'')+'>Muy grande</option>';
   div.innerHTML='<div class="move-btns"><button title="Subir" data-dir="up">▲</button><button title="Bajar" data-dir="down">▼</button></div>'
-    +'<input list="dl" placeholder="Concepto..." value="'+c+'" oninput="PL_LOOKUP(this);CA()">'
+    +'<div style="display:flex;flex-direction:column;gap:2px"><input list="dl" placeholder="Concepto..." value="'+c+'" oninput="PL_LOOKUP(this);CA()"><select class="tamano-select" style="font-size:9px;padding:2px 4px;border:1px solid var(--gb);border-radius:3px;color:var(--az);font-weight:600;background:var(--azc)">'+tamOpts+'</select></div>'
     +'<select onchange="CA()">'+ZO(z)+'</select>'
     +'<input type="number" min="0" step="0.1" placeholder="0" value="'+u+'" oninput="CA()">'
     +'<input type="number" min="0" step="0.01" placeholder="0,00" value="'+p+'" oninput="CA()">'
@@ -1792,7 +1795,7 @@ function AR(c,z,u,p,d,tm){
     +'<input type="number" min="0" step="1" placeholder="0" value="'+tm+'" class="tiempo-input col-tiempo" oninput="CT()" style="text-align:center;font-size:11px;color:#1B4F8A;font-weight:700">'
     +'<button class="bdel" onclick="DR('+id+')" title="Eliminar">✕</button>';
   document.getElementById('tb').appendChild(div);
-  div.querySelector('input').focus();
+  div.querySelector('input[list]').focus();
   if(c && !tm && TIEMPOS_BASE[c]){
     var t=TIEMPOS_BASE[c];
     div.querySelector('.tiempo-input').value=t[0]+t[1];
@@ -1904,7 +1907,8 @@ function GD(){
     var ci=rows[i].querySelector("input[list]");
     var se=rows[i].querySelector("select");
     var ti=rows[i].querySelector(".tiempo-input");
-    data.rows.push({c:ci?ci.value:"",z:se?se.value:"Salón",u:ns[0]?ns[0].value:"",p:ns[1]?ns[1].value:"",d:ns[2]?ns[2].value:"",tm:ti?ti.value:""});
+    var tamSel=rows[i].querySelector(".tamano-select");
+    data.rows.push({c:ci?ci.value:"",z:se?se.value:"Salón",u:ns[0]?ns[0].value:"",p:ns[1]?ns[1].value:"",d:ns[2]?ns[2].value:"",tm:ti?ti.value:"",tam:tamSel?tamSel.value:"Estándar"});
   }
   var html=document.documentElement.outerHTML;
   var jsonStr=JSON.stringify(data);
@@ -1945,7 +1949,7 @@ function LD(){
       if(el&&data[tFields[i]]!==undefined) el.value=data[tFields[i]];
     }
     if(data.rows&&data.rows.length){
-      for(var i=0;i<data.rows.length;i++){var r=data.rows[i]; if(r.c!=='Salida') AR(r.c,r.z,r.u,r.p,r.d,r.tm||'');}
+      for(var i=0;i<data.rows.length;i++){var r=data.rows[i]; if(r.c!=='Salida') AR(r.c,r.z,r.u,r.p,r.d,r.tm||'',r.tam||'Estándar');}
     }
     if(typeof AR_SALIDA==='function') AR_SALIDA();
     CA(); SY(); CT();
@@ -2052,7 +2056,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v137';</script>
+<script>document.getElementById('version-tag').textContent='v138';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2164,7 +2168,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v137';
+var APP_VERSION = 'v138';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -2957,14 +2961,17 @@ function collectFormData() {
     const selects = cr.querySelectorAll('select');
     if (inputs.length >= 4 && selects.length >= 1) {
       // v133: También guardar tiempo (inputs[4] = campo tiempo-input)
+      // v137: Guardar tamaño del artículo
       const tiempoEl = cr.querySelector('.tiempo-input');
+      const tamanoEl = cr.querySelector('.tamano-select');
       rows.push({
         c: inputs[0]?.value || '',
         z: selects[0]?.value || 'Salón',
         u: inputs[1]?.value || '',
         p: inputs[2]?.value || '',
         d: inputs[3]?.value || '',
-        tm: tiempoEl ? tiempoEl.value || '' : ''
+        tm: tiempoEl ? tiempoEl.value || '' : '',
+        tam: tamanoEl ? tamanoEl.value || 'Estándar' : 'Estándar'
       });
     }
   });
@@ -3003,7 +3010,8 @@ function restoreFormData(data) {
 
   if (data.rows && data.rows.length && typeof AR === 'function') {
     // v133: Pasar también el tiempo (r.tm) al restaurar
-    data.rows.forEach(r => { if (r.c !== 'Salida') AR(r.c, r.z, r.u, r.p, r.d, r.tm || ''); });
+    // v137: Pasar también el tamaño (r.tam)
+    data.rows.forEach(r => { if (r.c !== 'Salida') AR(r.c, r.z, r.u, r.p, r.d, r.tm || '', r.tam || 'Estándar'); });
   }
 
   if (typeof AR_SALIDA === 'function') AR_SALIDA();
