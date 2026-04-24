@@ -89,7 +89,7 @@
 /* v140: Cláusula guardamuebles oculta por defecto */
 .guardamuebles-hidden{display:none!important}
 /* v137: Tamaño artículo en PDF */
-.tamano-select{-webkit-appearance:none;appearance:none;font-size:9px!important;padding:1px 4px!important;border:1px solid var(--gb)!important;border-radius:2px!important;color:var(--az)!important;font-weight:600!important;background:var(--azc)!important}
+.tamano-badge{font-size:7px!important;padding:2px 4px!important;border-radius:3px!important;font-weight:700!important;letter-spacing:.3px!important;white-space:nowrap!important;cursor:pointer!important;user-select:none!important}
 /* ========== PRESUPUESTO: hoja propia ========== */
 #page-presupuesto{page-break-before:always!important}
 #page-presupuesto .sheet{box-shadow:none!important;border:none!important;padding:2mm 0!important;border-radius:0!important}
@@ -1181,6 +1181,24 @@ function RF(){
   updateGuardamueblesUI(false);
 }
 
+// v144b: Tamaño artículo — badge compacto
+function tamLabel(t) { return t==='Estándar'?'EST':t==='Pequeño'?'PEQ':t==='Grande'?'GDE':t==='Muy grande'?'XL':'EST'; }
+function tamBadgeStyle(t) {
+  if(t==='Pequeño') return 'background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc';
+  if(t==='Grande') return 'background:#fef3c7;color:#92400e;border:1px solid #fcd34d';
+  if(t==='Muy grande') return 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5';
+  return 'background:#e8f5ee;color:#1a7a3f;border:1px solid #86efac';
+}
+function cycleTam(el) {
+  var sizes=['Estándar','Pequeño','Grande','Muy grande'];
+  var cur=el.getAttribute('data-tam')||'Estándar';
+  var idx=(sizes.indexOf(cur)+1)%sizes.length;
+  var next=sizes[idx];
+  el.setAttribute('data-tam',next);
+  el.textContent=tamLabel(next);
+  el.setAttribute('style','font-size:7px;padding:2px 4px;border-radius:3px;cursor:pointer;font-weight:700;letter-spacing:.3px;white-space:nowrap;flex-shrink:0;user-select:none;'+tamBadgeStyle(next));
+}
+
 // v140: Toggle guardamuebles desde el contrato
 function toggleGuardamuebles() {
   window._currentGuardamuebles = !window._currentGuardamuebles;
@@ -1221,7 +1239,7 @@ function GD(){
     var ci=rows[i].querySelector("input[list=dl]");
     var se=rows[i].querySelector("select");
     var tmEl=rows[i].querySelector('.tiempo-input');
-    var tamEl2=rows[i].querySelector(".tamano-select");data.rows.push({c:ci?ci.value:"",z:se?se.value:"Salon",u:ns[0]?ns[0].value:"",p:ns[1]?ns[1].value:"",d:ns[2]?ns[2].value:"",tm:tmEl?tmEl.value:"",tam:tamEl2?tamEl2.value:"Estándar"});
+    var tamEl2=rows[i].querySelector(".tamano-badge");data.rows.push({c:ci?ci.value:"",z:se?se.value:"Salon",u:ns[0]?ns[0].value:"",p:ns[1]?ns[1].value:"",d:ns[2]?ns[2].value:"",tm:tmEl?tmEl.value:"",tam:tamEl2?tamEl2.getAttribute("data-tam")||"Estándar":"Estándar"});
   }
   var html=document.documentElement.outerHTML;
   var jsonStr=JSON.stringify(data);
@@ -1829,7 +1847,7 @@ function AR(c,z,u,p,d,tm,tam){
   div.className='cr'; div.id='r'+id;
   var tamOpts='<option'+(tam==='Estándar'?' selected':'')+'>Estándar</option><option'+(tam==='Pequeño'?' selected':'')+'>Pequeño</option><option'+(tam==='Grande'?' selected':'')+'>Grande</option><option'+(tam==='Muy grande'?' selected':'')+'>Muy grande</option>';
   div.innerHTML='<div class="move-btns"><button title="Subir" data-dir="up">▲</button><button title="Bajar" data-dir="down">▼</button></div>'
-    +'<div style="display:flex;align-items:center;gap:3px"><input list="dl" placeholder="Concepto..." value="'+c+'" oninput="PL_LOOKUP(this);CA()" style="flex:1;min-width:0"><select class="tamano-select" style="font-size:8px;padding:1px 2px;border:1px solid var(--gb);border-radius:3px;color:var(--az);font-weight:600;background:var(--azc);width:auto;min-width:0;flex-shrink:0">'+tamOpts+'</select></div>'
+    +'<div style="display:flex;align-items:center;gap:2px"><input list="dl" placeholder="Concepto..." value="'+c+'" oninput="PL_LOOKUP(this);CA()" style="flex:1;min-width:0"><span class="tamano-badge" onclick="cycleTam(this)" title="Click para cambiar tamaño" data-tam="'+tam+'" style="font-size:7px;padding:2px 4px;border-radius:3px;cursor:pointer;font-weight:700;letter-spacing:.3px;white-space:nowrap;flex-shrink:0;user-select:none;'+tamBadgeStyle(tam)+'">'+tamLabel(tam)+'</span></div>'
     +'<select onchange="CA()">'+ZO(z)+'</select>'
     +'<input type="number" min="0" step="0.1" placeholder="0" value="'+u+'" oninput="CA()">'
     +'<input type="number" min="0" step="0.01" placeholder="0,00" value="'+p+'" oninput="CA()">'
@@ -1950,8 +1968,8 @@ function GD(){
     var ci=rows[i].querySelector("input[list]");
     var se=rows[i].querySelector("select");
     var ti=rows[i].querySelector(".tiempo-input");
-    var tamSel=rows[i].querySelector(".tamano-select");
-    data.rows.push({c:ci?ci.value:"",z:se?se.value:"Salón",u:ns[0]?ns[0].value:"",p:ns[1]?ns[1].value:"",d:ns[2]?ns[2].value:"",tm:ti?ti.value:"",tam:tamSel?tamSel.value:"Estándar"});
+    var tamSel=rows[i].querySelector(".tamano-badge");
+    data.rows.push({c:ci?ci.value:"",z:se?se.value:"Salón",u:ns[0]?ns[0].value:"",p:ns[1]?ns[1].value:"",d:ns[2]?ns[2].value:"",tm:ti?ti.value:"",tam:tamSel?tamSel.getAttribute("data-tam")||"Estándar":"Estándar"});
   }
   var html=document.documentElement.outerHTML;
   var jsonStr=JSON.stringify(data);
@@ -2099,7 +2117,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v144';</script>
+<script>document.getElementById('version-tag').textContent='v145';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2211,7 +2229,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v144';
+var APP_VERSION = 'v145';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -3006,7 +3024,7 @@ function collectFormData() {
       // v133: También guardar tiempo (inputs[4] = campo tiempo-input)
       // v137: Guardar tamaño del artículo
       const tiempoEl = cr.querySelector('.tiempo-input');
-      const tamanoEl = cr.querySelector('.tamano-select');
+      const tamBadge = cr.querySelector('.tamano-badge');
       rows.push({
         c: inputs[0]?.value || '',
         z: selects[0]?.value || 'Salón',
@@ -3014,7 +3032,7 @@ function collectFormData() {
         p: inputs[2]?.value || '',
         d: inputs[3]?.value || '',
         tm: tiempoEl ? tiempoEl.value || '' : '',
-        tam: tamanoEl ? tamanoEl.value || 'Estándar' : 'Estándar'
+        tam: tamBadge ? tamBadge.getAttribute('data-tam') || 'Estándar' : 'Estándar'
       });
     }
   });
