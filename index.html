@@ -1829,7 +1829,7 @@ function AR(c,z,u,p,d,tm,tam){
   div.className='cr'; div.id='r'+id;
   var tamOpts='<option'+(tam==='Estándar'?' selected':'')+'>Estándar</option><option'+(tam==='Pequeño'?' selected':'')+'>Pequeño</option><option'+(tam==='Grande'?' selected':'')+'>Grande</option><option'+(tam==='Muy grande'?' selected':'')+'>Muy grande</option>';
   div.innerHTML='<div class="move-btns"><button title="Subir" data-dir="up">▲</button><button title="Bajar" data-dir="down">▼</button></div>'
-    +'<div style="display:flex;flex-direction:column;gap:2px"><input list="dl" placeholder="Concepto..." value="'+c+'" oninput="PL_LOOKUP(this);CA()"><select class="tamano-select" style="font-size:9px;padding:2px 4px;border:1px solid var(--gb);border-radius:3px;color:var(--az);font-weight:600;background:var(--azc)">'+tamOpts+'</select></div>'
+    +'<div style="display:flex;align-items:center;gap:3px"><input list="dl" placeholder="Concepto..." value="'+c+'" oninput="PL_LOOKUP(this);CA()" style="flex:1;min-width:0"><select class="tamano-select" style="font-size:8px;padding:1px 2px;border:1px solid var(--gb);border-radius:3px;color:var(--az);font-weight:600;background:var(--azc);width:auto;min-width:0;flex-shrink:0">'+tamOpts+'</select></div>'
     +'<select onchange="CA()">'+ZO(z)+'</select>'
     +'<input type="number" min="0" step="0.1" placeholder="0" value="'+u+'" oninput="CA()">'
     +'<input type="number" min="0" step="0.01" placeholder="0,00" value="'+p+'" oninput="CA()">'
@@ -2099,7 +2099,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v143';</script>
+<script>document.getElementById('version-tag').textContent='v144';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2211,7 +2211,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v143';
+var APP_VERSION = 'v144';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
