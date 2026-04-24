@@ -2117,7 +2117,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v145';</script>
+<script>document.getElementById('version-tag').textContent='v146';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2229,7 +2229,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v145';
+var APP_VERSION = 'v146';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -4066,8 +4066,8 @@ function buildCompleteHTML(pageIds) {
     );
     // v141: También en la firma de guardamuebles
     html = html.replace(
-      /text-transform:uppercase'>Azkar Mudanzas de Bizkaia SL<\/div><div style='height:50px;background:#fff'><\/div><div style='padding:4px 10px;font-size:9px;color:#888;background:#f9f9f9'>Sello y firma autorizada<\/div>/g,
-      "text-transform:uppercase'>Azkar Mudanzas de Bizkaia SL</div><div style='height:50px;background:#fff;display:flex;align-items:center;justify-content:center;padding:2px'>" + selloSvg + "</div><div style='padding:4px 10px;font-size:9px;color:#888;background:#f9f9f9'>Sello y firma autorizada</div>"
+      /text-transform:uppercase['"]?>Azkar Mudanzas de Bizkaia SL<\/div><div style=['"]height:50px;background:#fff['"]><\/div><div style=['"]padding:4px 10px;font-size:9px;color:#888;background:#f9f9f9['"]>Sello y firma autorizada<\/div>/g,
+      "text-transform:uppercase\">Azkar Mudanzas de Bizkaia SL</div><div style=\"height:50px;background:#fff;display:flex;align-items:center;justify-content:center;padding:2px\">" + selloSvg + "</div><div style=\"padding:4px 10px;font-size:9px;color:#888;background:#f9f9f9\">Sello y firma autorizada</div>"
     );
     var isFirst = (body === '');
     body += '<div style="display:block;' + (isFirst ? '' : 'page-break-before:always') + '">' + html + '</div>\n';
