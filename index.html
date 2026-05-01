@@ -2193,7 +2193,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v148';</script>
+<script>document.getElementById('version-tag').textContent='v149';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2305,7 +2305,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v148';
+var APP_VERSION = 'v149';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -7721,7 +7721,9 @@ async function cargarListaAutonomos() {
       html += '<tr style="border-bottom:1px solid #f5f5f5">';
       html += '<td style="padding:6px 4px;font-weight:600">' + a.nombre + '</td>';
       html += '<td style="padding:6px 4px">' + (a.telefono || '—') + '</td>';
-      html += '<td style="padding:6px 4px"><button onclick="copiarLink(\'' + url + '\')" style="padding:3px 8px;font-size:10px;background:var(--azc);border:1px solid var(--gb);border-radius:3px;cursor:pointer">Copiar link</button></td>';
+      html += '<td style="padding:6px 4px"><button onclick="copiarLink(\'' + url + '\')" style="padding:3px 8px;font-size:10px;background:var(--azc);border:1px solid var(--gb);border-radius:3px;cursor:pointer">Copiar link</button>';
+      if (a.telefono) html += ' <button onclick="whatsappAutonomo(\'' + a.telefono + '\',\'' + a.nombre.replace(/'/g,"\\'") + '\',\'' + a.token + '\')" style="padding:3px 8px;font-size:10px;background:#25d366;color:#fff;border:none;border-radius:3px;cursor:pointer;font-weight:600">WhatsApp</button>';
+      html += '</td>';
       html += '<td style="padding:6px 4px"><button onclick="eliminarAutonomo(\'' + a.token + '\',\'' + a.nombre + '\')" style="padding:3px 8px;font-size:10px;background:#fee;border:1px solid #fcc;border-radius:3px;cursor:pointer;color:#c00">✕</button></td>';
       html += '</tr>';
     });
@@ -7738,6 +7740,15 @@ function copiarLink(url) {
   }).catch(function() {
     prompt('Copia este enlace:', url);
   });
+}
+
+function whatsappAutonomo(telefono, nombre, token) {
+  var tel = telefono.replace(/\s+/g,'');
+  if (!tel.startsWith('+') && !tel.startsWith('34')) tel = '34' + tel;
+  if (tel.startsWith('0')) tel = '34' + tel.substring(1);
+  var url = RAILWAY_API + '/api/portal/' + token;
+  var msg = 'Hola ' + nombre + ', soy Asier de Azkar Mudanzas.\n\nTienes un trabajo disponible en tu portal:\n' + url + '\n\nEntra, mira la ruta y el inventario, y ponme tu mejor precio. ¡Gracias!';
+  window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(msg), '_blank');
 }
 
 async function eliminarAutonomo(token, nombre) {
