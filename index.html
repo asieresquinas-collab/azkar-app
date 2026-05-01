@@ -2193,7 +2193,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v153';</script>
+<script>document.getElementById('version-tag').textContent='v154';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2305,7 +2305,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v153';
+var APP_VERSION = 'v154';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -7743,13 +7743,19 @@ function copiarLink(url) {
 }
 
 function whatsappAutonomo(telefono, nombre, token) {
+  var num = telefono.replace(/[\s\-\(\)\.]/g, '');
+  if (num.startsWith('0')) num = '34' + num.substring(1);
+  if (!num.startsWith('+') && !num.startsWith('34')) num = '34' + num;
+  num = num.replace(/^\+/, '');
   var url = RAILWAY_API + '/api/portal/' + token;
   var msg = 'Hola ' + nombre + ', soy Asier de Azkar Mudanzas.\n\nTienes un trabajo disponible en tu portal:\n' + url + '\n\nEntra, mira la ruta y el inventario, y ponme tu mejor precio. ¡Gracias!';
-  navigator.clipboard.writeText(msg).then(function() {
-    alert('✅ Mensaje copiado al portapapeles.\n\nAbre WhatsApp Business → busca a ' + nombre + ' → pega el mensaje (Ctrl+V).');
-  }).catch(function() {
-    prompt('Copia este mensaje y pégalo en WhatsApp:', msg);
-  });
+  var textoEnc = encodeURIComponent(msg);
+  var isAndroid = /android/i.test(navigator.userAgent);
+  if (isAndroid) {
+    window.location.href = 'intent://send?phone=' + num + '&text=' + textoEnc + '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=' + encodeURIComponent('https://wa.me/' + num + '?text=' + textoEnc) + ';end';
+  } else {
+    window.open('https://wa.me/' + num + '?text=' + textoEnc, '_blank');
+  }
 }
 
 async function eliminarAutonomo(token, nombre) {
@@ -7892,15 +7898,21 @@ async function enviarParteAutonomo(ref, autonomoToken, autonomoNombre) {
 
     if (!tel) { alert('Este autónomo no tiene teléfono guardado. Enlace PDF:\n' + data.pdfUrl); if (btn) { btn.disabled = false; btn.textContent = '📄 Enviar parte'; } return; }
 
-    // 3. Copiar mensaje con enlace al PDF
+    // 3. Enviar por WhatsApp Business (mismo método que presupuestos)
+    var num = tel.replace(/[\s\-\(\)\.]/g, '');
+    if (num.startsWith('0')) num = '34' + num.substring(1);
+    if (!num.startsWith('+') && !num.startsWith('34')) num = '34' + num;
+    num = num.replace(/^\+/, '');
     var msg = 'Hola ' + autonomoNombre + ', te adjudicamos este trabajo.\n\nAquí tienes el parte de trabajo para imprimir y que el cliente lo firme:\n' + data.pdfUrl + '\n\n¡Gracias! — Azkar Mudanzas';
-    navigator.clipboard.writeText(msg).then(function() {
-      alert('✅ Mensaje con el PDF copiado al portapapeles.\n\nAbre WhatsApp Business → busca a ' + autonomoNombre + ' → pega (Ctrl+V).');
-    }).catch(function() {
-      prompt('Copia este mensaje y pégalo en WhatsApp:', msg);
-    });
+    var textoEnc = encodeURIComponent(msg);
+    var isAndroid = /android/i.test(navigator.userAgent);
+    if (isAndroid) {
+      window.location.href = 'intent://send?phone=' + num + '&text=' + textoEnc + '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=' + encodeURIComponent('https://wa.me/' + num + '?text=' + textoEnc) + ';end';
+    } else {
+      window.open('https://wa.me/' + num + '?text=' + textoEnc, '_blank');
+    }
 
-    if (btn) { btn.disabled = false; btn.textContent = '✅ Copiado'; btn.style.background = 'var(--ve)'; }
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Enviado'; btn.style.background = 'var(--ve)'; }
   } catch (e) {
     alert('Error: ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = '📄 Enviar parte'; }
