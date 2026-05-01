@@ -2193,7 +2193,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v149';</script>
+<script>document.getElementById('version-tag').textContent='v150';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2305,7 +2305,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v149';
+var APP_VERSION = 'v150';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -7828,11 +7828,18 @@ async function cargarOfertasAutonomos() {
         html += '<tr style="border-bottom:1px solid #ddd"><th style="text-align:left;padding:3px;font-size:10px;color:#888">AUTÓNOMO</th><th style="text-align:right;padding:3px;font-size:10px;color:#888">SU PRECIO</th><th style="text-align:right;padding:3px;font-size:10px;color:#888">TU PRECIO (×2)</th><th></th></tr>';
         o.precios.forEach(function(p) {
           var doble = (p.precio * 2).toLocaleString('es-ES');
-          html += '<tr style="border-bottom:1px solid #f0f0f0">';
-          html += '<td style="padding:4px 3px;font-weight:600">' + p.autonomoNombre + '</td>';
+          var esAdjudicado = o.estado === 'adjudicada' && o.adjudicadoA === p.autonomoToken;
+          html += '<tr style="border-bottom:1px solid #f0f0f0;' + (esAdjudicado ? 'background:#e8f5ee' : '') + '">';
+          html += '<td style="padding:4px 3px;font-weight:600">' + p.autonomoNombre + (esAdjudicado ? ' <span style="color:var(--ve);font-size:9px">✓ ADJUDICADO</span>' : '') + '</td>';
           html += '<td style="padding:4px 3px;text-align:right">' + p.precio.toLocaleString('es-ES') + ' €</td>';
           html += '<td style="padding:4px 3px;text-align:right;font-weight:700;color:var(--ve)">' + doble + ' €</td>';
-          html += '<td style="padding:4px 3px;text-align:right"><button onclick="adjudicarOferta(\'' + o.presupuestoRef + '\',\'' + p.autonomoToken + '\',\'' + p.autonomoNombre + '\')" style="padding:2px 8px;font-size:10px;background:var(--ve);color:#fff;border:none;border-radius:3px;cursor:pointer">Adjudicar</button></td>';
+          if (esAdjudicado) {
+            html += '<td style="padding:4px 3px;text-align:right"><button onclick="enviarParteAutonomo(\'' + o.presupuestoRef + '\',\'' + p.autonomoToken + '\',\'' + p.autonomoNombre + '\')" style="padding:3px 8px;font-size:10px;background:#25d366;color:#fff;border:none;border-radius:3px;cursor:pointer;font-weight:600" id="btn-parte-' + o.presupuestoRef + '">📄 Enviar parte</button></td>';
+          } else if (o.estado === 'abierta') {
+            html += '<td style="padding:4px 3px;text-align:right"><button onclick="adjudicarOferta(\'' + o.presupuestoRef + '\',\'' + p.autonomoToken + '\',\'' + p.autonomoNombre + '\')" style="padding:2px 8px;font-size:10px;background:var(--ve);color:#fff;border:none;border-radius:3px;cursor:pointer">Adjudicar</button></td>';
+          } else {
+            html += '<td></td>';
+          }
           html += '</tr>';
         });
         html += '</table>';
@@ -7861,6 +7868,39 @@ async function adjudicarOferta(ref, token, nombre) {
     }
   } catch (e) {
     alert('Error: ' + e.message);
+  }
+}
+
+async function enviarParteAutonomo(ref, autonomoToken, autonomoNombre) {
+  var btn = document.getElementById('btn-parte-' + ref);
+  if (btn) { btn.disabled = true; btn.textContent = 'Generando PDF...'; }
+  try {
+    // 1. Generar PDF del parte en el backend
+    var res = await fetch(RAILWAY_API + '/api/autonomos/parte-pdf', {
+      method: 'POST', headers: apiHeaders(),
+      body: JSON.stringify({ presupuestoRef: ref })
+    });
+    var data = await res.json();
+    if (!data.ok) { alert('Error: ' + (data.error || 'No se pudo generar')); if (btn) { btn.disabled = false; btn.textContent = '📄 Enviar parte'; } return; }
+
+    // 2. Buscar teléfono del autónomo en la lista
+    var listaRes = await fetch(RAILWAY_API + '/api/autonomos/lista', { headers: apiHeaders() });
+    var listaData = await listaRes.json();
+    var autonomo = (listaData.autonomos || []).find(function(a) { return a.token === autonomoToken; });
+    var tel = autonomo ? autonomo.telefono : '';
+
+    if (!tel) { alert('Este autónomo no tiene teléfono guardado. Enlace PDF:\n' + data.pdfUrl); if (btn) { btn.disabled = false; btn.textContent = '📄 Enviar parte'; } return; }
+
+    // 3. Abrir WhatsApp con el enlace al PDF
+    tel = tel.replace(/\s+/g, '');
+    if (!tel.startsWith('+') && !tel.startsWith('34')) tel = '34' + tel;
+    var msg = 'Hola ' + autonomoNombre + ', te adjudicamos este trabajo.\n\nAquí tienes el parte de trabajo para imprimir y que el cliente lo firme:\n' + data.pdfUrl + '\n\n¡Gracias! — Azkar Mudanzas';
+    window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(msg), '_blank');
+
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Enviado'; btn.style.background = 'var(--ve)'; }
+  } catch (e) {
+    alert('Error: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '📄 Enviar parte'; }
   }
 }
 </script>
