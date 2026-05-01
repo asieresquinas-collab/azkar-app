@@ -790,6 +790,10 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <span class='idx-icon'>🕐</span>
       <span class='idx-title'>Fichaje</span>
     </div>
+    <div class='ayuda-index-item' onclick='ayudaIr("sec-autonomos")'>
+      <span class='idx-icon'>🚛</span>
+      <span class='idx-title'>Autónomos</span>
+    </div>
     <div class='ayuda-index-item' onclick='ayudaIr("sec-problemas")'>
       <span class='idx-icon'>🔧</span>
       <span class='idx-title'>Problemas comunes</span>
@@ -908,6 +912,34 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Seleccionar el trabajador en el desplegable.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Pulsar <strong>ENTRADA</strong> al empezar la jornada y <strong>SALIDA</strong> al terminar.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Se pueden ver los registros del mes actual abajo.</div></div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN: AUTÓNOMOS -->
+  <div class='ayuda-section' id='sec-autonomos'>
+    <h3 onclick='ayudaToggle(this)'>PORTAL DE AUTÓNOMOS (SUBCONTRATAS)</h3>
+    <div class='ayuda-content'>
+      <p>Este sistema permite enviar trabajos de larga distancia a transportistas autónomos para que te den precio, sin que el cliente sepa nada.</p>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Dar de alta un autónomo (solo una vez):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Ir a la pestaña <strong>Autónomos</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Poner el nombre y teléfono del autónomo y pulsar <strong>Crear</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Se genera un enlace único. <strong>Mándaselo por WhatsApp una sola vez</strong>. Con ese link el autónomo puede instalarse la mini-app en su móvil.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Pedir precio para una mudanza:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Rellena el presupuesto normalmente: datos del cliente, direcciones, artículos. <strong>No pongas precio.</strong></div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>En la pestaña Presupuesto, pulsa el botón naranja <strong>🚛 PEDIR PRECIO A AUTÓNOMOS</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Automáticamente a todos los autónomos les aparece el trabajo en su mini-app: ruta, fecha e inventario. <strong>No ven el nombre del cliente, ni su teléfono, ni tu precio.</strong></div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Cada autónomo pone su precio y te llega un <strong>email</strong> con el precio y el doble calculado (tu precio al cliente).</div></div>
+      <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>En la pestaña <strong>Autónomos</strong> puedes ver todos los precios ordenados y <strong>adjudicar</strong> al que elijas.</div></div>
+      <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'>Pon el precio al cliente en el presupuesto (el doble del autónomo) y envía el presupuesto como siempre.</div></div>
+
+      <div class='ayuda-tip'>Los autónomos <strong>no saben que existen otros autónomos</strong> ni ven los precios de los demás. Cada uno tiene su portal privado.</div>
+      <div class='ayuda-tip'>El <strong>precio al cliente</strong> siempre es el doble del precio del autónomo. Ejemplo: autónomo dice 800€ → tú cobras 1.600€.</div>
+      <div class='ayuda-warn'>El cliente <strong>NUNCA</strong> debe saber que hay autónomos detrás. Para el cliente, todo es Azkar Mudanzas. Cuando el cliente pregunte por el precio, dile que son viajes compartidos o conjuntos.</div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>En el presupuesto al cliente, pon en observaciones:</p>
+      <p style='background:#f7f9fc;padding:10px;border-radius:6px;font-size:12px;border-left:3px solid var(--az);margin:8px 0'><em>"Precio basado en los artículos mencionados en el presupuesto, dando el precio mínimo por viaje. En caso de que sean menos cosas el precio no variará, y en caso de ser más cosas se sumarán al presupuesto bajo las tablas de precio de Azkar Mudanzas."</em></p>
     </div>
   </div>
 
