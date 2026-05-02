@@ -702,6 +702,15 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 <div style='margin-bottom:20px'>
 <h3 style='color:var(--az);font-size:14px;margin-bottom:10px'>📦 Pedir precio a autónomos</h3>
 <p style='font-size:11px;color:#888;margin-bottom:8px'>Coge los datos del presupuesto actual y lo publica para que los autónomos te den precio.</p>
+<!-- v158: Fotos para autónomos -->
+<div style='margin-bottom:10px'>
+<label style='display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f0f2f5;border:1px dashed #aaa;border-radius:6px;cursor:pointer;font-size:12px;color:#555'>
+<span>📷 Añadir fotos</span>
+<input type='file' id='fotos-autonomos-input' accept='image/*' multiple style='display:none' onchange='previsualizarFotos(this)'>
+</label>
+<span style='font-size:10px;color:#888;margin-left:6px'>Máx 10 fotos (se comprimen automáticamente)</span>
+<div id='fotos-preview' style='display:flex;flex-wrap:wrap;gap:6px;margin-top:8px'></div>
+</div>
 <button onclick='publicarParaAutonomos()' style='padding:10px 24px;background:var(--na);color:#fff;border:none;border-radius:4px;font-weight:700;font-size:13px;cursor:pointer'>Publicar presupuesto actual</button>
 <div id='publicar-resultado' style='margin-top:8px;font-size:12px'></div>
 </div>
@@ -2193,7 +2202,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v157';</script>
+<script>document.getElementById('version-tag').textContent='v158';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2305,7 +2314,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v157';
+var APP_VERSION = 'v158';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -7773,6 +7782,88 @@ async function eliminarAutonomo(token, nombre) {
   }
 }
 
+// ── v158: Fotos para autónomos — compresión y preview ──────────
+var _fotosAutonomos = []; // Array de base64 comprimidos
+
+function previsualizarFotos(input) {
+  var files = Array.from(input.files);
+  if (files.length + _fotosAutonomos.length > 10) {
+    alert('Máximo 10 fotos en total. Ya tienes ' + _fotosAutonomos.length);
+    input.value = '';
+    return;
+  }
+  files.forEach(function(file) {
+    comprimirImagen(file, function(base64) {
+      _fotosAutonomos.push(base64);
+      renderFotosPreview();
+    });
+  });
+  input.value = '';
+}
+
+function comprimirImagen(file, callback) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var MAX = 800; // máx 800px de lado largo
+      var w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      canvas.width = w;
+      canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      var base64 = canvas.toDataURL('image/jpeg', 0.7);
+      callback(base64);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderFotosPreview() {
+  var div = document.getElementById('fotos-preview');
+  if (!div) return;
+  var html = '';
+  _fotosAutonomos.forEach(function(b64, i) {
+    html += '<div style="position:relative;width:60px;height:60px">';
+    html += '<img src="' + b64 + '" style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid #ddd">';
+    html += '<button onclick="quitarFoto(' + i + ')" style="position:absolute;top:-4px;right:-4px;background:#c00;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:16px">✕</button>';
+    html += '</div>';
+  });
+  div.innerHTML = html;
+}
+
+function quitarFoto(idx) {
+  _fotosAutonomos.splice(idx, 1);
+  renderFotosPreview();
+}
+
+async function subirFotosAutonomos(ref) {
+  if (!_fotosAutonomos.length) return true; // No hay fotos, OK
+  try {
+    var res = await fetch(RAILWAY_API + '/api/autonomos/fotos', {
+      method: 'POST', headers: apiHeaders(),
+      body: JSON.stringify({ presupuestoRef: ref, fotos: _fotosAutonomos })
+    });
+    var data = await res.json();
+    if (data.ok) {
+      _fotosAutonomos = [];
+      renderFotosPreview();
+      return true;
+    }
+    alert('Error subiendo fotos: ' + (data.error || 'desconocido'));
+    return false;
+  } catch (e) {
+    alert('Error de conexión al subir fotos: ' + e.message);
+    return false;
+  }
+}
+
 async function publicarParaAutonomos() {
   var ref = document.getElementById('f_ref') ? document.getElementById('f_ref').value : '';
   var origen = document.getElementById('f_rec') ? document.getElementById('f_rec').value : '';
@@ -7806,6 +7897,12 @@ async function publicarParaAutonomos() {
     });
     var data = await res.json();
     if (data.ok) {
+      // v158: Subir fotos si las hay
+      if (_fotosAutonomos.length) {
+        if (divRes) divRes.innerHTML = '<span style="color:var(--az)">Subiendo fotos...</span>';
+        if (divResPres) divResPres.innerHTML = '<span style="color:var(--az)">Subiendo fotos...</span>';
+        await subirFotosAutonomos(ref);
+      }
       comprobarOfertaAutonomo();
       var msg = data.actualizado
         ? '<span style="color:var(--ve);font-weight:700">✅ Actualizado — los autónomos verán los datos nuevos al refrescar su portal.</span>'
@@ -7837,6 +7934,18 @@ async function cargarOfertasAutonomos() {
       html += '<div style="border:1px solid var(--gb);border-radius:6px;padding:12px;margin-bottom:10px;background:#fafafa">';
       html += '<div style="font-weight:700;color:var(--az);font-size:13px">Ref ' + o.presupuestoRef + ' — ' + o.origen + ' → ' + o.destino + '</div>';
       html += '<div style="font-size:11px;color:#888;margin-bottom:8px">Fecha: ' + (o.fecha || 'Sin fecha') + ' · Estado: ' + o.estado + '</div>';
+
+      // v158: Galería de fotos desplegable
+      if (o.fotos && o.fotos.length) {
+        html += '<div style="margin-bottom:8px">';
+        html += '<button onclick="toggleFotosAdmin(\'' + o.presupuestoRef + '\')" style="padding:4px 10px;font-size:11px;background:#f0f2f5;border:1px solid #ddd;border-radius:4px;cursor:pointer;color:var(--az);font-weight:600">📷 Ver fotos (' + o.fotos.length + ') <span id="fadm-arrow-' + o.presupuestoRef + '">▸</span></button>';
+        html += '<div id="fadm-' + o.presupuestoRef + '" style="display:none;margin-top:6px;display:none">';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+        o.fotos.forEach(function(f) {
+          html += '<img src="' + f.url + '" onclick="verFotoAdmin(\'' + f.url + '\')" style="width:70px;height:70px;object-fit:cover;border-radius:4px;border:1px solid #ddd;cursor:pointer" loading="lazy">';
+        });
+        html += '</div></div></div>';
+      }
 
       if (o.precios && o.precios.length) {
         html += '<table style="width:100%;border-collapse:collapse;font-size:12px">';
@@ -7925,6 +8034,25 @@ async function enviarParteAutonomo(ref, autonomoToken, autonomoNombre) {
     alert('Error: ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = '📄 Enviar parte'; }
   }
+}
+
+// ── v158: Fotos en panel de ofertas admin ──────────
+function toggleFotosAdmin(ref) {
+  var div = document.getElementById('fadm-' + ref);
+  var arrow = document.getElementById('fadm-arrow-' + ref);
+  if (div) {
+    var show = div.style.display === 'none';
+    div.style.display = show ? 'block' : 'none';
+    if (arrow) arrow.textContent = show ? '▾' : '▸';
+  }
+}
+
+function verFotoAdmin(url) {
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.9);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:pointer';
+  overlay.innerHTML = '<img src="' + url + '" style="max-width:100%;max-height:90vh;border-radius:6px"><button style="position:absolute;top:10px;right:14px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer" onclick="this.parentElement.remove()">✕</button>';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
 }
 
 // ── Aplicar precio autónomo al presupuesto del cliente ──────────
