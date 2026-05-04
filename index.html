@@ -3662,12 +3662,15 @@ async function openDashboard() {
       }
     } catch(e) { /* offline */ }
 
-    // Servicios próximos (próximos 7 días)
+    // Servicios próximos (próximos 7 días) — solo EN MARCHA con fecha futura
     var hoy = new Date();
+    hoy.setHours(0,0,0,0);
     var en7dias = new Date(hoy.getTime() + 7 * 86400000);
     var proximos = current.filter(function(p) {
-      if (!p.f_fserv || p._pagadoFinalizado || p._guardamuebles || p._archivado2026) return false;
-      var d = new Date(p.f_fserv);
+      // Solo servicios confirmados (en marcha) con fecha de servicio
+      if (!p.f_fserv || !p._enMarcha) return false;
+      if (p._pagadoFinalizado || p._guardamuebles || p._archivado2026) return false;
+      var d = new Date(p.f_fserv + 'T00:00:00');
       return d >= hoy && d <= en7dias;
     }).sort(function(a, b) { return new Date(a.f_fserv) - new Date(b.f_fserv); });
 
@@ -3755,7 +3758,7 @@ async function openDashboard() {
     var hoyTs = new Date(); hoyTs.setHours(0,0,0,0);
     var en3 = new Date(hoyTs.getTime() + 3 * 86400000);
     var proximosRec = current.filter(function(p) {
-      if (!p.f_fserv || p._pagadoFinalizado || p._guardamuebles || p._archivado2026) return false;
+      if (!p.f_fserv || !p._enMarcha || p._pagadoFinalizado || p._guardamuebles || p._archivado2026) return false;
       var d = new Date(p.f_fserv + 'T00:00:00');
       return d >= hoyTs && d <= en3;
     }).sort(function(a,b) { return new Date(a.f_fserv) - new Date(b.f_fserv); });
@@ -3795,10 +3798,9 @@ async function openDashboard() {
       }
     } catch(e) { /* sin conexión */ }
 
-    // v171 fix: Calendario solo con servicios reales pendientes
-    // Excluir: guardamuebles, pagados, archivados (no son servicios por hacer)
+    // v171 fix: Calendario solo con servicios EN MARCHA (confirmados, pendientes de hacer)
     var serviciosReales = current.filter(function(p) {
-      return !p._pagadoFinalizado && !p._guardamuebles && !p._archivado2026;
+      return p._enMarcha && !p._pagadoFinalizado && !p._guardamuebles && !p._archivado2026;
     });
     html += '<div ' + cs + ' style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;">';
     html += '<div style="font-weight:700;font-size:13px;color:#1B4F8A;margin-bottom:10px;">📅 Calendario de servicios pendientes</div>';
@@ -3820,6 +3822,9 @@ function _dashCard(icon, label, count, color) {
 }
 
 // v171: Calendario visual mensual
+// Guardamos servicios por día globalmente para clicks en calendario
+var _calServicios = {};
+
 function _buildCalendar(presupuestos) {
   var hoy = new Date();
   var anio = hoy.getFullYear();
@@ -3827,17 +3832,16 @@ function _buildCalendar(presupuestos) {
   var primerDia = new Date(anio, mes, 1);
   var ultimoDia = new Date(anio, mes + 1, 0);
   var diasEnMes = ultimoDia.getDate();
-  var diaInicio = primerDia.getDay() || 7; // Lunes=1
+  var diaInicio = primerDia.getDay() || 7;
 
-  // Agrupar servicios por día
-  var serviciosPorDia = {};
+  _calServicios = {};
   presupuestos.forEach(function(p) {
     if (!p.f_fserv) return;
     var d = new Date(p.f_fserv + 'T00:00:00');
     if (d.getMonth() === mes && d.getFullYear() === anio) {
       var dia = d.getDate();
-      if (!serviciosPorDia[dia]) serviciosPorDia[dia] = [];
-      serviciosPorDia[dia].push(p);
+      if (!_calServicios[dia]) _calServicios[dia] = [];
+      _calServicios[dia].push(p);
     }
   });
 
@@ -3850,28 +3854,23 @@ function _buildCalendar(presupuestos) {
   });
   html += '</tr><tr>';
 
-  // Celdas vacías antes del primer día
   for (var i = 1; i < diaInicio; i++) {
     html += '<td style="padding:3px;"></td>';
   }
 
   for (var d = 1; d <= diasEnMes; d++) {
     var esHoy = d === hoy.getDate();
-    var servicios = serviciosPorDia[d];
+    var servicios = _calServicios[d];
     var numServ = servicios ? servicios.length : 0;
     var bgColor = esHoy ? '#EBF3FD' : (numServ > 0 ? '#edfcf2' : '#fff');
     var borderStyle = esHoy ? '2px solid #2376C5' : '1px solid #f0f0f0';
-    var title = '';
-    if (servicios) {
-      title = servicios.map(function(s) { return (s.f_nom || '') + (s.f_hserv ? ' ' + s.f_hserv : ''); }).join(', ');
-    }
+    var clickAttr = numServ > 0 ? ' onclick="mostrarServiciosDia(' + d + ')"' : '';
 
-    html += '<td style="padding:3px;text-align:center;vertical-align:top;border:' + borderStyle + ';border-radius:4px;background:' + bgColor + ';min-height:28px;cursor:' + (numServ > 0 ? 'pointer' : 'default') + ';" title="' + title.replace(/"/g, '') + '">';
+    html += '<td style="padding:3px;text-align:center;vertical-align:top;border:' + borderStyle + ';border-radius:4px;background:' + bgColor + ';min-height:28px;cursor:' + (numServ > 0 ? 'pointer' : 'default') + ';"' + clickAttr + '>';
     html += '<div style="font-weight:' + (esHoy ? '800' : '400') + ';color:' + (esHoy ? '#1B4F8A' : '#333') + ';">' + d + '</div>';
     if (numServ > 0) {
-      // Detectar solapamientos
       var colorDot = numServ > 1 ? '#c0392b' : '#1a7a3f';
-      html += '<div style="width:8px;height:8px;border-radius:50%;background:' + colorDot + ';margin:2px auto 0;" title="' + numServ + ' servicio(s)"></div>';
+      html += '<div style="width:8px;height:8px;border-radius:50%;background:' + colorDot + ';margin:2px auto 0;"></div>';
       if (numServ > 1) {
         html += '<div style="font-size:8px;color:#c0392b;font-weight:700;">' + numServ + '</div>';
       }
@@ -3894,7 +3893,41 @@ function _buildCalendar(presupuestos) {
   html += '<div style="display:flex;gap:12px;margin-top:8px;font-size:10px;color:#888;">';
   html += '<div>🟢 1 servicio</div><div>🔴 Solapamiento (2+)</div><div style="border:2px solid #2376C5;padding:0 4px;border-radius:3px;">Hoy</div>';
   html += '</div>';
+  html += '<div id="cal-detalle" style="margin-top:10px;"></div>';
   return html;
+}
+
+function mostrarServiciosDia(dia) {
+  var servicios = _calServicios[dia];
+  if (!servicios || servicios.length === 0) return;
+  var detalle = document.getElementById('cal-detalle');
+  if (!detalle) return;
+
+  var hoy = new Date();
+  var fecha = new Date(hoy.getFullYear(), hoy.getMonth(), dia);
+  var fechaTxt = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  var html = '<div style="background:#f8f9fb;border-radius:8px;padding:12px;border:1px solid #e0e4ea;">';
+  html += '<div style="font-weight:700;font-size:12px;color:#1B4F8A;margin-bottom:8px;text-transform:capitalize;">' + fechaTxt + ' — ' + servicios.length + ' servicio(s)</div>';
+
+  servicios.forEach(function(p) {
+    var ref = p.f_ref || p.id || '';
+    var nc = p.f_nc || '';
+    var driveUrl = nc ? 'https://drive.google.com/drive/search?q=' + encodeURIComponent(nc + ' ' + (p.f_nom || '')) : '';
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eee;">';
+    html += '<div style="flex:1;">';
+    html += '<div style="font-weight:600;font-size:12px;">' + (p.f_nom || 'Sin nombre') + ' <span style="color:#888;font-weight:400;">(Ref.' + ref + ')</span></div>';
+    html += '<div style="font-size:10px;color:#888;">' + (p.f_hserv ? p.f_hserv + 'h · ' : '') + (p.f_rec || '') + ' → ' + (p.f_ent || '') + '</div>';
+    html += '</div>';
+    html += '<button onclick="document.getElementById(\'dash-panel\').style.display=\'none\';loadPresupuesto(\'' + ref + '\')" style="background:#2376C5;color:#fff;border:none;padding:5px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">📋 Abrir</button>';
+    if (driveUrl) {
+      html += '<a href="' + driveUrl + '" target="_blank" style="background:#1a7a3f;color:#fff;padding:5px 8px;border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;">📁 Drive</a>';
+    }
+    html += '</div>';
+  });
+
+  html += '</div>';
+  detalle.innerHTML = html;
 }
 
 // ══════════════════════════════════════════════════════════════
