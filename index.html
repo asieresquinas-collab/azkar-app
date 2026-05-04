@@ -3636,6 +3636,33 @@ async function openDashboard() {
     var current = all.filter(function(p) { return !p._isVersion; });
     var firmaData = await fetchFirmaStatus();
 
+    // v171: Auto-reparar flags _enMarcha consultando carpetas de Drive
+    try {
+      var emR = await fetch(RAILWAY_API + '/api/drive/en-marcha', { headers: apiHeaders() });
+      var emD = await emR.json();
+      if (emD.ok && emD.carpetas) {
+        var enMarchaRefs = {};
+        emD.carpetas.forEach(function(c) { enMarchaRefs[c.numero] = true; });
+        var reparados = 0;
+        for (var i = 0; i < current.length; i++) {
+          var p = current[i];
+          var ref = p.f_ref || p.f_nc || '';
+          var nc = p.f_nc || p.f_ref || '';
+          // Si está en Drive "en marcha" pero no tiene el flag local → reparar
+          if ((enMarchaRefs[ref] || enMarchaRefs[nc]) && !p._enMarcha && !p._pagadoFinalizado) {
+            p._enMarcha = true;
+            p._enMarchaDate = p._enMarchaDate || Date.now();
+            await savePresupuesto(p);
+            if (firebaseConfigured && window._fb && window._fb.setDoc) {
+              window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', p.id || ref), { _enMarcha: true, _enMarchaDate: p._enMarchaDate }, { merge: true }).catch(function() {});
+            }
+            reparados++;
+          }
+        }
+        if (reparados > 0) console.log('[Dashboard] Reparados ' + reparados + ' flags _enMarcha desde Drive');
+      }
+    } catch(e) { console.warn('[Dashboard] No se pudo sincronizar flags Drive:', e.message); }
+
     // Clasificar
     var captacion = [], enMarcha = [], pagado = [], firmado = [], guardamuebles = [], archivado = [];
     current.forEach(function(p) {
@@ -3662,13 +3689,12 @@ async function openDashboard() {
       }
     } catch(e) { /* offline */ }
 
-    // Servicios próximos (próximos 7 días) — con fecha de servicio, no finalizados
+    // Servicios próximos 7 días — solo EN MARCHA (confirmados)
     var hoy = new Date();
     hoy.setHours(0,0,0,0);
     var en7dias = new Date(hoy.getTime() + 7 * 86400000);
     var proximos = current.filter(function(p) {
-      if (!p.f_fserv) return false;
-      // Excluir finalizados y almacenamiento
+      if (!p.f_fserv || !p._enMarcha) return false;
       if (p._pagadoFinalizado || p._guardamuebles || p._archivado2026) return false;
       var d = new Date(p.f_fserv + 'T00:00:00');
       return d >= hoy && d <= en7dias;
@@ -3758,7 +3784,7 @@ async function openDashboard() {
     var hoyTs = new Date(); hoyTs.setHours(0,0,0,0);
     var en3 = new Date(hoyTs.getTime() + 3 * 86400000);
     var proximosRec = current.filter(function(p) {
-      if (!p.f_fserv || p._pagadoFinalizado || p._guardamuebles || p._archivado2026) return false;
+      if (!p.f_fserv || !p._enMarcha || p._pagadoFinalizado || p._guardamuebles || p._archivado2026) return false;
       var d = new Date(p.f_fserv + 'T00:00:00');
       return d >= hoyTs && d <= en3;
     }).sort(function(a,b) { return new Date(a.f_fserv) - new Date(b.f_fserv); });
@@ -3798,9 +3824,9 @@ async function openDashboard() {
       }
     } catch(e) { /* sin conexión */ }
 
-    // Calendario: servicios con fecha, no finalizados ni almacenamiento
+    // Calendario: solo EN MARCHA con fecha (servicios confirmados)
     var serviciosReales = current.filter(function(p) {
-      return p.f_fserv && !p._pagadoFinalizado && !p._guardamuebles && !p._archivado2026;
+      return p.f_fserv && p._enMarcha && !p._pagadoFinalizado && !p._guardamuebles && !p._archivado2026;
     });
     html += '<div ' + cs + ' style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;">';
     html += '<div style="font-weight:700;font-size:13px;color:#1B4F8A;margin-bottom:10px;">📅 Calendario de servicios pendientes</div>';
