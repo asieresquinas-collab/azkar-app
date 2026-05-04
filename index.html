@@ -2217,7 +2217,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v161';</script>
+<script>document.getElementById('version-tag').textContent='v162';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2329,7 +2329,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v161';
+var APP_VERSION = 'v162';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -7757,19 +7757,39 @@ function cargarLeaflet(callback) {
 async function geocodificar(direccion) {
   try {
     // Añadir "España" al final si no tiene país para mejorar resultados
-    var q = direccion;
+    var q = direccion.trim();
     if (!/espa[ñn]a|spain|portugal|france|francia/i.test(q)) q += ', España';
     // Usar proxy del backend (evita problemas CORS con Nominatim)
     var res = await fetch(RAILWAY_API + '/api/geocode?q=' + encodeURIComponent(q), { headers: apiHeaders() });
     if (!res.ok) { console.warn('[Geo] HTTP ' + res.status + ' para: ' + direccion); return null; }
     var data = await res.json();
     if (data && data.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
-    // Segundo intento: buscar solo la parte más relevante (quitar calle/número)
-    var palabras = direccion.replace(/[Cc]\/?\/?\s*/,'').replace(/[nNº]+\s*\d+/g,'').trim();
-    var res2 = await fetch(RAILWAY_API + '/api/geocode?q=' + encodeURIComponent(palabras + ', España'), { headers: apiHeaders() });
-    var data2 = await res2.json();
-    if (data2 && data2.length > 0) return { lat: parseFloat(data2[0].lat), lng: parseFloat(data2[0].lon), display: data2[0].display_name };
-    console.warn('[Geo] No encontrado:', direccion);
+
+    // Segundo intento: quitar calle, número, C/, nº etc — dejar solo ciudad/pueblo
+    await new Promise(function(r) { setTimeout(r, 1200); });
+    var limpia = direccion
+      .replace(/^(calle|c\/|avda\.?|avenida|plaza|pza\.?|paseo|travesía|camino)\s*/i, '')
+      .replace(/\b[nN][º°]?\s*\d+\b/g, '')
+      .replace(/\b\d+[a-z]?\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (limpia !== direccion.trim()) {
+      var res2 = await fetch(RAILWAY_API + '/api/geocode?q=' + encodeURIComponent(limpia + ', España'), { headers: apiHeaders() });
+      var data2 = await res2.json();
+      if (data2 && data2.length > 0) return { lat: parseFloat(data2[0].lat), lng: parseFloat(data2[0].lon), display: data2[0].display_name };
+    }
+
+    // Tercer intento: usar solo las últimas 2 palabras (normalmente ciudad + provincia)
+    await new Promise(function(r) { setTimeout(r, 1200); });
+    var palabras = direccion.replace(/[^a-záéíóúñü\s]/gi, ' ').trim().split(/\s+/);
+    if (palabras.length >= 2) {
+      var ciudad = palabras.slice(-2).join(' ');
+      var res3 = await fetch(RAILWAY_API + '/api/geocode?q=' + encodeURIComponent(ciudad + ', España'), { headers: apiHeaders() });
+      var data3 = await res3.json();
+      if (data3 && data3.length > 0) return { lat: parseFloat(data3[0].lat), lng: parseFloat(data3[0].lon), display: data3[0].display_name };
+    }
+
+    console.warn('[Geo] No encontrado tras 3 intentos:', direccion);
     return null;
   } catch (e) { console.error('[Geo] Error:', e); return null; }
 }
@@ -7810,7 +7830,7 @@ async function cargarMapaRutas() {
         var destinoGeo = await geocodificar(o.destino);
         if (i < ofertas.length - 1) await new Promise(function(r) { setTimeout(r, 1200); });
 
-        if (origenGeo && destinoGeo) {
+        if (origenGeo || destinoGeo) {
           rutas.push({ oferta: o, origen: origenGeo, destino: destinoGeo });
         }
       }
@@ -7835,29 +7855,39 @@ async function cargarMapaRutas() {
       // 5. Dibujar rutas
       rutas.forEach(function(r, idx) {
         var color = _coloresRutas[idx % _coloresRutas.length];
-        var origenLatLng = [r.origen.lat, r.origen.lng];
-        var destinoLatLng = [r.destino.lat, r.destino.lng];
 
         // Marcador origen (verde)
-        var mOrigen = L.circleMarker(origenLatLng, { radius: 8, fillColor: '#1a7a3f', color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(_mapaInstance);
-        mOrigen.bindPopup('<div style="font-size:12px"><b style="color:#1a7a3f">RECOGIDA</b><br><b>Ref ' + r.oferta.presupuestoRef + '</b><br>' + r.oferta.origen + '<br><span style="color:#888;font-size:10px">' + (r.oferta.fecha || 'Sin fecha') + '</span></div>');
+        if (r.origen) {
+          var origenLatLng = [r.origen.lat, r.origen.lng];
+          var mOrigen = L.circleMarker(origenLatLng, { radius: 8, fillColor: '#1a7a3f', color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(_mapaInstance);
+          mOrigen.bindPopup('<div style="font-size:12px"><b style="color:#1a7a3f">RECOGIDA</b><br><b>Ref ' + r.oferta.presupuestoRef + '</b><br>' + r.oferta.origen + '<br><span style="color:#888;font-size:10px">' + (r.oferta.fecha || 'Sin fecha') + '</span></div>');
+          bounds.extend(origenLatLng);
+        }
 
         // Marcador destino (rojo)
-        var mDestino = L.circleMarker(destinoLatLng, { radius: 8, fillColor: '#c0392b', color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(_mapaInstance);
-        mDestino.bindPopup('<div style="font-size:12px"><b style="color:#c0392b">ENTREGA</b><br><b>Ref ' + r.oferta.presupuestoRef + '</b><br>' + r.oferta.destino + '</div>');
+        if (r.destino) {
+          var destinoLatLng = [r.destino.lat, r.destino.lng];
+          var mDestino = L.circleMarker(destinoLatLng, { radius: 8, fillColor: '#c0392b', color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(_mapaInstance);
+          mDestino.bindPopup('<div style="font-size:12px"><b style="color:#c0392b">ENTREGA</b><br><b>Ref ' + r.oferta.presupuestoRef + '</b><br>' + r.oferta.destino + '</div>');
+          bounds.extend(destinoLatLng);
+        }
 
-        // Línea conectando
-        var line = L.polyline([origenLatLng, destinoLatLng], { color: color, weight: 3, opacity: 0.7, dashArray: '8, 6' }).addTo(_mapaInstance);
-        line.bindPopup('<div style="font-size:12px"><b>Ref ' + r.oferta.presupuestoRef + '</b><br>' + r.oferta.origen + ' → ' + r.oferta.destino + '<br><span style="color:#888">' + (r.oferta.fecha || '') + '</span><br><span style="font-size:10px">' + (r.oferta.inventario ? r.oferta.inventario.length + ' artículos' : '') + '</span></div>');
+        // Línea conectando (solo si ambos puntos existen)
+        if (r.origen && r.destino) {
+          var line = L.polyline([origenLatLng, destinoLatLng], { color: color, weight: 3, opacity: 0.7, dashArray: '8, 6' }).addTo(_mapaInstance);
+          line.bindPopup('<div style="font-size:12px"><b>Ref ' + r.oferta.presupuestoRef + '</b><br>' + r.oferta.origen + ' → ' + r.oferta.destino + '<br><span style="color:#888">' + (r.oferta.fecha || '') + '</span><br><span style="font-size:10px">' + (r.oferta.inventario ? r.oferta.inventario.length + ' artículos' : '') + '</span></div>');
 
-        // Etiqueta ref en el centro de la línea
-        var midLat = (r.origen.lat + r.destino.lat) / 2;
-        var midLng = (r.origen.lng + r.destino.lng) / 2;
-        var label = L.divIcon({ className: '', html: '<div style="background:' + color + ';color:#fff;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.3)">' + r.oferta.presupuestoRef + '</div>', iconAnchor: [15, 8] });
-        L.marker([midLat, midLng], { icon: label, interactive: false }).addTo(_mapaInstance);
-
-        bounds.extend(origenLatLng);
-        bounds.extend(destinoLatLng);
+          // Etiqueta ref en el centro de la línea
+          var midLat = (r.origen.lat + r.destino.lat) / 2;
+          var midLng = (r.origen.lng + r.destino.lng) / 2;
+          var label = L.divIcon({ className: '', html: '<div style="background:' + color + ';color:#fff;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.3)">' + r.oferta.presupuestoRef + '</div>', iconAnchor: [15, 8] });
+          L.marker([midLat, midLng], { icon: label, interactive: false }).addTo(_mapaInstance);
+        } else {
+          // Solo un punto: poner etiqueta encima
+          var punto = r.origen || r.destino;
+          var label = L.divIcon({ className: '', html: '<div style="background:' + color + ';color:#fff;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.3)">' + r.oferta.presupuestoRef + '</div>', iconAnchor: [15, 8] });
+          L.marker([punto.lat, punto.lng], { icon: label, interactive: false }).addTo(_mapaInstance);
+        }
       });
 
       // 6. Ajustar vista
