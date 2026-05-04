@@ -2217,7 +2217,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v171';</script>
+<script>document.getElementById('version-tag').textContent='v172';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2329,7 +2329,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v171';
+var APP_VERSION = 'v172';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -3636,30 +3636,72 @@ async function openDashboard() {
     var current = all.filter(function(p) { return !p._isVersion; });
     var firmaData = await fetchFirmaStatus();
 
-    // v171: Auto-reparar flags _enMarcha consultando carpetas de Drive
+    // v172: Auto-reparar flags _enMarcha consultando carpetas de Drive (matching robusto)
     try {
       var emR = await fetch(RAILWAY_API + '/api/drive/en-marcha', { headers: apiHeaders() });
       var emD = await emR.json();
-      if (emD.ok && emD.carpetas) {
-        var enMarchaRefs = {};
-        emD.carpetas.forEach(function(c) { enMarchaRefs[c.numero] = true; });
+      if (emD.ok && emD.carpetas && emD.carpetas.length > 0) {
+        // Construir mapa robusto: todas las formas posibles de identificar una carpeta
+        // Cada carpeta tiene {numero: "6001", nombre: "6001 - Juan García", id: "..."}
+        var enMarchaNums = {};   // numero (string) → true
+        var enMarchaNoms = {};   // nombre del cliente en minúsculas → numero
+        emD.carpetas.forEach(function(c) {
+          var num = String(c.numero || '').trim();
+          if (num) enMarchaNums[num] = true;
+          // Extraer nombre del cliente del nombre de carpeta ("6001 - Juan García" → "juan garcía")
+          var nombreMatch = (c.nombre || '').match(/^\d+\s*[-–]\s*(.+)$/);
+          if (nombreMatch) {
+            var nomCliente = nombreMatch[1].trim().toLowerCase();
+            if (nomCliente) enMarchaNoms[nomCliente] = num;
+          }
+        });
+        console.log('[Dashboard] Drive "en marcha": ' + emD.carpetas.length + ' carpetas. Nums:', Object.keys(enMarchaNums).join(', '));
+
         var reparados = 0;
         for (var i = 0; i < current.length; i++) {
           var p = current[i];
-          var ref = p.f_ref || p.f_nc || '';
-          var nc = p.f_nc || p.f_ref || '';
-          // Si está en Drive "en marcha" pero no tiene el flag local → reparar
-          if ((enMarchaRefs[ref] || enMarchaRefs[nc]) && !p._enMarcha && !p._pagadoFinalizado) {
+          if (p._enMarcha || p._pagadoFinalizado) continue; // ya tiene el flag, saltar
+
+          // Intentar match por múltiples estrategias
+          var matched = false;
+          var refStr = String(p.f_ref || '').trim();
+          var ncStr = String(p.f_nc || '').trim();
+          var nomStr = (p.f_nom || '').trim().toLowerCase();
+
+          // Estrategia 1: f_ref coincide con número de carpeta
+          if (refStr && enMarchaNums[refStr]) matched = true;
+          // Estrategia 2: f_nc coincide con número de carpeta
+          if (!matched && ncStr && enMarchaNums[ncStr]) matched = true;
+          // Estrategia 3: nombre del cliente coincide exactamente
+          if (!matched && nomStr && enMarchaNoms[nomStr]) matched = true;
+          // Estrategia 4: sin leading zeros (por si acaso)
+          if (!matched && refStr) {
+            var refNum = String(parseInt(refStr, 10));
+            if (refNum !== refStr && enMarchaNums[refNum]) matched = true;
+          }
+          if (!matched && ncStr) {
+            var ncNum = String(parseInt(ncStr, 10));
+            if (ncNum !== ncStr && enMarchaNums[ncNum]) matched = true;
+          }
+
+          if (matched) {
+            console.log('[Dashboard] Reparando _enMarcha para ref=' + refStr + ' nc=' + ncStr + ' nom=' + nomStr);
             p._enMarcha = true;
             p._enMarchaDate = p._enMarchaDate || Date.now();
             await savePresupuesto(p);
             if (firebaseConfigured && window._fb && window._fb.setDoc) {
-              window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', p.id || ref), { _enMarcha: true, _enMarchaDate: p._enMarchaDate }, { merge: true }).catch(function() {});
+              var docId = p.id || p.f_ref || refStr;
+              window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', docId), { _enMarcha: true, _enMarchaDate: p._enMarchaDate }, { merge: true }).catch(function() {});
             }
             reparados++;
           }
         }
-        if (reparados > 0) console.log('[Dashboard] Reparados ' + reparados + ' flags _enMarcha desde Drive');
+        if (reparados > 0) {
+          console.log('[Dashboard] Reparados ' + reparados + ' flags _enMarcha desde Drive');
+          // Recargar presupuestos para que el calendario refleje los cambios
+          all = await getAllPresupuestos();
+          current = all.filter(function(p) { return !p._isVersion; });
+        }
       }
     } catch(e) { console.warn('[Dashboard] No se pudo sincronizar flags Drive:', e.message); }
 
