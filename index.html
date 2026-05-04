@@ -2217,7 +2217,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v162';</script>
+<script>document.getElementById('version-tag').textContent='v163';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2329,7 +2329,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v162';
+var APP_VERSION = 'v163';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -7754,8 +7754,31 @@ function cargarLeaflet(callback) {
   document.head.appendChild(script);
 }
 
+// Diccionario de localidades pequeñas que Nominatim no encuentra
+var _geoFallbackLocal = {
+  'marlasca': { lat: 43.2310, lng: -3.0750, display: 'Marlasca, Carranza, Bizkaia' },
+  'marrasca': { lat: 43.2310, lng: -3.0750, display: 'Marlasca, Carranza, Bizkaia' },
+  'carranza': { lat: 43.2235, lng: -3.3590, display: 'Karrantza, Bizkaia' },
+  'karrantza': { lat: 43.2235, lng: -3.3590, display: 'Karrantza, Bizkaia' },
+  'sopuerta': { lat: 43.2650, lng: -3.1550, display: 'Sopuerta, Bizkaia' },
+  'gordexola': { lat: 43.1880, lng: -3.1000, display: 'Gordexola, Bizkaia' },
+  'güeñes': { lat: 43.2120, lng: -3.0850, display: 'Güeñes, Bizkaia' },
+  'zalla': { lat: 43.2260, lng: -3.1400, display: 'Zalla, Bizkaia' },
+  'balmaseda': { lat: 43.1950, lng: -3.1900, display: 'Balmaseda, Bizkaia' },
+  'lanestosa': { lat: 43.2150, lng: -3.4430, display: 'Lanestosa, Bizkaia' },
+  'trucíos': { lat: 43.2400, lng: -3.2750, display: 'Trucíos, Bizkaia' },
+  'arcentales': { lat: 43.2350, lng: -3.2250, display: 'Arcentales, Bizkaia' }
+};
+
 async function geocodificar(direccion) {
   try {
+    // Primero comprobar diccionario local de localidades difíciles
+    var dirLower = direccion.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    for (var localKey in _geoFallbackLocal) {
+      if (dirLower.indexOf(localKey.normalize('NFD').replace(/[̀-ͯ]/g, '')) !== -1) {
+        return _geoFallbackLocal[localKey];
+      }
+    }
     // Añadir "España" al final si no tiene país para mejorar resultados
     var q = direccion.trim();
     if (!/espa[ñn]a|spain|portugal|france|francia/i.test(q)) q += ', España';
@@ -7789,7 +7812,17 @@ async function geocodificar(direccion) {
       if (data3 && data3.length > 0) return { lat: parseFloat(data3[0].lat), lng: parseFloat(data3[0].lon), display: data3[0].display_name };
     }
 
-    console.warn('[Geo] No encontrado tras 3 intentos:', direccion);
+    // Cuarto intento: probar cada palabra individual (de más larga a más corta)
+    var palabrasUnicas = direccion.replace(/[^a-záéíóúñü\s]/gi, ' ').trim().split(/\s+/).filter(function(p) { return p.length >= 4; });
+    palabrasUnicas.sort(function(a, b) { return b.length - a.length; });
+    for (var pi = 0; pi < Math.min(palabrasUnicas.length, 3); pi++) {
+      await new Promise(function(r) { setTimeout(r, 1200); });
+      var res4 = await fetch(RAILWAY_API + '/api/geocode?q=' + encodeURIComponent(palabrasUnicas[pi] + ', España'), { headers: apiHeaders() });
+      var data4 = await res4.json();
+      if (data4 && data4.length > 0) return { lat: parseFloat(data4[0].lat), lng: parseFloat(data4[0].lon), display: data4[0].display_name };
+    }
+
+    console.warn('[Geo] No encontrado tras 4 intentos:', direccion);
     return null;
   } catch (e) { console.error('[Geo] Error:', e); return null; }
 }
