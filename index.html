@@ -680,6 +680,21 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 <div id='page-autonomos' class='page' style='display:none'>
 <div class='sheet' style='max-width:860px;margin:12px auto;padding:16px;background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1)'>
 
+<!-- v160: Mapa visual de rutas pendientes -->
+<div style='margin-bottom:20px'>
+<h3 style='color:var(--az);font-size:14px;margin-bottom:10px'>🗺️ Mapa de rutas pendientes</h3>
+<p style='font-size:11px;color:#888;margin-bottom:8px'>Visualiza todas las rutas abiertas para detectar trabajos combinables.</p>
+<div id='mapa-rutas' style='width:100%;height:320px;border-radius:8px;border:1px solid var(--gb);background:#e8e8e8;position:relative'>
+<div id='mapa-loading' style='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;color:#888'>Cargando mapa...</div>
+</div>
+<div id='mapa-leyenda' style='display:flex;gap:16px;margin-top:6px;font-size:10px;color:#666'>
+<span>🟢 Recogida</span><span>🔴 Entrega</span><span>━ Ruta</span>
+<button onclick='cargarMapaRutas()' style='margin-left:auto;padding:3px 10px;font-size:10px;background:#f0f2f5;border:1px solid #ddd;border-radius:3px;cursor:pointer'>Actualizar mapa</button>
+</div>
+</div>
+
+<hr style='border:none;border-top:1px solid var(--gb);margin:16px 0'>
+
 <!-- Dar de alta autónomo -->
 <div style='margin-bottom:20px'>
 <h3 style='color:var(--az);font-size:14px;margin-bottom:10px'>➕ Dar de alta autónomo</h3>
@@ -1027,7 +1042,7 @@ function ST(tab){
     }
   }
   // Auto-cargar datos al entrar en pestaña de autónomos
-  if(tab==='autonomos'){try{cargarListaAutonomos();cargarOfertasAutonomos();}catch(e){}}
+  if(tab==='autonomos'){try{cargarListaAutonomos();cargarOfertasAutonomos();cargarMapaRutas();}catch(e){}}
 }
 
 function ZO(s){
@@ -2202,7 +2217,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v159';</script>
+<script>document.getElementById('version-tag').textContent='v160';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2314,7 +2329,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v159';
+var APP_VERSION = 'v160';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -7718,6 +7733,131 @@ async function crearAutonomo() {
     alert('Error de conexión: ' + e.message);
   }
 }
+
+// ══════════════════════════════════════════════════════════════
+//  v160: MAPA VISUAL DE RUTAS PENDIENTES (Leaflet + Nominatim)
+// ══════════════════════════════════════════════════════════════
+var _mapaInstance = null;
+var _leafletLoaded = false;
+
+function cargarLeaflet(callback) {
+  if (_leafletLoaded) { callback(); return; }
+  // CSS
+  var link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+  document.head.appendChild(link);
+  // JS
+  var script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+  script.onload = function() { _leafletLoaded = true; callback(); };
+  document.head.appendChild(script);
+}
+
+async function geocodificar(direccion) {
+  try {
+    var res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=es&q=' + encodeURIComponent(direccion));
+    var data = await res.json();
+    if (data && data.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
+    return null;
+  } catch (e) { return null; }
+}
+
+// Colores por índice para distinguir rutas
+var _coloresRutas = ['#E85C0D', '#2376C5', '#8e44ad', '#16a085', '#c0392b', '#2c3e50', '#d35400', '#27ae60', '#8B0000', '#006400'];
+
+async function cargarMapaRutas() {
+  var container = document.getElementById('mapa-rutas');
+  var loadingDiv = document.getElementById('mapa-loading');
+  if (!container) return;
+  if (loadingDiv) loadingDiv.textContent = 'Cargando ofertas...';
+
+  // 1. Cargar ofertas abiertas del backend
+  try {
+    var res = await fetch(RAILWAY_API + '/api/autonomos/ofertas', { headers: apiHeaders() });
+    var data = await res.json();
+    var ofertas = (data.ofertas || []).filter(function(o) { return o.estado === 'abierta'; });
+
+    if (ofertas.length === 0) {
+      if (loadingDiv) loadingDiv.textContent = 'No hay rutas pendientes';
+      return;
+    }
+
+    if (loadingDiv) loadingDiv.textContent = 'Geocodificando direcciones (' + ofertas.length + ' rutas)...';
+
+    // 2. Cargar Leaflet
+    cargarLeaflet(async function() {
+      // 3. Geocodificar direcciones (con delays para respetar Nominatim)
+      var rutas = [];
+      for (var i = 0; i < ofertas.length; i++) {
+        var o = ofertas[i];
+        if (loadingDiv) loadingDiv.textContent = 'Geocodificando ' + (i + 1) + '/' + ofertas.length + '...';
+
+        var origenGeo = await geocodificar(o.origen);
+        // Pausa 1s entre peticiones (Nominatim rate limit)
+        await new Promise(function(r) { setTimeout(r, 1100); });
+        var destinoGeo = await geocodificar(o.destino);
+        if (i < ofertas.length - 1) await new Promise(function(r) { setTimeout(r, 1100); });
+
+        if (origenGeo && destinoGeo) {
+          rutas.push({ oferta: o, origen: origenGeo, destino: destinoGeo });
+        }
+      }
+
+      if (rutas.length === 0) {
+        if (loadingDiv) loadingDiv.textContent = 'No se pudieron geocodificar las direcciones';
+        return;
+      }
+
+      // 4. Crear/recrear mapa
+      if (loadingDiv) loadingDiv.style.display = 'none';
+      if (_mapaInstance) { _mapaInstance.remove(); _mapaInstance = null; }
+
+      _mapaInstance = L.map('mapa-rutas', { scrollWheelZoom: true }).setView([40.4, -3.7], 6);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 18
+      }).addTo(_mapaInstance);
+
+      var bounds = L.latLngBounds();
+
+      // 5. Dibujar rutas
+      rutas.forEach(function(r, idx) {
+        var color = _coloresRutas[idx % _coloresRutas.length];
+        var origenLatLng = [r.origen.lat, r.origen.lng];
+        var destinoLatLng = [r.destino.lat, r.destino.lng];
+
+        // Marcador origen (verde)
+        var mOrigen = L.circleMarker(origenLatLng, { radius: 8, fillColor: '#1a7a3f', color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(_mapaInstance);
+        mOrigen.bindPopup('<div style="font-size:12px"><b style="color:#1a7a3f">RECOGIDA</b><br><b>Ref ' + r.oferta.presupuestoRef + '</b><br>' + r.oferta.origen + '<br><span style="color:#888;font-size:10px">' + (r.oferta.fecha || 'Sin fecha') + '</span></div>');
+
+        // Marcador destino (rojo)
+        var mDestino = L.circleMarker(destinoLatLng, { radius: 8, fillColor: '#c0392b', color: '#fff', weight: 2, fillOpacity: 0.9 }).addTo(_mapaInstance);
+        mDestino.bindPopup('<div style="font-size:12px"><b style="color:#c0392b">ENTREGA</b><br><b>Ref ' + r.oferta.presupuestoRef + '</b><br>' + r.oferta.destino + '</div>');
+
+        // Línea conectando
+        var line = L.polyline([origenLatLng, destinoLatLng], { color: color, weight: 3, opacity: 0.7, dashArray: '8, 6' }).addTo(_mapaInstance);
+        line.bindPopup('<div style="font-size:12px"><b>Ref ' + r.oferta.presupuestoRef + '</b><br>' + r.oferta.origen + ' → ' + r.oferta.destino + '<br><span style="color:#888">' + (r.oferta.fecha || '') + '</span><br><span style="font-size:10px">' + (r.oferta.inventario ? r.oferta.inventario.length + ' artículos' : '') + '</span></div>');
+
+        // Etiqueta ref en el centro de la línea
+        var midLat = (r.origen.lat + r.destino.lat) / 2;
+        var midLng = (r.origen.lng + r.destino.lng) / 2;
+        var label = L.divIcon({ className: '', html: '<div style="background:' + color + ';color:#fff;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.3)">' + r.oferta.presupuestoRef + '</div>', iconAnchor: [15, 8] });
+        L.marker([midLat, midLng], { icon: label, interactive: false }).addTo(_mapaInstance);
+
+        bounds.extend(origenLatLng);
+        bounds.extend(destinoLatLng);
+      });
+
+      // 6. Ajustar vista
+      _mapaInstance.fitBounds(bounds, { padding: [30, 30] });
+    });
+  } catch (e) {
+    if (loadingDiv) loadingDiv.textContent = 'Error cargando ofertas: ' + e.message;
+    console.error('[Mapa Rutas]', e);
+  }
+}
+// ══════════════════════════════════════════════════════════════
 
 async function cargarListaAutonomos() {
   var div = document.getElementById('lista-autonomos');
