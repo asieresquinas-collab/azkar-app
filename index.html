@@ -8827,19 +8827,26 @@ async function generarPdfClienteAdjudicado(ref, precioCliente) {
   } else {
     dataConPrecio.rows = [];
   }
-  // Línea final con el precio mínimo del servicio
+  // Línea final con el precio del servicio
   dataConPrecio.rows.push({
-    c: 'SERVICIO DE MUDANZA ' + origen + ' → ' + destino + ' (precio mínimo)',
+    c: 'Servicio integral de mudanza ' + origen + ' → ' + destino,
     z: '',
     u: '1',
     p: precioCliente.toFixed(2),
     d: '0',
     tm: '0'
   });
-
   // Generar HTML y enviar al backend para PDF
   restoreFormData(dataConPrecio);
   var htmlPdf = buildCompleteHTML();
+
+  // Inyectar nota profesional sobre precio mínimo en el HTML del PDF
+  var notaHtml = '<div style="margin:14px 0 8px;padding:10px 14px;background:#f8f9fb;border-left:3px solid #1B4F8A;border-radius:4px;font-size:9px;color:#555;line-height:1.5;font-family:Barlow,sans-serif;">'
+    + '<b style="color:#1B4F8A;">Nota:</b> El importe indicado corresponde al servicio completo de mudanza según la relación de artículos detallada. '
+    + 'Este presupuesto tiene carácter de <b>precio mínimo garantizado</b> para el servicio descrito. '
+    + 'La incorporación de artículos adicionales no incluidos en esta relación podrá suponer un ajuste en el importe final.</div>';
+  // Insertar antes de las firmas
+  htmlPdf = htmlPdf.replace('<div class="firmas">', notaHtml + '<div class="firmas">');
   var nombreArchivo = 'PRESUPUESTO_CLIENTE_' + ref + '_' + (pres.f_nom || '').replace(/[^a-zA-Z0-9]/g, '_');
 
   var res = await fetch(RAILWAY_API + '/api/pdf/generate-and-save', {
