@@ -2217,7 +2217,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v176';</script>
+<script>document.getElementById('version-tag').textContent='v177';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2329,7 +2329,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v176';
+var APP_VERSION = 'v177';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -3882,23 +3882,45 @@ async function openDashboard() {
       var calR = await fetch(RAILWAY_API + '/api/calendar/events?start=' + calStart + '&end=' + calEnd, { headers: apiHeaders() });
       var calD = await calR.json();
       if (calD.events && calD.events.length > 0) {
-        // Crear set de fechas que ya tenemos de presupuestos+refs para no duplicar
-        var presRefSet = {};
-        serviciosReales.forEach(function(p) { presRefSet[(p.f_fserv || '') + '_' + (p.f_nom || '').toLowerCase().trim()] = true; });
+        // Construir índice para deduplicar: por fecha → refs y nombres de presupuestos
+        var presByDate = {};
+        serviciosReales.forEach(function(p) {
+          var d = p.f_fserv || '';
+          if (!presByDate[d]) presByDate[d] = { refs: [], noms: [] };
+          if (p.f_ref) presByDate[d].refs.push(String(p.f_ref));
+          if (p.f_nom) presByDate[d].noms.push(p.f_nom.toLowerCase().trim());
+        });
 
         calD.events.forEach(function(ev) {
-          // Extraer fecha del evento (puede ser dateTime "2026-05-08T09:00:00+02:00" o date "2026-05-08")
           var evDate = (ev.start || '').slice(0, 10);
           if (!evDate || evDate < hoyCalStr) return;
           var evNom = ev.summary || 'Sin título';
-          // Evitar duplicar: si ya hay un presupuesto del mismo nombre en el mismo día, saltar
-          var dedupKey = evDate + '_' + evNom.toLowerCase().trim();
+          var evNomLow = evNom.toLowerCase().trim();
+
+          // Deduplicación multi-estrategia
           var yaExiste = false;
-          serviciosReales.forEach(function(p) {
-            if (p.f_fserv === evDate && (p.f_nom || '').toLowerCase().includes(evNom.toLowerCase().slice(0, 5))) yaExiste = true;
-          });
+          var presEnDia = presByDate[evDate];
+          if (presEnDia) {
+            // 1. Si el evento contiene algún f_ref de ese día (ej: "6119 ANA MARIA" contiene "6119")
+            presEnDia.refs.forEach(function(ref) {
+              if (evNom.includes(ref)) yaExiste = true;
+            });
+            // 2. Si el nombre del presupuesto está contenido en el evento o viceversa
+            if (!yaExiste) {
+              presEnDia.noms.forEach(function(nom) {
+                // Extraer primera palabra significativa (sin números) del nombre del presupuesto
+                var palabras = nom.split(/\s+/).filter(function(w) { return w.length > 3 && !/^\d+$/.test(w); });
+                var primeraPalabra = palabras[0] || '';
+                if (primeraPalabra && evNomLow.includes(primeraPalabra)) yaExiste = true;
+                // También comprobar al revés: primera palabra del evento en el nombre del pres
+                var evPalabras = evNomLow.split(/\s+/).filter(function(w) { return w.length > 3 && !/^\d+$/.test(w); });
+                var evPrimera = evPalabras[0] || '';
+                if (evPrimera && nom.includes(evPrimera)) yaExiste = true;
+              });
+            }
+          }
+
           if (yaExiste) return;
-          // Añadir como pseudo-presupuesto para el calendario
           serviciosReales.push({
             f_fserv: evDate,
             f_nom: evNom,
