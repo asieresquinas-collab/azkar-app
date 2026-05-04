@@ -8814,17 +8814,28 @@ async function generarPdfClienteAdjudicado(ref, precioCliente) {
   }
   if (!pres) throw new Error('Presupuesto no encontrado');
 
-  // v171 fix: NO distribuir proporcionalmente — precio mínimo por servicio completo
-  // El autónomo da un precio cerrado por el viaje. Si el cliente quita artículos,
-  // el precio NO baja porque el autónomo cobra lo mismo. Es un MÍNIMO.
+  // v171 fix2: Artículos con precio 0 (inventario/relación) + línea final precio mínimo
+  // Los artículos se mantienen porque son la relación firmada por el cliente,
+  // pero el precio es cerrado por servicio (el autónomo cobra lo mismo si quitan algo)
   var dataConPrecio = JSON.parse(JSON.stringify(pres));
   var origen = (pres.f_rec || '').split(',')[0].trim() || 'Origen';
   var destino = (pres.f_ent || '').split(',')[0].trim() || 'Destino';
 
-  // Reemplazar todas las filas con UNA sola línea: servicio de mudanza precio mínimo
-  dataConPrecio.rows = [
-    { c: 'Servicio de mudanza ' + origen + ' → ' + destino + ' (precio mínimo)', z: 'Servicio completo', u: '1', p: precioCliente.toFixed(2), d: '0', tm: '0' }
-  ];
+  // Poner precio 0 en todos los artículos (son inventario, no precio)
+  if (dataConPrecio.rows && dataConPrecio.rows.length > 0) {
+    dataConPrecio.rows.forEach(function(r) { r.p = '0'; r.d = '0'; });
+  } else {
+    dataConPrecio.rows = [];
+  }
+  // Añadir línea final con el precio mínimo del servicio completo
+  dataConPrecio.rows.push({
+    c: 'SERVICIO DE MUDANZA ' + origen + ' → ' + destino + ' (precio mínimo)',
+    z: 'Precio cerrado',
+    u: '1',
+    p: precioCliente.toFixed(2),
+    d: '0',
+    tm: '0'
+  });
 
   // Generar HTML y enviar al backend para PDF
   restoreFormData(dataConPrecio);
