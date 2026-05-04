@@ -2217,7 +2217,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v179';</script>
+<script>document.getElementById('version-tag').textContent='v180';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2329,7 +2329,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v179';
+var APP_VERSION = 'v180';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -9019,30 +9019,25 @@ async function generarPdfClienteAdjudicado(ref, precioCliente) {
 
 async function enviarParteAutonomo(ref, autonomoToken, autonomoNombre) {
   var btn = document.getElementById('btn-parte-' + ref);
-  if (btn) { btn.disabled = true; btn.textContent = 'Generando PDF...'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Preparando...'; }
   try {
-    // 1. Generar PDF del parte en el backend
-    var res = await fetch(RAILWAY_API + '/api/autonomos/parte-pdf', {
-      method: 'POST', headers: apiHeaders(),
-      body: JSON.stringify({ presupuestoRef: ref })
-    });
-    var data = await res.json();
-    if (!data.ok) { alert('Error: ' + (data.error || 'No se pudo generar')); if (btn) { btn.disabled = false; btn.textContent = '📄 Enviar parte'; } return; }
-
-    // 2. Buscar teléfono del autónomo en la lista
+    // 1. Buscar teléfono del autónomo en la lista
     var listaRes = await fetch(RAILWAY_API + '/api/autonomos/lista', { headers: apiHeaders() });
     var listaData = await listaRes.json();
     var autonomo = (listaData.autonomos || []).find(function(a) { return a.token === autonomoToken; });
     var tel = autonomo ? autonomo.telefono : '';
 
-    if (!tel) { alert('Este autónomo no tiene teléfono guardado. Enlace PDF:\n' + data.pdfUrl); if (btn) { btn.disabled = false; btn.textContent = '📄 Enviar parte'; } return; }
+    // 2. Construir enlace al parte interactivo del portal
+    var parteUrl = 'https://azkar-presupuestos-production.up.railway.app/api/portal/' + autonomoToken + '/parte/' + ref;
 
-    // 3. Enviar por WhatsApp Business (mismo método que presupuestos)
+    if (!tel) { alert('Este autónomo no tiene teléfono guardado.\n\nEnlace al parte:\n' + parteUrl); if (btn) { btn.disabled = false; btn.textContent = '📄 Enviar parte'; } return; }
+
+    // 3. Enviar por WhatsApp con el enlace al parte interactivo
     var num = tel.replace(/[\s\-\(\)\.]/g, '');
     if (num.startsWith('0')) num = '34' + num.substring(1);
     if (!num.startsWith('+') && !num.startsWith('34')) num = '34' + num;
     num = num.replace(/^\+/, '');
-    var msg = 'Hola ' + autonomoNombre + ', te adjudicamos este trabajo.\n\nAquí tienes el parte de trabajo para imprimir y que el cliente lo firme:\n' + data.pdfUrl + '\n\n¡Gracias! — Azkar Mudanzas';
+    var msg = 'Hola ' + autonomoNombre + ', te adjudicamos este trabajo (Ref ' + ref + ').\n\nAbre este enlace para ver el parte de trabajo:\n' + parteUrl + '\n\nEl cliente tendrá que firmar en recogida y en entrega. Si hay artículos extra o se quita algo, puedes modificarlo ahí.\n\n¡Gracias! — Azkar Mudanzas';
     var textoEnc = encodeURIComponent(msg);
     var isAndroid = /android/i.test(navigator.userAgent);
     if (isAndroid) {
