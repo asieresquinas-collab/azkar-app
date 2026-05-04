@@ -3732,6 +3732,39 @@ async function openDashboard() {
     }
     html += '</div>';
 
+    // v171: Cobros pendientes (en marcha > 7 días sin cobrar)
+    var sinCobrar = enMarcha.filter(function(p) {
+      if (!p._enMarchaDate) return false;
+      return (Date.now() - p._enMarchaDate) / 86400000 > 7;
+    });
+    if (sinCobrar.length > 0) {
+      html += '<div ' + cs + ' style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;border-left:4px solid #c0392b;">';
+      html += '<div style="font-weight:700;font-size:13px;color:#c0392b;margin-bottom:10px;">💸 Cobros pendientes (' + sinCobrar.length + ')</div>';
+      sinCobrar.forEach(function(p) {
+        var dias = Math.floor((Date.now() - p._enMarchaDate) / 86400000);
+        html += '<div style="padding:5px 0;font-size:12px;border-bottom:1px solid #f0f0f0;"><b>' + (p.f_nom || 'Sin nombre') + '</b> (Ref.' + (p.f_ref || '') + ') — <span style="color:#c0392b;font-weight:600;">' + dias + ' días</span></div>';
+      });
+      html += '</div>';
+    }
+
+    // v171: Historial autónomos — ranking por número de adjudicaciones
+    try {
+      var listaR = await fetch(RAILWAY_API + '/api/autonomos/lista', { headers: apiHeaders() });
+      var listaD = await listaR.json();
+      if (listaD.autonomos && listaD.autonomos.length > 0) {
+        html += '<div ' + cs + ' style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;">';
+        html += '<div style="font-weight:700;font-size:13px;color:#8e44ad;margin-bottom:10px;">👷 Autónomos registrados (' + listaD.autonomos.length + ')</div>';
+        listaD.autonomos.forEach(function(a) {
+          html += '<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid #f0f0f0;">';
+          html += '<div style="width:32px;height:32px;background:linear-gradient(135deg,#8e44ad,#9b59b6);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12px;">' + (a.nombre || '?').charAt(0).toUpperCase() + '</div>';
+          html += '<div style="flex:1;"><div style="font-weight:600;font-size:12px;">' + (a.nombre || 'Sin nombre') + '</div><div style="font-size:10px;color:#888;">' + (a.telefono || '') + ' · ' + (a.especialidad || '') + '</div></div>';
+          html += '<div style="font-size:10px;color:#888;">' + (a.activo !== false ? '🟢 Activo' : '🔴 Inactivo') + '</div>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+    } catch(e) { /* sin conexión */ }
+
     content.innerHTML = html;
   } catch(e) {
     content.innerHTML = '<div style="background:#fff;border-radius:10px;padding:20px;color:red;">Error cargando dashboard: ' + e.message + '</div>';
@@ -3848,9 +3881,55 @@ async function enviarRecordatorioCliente(r) {
   }
 }
 
-// Ejecutar comprobación 10s después del inicio (para no bloquear la carga)
+// v171: ALERTAS DE COBRO — presupuestos en marcha sin cobrar
+async function comprobarAlertasCobro() {
+  try {
+    var all = await getAllPresupuestos();
+    var enMarchaSinCobrar = all.filter(function(p) {
+      if (p._isVersion || !p._enMarcha || p._pagadoFinalizado) return false;
+      // Más de 7 días en marcha sin cobrar
+      if (!p._enMarchaDate) return false;
+      var diasEnMarcha = (Date.now() - p._enMarchaDate) / 86400000;
+      return diasEnMarcha > 7;
+    });
+
+    if (enMarchaSinCobrar.length === 0) return;
+
+    var existBanner = document.getElementById('cobro-banner');
+    if (existBanner) existBanner.remove();
+
+    var banner = document.createElement('div');
+    banner.id = 'cobro-banner';
+    banner.style.cssText = 'position:fixed;bottom:60px;left:16px;z-index:9998;max-width:340px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);border-left:4px solid #c0392b;overflow:hidden;font-family:Barlow,sans-serif;';
+
+    var html = '<div style="background:#fdeded;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">';
+    html += '<div style="font-weight:700;font-size:13px;color:#c0392b;">💸 Cobros pendientes (' + enMarchaSinCobrar.length + ')</div>';
+    html += '<button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;font-size:16px;cursor:pointer;color:#888;">✕</button>';
+    html += '</div>';
+    html += '<div style="padding:10px 14px;max-height:200px;overflow-y:auto;">';
+
+    enMarchaSinCobrar.forEach(function(p) {
+      var dias = Math.floor((Date.now() - p._enMarchaDate) / 86400000);
+      html += '<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:12px;">';
+      html += '<b>' + (p.f_nom || 'Sin nombre') + '</b> (Ref.' + (p.f_ref || '') + ')';
+      html += '<div style="color:#c0392b;font-size:11px;font-weight:600;">' + dias + ' días en marcha sin cobrar</div>';
+      html += '</div>';
+    });
+
+    html += '</div>';
+    banner.innerHTML = html;
+    document.body.appendChild(banner);
+  } catch(e) {
+    console.warn('[Cobros] Error:', e.message);
+  }
+}
+
+// Ejecutar comprobaciones 10s después del inicio
 setTimeout(function() {
-  if (window._initialLoadDone) comprobarRecordatorios();
+  if (window._initialLoadDone) {
+    comprobarRecordatorios();
+    comprobarAlertasCobro();
+  }
 }, 10000);
 
 async function loadPresupuesto(id) {
@@ -8623,12 +8702,69 @@ async function adjudicarOferta(ref, token, nombre, tokenCorto) {
     });
     var data = await res.json();
     if (data.ok) {
-      alert('✅ Adjudicado a ' + nombre + '\nPrecio cliente: ' + precioCliente.toFixed(0) + ' € + IVA');
+      showSyncStatus('✅ Adjudicado a ' + nombre + ' — Generando PDF cliente...', 3000);
+      // v171: Generar PDF automático con precios del cliente
+      try {
+        await generarPdfClienteAdjudicado(ref, precioCliente);
+        showSyncStatus('✅ PDF cliente generado y guardado en Drive', 4000);
+      } catch(pdfErr) {
+        console.warn('[Adjudicar] PDF no generado:', pdfErr.message);
+        showSyncStatus('⚠️ Adjudicado pero PDF no generado: ' + pdfErr.message, 5000);
+      }
       cargarOfertasAutonomos();
     }
   } catch (e) {
     alert('Error: ' + e.message);
   }
+}
+
+// v171: Genera PDF con precios del cliente (precio autonomo x2 + IVA)
+async function generarPdfClienteAdjudicado(ref, precioCliente) {
+  // Cargar datos del presupuesto
+  var pres = await getPresupuesto(ref);
+  if (!pres) {
+    // Intentar desde Firebase
+    if (window._fb && window._fb.getDoc) {
+      var snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', ref));
+      if (snap.exists()) pres = snap.data();
+    }
+  }
+  if (!pres) throw new Error('Presupuesto no encontrado');
+
+  // Sustituir precios en rows con el precio del cliente
+  var dataConPrecio = JSON.parse(JSON.stringify(pres));
+  if (dataConPrecio.rows && dataConPrecio.rows.length > 0) {
+    // Distribuir el precioCliente proporcionalmente entre las filas
+    var totalOriginal = 0;
+    dataConPrecio.rows.forEach(function(r) {
+      totalOriginal += (parseFloat(r.u) || 0) * (parseFloat(r.p) || 0);
+    });
+    if (totalOriginal > 0) {
+      var factor = precioCliente / totalOriginal;
+      dataConPrecio.rows.forEach(function(r) {
+        r.p = ((parseFloat(r.p) || 0) * factor).toFixed(2);
+      });
+    }
+  }
+
+  // Generar HTML y enviar al backend para PDF
+  restoreFormData(dataConPrecio);
+  var htmlPdf = buildCompleteHTML();
+  var nombreArchivo = 'PRESUPUESTO_CLIENTE_' + ref + '_' + (pres.f_nom || '').replace(/[^a-zA-Z0-9]/g, '_');
+
+  var res = await fetch(RAILWAY_API + '/api/pdf/generate-and-save', {
+    method: 'POST',
+    headers: { ...apiHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      html: htmlPdf,
+      folderNumber: pres.f_nc || '',
+      fileName: nombreArchivo,
+      presupuestoRef: ref
+    })
+  });
+  var data = await res.json();
+  if (!data.success && !data.ok) throw new Error(data.error || 'Error generando PDF');
+  return data;
 }
 
 async function enviarParteAutonomo(ref, autonomoToken, autonomoNombre) {
