@@ -2217,7 +2217,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v175';</script>
+<script>document.getElementById('version-tag').textContent='v176';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2329,7 +2329,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v175';
+var APP_VERSION = 'v176';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -3637,13 +3637,10 @@ async function openDashboard() {
     var firmaData = await fetchFirmaStatus();
 
     // v172: Auto-reparar flags _enMarcha consultando carpetas de Drive (matching robusto)
-    var _diagDrive = 'Sin datos';
-    var _diagReparados = 0;
     try {
       var emR = await fetch(RAILWAY_API + '/api/drive/en-marcha', { headers: apiHeaders() });
       var emD = await emR.json();
       if (emD.ok && emD.carpetas && emD.carpetas.length > 0) {
-        _diagDrive = emD.carpetas.map(function(c) { return c.numero + ' (' + c.nombre + ')'; }).join(', ');
         // Construir mapa robusto: todas las formas posibles de identificar una carpeta
         // Cada carpeta tiene {numero: "6001", nombre: "6001 - Juan García", id: "..."}
         var enMarchaNums = {};   // numero (string) → true
@@ -3699,19 +3696,14 @@ async function openDashboard() {
             reparados++;
           }
         }
-        _diagReparados = reparados;
         if (reparados > 0) {
           console.log('[Dashboard] Reparados ' + reparados + ' flags _enMarcha desde Drive');
           // Recargar presupuestos para que el calendario refleje los cambios
           all = await getAllPresupuestos();
           current = all.filter(function(p) { return !p._isVersion; });
         }
-      } else if (emD.error) {
-        _diagDrive = 'ERROR: ' + emD.error;
-      } else {
-        _diagDrive = 'Drive respondió OK pero 0 carpetas';
       }
-    } catch(e) { _diagDrive = 'FETCH FALLÓ: ' + e.message; console.warn('[Dashboard] No se pudo sincronizar flags Drive:', e.message); }
+    } catch(e) { console.warn('[Dashboard] No se pudo sincronizar flags Drive:', e.message); }
 
     // Clasificar
     var captacion = [], enMarcha = [], pagado = [], firmado = [], guardamuebles = [], archivado = [];
@@ -3874,41 +3866,58 @@ async function openDashboard() {
     } catch(e) { /* sin conexión */ }
 
     // Calendario: todos los EN MARCHA con fecha de servicio (confirmados)
-    // v174: NO excluir guardamuebles ni archivado si tiene _enMarcha + fecha futura
+    // v175: NO excluir guardamuebles ni archivado si tiene _enMarcha + fecha futura
     // Solo excluir _pagadoFinalizado (ya terminados)
     var hoyCalStr = new Date().toISOString().slice(0, 10);
     var serviciosReales = current.filter(function(p) {
       if (!p.f_fserv || !p._enMarcha || p._pagadoFinalizado) return false;
-      // Solo mostrar servicios de hoy en adelante
       return p.f_fserv >= hoyCalStr;
     });
+
+    // v175: FUSIONAR con Google Calendar de Antonio (fuente de verdad para clientes antiguos)
+    try {
+      var calHoy = new Date();
+      var calStart = calHoy.getFullYear() + '-' + String(calHoy.getMonth() + 1).padStart(2, '0') + '-01';
+      var calEnd = calHoy.getFullYear() + '-' + String(calHoy.getMonth() + 1).padStart(2, '0') + '-' + new Date(calHoy.getFullYear(), calHoy.getMonth() + 1, 0).getDate();
+      var calR = await fetch(RAILWAY_API + '/api/calendar/events?start=' + calStart + '&end=' + calEnd, { headers: apiHeaders() });
+      var calD = await calR.json();
+      if (calD.events && calD.events.length > 0) {
+        // Crear set de fechas que ya tenemos de presupuestos+refs para no duplicar
+        var presRefSet = {};
+        serviciosReales.forEach(function(p) { presRefSet[(p.f_fserv || '') + '_' + (p.f_nom || '').toLowerCase().trim()] = true; });
+
+        calD.events.forEach(function(ev) {
+          // Extraer fecha del evento (puede ser dateTime "2026-05-08T09:00:00+02:00" o date "2026-05-08")
+          var evDate = (ev.start || '').slice(0, 10);
+          if (!evDate || evDate < hoyCalStr) return;
+          var evNom = ev.summary || 'Sin título';
+          // Evitar duplicar: si ya hay un presupuesto del mismo nombre en el mismo día, saltar
+          var dedupKey = evDate + '_' + evNom.toLowerCase().trim();
+          var yaExiste = false;
+          serviciosReales.forEach(function(p) {
+            if (p.f_fserv === evDate && (p.f_nom || '').toLowerCase().includes(evNom.toLowerCase().slice(0, 5))) yaExiste = true;
+          });
+          if (yaExiste) return;
+          // Añadir como pseudo-presupuesto para el calendario
+          serviciosReales.push({
+            f_fserv: evDate,
+            f_nom: evNom,
+            f_ref: 'CAL',
+            f_nc: '',
+            f_hserv: ev.start && ev.start.length > 10 ? ev.start.slice(11, 16) : '',
+            f_rec: '',
+            f_ent: '',
+            _fromCalendar: true
+          });
+        });
+      }
+    } catch(e) { console.warn('[Dashboard] No se pudo cargar calendario Google:', e.message); }
+
     html += '<div ' + cs + ' style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;">';
     html += '<div style="font-weight:700;font-size:13px;color:#1B4F8A;margin-bottom:10px;">📅 Calendario de servicios pendientes</div>';
     html += _buildCalendar(serviciosReales);
     html += '</div>';
 
-    // v173: Panel de diagnóstico visible (TEMPORAL — quitar después de resolver)
-    var diagLines = [];
-    diagLines.push('🔧 DRIVE EN MARCHA: ' + _diagDrive);
-    diagLines.push('🔧 REPARADOS: ' + _diagReparados);
-    diagLines.push('🔧 TOTAL PRESUPUESTOS: ' + current.length);
-    diagLines.push('🔧 EN CALENDARIO: ' + serviciosReales.length);
-    diagLines.push('---');
-    current.forEach(function(p) {
-      if (p.f_fserv) {
-        var flags = [];
-        if (p._enMarcha) flags.push('✅enMarcha');
-        if (p._pagadoFinalizado) flags.push('💰pagado');
-        if (p._guardamuebles) flags.push('🏠guard');
-        if (p._archivado2026) flags.push('📁arch');
-        if (flags.length === 0) flags.push('❌SIN FLAGS');
-        diagLines.push('REF=' + (p.f_ref||'?') + ' NC=' + (p.f_nc||'?') + ' | ' + (p.f_nom||'?') + ' | SERV=' + p.f_fserv + ' | ' + flags.join(' '));
-      }
-    });
-    html += '<div ' + cs + ' style="background:#1a1a2e;border-radius:10px;padding:14px 16px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;">';
-    html += '<div style="font-weight:700;font-size:11px;color:#f39c12;margin-bottom:8px;">🔧 DIAGNÓSTICO (temporal)</div>';
-    html += '<div style="font-family:monospace;font-size:10px;color:#aaa;white-space:pre-wrap;word-break:break-all;line-height:1.6;">' + diagLines.join('\n') + '</div>';
-    html += '</div>';
 
     content.innerHTML = html;
   } catch(e) {
@@ -4016,15 +4025,22 @@ function mostrarServiciosDia(dia) {
   servicios.forEach(function(p) {
     var ref = p.f_ref || p.id || '';
     var nc = p.f_nc || '';
-    var driveUrl = nc ? 'https://drive.google.com/drive/search?q=' + encodeURIComponent(nc + ' ' + (p.f_nom || '')) : '';
+    var isFromCal = p._fromCalendar;
+    var driveSearch = (nc || ref !== 'CAL') ? 'https://drive.google.com/drive/search?q=' + encodeURIComponent((nc || ref) + ' ' + (p.f_nom || '')) : '';
     html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eee;">';
     html += '<div style="flex:1;">';
-    html += '<div style="font-weight:600;font-size:12px;">' + (p.f_nom || 'Sin nombre') + ' <span style="color:#888;font-weight:400;">(Ref.' + ref + ')</span></div>';
-    html += '<div style="font-size:10px;color:#888;">' + (p.f_hserv ? p.f_hserv + 'h · ' : '') + (p.f_rec || '') + ' → ' + (p.f_ent || '') + '</div>';
+    if (isFromCal) {
+      html += '<div style="font-weight:600;font-size:12px;">📅 ' + (p.f_nom || 'Sin nombre') + ' <span style="background:#f39c12;color:#fff;padding:1px 5px;border-radius:3px;font-size:8px;font-weight:700;">CALENDAR</span></div>';
+    } else {
+      html += '<div style="font-weight:600;font-size:12px;">' + (p.f_nom || 'Sin nombre') + ' <span style="color:#888;font-weight:400;">(Ref.' + ref + ')</span></div>';
+    }
+    html += '<div style="font-size:10px;color:#888;">' + (p.f_hserv ? p.f_hserv + 'h · ' : '') + (p.f_rec || '') + (p.f_rec && p.f_ent ? ' → ' : '') + (p.f_ent || '') + '</div>';
     html += '</div>';
-    html += '<button onclick="document.getElementById(\'dash-panel\').style.display=\'none\';loadPresupuesto(\'' + ref + '\')" style="background:#2376C5;color:#fff;border:none;padding:5px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">📋 Abrir</button>';
-    if (driveUrl) {
-      html += '<a href="' + driveUrl + '" target="_blank" style="background:#1a7a3f;color:#fff;padding:5px 8px;border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;">📁 Drive</a>';
+    if (!isFromCal) {
+      html += '<button onclick="document.getElementById(\'dash-panel\').style.display=\'none\';loadPresupuesto(\'' + ref + '\')" style="background:#2376C5;color:#fff;border:none;padding:5px 8px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">📋 Abrir</button>';
+    }
+    if (driveSearch) {
+      html += '<a href="' + driveSearch + '" target="_blank" style="background:#1a7a3f;color:#fff;padding:5px 8px;border-radius:4px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;">📁 Drive</a>';
     }
     html += '</div>';
   });
