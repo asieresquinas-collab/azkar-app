@@ -8807,7 +8807,6 @@ async function generarPdfClienteAdjudicado(ref, precioCliente) {
   // Cargar datos del presupuesto
   var pres = await getPresupuesto(ref);
   if (!pres) {
-    // Intentar desde Firebase
     if (window._fb && window._fb.getDoc) {
       var snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', ref));
       if (snap.exists()) pres = snap.data();
@@ -8815,21 +8814,17 @@ async function generarPdfClienteAdjudicado(ref, precioCliente) {
   }
   if (!pres) throw new Error('Presupuesto no encontrado');
 
-  // Sustituir precios en rows con el precio del cliente
+  // v171 fix: NO distribuir proporcionalmente — precio mínimo por servicio completo
+  // El autónomo da un precio cerrado por el viaje. Si el cliente quita artículos,
+  // el precio NO baja porque el autónomo cobra lo mismo. Es un MÍNIMO.
   var dataConPrecio = JSON.parse(JSON.stringify(pres));
-  if (dataConPrecio.rows && dataConPrecio.rows.length > 0) {
-    // Distribuir el precioCliente proporcionalmente entre las filas
-    var totalOriginal = 0;
-    dataConPrecio.rows.forEach(function(r) {
-      totalOriginal += (parseFloat(r.u) || 0) * (parseFloat(r.p) || 0);
-    });
-    if (totalOriginal > 0) {
-      var factor = precioCliente / totalOriginal;
-      dataConPrecio.rows.forEach(function(r) {
-        r.p = ((parseFloat(r.p) || 0) * factor).toFixed(2);
-      });
-    }
-  }
+  var origen = (pres.f_rec || '').split(',')[0].trim() || 'Origen';
+  var destino = (pres.f_ent || '').split(',')[0].trim() || 'Destino';
+
+  // Reemplazar todas las filas con UNA sola línea: servicio de mudanza precio mínimo
+  dataConPrecio.rows = [
+    { c: 'Servicio de mudanza ' + origen + ' → ' + destino + ' (precio mínimo)', z: 'Servicio completo', u: '1', p: precioCliente.toFixed(2), d: '0', tm: '0' }
+  ];
 
   // Generar HTML y enviar al backend para PDF
   restoreFormData(dataConPrecio);
