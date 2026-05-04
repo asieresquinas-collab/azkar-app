@@ -2217,7 +2217,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v170';</script>
+<script>document.getElementById('version-tag').textContent='v171';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2329,7 +2329,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v170';
+var APP_VERSION = 'v171';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -3396,6 +3396,9 @@ function createManagerPanel() {
           <button onclick="closeMgr()" style="background:rgba(255,255,255,.2);color:#fff;border:none;padding:8px 14px;border-radius:5px;font-weight:700;font-size:12px;cursor:pointer;font-family:'Barlow',sans-serif;">✕</button>
         </div>
       </div>
+      <div style="padding:10px 16px 0 16px;">
+        <input type="text" id="mgr-search" placeholder="🔍 Buscar por nombre, teléfono, dirección o referencia..." style="width:100%;padding:9px 12px;border:1px solid #d0d5dd;border-radius:7px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;box-sizing:border-box;" oninput="filtrarPresupuestos(this.value)">
+      </div>
       <div id="mgr-list" style="flex:1;overflow-y:auto;padding:16px;"></div>
       <div style="padding:12px 24px;background:#f5f7fa;border-top:1px solid #e0e4ea;">
         <button onclick="openFirebaseConfig()" style="background:none;border:1px solid #2376C5;color:#2376C5;padding:7px 14px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;">⚙️ Configurar Firebase Sync</button>
@@ -3435,6 +3438,9 @@ async function openMgr() {
 
   const list = document.getElementById('mgr-list');
   const count = document.getElementById('mgr-count');
+  // v171: Limpiar buscador al abrir
+  var searchInput = document.getElementById('mgr-search');
+  if (searchInput) searchInput.value = '';
 
   try {
     // Cargar presupuestos locales y estado de firmas en paralelo
@@ -3480,7 +3486,8 @@ async function openMgr() {
       // v123: Botones post-pago: archivar en 2026 o devolver a En Marcha (guardamuebles)
       const pagadoAnualBtn = isPagado ? '<button onclick="event.stopPropagation();moverPagadoAnual(\'' + ref + '\')" style="background:#1B4F8A;border:none;color:#fff;padding:6px 8px;border-radius:5px;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;" title="Archivar en carpeta 2026 PAGADO">📁 2026</button>' : '';
       const guardamueblesBtn = isPagado ? '<button onclick="event.stopPropagation();moverGuardamueblesEnMarcha(\'' + ref + '\')" style="background:#8e44ad;border:none;color:#fff;padding:6px 8px;border-radius:5px;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;" title="Guardamuebles: devolver a En Marcha">🏠 GUARD.</button>' : '';
-      return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:' + (isVersion ? '4' : '8') + 'px;border:1px solid ' + borderColor + ';border-radius:8px;cursor:pointer;transition:.15s;background:' + bgColor + ';" onmouseover="this.style.background=\'' + hoverColor + '\'" onmouseout="this.style.background=\'' + bgColor + '\'" onclick="loadPresupuesto(\'' + p.id + '\')">'
+      var searchData = [(p.f_nom||''),(p.f_tel||''),(p.f_ref||''),(p.f_rec||''),(p.f_ent||''),(p.f_email||''),(p.f_dni||'')].join(' ').toLowerCase();
+      return '<div data-search="' + searchData.replace(/"/g,'') + '" style="display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:' + (isVersion ? '4' : '8') + 'px;border:1px solid ' + borderColor + ';border-radius:8px;cursor:pointer;transition:.15s;background:' + bgColor + ';" onmouseover="this.style.background=\'' + hoverColor + '\'" onmouseout="this.style.background=\'' + bgColor + '\'" onclick="loadPresupuesto(\'' + p.id + '\')">'
         + '<div style="width:42px;height:42px;background:' + bgGrad + ';border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">' + (isPagado ? '💰' : (isEnMarcha ? '🚚' : (isFirmado ? '✓' : ref.slice(-4) || 'N/A'))) + '</div>'
         + '<div style="flex:1;min-width:0;">'
         + '<div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.f_nom || 'Sin nombre') + pagadoLabel + enMarchaLabel + firmadoLabel + versionLabel + '</div>'
@@ -3524,6 +3531,25 @@ async function openMgr() {
 function closeMgr() {
   const panel = document.getElementById('mgr-panel');
   if (panel) panel.style.display = 'none';
+}
+
+// v171: Buscador de presupuestos — filtra items renderizados en el panel
+function filtrarPresupuestos(query) {
+  var list = document.getElementById('mgr-list');
+  if (!list) return;
+  var items = list.children;
+  var q = (query || '').toLowerCase().trim();
+  if (!q) {
+    for (var i = 0; i < items.length; i++) items[i].style.display = '';
+    return;
+  }
+  for (var i = 0; i < items.length; i++) {
+    var el = items[i];
+    var txt = (el.textContent || '').toLowerCase();
+    // También buscar en data attributes para campos completos
+    var data = el.getAttribute('data-search') || '';
+    el.style.display = (txt.indexOf(q) !== -1 || data.indexOf(q) !== -1) ? '' : 'none';
+  }
 }
 
 async function loadPresupuesto(id) {
