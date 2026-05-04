@@ -3746,6 +3746,113 @@ function _dashCard(icon, label, count, color) {
     + '</div>';
 }
 
+// ══════════════════════════════════════════════════════════════
+// v171: RECORDATORIOS AUTOMÁTICOS
+// ══════════════════════════════════════════════════════════════
+var _recordatoriosChecked = false;
+async function comprobarRecordatorios() {
+  if (_recordatoriosChecked) return;
+  _recordatoriosChecked = true;
+  try {
+    var all = await getAllPresupuestos();
+    var current = all.filter(function(p) { return !p._isVersion && p.f_fserv; });
+    if (current.length === 0) return;
+
+    var resp = await fetch(RAILWAY_API + '/api/recordatorios/comprobar', {
+      method: 'POST',
+      headers: { ...apiHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ presupuestos: current })
+    });
+    var data = await resp.json();
+    if (!data.ok) return;
+
+    // Mostrar avisos (servicios próximos sin hora confirmada)
+    if (data.avisos && data.avisos.length > 0) {
+      mostrarAvisosRecordatorio(data.avisos);
+    }
+
+    // Enviar recordatorios automáticos al cliente (día antes con hora)
+    if (data.recordatorios && data.recordatorios.length > 0) {
+      data.recordatorios.forEach(function(r) {
+        enviarRecordatorioCliente(r);
+      });
+    }
+  } catch(e) {
+    console.warn('[Recordatorios] Error:', e.message);
+  }
+}
+
+function mostrarAvisosRecordatorio(avisos) {
+  // Crear banner de aviso fijo
+  var existing = document.getElementById('recordatorio-banner');
+  if (existing) existing.remove();
+
+  var banner = document.createElement('div');
+  banner.id = 'recordatorio-banner';
+  banner.style.cssText = 'position:fixed;bottom:60px;right:16px;z-index:9999;max-width:380px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);border-left:4px solid #E85C0D;overflow:hidden;font-family:Barlow,sans-serif;';
+
+  var html = '<div style="background:#FEF0E7;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">';
+  html += '<div style="font-weight:700;font-size:13px;color:#C94A00;">⏰ Servicios próximos (' + avisos.length + ')</div>';
+  html += '<button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;font-size:16px;cursor:pointer;color:#888;">✕</button>';
+  html += '</div>';
+  html += '<div style="padding:10px 14px;max-height:250px;overflow-y:auto;">';
+
+  avisos.forEach(function(a) {
+    var diasTxt = a.diasFaltan === 1 ? 'MAÑANA' : 'en ' + a.diasFaltan + ' días';
+    html += '<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;">';
+    html += '<div style="font-weight:600;font-size:12px;">' + a.nombre + ' <span style="color:#888;font-weight:400;">(Ref.' + a.ref + ')</span></div>';
+    html += '<div style="font-size:11px;color:#E85C0D;font-weight:700;margin:3px 0;">' + diasTxt + ' — ' + a.fechaServicio + '</div>';
+    html += '<div style="display:flex;gap:6px;margin-top:4px;">';
+    html += '<input type="time" id="hora-rec-' + a.ref + '" value="' + (a.horaActual || '09:00') + '" style="padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:11px;">';
+    html += '<button onclick="confirmarHoraRecordatorio(\'' + a.ref + '\')" style="background:#E85C0D;color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;">Confirmar hora</button>';
+    html += '</div>';
+    html += '</div>';
+  });
+
+  html += '</div>';
+  banner.innerHTML = html;
+  document.body.appendChild(banner);
+}
+
+async function confirmarHoraRecordatorio(ref) {
+  var input = document.getElementById('hora-rec-' + ref);
+  if (!input) return;
+  var hora = input.value;
+  if (!hora) return alert('Selecciona una hora');
+
+  try {
+    var resp = await fetch(RAILWAY_API + '/api/recordatorios/confirmar-hora', {
+      method: 'POST',
+      headers: { ...apiHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ref: ref, hora: hora })
+    });
+    var data = await resp.json();
+    if (data.ok) {
+      input.parentElement.innerHTML = '<span style="color:#1a7a3f;font-weight:700;font-size:11px;">✅ Hora confirmada: ' + hora + 'h — Se enviará recordatorio mañana</span>';
+    }
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+async function enviarRecordatorioCliente(r) {
+  try {
+    await fetch(RAILWAY_API + '/api/recordatorios/enviar', {
+      method: 'POST',
+      headers: { ...apiHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(r)
+    });
+    console.log('[Recordatorio] Enviado a', r.nombre, '(' + r.email + ')');
+  } catch(e) {
+    console.error('[Recordatorio] Error enviando a', r.nombre, ':', e.message);
+  }
+}
+
+// Ejecutar comprobación 10s después del inicio (para no bloquear la carga)
+setTimeout(function() {
+  if (window._initialLoadDone) comprobarRecordatorios();
+}, 10000);
+
 async function loadPresupuesto(id) {
   // v123e: Cancelar cualquier auto-save pendiente antes de cargar otro cliente
   if (typeof _saveTimeout !== 'undefined') clearTimeout(_saveTimeout);
