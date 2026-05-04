@@ -3666,7 +3666,7 @@ async function openDashboard() {
     var hoy = new Date();
     var en7dias = new Date(hoy.getTime() + 7 * 86400000);
     var proximos = current.filter(function(p) {
-      if (!p.f_fserv) return false;
+      if (!p.f_fserv || p._pagadoFinalizado || p._guardamuebles || p._archivado2026) return false;
       var d = new Date(p.f_fserv);
       return d >= hoy && d <= en7dias;
     }).sort(function(a, b) { return new Date(a.f_fserv) - new Date(b.f_fserv); });
@@ -3732,7 +3732,7 @@ async function openDashboard() {
     }
     html += '</div>';
 
-    // v171: Cobros pendientes (en marcha > 7 días sin cobrar)
+    // v171 fix: Cobros pendientes con botón para marcar pagado
     var sinCobrar = enMarcha.filter(function(p) {
       if (!p._enMarchaDate) return false;
       return (Date.now() - p._enMarchaDate) / 86400000 > 7;
@@ -3742,7 +3742,37 @@ async function openDashboard() {
       html += '<div style="font-weight:700;font-size:13px;color:#c0392b;margin-bottom:10px;">💸 Cobros pendientes (' + sinCobrar.length + ')</div>';
       sinCobrar.forEach(function(p) {
         var dias = Math.floor((Date.now() - p._enMarchaDate) / 86400000);
-        html += '<div style="padding:5px 0;font-size:12px;border-bottom:1px solid #f0f0f0;"><b>' + (p.f_nom || 'Sin nombre') + '</b> (Ref.' + (p.f_ref || '') + ') — <span style="color:#c0392b;font-weight:600;">' + dias + ' días</span></div>';
+        var ref = p.f_ref || p.id || '';
+        html += '<div id="dash-cobro-' + ref + '" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0;">';
+        html += '<div style="flex:1;font-size:12px;"><b>' + (p.f_nom || 'Sin nombre') + '</b> (Ref.' + ref + ') — <span style="color:#c0392b;font-weight:600;">' + dias + ' días</span></div>';
+        html += '<button onclick="marcarPagadoDashboard(\'' + ref + '\')" style="background:#27ae60;color:#fff;border:none;padding:5px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">💰 Pagado</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    // v171 fix: Recordatorios — servicios próximos 3 días, confirmar hora aquí
+    var hoyTs = new Date(); hoyTs.setHours(0,0,0,0);
+    var en3 = new Date(hoyTs.getTime() + 3 * 86400000);
+    var proximosRec = current.filter(function(p) {
+      if (!p.f_fserv || p._pagadoFinalizado || p._guardamuebles || p._archivado2026) return false;
+      var d = new Date(p.f_fserv + 'T00:00:00');
+      return d >= hoyTs && d <= en3;
+    }).sort(function(a,b) { return new Date(a.f_fserv) - new Date(b.f_fserv); });
+    if (proximosRec.length > 0) {
+      html += '<div ' + cs + ' style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;border-left:4px solid #E85C0D;">';
+      html += '<div style="font-weight:700;font-size:13px;color:#E85C0D;margin-bottom:10px;">⏰ Confirmar hora — servicios en 3 días (' + proximosRec.length + ')</div>';
+      proximosRec.forEach(function(p) {
+        var fechaServ = new Date(p.f_fserv + 'T00:00:00');
+        var diasFaltan = Math.ceil((fechaServ - hoyTs) / 86400000);
+        var diasTxt = diasFaltan === 0 ? 'HOY' : (diasFaltan === 1 ? 'MAÑANA' : 'en ' + diasFaltan + ' días');
+        var ref = p.f_ref || '';
+        html += '<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;">';
+        html += '<div style="font-size:12px;"><b>' + (p.f_nom || 'Sin nombre') + '</b> (Ref.' + ref + ') — <span style="color:#E85C0D;font-weight:700;">' + diasTxt + '</span></div>';
+        html += '<div style="display:flex;gap:6px;margin-top:4px;align-items:center;">';
+        html += '<input type="time" id="hora-rec-' + ref + '" value="' + (p.f_hserv || '09:00') + '" style="padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:11px;">';
+        html += '<button onclick="confirmarHoraRecordatorio(\'' + ref + '\')" style="background:#E85C0D;color:#fff;border:none;padding:5px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;">Confirmar hora</button>';
+        html += '</div></div>';
       });
       html += '</div>';
     }
@@ -3765,10 +3795,14 @@ async function openDashboard() {
       }
     } catch(e) { /* sin conexión */ }
 
-    // v171: Calendario visual del mes actual
+    // v171 fix: Calendario solo con servicios reales pendientes
+    // Excluir: guardamuebles, pagados, archivados (no son servicios por hacer)
+    var serviciosReales = current.filter(function(p) {
+      return !p._pagadoFinalizado && !p._guardamuebles && !p._archivado2026;
+    });
     html += '<div ' + cs + ' style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;">';
-    html += '<div style="font-weight:700;font-size:13px;color:#1B4F8A;margin-bottom:10px;">📅 Calendario de servicios</div>';
-    html += _buildCalendar(current);
+    html += '<div style="font-weight:700;font-size:13px;color:#1B4F8A;margin-bottom:10px;">📅 Calendario de servicios pendientes</div>';
+    html += _buildCalendar(serviciosReales);
     html += '</div>';
 
     content.innerHTML = html;
@@ -3866,6 +3900,9 @@ function _buildCalendar(presupuestos) {
 // ══════════════════════════════════════════════════════════════
 // v171: RECORDATORIOS AUTOMÁTICOS
 // ══════════════════════════════════════════════════════════════
+// v171: RECORDATORIOS — solo envío automático (sin banners molestos)
+// Los avisos y cobros se ven en el Dashboard
+// ══════════════════════════════════════════════════════════════
 var _recordatoriosChecked = false;
 async function comprobarRecordatorios() {
   if (_recordatoriosChecked) return;
@@ -3883,15 +3920,14 @@ async function comprobarRecordatorios() {
     var data = await resp.json();
     if (!data.ok) return;
 
-    // Mostrar avisos (servicios próximos sin hora confirmada)
-    if (data.avisos && data.avisos.length > 0) {
-      mostrarAvisosRecordatorio(data.avisos);
-    }
-
-    // Enviar recordatorios automáticos al cliente (día antes con hora)
+    // Enviar recordatorios automáticos al cliente (día antes con hora) — silencioso
     if (data.recordatorios && data.recordatorios.length > 0) {
       data.recordatorios.forEach(function(r) {
-        enviarRecordatorioCliente(r);
+        fetch(RAILWAY_API + '/api/recordatorios/enviar', {
+          method: 'POST',
+          headers: { ...apiHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(r)
+        }).catch(function() {});
       });
     }
   } catch(e) {
@@ -3899,44 +3935,11 @@ async function comprobarRecordatorios() {
   }
 }
 
-function mostrarAvisosRecordatorio(avisos) {
-  // Crear banner de aviso fijo
-  var existing = document.getElementById('recordatorio-banner');
-  if (existing) existing.remove();
-
-  var banner = document.createElement('div');
-  banner.id = 'recordatorio-banner';
-  banner.style.cssText = 'position:fixed;bottom:60px;right:16px;z-index:9999;max-width:380px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);border-left:4px solid #E85C0D;overflow:hidden;font-family:Barlow,sans-serif;';
-
-  var html = '<div style="background:#FEF0E7;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">';
-  html += '<div style="font-weight:700;font-size:13px;color:#C94A00;">⏰ Servicios próximos (' + avisos.length + ')</div>';
-  html += '<button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;font-size:16px;cursor:pointer;color:#888;">✕</button>';
-  html += '</div>';
-  html += '<div style="padding:10px 14px;max-height:250px;overflow-y:auto;">';
-
-  avisos.forEach(function(a) {
-    var diasTxt = a.diasFaltan === 1 ? 'MAÑANA' : 'en ' + a.diasFaltan + ' días';
-    html += '<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;">';
-    html += '<div style="font-weight:600;font-size:12px;">' + a.nombre + ' <span style="color:#888;font-weight:400;">(Ref.' + a.ref + ')</span></div>';
-    html += '<div style="font-size:11px;color:#E85C0D;font-weight:700;margin:3px 0;">' + diasTxt + ' — ' + a.fechaServicio + '</div>';
-    html += '<div style="display:flex;gap:6px;margin-top:4px;">';
-    html += '<input type="time" id="hora-rec-' + a.ref + '" value="' + (a.horaActual || '09:00') + '" style="padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:11px;">';
-    html += '<button onclick="confirmarHoraRecordatorio(\'' + a.ref + '\')" style="background:#E85C0D;color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;">Confirmar hora</button>';
-    html += '</div>';
-    html += '</div>';
-  });
-
-  html += '</div>';
-  banner.innerHTML = html;
-  document.body.appendChild(banner);
-}
-
 async function confirmarHoraRecordatorio(ref) {
   var input = document.getElementById('hora-rec-' + ref);
   if (!input) return;
   var hora = input.value;
   if (!hora) return alert('Selecciona una hora');
-
   try {
     var resp = await fetch(RAILWAY_API + '/api/recordatorios/confirmar-hora', {
       method: 'POST',
@@ -3945,75 +3948,26 @@ async function confirmarHoraRecordatorio(ref) {
     });
     var data = await resp.json();
     if (data.ok) {
-      input.parentElement.innerHTML = '<span style="color:#1a7a3f;font-weight:700;font-size:11px;">✅ Hora confirmada: ' + hora + 'h — Se enviará recordatorio mañana</span>';
+      input.parentElement.innerHTML = '<span style="color:#1a7a3f;font-weight:700;font-size:11px;">✅ Confirmado: ' + hora + 'h</span>';
     }
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// v171 fix: Marcar pagado desde el dashboard
+async function marcarPagadoDashboard(ref) {
+  if (!confirm('¿Marcar Ref.' + ref + ' como PAGADO FINALIZADO?')) return;
+  try {
+    await moverPagadoFinalizado(ref);
+    var el = document.getElementById('dash-cobro-' + ref);
+    if (el) el.innerHTML = '<span style="color:#1a7a3f;font-weight:700;font-size:12px;">✅ Marcado como pagado</span>';
   } catch(e) {
     alert('Error: ' + e.message);
   }
 }
 
-async function enviarRecordatorioCliente(r) {
-  try {
-    await fetch(RAILWAY_API + '/api/recordatorios/enviar', {
-      method: 'POST',
-      headers: { ...apiHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify(r)
-    });
-    console.log('[Recordatorio] Enviado a', r.nombre, '(' + r.email + ')');
-  } catch(e) {
-    console.error('[Recordatorio] Error enviando a', r.nombre, ':', e.message);
-  }
-}
-
-// v171: ALERTAS DE COBRO — presupuestos en marcha sin cobrar
-async function comprobarAlertasCobro() {
-  try {
-    var all = await getAllPresupuestos();
-    var enMarchaSinCobrar = all.filter(function(p) {
-      if (p._isVersion || !p._enMarcha || p._pagadoFinalizado) return false;
-      // Más de 7 días en marcha sin cobrar
-      if (!p._enMarchaDate) return false;
-      var diasEnMarcha = (Date.now() - p._enMarchaDate) / 86400000;
-      return diasEnMarcha > 7;
-    });
-
-    if (enMarchaSinCobrar.length === 0) return;
-
-    var existBanner = document.getElementById('cobro-banner');
-    if (existBanner) existBanner.remove();
-
-    var banner = document.createElement('div');
-    banner.id = 'cobro-banner';
-    banner.style.cssText = 'position:fixed;bottom:60px;left:16px;z-index:9998;max-width:340px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);border-left:4px solid #c0392b;overflow:hidden;font-family:Barlow,sans-serif;';
-
-    var html = '<div style="background:#fdeded;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">';
-    html += '<div style="font-weight:700;font-size:13px;color:#c0392b;">💸 Cobros pendientes (' + enMarchaSinCobrar.length + ')</div>';
-    html += '<button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;font-size:16px;cursor:pointer;color:#888;">✕</button>';
-    html += '</div>';
-    html += '<div style="padding:10px 14px;max-height:200px;overflow-y:auto;">';
-
-    enMarchaSinCobrar.forEach(function(p) {
-      var dias = Math.floor((Date.now() - p._enMarchaDate) / 86400000);
-      html += '<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:12px;">';
-      html += '<b>' + (p.f_nom || 'Sin nombre') + '</b> (Ref.' + (p.f_ref || '') + ')';
-      html += '<div style="color:#c0392b;font-size:11px;font-weight:600;">' + dias + ' días en marcha sin cobrar</div>';
-      html += '</div>';
-    });
-
-    html += '</div>';
-    banner.innerHTML = html;
-    document.body.appendChild(banner);
-  } catch(e) {
-    console.warn('[Cobros] Error:', e.message);
-  }
-}
-
-// Ejecutar comprobaciones 10s después del inicio
+// Ejecutar recordatorios silenciosamente al inicio
 setTimeout(function() {
-  if (window._initialLoadDone) {
-    comprobarRecordatorios();
-    comprobarAlertasCobro();
-  }
+  if (window._initialLoadDone) comprobarRecordatorios();
 }, 10000);
 
 async function loadPresupuesto(id) {
