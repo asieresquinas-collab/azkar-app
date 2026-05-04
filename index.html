@@ -8821,16 +8821,16 @@ async function generarPdfClienteAdjudicado(ref, precioCliente) {
   var origen = (pres.f_rec || '').split(',')[0].trim() || 'Origen';
   var destino = (pres.f_ent || '').split(',')[0].trim() || 'Destino';
 
-  // Poner precio 0 en todos los artículos (son inventario, no precio)
+  // Quitar precio de los artículos (solo inventario, sin columna precio)
   if (dataConPrecio.rows && dataConPrecio.rows.length > 0) {
-    dataConPrecio.rows.forEach(function(r) { r.p = '0'; r.d = '0'; });
+    dataConPrecio.rows.forEach(function(r) { delete r.p; delete r.d; });
   } else {
     dataConPrecio.rows = [];
   }
-  // Añadir línea final con el precio mínimo del servicio completo
+  // Línea final con el precio mínimo del servicio
   dataConPrecio.rows.push({
     c: 'SERVICIO DE MUDANZA ' + origen + ' → ' + destino + ' (precio mínimo)',
-    z: 'Precio cerrado',
+    z: '',
     u: '1',
     p: precioCliente.toFixed(2),
     d: '0',
