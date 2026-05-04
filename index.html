@@ -2217,7 +2217,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v174';</script>
+<script>document.getElementById('version-tag').textContent='v175';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2329,7 +2329,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v174';
+var APP_VERSION = 'v175';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -3744,8 +3744,7 @@ async function openDashboard() {
     hoy.setHours(0,0,0,0);
     var en7dias = new Date(hoy.getTime() + 7 * 86400000);
     var proximos = current.filter(function(p) {
-      if (!p.f_fserv || !p._enMarcha) return false;
-      if (p._pagadoFinalizado || p._guardamuebles || p._archivado2026) return false;
+      if (!p.f_fserv || !p._enMarcha || p._pagadoFinalizado) return false;
       var d = new Date(p.f_fserv + 'T00:00:00');
       return d >= hoy && d <= en7dias;
     }).sort(function(a, b) { return new Date(a.f_fserv) - new Date(b.f_fserv); });
@@ -3834,7 +3833,7 @@ async function openDashboard() {
     var hoyTs = new Date(); hoyTs.setHours(0,0,0,0);
     var en3 = new Date(hoyTs.getTime() + 3 * 86400000);
     var proximosRec = current.filter(function(p) {
-      if (!p.f_fserv || !p._enMarcha || p._pagadoFinalizado || p._guardamuebles || p._archivado2026) return false;
+      if (!p.f_fserv || !p._enMarcha || p._pagadoFinalizado) return false;
       var d = new Date(p.f_fserv + 'T00:00:00');
       return d >= hoyTs && d <= en3;
     }).sort(function(a,b) { return new Date(a.f_fserv) - new Date(b.f_fserv); });
@@ -3874,9 +3873,14 @@ async function openDashboard() {
       }
     } catch(e) { /* sin conexión */ }
 
-    // Calendario: solo EN MARCHA con fecha (servicios confirmados)
+    // Calendario: todos los EN MARCHA con fecha de servicio (confirmados)
+    // v174: NO excluir guardamuebles ni archivado si tiene _enMarcha + fecha futura
+    // Solo excluir _pagadoFinalizado (ya terminados)
+    var hoyCalStr = new Date().toISOString().slice(0, 10);
     var serviciosReales = current.filter(function(p) {
-      return p.f_fserv && p._enMarcha && !p._pagadoFinalizado && !p._guardamuebles && !p._archivado2026;
+      if (!p.f_fserv || !p._enMarcha || p._pagadoFinalizado) return false;
+      // Solo mostrar servicios de hoy en adelante
+      return p.f_fserv >= hoyCalStr;
     });
     html += '<div ' + cs + ' style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;">';
     html += '<div style="font-weight:700;font-size:13px;color:#1B4F8A;margin-bottom:10px;">📅 Calendario de servicios pendientes</div>';
