@@ -3765,6 +3765,12 @@ async function openDashboard() {
       }
     } catch(e) { /* sin conexión */ }
 
+    // v171: Calendario visual del mes actual
+    html += '<div ' + cs + ' style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;">';
+    html += '<div style="font-weight:700;font-size:13px;color:#1B4F8A;margin-bottom:10px;">📅 Calendario de servicios</div>';
+    html += _buildCalendar(current);
+    html += '</div>';
+
     content.innerHTML = html;
   } catch(e) {
     content.innerHTML = '<div style="background:#fff;border-radius:10px;padding:20px;color:red;">Error cargando dashboard: ' + e.message + '</div>';
@@ -3777,6 +3783,84 @@ function _dashCard(icon, label, count, color) {
     + '<div style="font-size:28px;font-weight:800;color:' + color + ';">' + count + '</div>'
     + '<div style="font-size:11px;color:#666;font-weight:600;">' + label + '</div>'
     + '</div>';
+}
+
+// v171: Calendario visual mensual
+function _buildCalendar(presupuestos) {
+  var hoy = new Date();
+  var anio = hoy.getFullYear();
+  var mes = hoy.getMonth();
+  var primerDia = new Date(anio, mes, 1);
+  var ultimoDia = new Date(anio, mes + 1, 0);
+  var diasEnMes = ultimoDia.getDate();
+  var diaInicio = primerDia.getDay() || 7; // Lunes=1
+
+  // Agrupar servicios por día
+  var serviciosPorDia = {};
+  presupuestos.forEach(function(p) {
+    if (!p.f_fserv) return;
+    var d = new Date(p.f_fserv + 'T00:00:00');
+    if (d.getMonth() === mes && d.getFullYear() === anio) {
+      var dia = d.getDate();
+      if (!serviciosPorDia[dia]) serviciosPorDia[dia] = [];
+      serviciosPorDia[dia].push(p);
+    }
+  });
+
+  var nombreMes = primerDia.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  var html = '<div style="text-align:center;font-weight:700;font-size:14px;color:#1B4F8A;margin-bottom:8px;text-transform:capitalize;">' + nombreMes + '</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+  html += '<tr>';
+  ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].forEach(function(d) {
+    html += '<th style="padding:4px;color:#888;font-weight:600;text-align:center;">' + d + '</th>';
+  });
+  html += '</tr><tr>';
+
+  // Celdas vacías antes del primer día
+  for (var i = 1; i < diaInicio; i++) {
+    html += '<td style="padding:3px;"></td>';
+  }
+
+  for (var d = 1; d <= diasEnMes; d++) {
+    var esHoy = d === hoy.getDate();
+    var servicios = serviciosPorDia[d];
+    var numServ = servicios ? servicios.length : 0;
+    var bgColor = esHoy ? '#EBF3FD' : (numServ > 0 ? '#edfcf2' : '#fff');
+    var borderStyle = esHoy ? '2px solid #2376C5' : '1px solid #f0f0f0';
+    var title = '';
+    if (servicios) {
+      title = servicios.map(function(s) { return (s.f_nom || '') + (s.f_hserv ? ' ' + s.f_hserv : ''); }).join(', ');
+    }
+
+    html += '<td style="padding:3px;text-align:center;vertical-align:top;border:' + borderStyle + ';border-radius:4px;background:' + bgColor + ';min-height:28px;cursor:' + (numServ > 0 ? 'pointer' : 'default') + ';" title="' + title.replace(/"/g, '') + '">';
+    html += '<div style="font-weight:' + (esHoy ? '800' : '400') + ';color:' + (esHoy ? '#1B4F8A' : '#333') + ';">' + d + '</div>';
+    if (numServ > 0) {
+      // Detectar solapamientos
+      var colorDot = numServ > 1 ? '#c0392b' : '#1a7a3f';
+      html += '<div style="width:8px;height:8px;border-radius:50%;background:' + colorDot + ';margin:2px auto 0;" title="' + numServ + ' servicio(s)"></div>';
+      if (numServ > 1) {
+        html += '<div style="font-size:8px;color:#c0392b;font-weight:700;">' + numServ + '</div>';
+      }
+    }
+    html += '</td>';
+
+    var diaSemana = (diaInicio - 1 + d) % 7;
+    if (diaSemana === 0 && d < diasEnMes) html += '</tr><tr>';
+  }
+
+  // Celdas vacías al final
+  var ultimoDiaSemana = (diaInicio - 1 + diasEnMes) % 7;
+  if (ultimoDiaSemana > 0) {
+    for (var i = ultimoDiaSemana; i < 7; i++) {
+      html += '<td style="padding:3px;"></td>';
+    }
+  }
+
+  html += '</tr></table>';
+  html += '<div style="display:flex;gap:12px;margin-top:8px;font-size:10px;color:#888;">';
+  html += '<div>🟢 1 servicio</div><div>🔴 Solapamiento (2+)</div><div style="border:2px solid #2376C5;padding:0 4px;border-radius:3px;">Hoy</div>';
+  html += '</div>';
+  return html;
 }
 
 // ══════════════════════════════════════════════════════════════
