@@ -2217,7 +2217,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v177';</script>
+<script>document.getElementById('version-tag').textContent='v178';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2329,7 +2329,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v177';
+var APP_VERSION = 'v178';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -3996,17 +3996,40 @@ function _buildCalendar(presupuestos) {
     var esHoy = d === hoy.getDate();
     var servicios = _calServicios[d];
     var numServ = servicios ? servicios.length : 0;
-    var bgColor = esHoy ? '#EBF3FD' : (numServ > 0 ? '#edfcf2' : '#fff');
+
+    // v177: Separar guardamuebles (cobro) de servicios reales
+    var numGuard = 0, numReal = 0;
+    if (servicios) {
+      servicios.forEach(function(s) {
+        var nom = (s.f_nom || '').toUpperCase();
+        // Es guardamuebles si contiene "GUARDAMUEBLES" pero NO "VUELTA"
+        if (nom.includes('GUARDAMUEBLES') && !nom.includes('VUELTA')) numGuard++;
+        else numReal++;
+      });
+    }
+
+    var bgColor = esHoy ? '#EBF3FD' : (numReal > 0 ? '#edfcf2' : (numGuard > 0 ? '#e8f4fd' : '#fff'));
     var borderStyle = esHoy ? '2px solid #2376C5' : '1px solid #f0f0f0';
     var clickAttr = numServ > 0 ? ' onclick="mostrarServiciosDia(' + d + ')"' : '';
 
     html += '<td style="padding:3px;text-align:center;vertical-align:top;border:' + borderStyle + ';border-radius:4px;background:' + bgColor + ';min-height:28px;cursor:' + (numServ > 0 ? 'pointer' : 'default') + ';"' + clickAttr + '>';
     html += '<div style="font-weight:' + (esHoy ? '800' : '400') + ';color:' + (esHoy ? '#1B4F8A' : '#333') + ';">' + d + '</div>';
     if (numServ > 0) {
-      var colorDot = numServ > 1 ? '#c0392b' : '#1a7a3f';
-      html += '<div style="width:8px;height:8px;border-radius:50%;background:' + colorDot + ';margin:2px auto 0;"></div>';
-      if (numServ > 1) {
-        html += '<div style="font-size:8px;color:#c0392b;font-weight:700;">' + numServ + '</div>';
+      if (numReal > 0 && numGuard > 0) {
+        // Bicolor: mitad verde (servicio) + mitad azul (guardamuebles)
+        html += '<div style="width:10px;height:10px;border-radius:50%;margin:2px auto 0;background:linear-gradient(90deg, #1a7a3f 50%, #0099ff 50%);"></div>';
+      } else if (numGuard > 0 && numReal === 0) {
+        // Solo guardamuebles → azul brillante
+        html += '<div style="width:8px;height:8px;border-radius:50%;background:#0099ff;margin:2px auto 0;"></div>';
+      } else if (numReal > 1) {
+        // Múltiples servicios → rojo
+        html += '<div style="width:8px;height:8px;border-radius:50%;background:#c0392b;margin:2px auto 0;"></div>';
+      } else {
+        // Un servicio → verde
+        html += '<div style="width:8px;height:8px;border-radius:50%;background:#1a7a3f;margin:2px auto 0;"></div>';
+      }
+      if (numReal > 1) {
+        html += '<div style="font-size:8px;color:#c0392b;font-weight:700;">' + numReal + '</div>';
       }
     }
     html += '</td>';
@@ -4024,8 +4047,8 @@ function _buildCalendar(presupuestos) {
   }
 
   html += '</tr></table>';
-  html += '<div style="display:flex;gap:12px;margin-top:8px;font-size:10px;color:#888;">';
-  html += '<div>🟢 1 servicio</div><div>🔴 Solapamiento (2+)</div><div style="border:2px solid #2376C5;padding:0 4px;border-radius:3px;">Hoy</div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:10px;color:#888;">';
+  html += '<div>🟢 Servicio</div><div>🔵 Guardamuebles</div><div>🔴 2+ servicios</div><div style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:linear-gradient(90deg,#1a7a3f 50%,#0099ff 50%);"></span> Ambos</div><div style="border:2px solid #2376C5;padding:0 4px;border-radius:3px;">Hoy</div>';
   html += '</div>';
   html += '<div id="cal-detalle" style="margin-top:10px;"></div>';
   return html;
