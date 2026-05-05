@@ -2269,7 +2269,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v184';</script>
+<script>document.getElementById('version-tag').textContent='v185';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2381,7 +2381,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v184';
+var APP_VERSION = 'v185';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -9205,7 +9205,17 @@ var _origPublicar = typeof publicarParaAutonomos === 'function' ? publicarParaAu
     <div style="font-size:11px;color:#888;margin-bottom:28px">Acceso a la aplicación</div>
     <div id="login-error" style="display:none;background:#fde8e8;border:1px solid #f5b7b1;color:#922b21;padding:10px;border-radius:8px;font-size:12px;margin-bottom:16px"></div>
     <input type="text" id="login-user" placeholder="Usuario" autocomplete="username" style="width:100%;padding:14px 16px;border:2px solid #D6E4F7;border-radius:10px;font-size:15px;font-family:inherit;margin-bottom:12px;box-sizing:border-box;outline:none;transition:.2s" onfocus="this.style.borderColor='#2376C5'" onblur="this.style.borderColor='#D6E4F7'">
-    <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password" style="width:100%;padding:14px 16px;border:2px solid #D6E4F7;border-radius:10px;font-size:15px;font-family:inherit;margin-bottom:20px;box-sizing:border-box;outline:none;transition:.2s" onfocus="this.style.borderColor='#2376C5'" onblur="this.style.borderColor='#D6E4F7'" onkeydown="if(event.key==='Enter')doLogin()">
+    <div style="position:relative;margin-bottom:12px">
+      <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password" style="width:100%;padding:14px 16px;padding-right:48px;border:2px solid #D6E4F7;border-radius:10px;font-size:15px;font-family:inherit;box-sizing:border-box;outline:none;transition:.2s" onfocus="this.style.borderColor='#2376C5'" onblur="this.style.borderColor='#D6E4F7'" onkeydown="if(event.key==='Enter')doLogin()">
+      <button type="button" id="toggle-pass-btn" onclick="togglePassVisibility()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;font-size:18px;color:#888;line-height:1" title="Mostrar/ocultar contraseña">
+        <svg id="eye-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg id="eye-off-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </button>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:20px;cursor:pointer;user-select:none">
+      <input type="checkbox" id="login-remember" style="width:16px;height:16px;accent-color:#1B4F8A;cursor:pointer">
+      <span style="font-size:13px;color:#666">Recordar mis datos</span>
+    </label>
     <button onclick="doLogin()" id="login-btn" style="width:100%;padding:14px;background:#1B4F8A;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:.5px;transition:.2s">ENTRAR</button>
     <div style="margin-top:16px"><a href="#" onclick="showForgotPassword();return false" style="font-size:12px;color:#2376C5;text-decoration:none">He olvidado mi contraseña</a></div>
     <!-- Forgot password form (hidden by default) -->
@@ -9236,10 +9246,44 @@ var _authUser = null;
 var _authToken = localStorage.getItem('azkar_token') || null;
 var _authBaseUrl = (typeof RAILWAY_API !== 'undefined' && RAILWAY_API) ? RAILWAY_API.replace('/api/pdf/generate-and-save', '') : 'https://azkar-presupuestos-production.up.railway.app';
 
+// ── Toggle password visibility ──
+function togglePassVisibility() {
+  var inp = document.getElementById('login-pass');
+  var eyeOn = document.getElementById('eye-icon');
+  var eyeOff = document.getElementById('eye-off-icon');
+  if (inp.type === 'password') {
+    inp.type = 'text'; eyeOn.style.display = 'none'; eyeOff.style.display = '';
+  } else {
+    inp.type = 'password'; eyeOn.style.display = ''; eyeOff.style.display = 'none';
+  }
+}
+
+// ── Remember credentials ──
+function loadSavedCredentials() {
+  try {
+    var saved = localStorage.getItem('azkar_remember');
+    if (saved) {
+      var creds = JSON.parse(saved);
+      document.getElementById('login-user').value = creds.u || '';
+      document.getElementById('login-pass').value = creds.p || '';
+      document.getElementById('login-remember').checked = true;
+    }
+  } catch (e) {}
+}
+
+function saveCredentialsIfRemember(user, pass) {
+  if (document.getElementById('login-remember').checked) {
+    localStorage.setItem('azkar_remember', JSON.stringify({ u: user, p: pass }));
+  } else {
+    localStorage.removeItem('azkar_remember');
+  }
+}
+
 function showLoginScreen() {
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('topnav').style.display = 'none';
   document.querySelectorAll('.page').forEach(function(p) { p.style.display = 'none'; });
+  loadSavedCredentials();
 }
 
 function hideLoginScreen() {
@@ -9265,6 +9309,7 @@ async function doLogin() {
       _authToken = data.token; _authUser = data.usuario;
       localStorage.setItem('azkar_token', data.token);
       localStorage.setItem('azkar_user', JSON.stringify(data.usuario));
+      saveCredentialsIfRemember(user, pass);
       hideLoginScreen(); initAdminUI();
     } else {
       errDiv.textContent = data.error || 'Error al iniciar sesión'; errDiv.style.display = 'block';
