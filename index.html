@@ -2269,7 +2269,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v183';</script>
+<script>document.getElementById('version-tag').textContent='v184';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2381,7 +2381,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v183';
+var APP_VERSION = 'v184';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -9194,6 +9194,283 @@ function aplicarPrecioAutonomo() {
 
 // Comprobar al publicar o al cargar presupuesto
 var _origPublicar = typeof publicarParaAutonomos === 'function' ? publicarParaAutonomos : null;
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  LOGIN SCREEN + AUTH SYSTEM                                  -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="login-screen" style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#1B4F8A 0%,#2376C5 50%,#1B4F8A 100%);z-index:99999;display:none;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif">
+  <div style="background:#fff;border-radius:16px;padding:40px 32px;width:90%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center">
+    <div style="font-size:28px;font-weight:800;color:#1B4F8A;letter-spacing:1px;margin-bottom:4px">AZKAR<span style="font-weight:400">MUDANZAS</span></div>
+    <div style="font-size:11px;color:#888;margin-bottom:28px">Acceso a la aplicación</div>
+    <div id="login-error" style="display:none;background:#fde8e8;border:1px solid #f5b7b1;color:#922b21;padding:10px;border-radius:8px;font-size:12px;margin-bottom:16px"></div>
+    <input type="text" id="login-user" placeholder="Usuario" autocomplete="username" style="width:100%;padding:14px 16px;border:2px solid #D6E4F7;border-radius:10px;font-size:15px;font-family:inherit;margin-bottom:12px;box-sizing:border-box;outline:none;transition:.2s" onfocus="this.style.borderColor='#2376C5'" onblur="this.style.borderColor='#D6E4F7'">
+    <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password" style="width:100%;padding:14px 16px;border:2px solid #D6E4F7;border-radius:10px;font-size:15px;font-family:inherit;margin-bottom:20px;box-sizing:border-box;outline:none;transition:.2s" onfocus="this.style.borderColor='#2376C5'" onblur="this.style.borderColor='#D6E4F7'" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()" id="login-btn" style="width:100%;padding:14px;background:#1B4F8A;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:.5px;transition:.2s">ENTRAR</button>
+    <div style="margin-top:16px"><a href="#" onclick="showForgotPassword();return false" style="font-size:12px;color:#2376C5;text-decoration:none">He olvidado mi contraseña</a></div>
+    <!-- Forgot password form (hidden by default) -->
+    <div id="forgot-section" style="display:none;margin-top:20px;border-top:1px solid #D6E4F7;padding-top:16px;text-align:left">
+      <div id="forgot-step1">
+        <div style="font-size:13px;color:#1B4F8A;font-weight:700;margin-bottom:8px">Restablecer contraseña</div>
+        <div style="font-size:11px;color:#888;margin-bottom:10px">Escribe tu usuario y te enviaremos un código al email registrado.</div>
+        <input type="text" id="forgot-user" placeholder="Tu usuario" style="width:100%;padding:10px 14px;border:2px solid #D6E4F7;border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:8px;box-sizing:border-box">
+        <button onclick="sendResetCode()" id="forgot-send-btn" style="width:100%;padding:10px;background:#2376C5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">Enviar código</button>
+        <div id="forgot-msg" style="margin-top:8px;font-size:11px"></div>
+      </div>
+      <div id="forgot-step2" style="display:none">
+        <div style="font-size:13px;color:#1B4F8A;font-weight:700;margin-bottom:8px">Introduce el código y la nueva contraseña</div>
+        <input type="text" id="reset-code" placeholder="Código de 6 dígitos" style="width:100%;padding:10px 14px;border:2px solid #D6E4F7;border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:8px;box-sizing:border-box;text-align:center;letter-spacing:4px;font-size:18px">
+        <input type="password" id="reset-new-pass" placeholder="Nueva contraseña" style="width:100%;padding:10px 14px;border:2px solid #D6E4F7;border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:8px;box-sizing:border-box">
+        <button onclick="doResetWithCode()" style="width:100%;padding:10px;background:#1a7a3f;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">Cambiar contraseña</button>
+        <div id="reset-msg" style="margin-top:8px;font-size:11px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  AUTH SYSTEM
+// ══════════════════════════════════════════════════════════════
+var _authUser = null;
+var _authToken = localStorage.getItem('azkar_token') || null;
+var _authBaseUrl = (typeof RAILWAY_API !== 'undefined' && RAILWAY_API) ? RAILWAY_API.replace('/api/pdf/generate-and-save', '') : 'https://azkar-presupuestos-production.up.railway.app';
+
+function showLoginScreen() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('topnav').style.display = 'none';
+  document.querySelectorAll('.page').forEach(function(p) { p.style.display = 'none'; });
+}
+
+function hideLoginScreen() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('topnav').style.display = '';
+  ST('dossier');
+}
+
+async function doLogin() {
+  var user = document.getElementById('login-user').value.trim();
+  var pass = document.getElementById('login-pass').value;
+  var errDiv = document.getElementById('login-error');
+  var btn = document.getElementById('login-btn');
+  if (!user || !pass) { errDiv.textContent = 'Escribe usuario y contraseña'; errDiv.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...'; errDiv.style.display = 'none';
+  try {
+    var res = await fetch(_authBaseUrl + '/api/usuarios/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario: user, password: pass })
+    });
+    var data = await res.json();
+    if (data.ok) {
+      _authToken = data.token; _authUser = data.usuario;
+      localStorage.setItem('azkar_token', data.token);
+      localStorage.setItem('azkar_user', JSON.stringify(data.usuario));
+      hideLoginScreen(); initAdminUI();
+    } else {
+      errDiv.textContent = data.error || 'Error al iniciar sesión'; errDiv.style.display = 'block';
+    }
+  } catch (e) {
+    errDiv.textContent = 'Error de conexión. Comprueba tu internet.'; errDiv.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'ENTRAR';
+}
+
+async function verificarSesion() {
+  if (!_authToken) { showLoginScreen(); return; }
+  try {
+    var res = await fetch(_authBaseUrl + '/api/usuarios/verify', { headers: { 'Authorization': 'Bearer ' + _authToken } });
+    var data = await res.json();
+    if (data.ok) {
+      _authUser = data.usuario; localStorage.setItem('azkar_user', JSON.stringify(data.usuario));
+      hideLoginScreen(); initAdminUI();
+    } else {
+      localStorage.removeItem('azkar_token'); localStorage.removeItem('azkar_user');
+      _authToken = null; showLoginScreen();
+    }
+  } catch (e) {
+    var saved = localStorage.getItem('azkar_user');
+    if (saved) { try { _authUser = JSON.parse(saved); hideLoginScreen(); initAdminUI(); } catch(x) { showLoginScreen(); } }
+    else { showLoginScreen(); }
+  }
+}
+
+function cerrarSesion() {
+  localStorage.removeItem('azkar_token'); localStorage.removeItem('azkar_user');
+  _authToken = null; _authUser = null; showLoginScreen();
+  document.getElementById('login-user').value = ''; document.getElementById('login-pass').value = '';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ADMIN PANEL
+// ══════════════════════════════════════════════════════════════
+function initAdminUI() {
+  var existing = document.getElementById('auth-menu-btn');
+  if (existing) existing.remove();
+  var acts = document.querySelector('.acts');
+  if (!acts) return;
+  var authBtn = document.createElement('button');
+  authBtn.id = 'auth-menu-btn'; authBtn.className = 'nbtn';
+  authBtn.style.cssText = 'background:#555;color:#fff;margin-left:4px;font-size:11px;';
+  authBtn.innerHTML = '👤 ' + (_authUser ? _authUser.nombre : '');
+  authBtn.onclick = function() {
+    if (_authUser && _authUser.rol === 'admin') openAdminPanel();
+    else if (confirm('¿Cerrar sesión?')) cerrarSesion();
+  };
+  acts.appendChild(authBtn);
+}
+
+async function openAdminPanel() {
+  var m = document.getElementById('admin-modal'); if (m) m.remove();
+  m = document.createElement('div'); m.id = 'admin-modal';
+  m.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:99998;display:flex;align-items:center;justify-content:center;font-family:"Barlow Condensed",sans-serif';
+  m.innerHTML = '<div style="background:#fff;border-radius:14px;width:92%;max-width:500px;max-height:85vh;overflow-y:auto;padding:28px;box-shadow:0 16px 48px rgba(0,0,0,.3)">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
+    + '<h2 style="margin:0;color:#1B4F8A;font-size:22px">Gestión de Usuarios</h2>'
+    + '<button onclick="document.getElementById(\'admin-modal\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#888">×</button></div>'
+    + '<div id="admin-users-list"><div style="color:#888;font-size:13px">Cargando...</div></div>'
+    + '<div style="border-top:2px solid #D6E4F7;padding-top:16px;margin-top:16px">'
+    + '<h3 style="color:#1B4F8A;font-size:16px;margin:0 0 12px">Crear nuevo usuario</h3>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    + '<input type="text" id="new-user-nombre" placeholder="Nombre" style="padding:10px;border:2px solid #D6E4F7;border-radius:8px;font-size:13px;font-family:inherit">'
+    + '<input type="text" id="new-user-usuario" placeholder="Usuario (login)" style="padding:10px;border:2px solid #D6E4F7;border-radius:8px;font-size:13px;font-family:inherit">'
+    + '<input type="password" id="new-user-pass" placeholder="Contraseña" style="padding:10px;border:2px solid #D6E4F7;border-radius:8px;font-size:13px;font-family:inherit">'
+    + '<select id="new-user-rol" style="padding:10px;border:2px solid #D6E4F7;border-radius:8px;font-size:13px;font-family:inherit"><option value="empleado">Empleado</option><option value="admin">Administrador</option></select></div>'
+    + '<button onclick="crearUsuarioAdmin()" style="margin-top:10px;padding:10px 24px;background:#1a7a3f;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer">+ Crear usuario</button>'
+    + '<div id="admin-msg" style="margin-top:8px;font-size:12px"></div></div>'
+    + '<div style="border-top:2px solid #D6E4F7;padding-top:12px;margin-top:16px;text-align:center">'
+    + '<button onclick="cerrarSesion()" style="padding:8px 20px;background:#c0392b;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">Cerrar sesión</button></div></div>';
+  document.body.appendChild(m);
+  m.onclick = function(e) { if (e.target === m) m.remove(); };
+  await cargarUsuariosAdmin();
+}
+
+async function cargarUsuariosAdmin() {
+  var c = document.getElementById('admin-users-list'); if (!c) return;
+  try {
+    var res = await fetch(_authBaseUrl + '/api/usuarios/lista', { headers: { 'Authorization': 'Bearer ' + _authToken } });
+    var data = await res.json();
+    if (!data.ok) { c.innerHTML = '<div style="color:#c00">Error: ' + (data.error || '') + '</div>'; return; }
+    var html = '';
+    data.usuarios.forEach(function(u) {
+      var ult = u.ultimoAcceso ? new Date(u.ultimoAcceso).toLocaleString('es-ES') : 'Nunca';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #f0f0f0;' + (u.rol === 'admin' ? 'background:#f7f9fc;' : '') + '">';
+      html += '<div><strong style="color:#1B4F8A">' + u.nombre + '</strong> <span style="font-size:11px;color:#888">@' + u.usuario + '</span>';
+      html += '<div style="font-size:10px;color:#999">' + (u.rol === 'admin' ? 'Admin' : 'Empleado') + ' · Último: ' + ult + '</div></div>';
+      if (u.rol !== 'admin') {
+        html += '<div style="display:flex;gap:4px">';
+        html += '<button onclick="resetPassAdmin(\'' + u.id + '\',\'' + u.nombre + '\')" style="padding:4px 8px;font-size:10px;background:#E85C0D;color:#fff;border:none;border-radius:4px;cursor:pointer">Reset</button>';
+        html += '<button onclick="eliminarUsuarioAdmin(\'' + u.id + '\',\'' + u.nombre + '\')" style="padding:4px 8px;font-size:10px;background:#c0392b;color:#fff;border:none;border-radius:4px;cursor:pointer">Eliminar</button>';
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    c.innerHTML = html || '<div style="color:#888">No hay usuarios</div>';
+  } catch (e) { c.innerHTML = '<div style="color:#c00">Error de conexión</div>'; }
+}
+
+async function crearUsuarioAdmin() {
+  var nombre = document.getElementById('new-user-nombre').value.trim();
+  var usuario = document.getElementById('new-user-usuario').value.trim();
+  var pass = document.getElementById('new-user-pass').value;
+  var rol = document.getElementById('new-user-rol').value;
+  var msg = document.getElementById('admin-msg');
+  if (!nombre || !usuario || !pass) { msg.innerHTML = '<span style="color:#c00">Rellena todos los campos</span>'; return; }
+  try {
+    var res = await fetch(_authBaseUrl + '/api/usuarios/crear', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _authToken },
+      body: JSON.stringify({ nombre: nombre, usuario: usuario, password: pass, rol: rol })
+    });
+    var data = await res.json();
+    if (data.ok) {
+      msg.innerHTML = '<span style="color:#1a7a3f">Usuario "' + nombre + '" creado</span>';
+      document.getElementById('new-user-nombre').value = ''; document.getElementById('new-user-usuario').value = ''; document.getElementById('new-user-pass').value = '';
+      await cargarUsuariosAdmin();
+    } else { msg.innerHTML = '<span style="color:#c00">' + (data.error || 'Error') + '</span>'; }
+  } catch (e) { msg.innerHTML = '<span style="color:#c00">Error de conexión</span>'; }
+}
+
+async function eliminarUsuarioAdmin(id, nombre) {
+  if (!confirm('¿Eliminar al usuario "' + nombre + '"?')) return;
+  try {
+    var res = await fetch(_authBaseUrl + '/api/usuarios/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + _authToken } });
+    var data = await res.json();
+    if (data.ok) await cargarUsuariosAdmin(); else alert('Error: ' + (data.error || ''));
+  } catch (e) { alert('Error de conexión'); }
+}
+
+async function resetPassAdmin(id, nombre) {
+  var nuevaPass = prompt('Nueva contraseña para "' + nombre + '":');
+  if (!nuevaPass) return;
+  try {
+    var res = await fetch(_authBaseUrl + '/api/usuarios/reset-password/' + id, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _authToken },
+      body: JSON.stringify({ passwordNueva: nuevaPass })
+    });
+    var data = await res.json();
+    if (data.ok) alert('Contraseña cambiada'); else alert('Error: ' + (data.error || ''));
+  } catch (e) { alert('Error de conexión'); }
+}
+
+// ── Forgot password ──
+var _forgotUser = '';
+function showForgotPassword() {
+  document.getElementById('forgot-section').style.display = 'block';
+  document.getElementById('forgot-step1').style.display = 'block';
+  document.getElementById('forgot-step2').style.display = 'none';
+}
+async function sendResetCode() {
+  var user = document.getElementById('forgot-user').value.trim();
+  var msg = document.getElementById('forgot-msg');
+  var btn = document.getElementById('forgot-send-btn');
+  if (!user) { msg.innerHTML = '<span style="color:#c00">Escribe tu usuario</span>'; return; }
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  try {
+    var res = await fetch(_authBaseUrl + '/api/usuarios/forgot-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario: user })
+    });
+    var data = await res.json();
+    if (data.ok) {
+      _forgotUser = user;
+      msg.innerHTML = '<span style="color:#1a7a3f">Código enviado. Revisa tu email.</span>';
+      document.getElementById('forgot-step1').style.display = 'none';
+      document.getElementById('forgot-step2').style.display = 'block';
+    } else {
+      msg.innerHTML = '<span style="color:#c00">' + (data.error || 'Error') + '</span>';
+    }
+  } catch (e) { msg.innerHTML = '<span style="color:#c00">Error de conexión</span>'; }
+  btn.disabled = false; btn.textContent = 'Enviar código';
+}
+async function doResetWithCode() {
+  var code = document.getElementById('reset-code').value.trim();
+  var newPass = document.getElementById('reset-new-pass').value;
+  var msg = document.getElementById('reset-msg');
+  if (!code || !newPass) { msg.innerHTML = '<span style="color:#c00">Rellena ambos campos</span>'; return; }
+  try {
+    var res = await fetch(_authBaseUrl + '/api/usuarios/reset-with-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario: _forgotUser, code: code, passwordNueva: newPass })
+    });
+    var data = await res.json();
+    if (data.ok) {
+      msg.innerHTML = '<span style="color:#1a7a3f">Contraseña cambiada. Ya puedes entrar.</span>';
+      setTimeout(function() {
+        document.getElementById('forgot-section').style.display = 'none';
+        document.getElementById('login-user').value = _forgotUser;
+        document.getElementById('login-pass').value = '';
+        document.getElementById('login-pass').focus();
+      }, 2000);
+    } else { msg.innerHTML = '<span style="color:#c00">' + (data.error || 'Error') + '</span>'; }
+  } catch (e) { msg.innerHTML = '<span style="color:#c00">Error de conexión</span>'; }
+}
+
+// ── Iniciar: mostrar login hasta verificar ──
+(function() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('topnav').style.display = 'none';
+  document.querySelectorAll('.page').forEach(function(p) { p.style.display = 'none'; });
+  setTimeout(verificarSesion, 500);
+})();
 </script>
 
 </body>
