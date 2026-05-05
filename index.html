@@ -818,6 +818,14 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <span class='idx-icon'>🚛</span>
       <span class='idx-title'>Autónomos</span>
     </div>
+    <div class='ayuda-index-item' onclick='ayudaIr("sec-liquidacion")'>
+      <span class='idx-icon'>🧾</span>
+      <span class='idx-title'>Liquidación final</span>
+    </div>
+    <div class='ayuda-index-item' onclick='ayudaIr("sec-relacion")'>
+      <span class='idx-icon'>📋</span>
+      <span class='idx-title'>Relación de enseres</span>
+    </div>
     <div class='ayuda-index-item' onclick='ayudaIr("sec-problemas")'>
       <span class='idx-icon'>🔧</span>
       <span class='idx-title'>Problemas comunes</span>
@@ -853,7 +861,9 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     <div class='ayuda-content'>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Botón PDF COMPLETO (naranja):</strong> Genera un PDF con todo el presupuesto y lo envía por email al cliente. El correo del cliente se coge del campo email del dossier.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Botón SOLO DRIVE (morado):</strong> Guarda el PDF en Google Drive pero NO envía email al cliente. Útil cuando el presupuesto aún no está listo o no quieres enviarlo todavía.</div></div>
-      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Botón PARTE (naranja):</strong> Genera el parte de trabajo para el día del servicio.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Botón PARTE (naranja):</strong> Genera el parte de trabajo para el día del servicio (sin precios, solo artículos y direcciones).</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Botón LIQUIDACIÓN (naranja):</strong> Genera la factura final tras el servicio, descontando el abono pagado. Ver sección "Liquidación final" para más detalle.</div></div>
+      <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'><strong>Botón RELACIÓN (morado):</strong> Genera un inventario editable de enseres por zonas, sin precios. Ver sección "Relación de enseres".</div></div>
       <div class='ayuda-tip'>Cada vez que generas un PDF se crea una versión nueva (_v2, _v3...) en Drive. No se sobreescriben las anteriores.</div>
       <div class='ayuda-tip'>Una copia del email se envía siempre a <strong>info@azkarmudanzas.com</strong> para que quede registro.</div>
     </div>
@@ -952,18 +962,60 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Pedir precio para una mudanza:</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Rellena el presupuesto normalmente: datos del cliente, direcciones, artículos. <strong>No pongas precio.</strong></div></div>
-      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>En la pestaña Presupuesto, pulsa el botón naranja <strong>🚛 PEDIR PRECIO A AUTÓNOMOS</strong>.</div></div>
-      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Automáticamente a todos los autónomos les aparece el trabajo en su mini-app: ruta, fecha e inventario. <strong>No ven el nombre del cliente, ni su teléfono, ni tu precio.</strong></div></div>
-      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Cada autónomo pone su precio y te llega un <strong>email</strong> con el precio y el doble calculado (tu precio al cliente).</div></div>
-      <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>En la pestaña <strong>Autónomos</strong> puedes ver todos los precios ordenados y <strong>adjudicar</strong> al que elijas.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>En la pestaña Presupuesto, pulsa el botón naranja <strong>🚛 PEDIR PRECIO A AUTÓNOMOS</strong>. Puedes añadir fotos del piso/muebles para que los autónomos vean mejor el trabajo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Automáticamente a todos los autónomos les aparece el trabajo en su mini-app: ruta, fecha, inventario y fotos. <strong>No ven el nombre del cliente, ni su teléfono, ni tu precio.</strong> Les llega una notificación push al móvil.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Cada autónomo puede dar <strong>dos precios</strong>:<br>— <strong style="color:#1B4F8A">Viaje exclusivo</strong>: el camión va directo para tu cliente, en la fecha que tú le dices.<br>— <strong style="color:#E85C0D">Viaje compartido</strong>: más barato, pero el autónomo decide la fecha según le cuadre con otros portes.<br>Te llega un email con ambos precios y el doble calculado (tu precio al cliente).</div></div>
+      <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>En la pestaña <strong>Autónomos</strong> puedes ver todos los precios ordenados en una tabla con columnas <strong style="color:#1B4F8A">EXCLUSIVO</strong> y <strong style="color:#E85C0D">COMPARTIDO</strong>, y <strong>adjudicar</strong> al que elijas.</div></div>
       <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'>Pon el precio al cliente en el presupuesto (el doble del autónomo) y envía el presupuesto como siempre.</div></div>
 
       <div class='ayuda-tip'>Los autónomos <strong>no saben que existen otros autónomos</strong> ni ven los precios de los demás. Cada uno tiene su portal privado.</div>
-      <div class='ayuda-tip'>El <strong>precio al cliente</strong> siempre es el doble del precio del autónomo. Ejemplo: autónomo dice 800€ → tú cobras 1.600€.</div>
-      <div class='ayuda-warn'>El cliente <strong>NUNCA</strong> debe saber que hay autónomos detrás. Para el cliente, todo es Azkar Mudanzas. Cuando el cliente pregunte por el precio, dile que son viajes compartidos o conjuntos.</div>
+      <div class='ayuda-tip'>El <strong>precio al cliente</strong> siempre es el doble del precio del autónomo. Ejemplo: autónomo dice 800€ exclusivo → tú cobras 1.600€ + IVA.</div>
+      <div class='ayuda-tip'>Los autónomos reciben <strong>notificaciones push</strong> en el móvil cuando publicas un trabajo nuevo o lo actualizas. Solo tienen que permitir notificaciones cuando instalen la mini-app.</div>
+      <div class='ayuda-warn'>El cliente <strong>NUNCA</strong> debe saber que hay autónomos detrás. Para el cliente, todo es Azkar Mudanzas.</div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Viaje exclusivo vs. compartido — qué decirle al cliente:</p>
+      <p style='background:#f7f9fc;padding:10px;border-radius:6px;font-size:12px;border-left:3px solid var(--az);margin:8px 0'>Si el cliente quiere la fecha fija que él pide → ponle el precio del <strong>viaje exclusivo</strong> (x2).<br>Si el cliente tiene flexibilidad y quiere ahorrarse dinero → ofrécele el <strong>viaje compartido</strong> (x2), explicándole que la fecha la decide Azkar según la logística.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>En el presupuesto al cliente, pon en observaciones:</p>
       <p style='background:#f7f9fc;padding:10px;border-radius:6px;font-size:12px;border-left:3px solid var(--az);margin:8px 0'><em>"Precio basado en los artículos mencionados en el presupuesto, dando el precio mínimo por viaje. En caso de que sean menos cosas el precio no variará, y en caso de ser más cosas se sumarán al presupuesto bajo las tablas de precio de Azkar Mudanzas."</em></p>
+    </div>
+  </div>
+
+  <!-- SECCIÓN: LIQUIDACIÓN FINAL -->
+  <div class='ayuda-section' id='sec-liquidacion'>
+    <h3 onclick='ayudaToggle(this)'>LIQUIDACIÓN FINAL</h3>
+    <div class='ayuda-content'>
+      <p>La liquidación es la <strong>factura final</strong> que se genera cuando termina la mudanza. Muestra el total real del servicio, resta lo que el cliente ya pagó como señal, y calcula lo que queda pendiente.</p>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Cómo usarla:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Abre el presupuesto del cliente</strong> desde el panel de gestión (abajo del todo). Tiene que estar cargado en pantalla con todos sus datos.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Si durante la mudanza hubo cambios (más artículos, menos cosas, etc.), <strong>modifica el presupuesto</strong> antes para que refleje lo real.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Revisa que el campo <strong>"Abono"</strong> en el dossier tenga la cantidad que el cliente ya pagó como señal/depósito.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Pulsa el botón naranja <strong>📋 LIQUIDACIÓN</strong> (arriba, junto a los demás botones).</div></div>
+      <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Te preguntará si quieres enviar la liquidación por email al cliente. Si le das a <strong>Aceptar</strong>, se envía. Si le das a <strong>Cancelar</strong>, solo se guarda en Drive sin enviar.</div></div>
+      <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'>El PDF de "LIQUIDACION_FINAL" se guarda automáticamente en la carpeta del cliente en Google Drive.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>¿Qué incluye el PDF?</p>
+      <p style='font-size:12px;margin:8px 0'>Datos del cliente, direcciones, tabla de artículos con precios, base + IVA + total, el abono ya pagado (en verde), y lo pendiente de pago (en naranja). Si ya está todo pagado, aparece "TOTALMENTE PAGADO" en verde.</p>
+
+      <div class='ayuda-warn'><strong>Importante:</strong> tienes que tener el presupuesto del cliente abierto (cargado) antes de pulsar Liquidación. Si pulsas sin tener ningún cliente cargado, sale un aviso. Si tienes otro cliente cargado, generará la liquidación de ese cliente.</div>
+      <div class='ayuda-tip'>Si te equivocas y generas una liquidación por error, no pasa nada grave: el PDF se guarda en Drive con el nombre "LIQUIDACION_FINAL" y puedes borrarlo manualmente desde Drive. Si le diste a "Aceptar" en el email, el cliente habrá recibido el correo — en ese caso, avísale de que fue un error.</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN: RELACIÓN DE ENSERES -->
+  <div class='ayuda-section' id='sec-relacion'>
+    <h3 onclick='ayudaToggle(this)'>RELACIÓN DE ENSERES</h3>
+    <div class='ayuda-content'>
+      <p>La relación de enseres es un <strong>listado editable</strong> de todo lo que se transporta, organizado por zonas (Salón, Dormitorio, Cocina, etc.). <strong>No incluye precios</strong> — es solo un inventario para que el cliente y los operarios sepan exactamente qué se mueve.</p>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Cómo usarla:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Abre el presupuesto del cliente (tiene que estar cargado).</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Pulsa el botón morado <strong>📋 RELACIÓN</strong> (arriba).</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Se abre un modal con la lista de artículos agrupada por zonas. <strong>Puedes editar</strong>: cambiar textos, quitar artículos, añadir notas.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Cuando esté listo, pulsa <strong>Imprimir</strong> para generar el PDF o imprimirlo.</div></div>
+
+      <div class='ayuda-tip'>Útil para dárselo al equipo el día de la mudanza o para que el cliente repase qué se va a transportar.</div>
     </div>
   </div>
 
@@ -1004,7 +1056,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   </div>
 
   <div style='text-align:center;padding:20px;color:#999;font-size:11px'>
-    AZKAR APP v46 · Desarrollado por Aitor (Tilla)
+    AZKAR APP · Desarrollado por Aitor (Tilla)
   </div>
 </div>
 </div>
@@ -2217,7 +2269,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v182';</script>
+<script>document.getElementById('version-tag').textContent='v183';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2329,7 +2381,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v182';
+var APP_VERSION = 'v183';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
