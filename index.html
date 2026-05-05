@@ -3072,7 +3072,7 @@ async function savePresupuestoFull(data) {
       // v129: Actualizar _lastSavedTimestamp ANTES de escribir a Firebase
       // Así cuando onSnapshot reciba nuestro propio cambio, lo ignorará correctamente
       window._lastSavedTimestamp = fbData.timestamp;
-      console.log('[savePresupuestoFull] Guardando ref=' + ref + ' campos=' + Object.keys(fbData).length + ' ts=' + fbData.timestamp);
+      console.log('[savePresupuestoFull] Guardando campos=' + Object.keys(fbData).length + ' ts=' + fbData.timestamp);
       await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), fbData, { merge: true });
       savedFB = true;
     } catch(e) {
@@ -3112,8 +3112,8 @@ function collectFormData() {
     const el = document.getElementById(id);
     if (el) data[id] = el.value;
   });
-  // v126: Log para diagnosticar pérdida de direcciones
-  console.log('[collectFormData] f_rec="' + (data.f_rec||'') + '" f_ent="' + (data.f_ent||'') + '" ref=' + (data.f_ref||''));
+  // v126: diagnóstico (direcciones limpiadas por RGPD)
+  console.log('[collectFormData] campos=' + Object.keys(data).length);
 
   // Collect table rows (flat - para retrocompatibilidad)
   const rows = [];
@@ -3160,8 +3160,8 @@ function collectFormData() {
 
 function restoreFormData(data) {
   if (!data) return;
-  // v126: Log para diagnosticar pérdida de direcciones
-  console.log('[restoreFormData] f_rec="' + (data.f_rec||'') + '" f_ent="' + (data.f_ent||'') + '" ref=' + (data.f_ref || data.id || ''));
+  // v126: diagnóstico (direcciones limpiadas por RGPD)
+  console.log('[restoreFormData] campos=' + Object.keys(data).length);
   const fields = ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'];
   // v123f: SIEMPRE limpiar todos los campos primero para evitar datos fantasma del cliente anterior
   fields.forEach(id => {
@@ -3685,7 +3685,7 @@ async function openDashboard() {
           }
 
           if (matched) {
-            console.log('[Dashboard] Reparando _enMarcha para ref=' + refStr + ' nc=' + ncStr + ' nom=' + nomStr);
+            console.log('[Dashboard] Reparando _enMarcha para nc=' + ncStr);
             p._enMarcha = true;
             p._enMarchaDate = p._enMarchaDate || Date.now();
             await savePresupuesto(p);
@@ -4180,7 +4180,7 @@ async function loadPresupuesto(id) {
       const snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', id));
       if (snap.exists()) {
         data = { ...snap.data(), id: id };
-        console.log('[Azkar] Datos cargados de Firebase — f_rec="' + (data.f_rec||'') + '" f_ent="' + (data.f_ent||'') + '"');
+        console.log('[Azkar] Datos cargados de Firebase — campos=' + Object.keys(data).length);
         // Actualizar IndexedDB con los datos de Firebase
         savePresupuesto(data).catch(() => {});
       }
@@ -4207,7 +4207,7 @@ async function loadPresupuesto(id) {
   // v128: Registrar qué presupuesto está abierto y su timestamp
   window._currentPresupuestoRef = id;
   window._lastSavedTimestamp = data.timestamp || Date.now();
-  console.log('[Azkar v128] Presupuesto abierto ref=' + id + ' ts=' + window._lastSavedTimestamp);
+  console.log('[Azkar v128] Presupuesto abierto ts=' + window._lastSavedTimestamp);
   restoreFechaAbierta();
   // Preservar estado en marcha del presupuesto cargado
   window._currentEnMarcha = !!data._enMarcha;
