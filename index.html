@@ -1149,6 +1149,8 @@ function FM(n){ return n.toLocaleString('es-ES',{minimumFractionDigits:2,maximum
 var PROMO_CONCEPTOS_EXCLUIDOS = ['Cajas/Maletas (max 15kg)', 'Bultos', 'Hacer cajas'];
 var PROMO_PRECIO_CAJAS = 6.50; // Precio cajas durante promo (normal: 5.00)
 function isPromoQuincenal() {
+  // v188b: NO aplicar promo si el servicio lo hace un autónomo (perderíamos margen)
+  if (_precioAutonomoData) return false;
   var fEl = document.getElementById('f_fserv');
   if (!fEl || !fEl.value) return false;
   var partes = fEl.value.split('-');
@@ -9238,10 +9240,11 @@ function aplicarPrecioAutonomo() {
     }
   }
 
-  // 4. Recalcular totales
+  // 4. Recalcular totales y quitar promo (no aplica con autónomos)
+  actualizarBannerPromo();
   CA();
 
-  alert('✅ Precio aplicado.\n\nBase: ' + precioDoble.toLocaleString('es-ES') + ' €\nIVA 21%: ' + (precioDoble * 0.21).toLocaleString('es-ES') + ' €\nTotal: ' + (precioDoble * 1.21).toLocaleString('es-ES') + ' €\n\nRevisa el presupuesto y genera el PDF para el cliente.');
+  alert('✅ Precio aplicado.\n\nBase: ' + precioDoble.toLocaleString('es-ES') + ' €\nIVA 21%: ' + (precioDoble * 0.21).toLocaleString('es-ES') + ' €\nTotal: ' + (precioDoble * 1.21).toLocaleString('es-ES') + ' €\n\nRevisa el presupuesto y genera el PDF para el cliente.\n\n⚠️ La promo quincenal NO aplica a servicios con autónomo.');
 }
 
 // Comprobar al publicar o al cargar presupuesto
