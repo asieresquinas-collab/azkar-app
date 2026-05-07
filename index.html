@@ -2311,7 +2311,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v190';</script>
+<script>document.getElementById('version-tag').textContent='v191';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2423,7 +2423,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v190';
+var APP_VERSION = 'v191';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -3137,6 +3137,27 @@ async function savePresupuestoFull(data) {
   const ref = data.id || data.f_ref;
   let savedIDB = false, savedFB = false;
 
+  // === GUARDIA v191: bloquear guardados sospechosos de rows ===
+  // Si collectFormData detectó incoherencia DOM vs datos, preservamos rows existentes
+  var _rowsCorrupt_v191 = !!data._rowsCorrupt;
+  var _expectedRows_v191 = data._rowsExpectedCount || 0;
+  delete data._rowsCorrupt;
+  delete data._rowsExpectedCount;
+  if (_rowsCorrupt_v191) {
+    console.error('[GUARDIA v191] Guardado bloqueado: DOM=' + _expectedRows_v191 + ' rows=0. Preservando rows existentes.');
+    try {
+      var _existing_v191 = await getPresupuesto(ref);
+      if (_existing_v191 && Array.isArray(_existing_v191.rows) && _existing_v191.rows.length > 0) {
+        data.rows = _existing_v191.rows;
+      } else {
+        delete data.rows;
+      }
+    } catch(_e_v191) {
+      delete data.rows;
+    }
+    if (typeof showSyncStatus === 'function') showSyncStatus('⚠ Guardado de artículos bloqueado por seguridad — recarga la página', 10000);
+  }
+
   // Paso 1: IndexedDB (siempre funciona offline) — guarda TODO incluidos campos vacíos
   try {
     await savePresupuesto(data);
@@ -3231,6 +3252,14 @@ function collectFormData() {
     }
   });
   data.rows = rows;
+
+  // === GUARDIA v191: detectar incoherencia DOM vs rows (anti pérdida de datos) ===
+  var _domRowCount_v191 = document.querySelectorAll('#tb .cr').length;
+  if (_domRowCount_v191 > 0 && rows.length === 0) {
+    console.error('[GUARDIA v191] DOM tiene ' + _domRowCount_v191 + ' filas pero rows quedó vacío — bloqueando guardado de rows');
+    data._rowsCorrupt = true;
+    data._rowsExpectedCount = _domRowCount_v191;
+  }
 
   data.timestamp = Date.now();
   // v123: Preservar TODOS los campos de estado — leer de variable global O de IndexedDB
