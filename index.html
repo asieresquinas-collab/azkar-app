@@ -2375,7 +2375,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v194';</script>
+<script>document.getElementById('version-tag').textContent='v195';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2487,7 +2487,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v194';
+var APP_VERSION = 'v195';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -9205,7 +9205,104 @@ async function publicarParaAutonomos() {
   if (!origen || !destino) { alert('Faltan las direcciones de recogida y entrega'); return; }
   if (!confirm('¿Publicar este presupuesto (' + ref + ') para que los autónomos te den precio?\n\nRuta: ' + origen + ' → ' + destino)) return;
 
-  // v193: Recoger inventario con tamaño para que el autónomo sepa el volumen
+  // v195: Recoger inventario con volumen REAL por artículo (m³ basados en dimensiones estándar)
+  // Tabla de volúmenes reales: largo × ancho × alto en metros = m³
+  var VOL = {
+    // ── SALÓN / COMEDOR ──
+    'Mesa centro': 0.30,           // 1.10×0.60×0.45
+    'Aparador': 0.72,              // 1.60×0.45×1.00
+    'Mesa comedor': 0.54,          // 1.50×0.90×0.40 (plegada)
+    'Sillas comedor': 0.20,        // 0.45×0.45×1.00
+    'Butacas': 0.60,               // 0.80×0.80×0.95
+    'Sofá dos plazas': 1.20,       // 1.60×0.90×0.85
+    'Sofá tres plazas': 1.80,      // 2.20×0.90×0.90
+    'Consola': 0.24,               // 1.00×0.30×0.80
+    'Mueble grande': 1.80,         // 2.00×0.50×1.80
+    'Mueble mediano': 0.90,        // 1.50×0.40×1.50
+    'Mueble TV pequeño': 0.30,     // 1.20×0.40×0.60
+    'Estantería': 0.90,            // 0.80×0.35×2.00 (por módulo, desmontada)
+    'Estantería pequeña': 0.35,    // 0.60×0.30×1.20
+    'Espejo grande': 0.20,         // 1.50×0.05×1.80 (plano)
+    'Espejo': 0.08,                // 0.80×0.05×1.20
+    'Vitrina': 1.10,               // 1.00×0.40×1.80
+    'Alfombras': 0.15,             // enrollada: 2.00×0.30 diám
+    'Cortinas': 0.05,              // plegadas en bolsa
+    'Cuadros pequeños': 0.02,      // 0.50×0.40×0.05
+    'Cuadros grandes': 0.06,       // 1.00×0.80×0.08
+    'Cuadros': 0.04,               // 0.70×0.50×0.06
+    'Lámpara mesa': 0.03,          // 0.30×0.30×0.50 (embalada)
+    // ── COCINA ──
+    'Módulo cocina': 0.45,         // 0.60×0.60×0.85 (por módulo)
+    'Nevera': 0.90,                // 0.60×0.65×1.85
+    'Horno': 0.18,                 // 0.60×0.55×0.55
+    'Campana': 0.12,               // 0.60×0.50×0.40
+    'Fregadero': 0.16,             // 0.80×0.50×0.40
+    'Encimera': 0.12,              // 2.00×0.60×0.10
+    'Lavavajillas': 0.36,          // 0.60×0.60×0.85
+    'Lavadora': 0.36,              // 0.60×0.60×0.85
+    'Secadora': 0.36,              // 0.60×0.60×0.85
+    'Panificadora': 0.04,          // 0.30×0.25×0.35
+    'Arcón congelador': 0.60,      // 1.10×0.65×0.85
+    'Mesa cocina': 0.24,           // 0.80×0.60×0.30 (plegada)
+    'Sillas cocina': 0.18,         // 0.40×0.40×0.90
+    // ── DORMITORIO ──
+    'Canapé': 1.10,                // 1.50×0.50×0.35 (x2 mitades) ≈90cm plegado
+    'Somier': 0.45,                // 1.50×0.30×0.10 (x2 mitades si articulado)
+    'Colchón': 0.50,               // 1.50×0.20×1.90 (enrollado/plegado)
+    'Mesillas': 0.12,              // 0.45×0.40×0.55
+    'Armario módulo': 1.20,        // 0.60×0.60×2.00 (por módulo desmontado)
+    'Comoda': 0.60,                // 1.00×0.45×1.10
+    'Cabecero': 0.15,              // 1.60×0.05×1.20 (plano)
+    'Cuna': 0.40,                  // 1.20×0.60×0.30 (desmontada)
+    'Cambiador': 0.25,             // 0.80×0.50×0.60
+    'Puf': 0.12,                   // 0.50×0.50×0.40
+    'Canapé/Cama nido': 1.00,      // 0.90×0.45×0.35 (x2)
+    'Cajonera': 0.30,              // 0.40×0.40×0.80
+    // ── DESPACHO / OFICINA ──
+    'Escritorio sin cajoneras': 0.36, // 1.20×0.60×0.10 (desmontado)
+    'Escritorio con cajoneras': 0.50, // 1.40×0.60×0.15 (desmontado+cajonera)
+    'Escritorio': 0.40,            // 1.20×0.60×0.12
+    'Sillas escritorio': 0.25,     // 0.55×0.55×0.50 (desmontada)
+    'Sillas galán': 0.08,          // 0.45×0.40×0.40
+    // ── INFANTIL ──
+    'Trona bebé': 0.12,            // 0.40×0.40×0.70
+    'Mesa niño con sillas': 0.20,  // 0.60×0.60×0.50
+    'Mesa niño': 0.10,             // 0.60×0.40×0.45
+    // ── BAÑO / VARIOS ──
+    'Mueble baño': 0.18,           // 0.60×0.40×0.70
+    'Tendedero': 0.06,             // plegado
+    'Armario escobero': 0.30,      // 0.40×0.35×1.80
+    // ── ENTRADA / RECIBIDOR ──
+    'Zapatero': 0.24,              // 0.60×0.25×1.10
+    'Taquillón': 0.20,             // 0.80×0.30×0.85
+    'Mampara': 0.10,               // 1.80×0.04×1.80 (plana)
+    'Perchero': 0.10,              // 0.40×0.40×1.70
+    'Mesita auxiliar': 0.06,       // 0.40×0.40×0.50
+    'Vinoteca': 0.24,              // 0.50×0.50×0.90
+    // ── EMBALAJE / BULTOS ──
+    'Cajas/Maletas (max 15kg)': 0.06, // caja estándar 40×30×50cm
+    'Bultos': 0.08,                // variable, media
+    'Rag': 0.04,                   // bolsa ropa
+    // ── ELECTRÓNICA ──
+    'Televisor pequeño': 0.08,     // 0.80×0.08×0.50 (plano embalado)
+    'Televisor grande': 0.20,      // 1.30×0.12×0.80 (embalado)
+    // ── ESPECIALES ──
+    'Arcón': 0.40,                 // 0.90×0.45×0.50
+    'Caballetes': 0.06,            // 0.70×0.05×0.70 (x2 planos)
+    'Banco': 0.25,                 // 1.20×0.35×0.45
+    'Piano pared eléctrico': 0.30, // 1.40×0.40×0.20 (sin patas)
+    'Hacer cajas': 0.06,           // por caja hecha
+    'Bicicletas': 0.50,            // 1.70×0.50×1.00
+    'Sillas': 0.18,                // genérica apilable
+    // ── SERVICIOS (0 m³) ──
+    'Guardamuebles (mes)': 0,
+    'Plataforma elevadora 2h': 0,
+    'Permiso CON señalización': 0,
+    'Permiso SIN señalización': 0
+  };
+  // Multiplicador por tamaño seleccionado (ajusta el m³ base del artículo)
+  var TAM_MULT = { 'Pequeño': 0.6, 'Estándar': 1.0, 'Grande': 1.4, 'XL': 2.0 };
+
   var inventario = [];
   var volumenTotal = 0;
   document.querySelectorAll('#tb .cr').forEach(function(row) {
@@ -9217,9 +9314,11 @@ async function publicarParaAutonomos() {
     if (ci && ci.value) {
       var uds = ns[0] ? parseInt(ns[0].value) || 1 : 1;
       inventario.push({ concepto: ci.value, zona: se ? se.value : '', unidades: uds + '', tamano: tam });
-      // Estimar m³ por tamaño
-      var m3 = tam === 'XL' ? 2.5 : tam === 'Grande' ? 1.5 : tam === 'Pequeño' ? 0.3 : 0.8;
-      volumenTotal += m3 * uds;
+      // v195: Volumen real por artículo × multiplicador de tamaño
+      var baseM3 = VOL[ci.value];
+      if (baseM3 === undefined) baseM3 = 0.15; // artículo desconocido: ~caja grande
+      var mult = TAM_MULT[tam] || 1.0;
+      volumenTotal += baseM3 * mult * uds;
     }
   });
 
