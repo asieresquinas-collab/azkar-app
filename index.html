@@ -2318,7 +2318,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v192';</script>
+<script>document.getElementById('version-tag').textContent='v193';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2430,7 +2430,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v192';
+var APP_VERSION = 'v193';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -9125,6 +9125,10 @@ async function publicarParaAutonomos() {
   var destino = document.getElementById('f_ent') ? document.getElementById('f_ent').value : '';
   var fecha = document.getElementById('f_fserv') ? document.getElementById('f_fserv').value : '';
   var obs = document.getElementById('f_obs') ? document.getElementById('f_obs').value : '';
+  var horaServ = document.getElementById('f_hserv') ? document.getElementById('f_hserv').value : '';
+  var tipoMudanza = document.getElementById('f_tipo') ? document.getElementById('f_tipo').value : '';
+  var numOperarios = document.getElementById('num-operarios') ? document.getElementById('num-operarios').value : '';
+  var distancia = document.getElementById('t_distancia') ? document.getElementById('t_distancia').value : '';
   var divRes = document.getElementById('publicar-resultado');
   var divResPres = document.getElementById('autonomos-resultado-pres');
 
@@ -9132,14 +9136,21 @@ async function publicarParaAutonomos() {
   if (!origen || !destino) { alert('Faltan las direcciones de recogida y entrega'); return; }
   if (!confirm('¿Publicar este presupuesto (' + ref + ') para que los autónomos te den precio?\n\nRuta: ' + origen + ' → ' + destino)) return;
 
-  // Recoger inventario de la tabla
+  // v193: Recoger inventario con tamaño para que el autónomo sepa el volumen
   var inventario = [];
+  var volumenTotal = 0;
   document.querySelectorAll('#tb .cr').forEach(function(row) {
     var ci = row.querySelector('input[list]');
     var se = row.querySelector('select');
     var ns = row.querySelectorAll('input[type=number]');
+    var tamBadge = row.querySelector('.tamano-badge');
+    var tam = tamBadge ? tamBadge.getAttribute('data-tam') || 'Estándar' : 'Estándar';
     if (ci && ci.value) {
-      inventario.push({ concepto: ci.value, zona: se ? se.value : '', unidades: ns[0] ? ns[0].value : '1' });
+      var uds = ns[0] ? parseInt(ns[0].value) || 1 : 1;
+      inventario.push({ concepto: ci.value, zona: se ? se.value : '', unidades: uds + '', tamano: tam });
+      // Estimar m³ por tamaño
+      var m3 = tam === 'XL' ? 2.5 : tam === 'Grande' ? 1.5 : tam === 'Pequeño' ? 0.3 : 0.8;
+      volumenTotal += m3 * uds;
     }
   });
 
@@ -9180,7 +9191,7 @@ async function publicarParaAutonomos() {
     if (divResPres) divResPres.innerHTML = '<span style="color:var(--az)">📦 Publicando para autónomos...</span>';
     var res = await fetch(RAILWAY_API + '/api/autonomos/publicar', {
       method: 'POST', headers: apiHeaders(),
-      body: JSON.stringify({ presupuestoRef: ref, origen: origen, destino: destino, fecha: fecha, inventario: inventario, observaciones: obs })
+      body: JSON.stringify({ presupuestoRef: ref, origen: origen, destino: destino, fecha: fecha, inventario: inventario, observaciones: obs, horaServicio: horaServ, tipoMudanza: tipoMudanza, numOperarios: numOperarios, distancia: distancia, volumenEstimado: Math.round(volumenTotal * 10) / 10 })
     });
     var data = await res.json();
     if (!res.ok) {
