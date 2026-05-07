@@ -1152,7 +1152,7 @@ function DR(id){
 function FM(n){ return n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
 
 // ── v188: PROMO QUINCENAL — 20% dto del 7 al 16 de cada mes ──
-var PROMO_CONCEPTOS_EXCLUIDOS = ['Cajas/Maletas (max 15kg)', 'Bultos', 'Hacer cajas'];
+var PROMO_CONCEPTOS_EXCLUIDOS = ['Cajas/Maletas (max 15kg)', 'Bultos', 'Hacer cajas', 'Caja perchero'];
 var PROMO_PRECIO_CAJAS = 6.50; // Precio cajas durante promo (normal: 5.00)
 function isPromoQuincenal() {
   // Si tiene autónomo adjudicado, no hay promo (silencioso, sin avisar al cliente)
@@ -1896,7 +1896,7 @@ window.addEventListener('afterprint', function(){
 // ── Catálogo de precios plano ─────────────────────────────────
 var PRECIOS_FLAT = {
   'Zapatero':39.78,'Taquillón':39.78,'Mampara':49.72,'Perchero':19.91,
-  'Mesita auxiliar':24.88,'Vinoteca':19.91,'Cajas/Maletas (max 15kg)':5.00,'Bultos':5.00,'Rag':128.21,
+  'Mesita auxiliar':24.88,'Vinoteca':19.91,'Cajas/Maletas (max 15kg)':6.80,'Bultos':5.00,'Rag':128.21,
   'Televisor pequeño':30.00,'Televisor grande':64.63,'Mesa centro':24.88,
   'Aparador':74.57,'Mesa comedor':46.74,'Sillas comedor':13.33,'Butacas':64.63,
   'Sofá dos plazas':124.38,'Sofá tres plazas':144.27,'Consola':72.57,
@@ -1908,7 +1908,7 @@ var PRECIOS_FLAT = {
   'Fregadero':34.84,'Encimera':104.38,'Lavavajillas':53.61,'Lavadora':53.61,
   'Secadora':53.61,'Panificadora':16.93,'Arcón congelador':64.63,'Banco':24.88,
   'Piano pared eléctrico':124.27,'Mesa cocina':46.74,'Sillas cocina':13.33,
-  'Canapé':64.63,'Somier':19.91,'Colchón':19.91,'Mesillas':15.00,
+  'Canapé':64.63,'Somier':19.91,'Colchón':19.91,'Mesillas':20.00,
   'Armario módulo':89.59,'Comoda':30.00,'Cabecero':22.91,'Cuna':39.78,
   'Cambiador':52.70,'Puf':12.95,'Canapé/Cama nido':80.60,'Cajonera':39.78,
   'Escritorio sin cajoneras':39.78,'Escritorio con cajoneras':53.61,
@@ -1916,9 +1916,10 @@ var PRECIOS_FLAT = {
   'Trona bebé':24.88,'Mesa niño con sillas':19.91,'Arcón':34.84,'Caballetes':44.75,
   'Mueble baño':64.63,
   'Tendedero':14.55,'Armario escobero':58.67,
-  'Mesa niño':29.83,'Hacer cajas':12.00,'Bicicletas':15.68,
+  'Mesa niño':29.83,'Hacer cajas':16.00,'Bicicletas':15.68,
   'Guardamuebles (mes)':227.16,'Plataforma elevadora 2h':210.20,
   'Sillas':13.33,'Espejo':34.84,'Cuadros':12.16,'Lámpara mesa':8.57,
+  'Caja perchero':17.00,
   'Permiso CON señalización':90.00,'Permiso SIN señalización':50.00
 };
 
@@ -2022,7 +2023,8 @@ var TIEMPOS_BASE = {
   'Cajas/Maletas (max 15kg)': [3, 0],  // caja hecha = cargar + bajar/subir
   'Bultos':          [3, 0],
   'Hacer cajas':     [13, 0],          // hacer caja (10 min media) + bajar/subir (3 min)
-  'Rag':             [15, 0]
+  'Rag':             [15, 0],
+  'Caja perchero':   [5, 0]           // caja armario para perchas: montar + cargar
 };
 
 // Tiempos extra por piso (minutos por piso, por viaje)
@@ -2375,7 +2377,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v195';</script>
+<script>document.getElementById('version-tag').textContent='v196';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2487,7 +2489,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v195';
+var APP_VERSION = 'v196';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -9292,6 +9294,7 @@ async function publicarParaAutonomos() {
     'Banco': 0.25,                 // 1.20×0.35×0.45
     'Piano pared eléctrico': 0.30, // 1.40×0.40×0.20 (sin patas)
     'Hacer cajas': 0.06,           // por caja hecha
+    'Caja perchero': 0.30,         // caja armario 0.50×0.50×1.20
     'Bicicletas': 0.50,            // 1.70×0.50×1.00
     'Sillas': 0.18,                // genérica apilable
     // ── SERVICIOS (0 m³) ──
