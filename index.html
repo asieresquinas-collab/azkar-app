@@ -693,6 +693,13 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 </div>
 </div>
 
+<!-- v192: Panel conectar viajes -->
+<div style='margin-top:16px;margin-bottom:20px'>
+<h3 style='color:var(--az);font-size:14px;margin-bottom:10px'>🔗 Conectar viajes</h3>
+<p style='font-size:11px;color:#888;margin-bottom:8px'>Detecta automáticamente viajes a la misma zona para agruparlos y pedir precio conjunto a los autónomos.</p>
+<div id='viajes-conectados' style='font-size:12px;color:#888'>Analizando viajes...</div>
+</div>
+
 <hr style='border:none;border-top:1px solid var(--gb);margin:16px 0'>
 
 <!-- Dar de alta autónomo -->
@@ -1094,7 +1101,7 @@ function ST(tab){
     }
   }
   // Auto-cargar datos al entrar en pestaña de autónomos
-  if(tab==='autonomos'){try{cargarListaAutonomos();cargarOfertasAutonomos();cargarMapaRutas();}catch(e){}}
+  if(tab==='autonomos'){try{cargarListaAutonomos();cargarOfertasAutonomos();cargarMapaRutas();detectarViajesConectados();}catch(e){}}
 }
 
 function ZO(s){
@@ -2311,7 +2318,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v191';</script>
+<script>document.getElementById('version-tag').textContent='v192';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2423,7 +2430,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v191';
+var APP_VERSION = 'v192';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -8874,6 +8881,240 @@ async function subirFotosAutonomos(ref) {
   } catch (e) {
     alert('Error de conexión al subir fotos: ' + e.message);
     return false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// v192: CONECTAR VIAJES — Agrupar rutas por zona
+// ══════════════════════════════════════════════════════════════
+
+function extraerCiudad(direccion) {
+  if (!direccion) return '';
+  var d = direccion.trim().toLowerCase();
+  // Ciudades principales de España — detectar por nombre
+  var ciudades = [
+    'madrid', 'barcelona', 'valencia', 'sevilla', 'zaragoza', 'málaga', 'malaga',
+    'murcia', 'palma', 'las palmas', 'bilbao', 'alicante', 'córdoba', 'cordoba',
+    'valladolid', 'vigo', 'gijón', 'gijon', 'hospitalet', 'vitoria', 'gasteiz',
+    'coruña', 'granada', 'elche', 'oviedo', 'terrassa', 'cartagena', 'jerez',
+    'sabadell', 'móstoles', 'alcalá', 'pamplona', 'fuenlabrada', 'almería',
+    'san sebastián', 'san sebastian', 'donostia', 'santander', 'burgos',
+    'castellón', 'castellon', 'getxo', 'barakaldo', 'portugalete', 'durango',
+    'eibar', 'bermeo', 'gernika', 'mungia', 'amorebieta', 'basauri', 'leioa',
+    'sestao', 'santurce', 'santurtzi', 'ortuella', 'trapaga', 'muskiz',
+    'sopela', 'algorta', 'plentzia', 'gorliz', 'bakio', 'derio', 'zamudio',
+    'galdakao', 'arrigorriaga', 'zaratamo', 'igorre', 'lemoa',
+    'león', 'leon', 'toledo', 'logroño', 'badajoz', 'cáceres', 'caceres',
+    'tarragona', 'lleida', 'girona', 'huesca', 'teruel', 'soria', 'segovia',
+    'ávila', 'avila', 'salamanca', 'zamora', 'palencia', 'pontevedra',
+    'ourense', 'lugo', 'huelva', 'jaén', 'jaen', 'cádiz', 'cadiz'
+  ];
+  // Buscar por código postal (5 dígitos) → las 2 primeras indican provincia
+  var cpMatch = d.match(/\b(\d{5})\b/);
+  if (cpMatch) {
+    var prov = cpMatch[1].substring(0, 2);
+    var cpCiudades = {
+      '28': 'Madrid', '08': 'Barcelona', '46': 'Valencia', '41': 'Sevilla',
+      '50': 'Zaragoza', '29': 'Málaga', '30': 'Murcia', '48': 'Bizkaia',
+      '03': 'Alicante', '20': 'Gipuzkoa', '01': 'Álava', '31': 'Navarra',
+      '39': 'Cantabria', '33': 'Asturias', '15': 'A Coruña', '36': 'Pontevedra',
+      '47': 'Valladolid', '09': 'Burgos', '26': 'La Rioja', '37': 'Salamanca',
+      '18': 'Granada', '14': 'Córdoba', '11': 'Cádiz', '04': 'Almería',
+      '23': 'Jaén', '21': 'Huelva', '06': 'Badajoz', '10': 'Cáceres',
+      '45': 'Toledo', '24': 'León', '49': 'Zamora', '34': 'Palencia',
+      '42': 'Soria', '40': 'Segovia', '05': 'Ávila', '19': 'Guadalajara',
+      '16': 'Cuenca', '02': 'Albacete', '13': 'Ciudad Real',
+      '43': 'Tarragona', '25': 'Lleida', '17': 'Girona', '22': 'Huesca',
+      '44': 'Teruel', '38': 'Tenerife', '35': 'Las Palmas'
+    };
+    if (cpCiudades[prov]) return cpCiudades[prov];
+  }
+  // Buscar nombre de ciudad en la dirección
+  for (var i = 0; i < ciudades.length; i++) {
+    if (d.includes(ciudades[i])) {
+      return ciudades[i].charAt(0).toUpperCase() + ciudades[i].slice(1);
+    }
+  }
+  // Si no encontramos, devolver las últimas 2 palabras (suele ser la ciudad)
+  var partes = direccion.trim().split(/[,\s]+/).filter(function(p) { return p.length > 2 && !/^\d+$/.test(p); });
+  if (partes.length >= 2) return partes[partes.length - 2] + ' ' + partes[partes.length - 1];
+  if (partes.length === 1) return partes[0];
+  return direccion.trim().substring(0, 30);
+}
+
+async function detectarViajesConectados() {
+  var div = document.getElementById('viajes-conectados');
+  if (!div) return;
+  div.innerHTML = '<span style="color:var(--az)">Analizando viajes...</span>';
+
+  try {
+    var res = await fetch(RAILWAY_API + '/api/autonomos/ofertas', { headers: apiHeaders() });
+    var data = await res.json();
+    var ofertas = (data.ofertas || []).filter(function(o) { return o.estado === 'abierta'; });
+
+    if (ofertas.length < 2) {
+      div.innerHTML = '<span style="color:#888">Se necesitan al menos 2 viajes abiertos para conectar.</span>';
+      return;
+    }
+
+    // Agrupar por zona: extraer ciudad de origen y destino
+    var zonas = {};
+    ofertas.forEach(function(o) {
+      var ciudadOrigen = extraerCiudad(o.origen);
+      var ciudadDestino = extraerCiudad(o.destino);
+      // Clave de zona: las dos ciudades implicadas (normalizado)
+      var zonaKey = [ciudadOrigen, ciudadDestino].sort().join(' ↔ ');
+      // También agrupar por solo destino (viajes que van al mismo sitio)
+      var destinoKey = ciudadDestino;
+
+      if (!zonas[destinoKey]) zonas[destinoKey] = [];
+      zonas[destinoKey].push({
+        ref: o.presupuestoRef,
+        origen: o.origen,
+        destino: o.destino,
+        fecha: o.fecha,
+        ciudadOrigen: ciudadOrigen,
+        ciudadDestino: ciudadDestino,
+        direccion: ciudadOrigen + ' → ' + ciudadDestino,
+        precios: o.precios || []
+      });
+    });
+
+    // También agrupar por origen (para detectar vueltas)
+    var zonasOrigen = {};
+    ofertas.forEach(function(o) {
+      var ciudadOrigen = extraerCiudad(o.origen);
+      if (!zonasOrigen[ciudadOrigen]) zonasOrigen[ciudadOrigen] = [];
+      zonasOrigen[ciudadOrigen].push(o);
+    });
+
+    // Combinar: buscar zonas con >1 viaje O combos ida+vuelta
+    var grupos = [];
+    var yaUsados = {};
+
+    // Primero: buscar combos ida+vuelta (destino de uno = origen de otro)
+    Object.keys(zonas).forEach(function(destKey) {
+      var viajes = zonas[destKey];
+      // ¿Hay alguna oferta cuyo ORIGEN sea este destino? (= vuelta)
+      var vueltas = [];
+      ofertas.forEach(function(o) {
+        var co = extraerCiudad(o.origen);
+        if (co.toLowerCase() === destKey.toLowerCase() && !viajes.find(function(v) { return v.ref === o.presupuestoRef; })) {
+          vueltas.push({
+            ref: o.presupuestoRef,
+            origen: o.origen,
+            destino: o.destino,
+            fecha: o.fecha,
+            ciudadOrigen: co,
+            ciudadDestino: extraerCiudad(o.destino),
+            direccion: co + ' → ' + extraerCiudad(o.destino),
+            precios: o.precios || [],
+            esVuelta: true
+          });
+        }
+      });
+
+      if (viajes.length >= 2 || (viajes.length >= 1 && vueltas.length >= 1)) {
+        var todosViajes = viajes.concat(vueltas);
+        var refs = todosViajes.map(function(v) { return v.ref; });
+        // Evitar duplicados
+        var key = refs.sort().join(',');
+        if (!yaUsados[key]) {
+          yaUsados[key] = true;
+          grupos.push({
+            zona: destKey,
+            viajes: todosViajes,
+            tieneVuelta: vueltas.length > 0
+          });
+        }
+      }
+    });
+
+    if (grupos.length === 0) {
+      div.innerHTML = '<span style="color:#888">No hay viajes combinables ahora. Los viajes se agrupan cuando van a la misma ciudad.</span>';
+      return;
+    }
+
+    // Renderizar
+    var html = '';
+    grupos.forEach(function(g, idx) {
+      var idas = g.viajes.filter(function(v) { return !v.esVuelta; });
+      var vueltas = g.viajes.filter(function(v) { return v.esVuelta; });
+      var totalViajes = g.viajes.length;
+
+      html += '<div style="border:2px solid var(--az2);border-radius:8px;padding:12px;margin-bottom:12px;background:linear-gradient(135deg,#f0f7ff,#fff)">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+      html += '<div style="font-weight:800;color:var(--az);font-size:14px">🔗 ' + g.zona + ' <span style="font-size:11px;font-weight:400;color:#888">(' + totalViajes + ' viajes)</span></div>';
+      if (g.tieneVuelta) {
+        html += '<span style="background:var(--ve);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px">IDA + VUELTA</span>';
+      }
+      html += '</div>';
+
+      // Idas
+      idas.forEach(function(v) {
+        html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;margin-bottom:4px;background:#fff;border-radius:4px;border:1px solid #e0e0e0">';
+        html += '<span style="color:var(--ve);font-size:16px">→</span>';
+        html += '<div style="flex:1">';
+        html += '<span style="font-weight:700;color:var(--az);font-size:12px">Ref ' + v.ref + '</span>';
+        html += '<span style="color:#888;font-size:11px;margin-left:6px">' + v.ciudadOrigen + ' → ' + v.ciudadDestino + '</span>';
+        if (v.fecha) html += '<span style="color:#888;font-size:10px;margin-left:6px">📅 ' + v.fecha + '</span>';
+        html += '</div>';
+        if (v.precios.length > 0) {
+          html += '<span style="font-size:10px;color:var(--ve);font-weight:700">✓ ' + v.precios.length + ' precio(s)</span>';
+        }
+        html += '</div>';
+      });
+
+      // Vueltas
+      vueltas.forEach(function(v) {
+        html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;margin-bottom:4px;background:#fff8f0;border-radius:4px;border:1px solid #fdd">';
+        html += '<span style="color:var(--na);font-size:16px">←</span>';
+        html += '<div style="flex:1">';
+        html += '<span style="font-weight:700;color:var(--na);font-size:12px">Ref ' + v.ref + ' (vuelta)</span>';
+        html += '<span style="color:#888;font-size:11px;margin-left:6px">' + v.ciudadOrigen + ' → ' + v.ciudadDestino + '</span>';
+        if (v.fecha) html += '<span style="color:#888;font-size:10px;margin-left:6px">📅 ' + v.fecha + '</span>';
+        html += '</div>';
+        if (v.precios.length > 0) {
+          html += '<span style="font-size:10px;color:var(--ve);font-weight:700">✓ ' + v.precios.length + ' precio(s)</span>';
+        }
+        html += '</div>';
+      });
+
+      // Botón publicar paquete
+      var refs = g.viajes.map(function(v) { return v.ref; });
+      html += '<div style="margin-top:8px;display:flex;gap:8px;align-items:center">';
+      html += '<button onclick="publicarPaqueteCombinado(\'' + refs.join(',') + '\',\'' + g.zona + '\')" style="padding:8px 16px;background:var(--az2);color:#fff;border:none;border-radius:4px;font-weight:700;font-size:12px;cursor:pointer">📦 Pedir precio combinado</button>';
+      html += '<span style="font-size:10px;color:#888">Envía los ' + totalViajes + ' viajes como paquete para que el autónomo dé un precio mejor</span>';
+      html += '</div>';
+      html += '<div id="paquete-resultado-' + idx + '" style="margin-top:6px;font-size:11px"></div>';
+      html += '</div>';
+    });
+
+    div.innerHTML = html;
+  } catch (e) {
+    div.innerHTML = '<span style="color:#c00">Error analizando viajes: ' + e.message + '</span>';
+  }
+}
+
+async function publicarPaqueteCombinado(refsStr, zona) {
+  var refs = refsStr.split(',');
+  if (!confirm('¿Enviar paquete de ' + refs.length + ' viajes (' + zona + ') a los autónomos para precio combinado?')) return;
+
+  try {
+    var res = await fetch(RAILWAY_API + '/api/autonomos/publicar-paquete', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({ refs: refs, zona: zona })
+    });
+    var data = await res.json();
+    if (data.ok) {
+      showSyncStatus('✅ Paquete combinado publicado — autónomos notificados', 4000);
+      detectarViajesConectados();
+    } else {
+      alert('Error: ' + (data.error || 'No se pudo publicar'));
+    }
+  } catch (e) {
+    alert('Error: ' + e.message);
   }
 }
 
