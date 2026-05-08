@@ -1153,10 +1153,16 @@ function FM(n){ return n.toLocaleString('es-ES',{minimumFractionDigits:2,maximum
 
 // ── v188: PROMO QUINCENAL — 20% dto del 7 al 16 de cada mes ──
 var PROMO_CONCEPTOS_EXCLUIDOS = ['Cajas/Maletas (max 15kg)', 'Bultos', 'Hacer cajas', 'Caja perchero'];
-var PROMO_PRECIO_CAJAS = 6.50; // Precio cajas durante promo (normal: 5.00)
+var PROMO_PRECIO_CAJAS = 6.50; // Precio cajas durante promo (normal: 6.80)
+// v197: Flag para fijar promo al estado original del presupuesto cargado
+// null = presupuesto nuevo (detectar por fecha), true/false = presupuesto existente (respetar)
+window._promoFijada = null;
 function isPromoQuincenal() {
   // Si tiene autónomo adjudicado, no hay promo (silencioso, sin avisar al cliente)
   if (_precioAutonomoData) return false;
+  // v197: Si es un presupuesto existente, respetar el estado original de promo
+  if (window._promoFijada !== null && window._promoFijada !== undefined) return window._promoFijada;
+  // Presupuesto nuevo: detectar por fecha de servicio
   var fEl = document.getElementById('f_fserv');
   if (!fEl || !fEl.value) return false;
   var partes = fEl.value.split('-');
@@ -1434,6 +1440,8 @@ function RF(){
   var fd=document.getElementById('f_fecha'); if(fd) fd.value=new Date().toISOString().slice(0,10);
   // v140: Reset toggle guardamuebles UI
   updateGuardamueblesUI(false);
+  // v197: Reset promo fijada (nuevo presupuesto = detectar promo por fecha)
+  window._promoFijada = null;
   // v194: Reset ascensores
   if (typeof setAscensor === 'function') { setAscensor('rec', ''); setAscensor('ent', ''); }
 }
@@ -2219,6 +2227,8 @@ function GD(){
   // v194: Guardar ascensor
   var ascR=document.getElementById('asc_rec');if(ascR)data.asc_rec=ascR.getAttribute('data-val')||'';
   var ascE=document.getElementById('asc_ent');if(ascE)data.asc_ent=ascE.getAttribute('data-val')||'';
+  // v197: Guardar estado promo
+  data._promoAplicada=isPromoQuincenal();
   data.rows=[];
   var rows=document.querySelectorAll(".cr");
   for(var i=0;i<rows.length;i++){
@@ -2273,6 +2283,8 @@ function LD(){
     if(typeof AR_SALIDA==='function') AR_SALIDA();
     // v194: Restaurar ascensor
     if(typeof setAscensor==='function'){setAscensor('rec',data.asc_rec||'');setAscensor('ent',data.asc_ent||'');}
+    // v197: Fijar promo al estado original
+    if(data._promoAplicada!==undefined&&data._promoAplicada!==null){window._promoFijada=!!data._promoAplicada;}else{window._promoFijada=false;}
     CA(); SY(); CT();
   }catch(e){}
   window._presupuestoLoading = false;
@@ -2377,7 +2389,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v196';</script>
+<script>document.getElementById('version-tag').textContent='v197';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2489,7 +2501,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v196';
+var APP_VERSION = 'v197';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -3333,6 +3345,9 @@ function collectFormData() {
   data.asc_rec = ascRecBtn ? ascRecBtn.getAttribute('data-val') || '' : '';
   data.asc_ent = ascEntBtn ? ascEntBtn.getAttribute('data-val') || '' : '';
 
+  // v197: Guardar si la promo estaba activa al crear/guardar este presupuesto
+  data._promoAplicada = isPromoQuincenal();
+
   data.timestamp = Date.now();
   // v123: Preservar TODOS los campos de estado — leer de variable global O de IndexedDB
   // Esto evita que el auto-save borre el estado si no se cargó desde el gestor
@@ -3373,6 +3388,14 @@ function restoreFormData(data) {
   if (typeof AR_SALIDA === 'function') AR_SALIDA();
   if (typeof CA === 'function') CA();
   if (typeof SY === 'function') SY();
+
+  // v197: Fijar promo al estado original del presupuesto (no re-detectar por fecha)
+  if (data._promoAplicada !== undefined && data._promoAplicada !== null) {
+    window._promoFijada = !!data._promoAplicada;
+  } else {
+    // Presupuesto antiguo sin este campo: no tenía promo (por seguridad, no aplicar)
+    window._promoFijada = false;
+  }
 
   // v194: Restaurar estado ascensor
   if (typeof setAscensor === 'function') {
