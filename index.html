@@ -2374,7 +2374,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v206';</script>
+<script>document.getElementById('version-tag').textContent='v207';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2486,7 +2486,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v206';
+var APP_VERSION = 'v207';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -10105,6 +10105,7 @@ async function doResetWithCode() {
     <div><div class="ch-title">&#129302; Asistente Azkar</div><div class="ch-sub">IA &middot; DeepSeek V4 Pro</div></div>
     <div>
       <button onclick="chatbotHistorial()" title="Ver historial de acciones">&#128203;</button>
+      <button id="chatbot-tts-btn" onclick="chatbotToggleTTS()" title="Activar/silenciar voz">&#128264;</button>
       <button onclick="chatbotToggle()" title="Cerrar">&times;</button>
     </div>
   </div>
@@ -10141,6 +10142,28 @@ async function doResetWithCode() {
   var recognition = null;
   var isRecording = false;
   var chatbotGreeted = false; // Para auto-saludo al abrir
+  var chatTTSEnabled = localStorage.getItem('chatTTS') !== 'off'; // Voz activada por defecto
+
+  // ── Text-to-Speech: leer respuestas del bot en voz alta ──
+  function chatSpeak(text) {
+    if (!chatTTSEnabled) return;
+    if (!('speechSynthesis' in window)) return;
+    // Cancelar si ya estaba hablando
+    speechSynthesis.cancel();
+    // Limpiar emojis y caracteres especiales para mejor lectura
+    var cleanText = text.replace(/[📦🚛💪✅❌⚠️🎉👍📄🔊🔇]/g, '').replace(/\s+/g, ' ').trim();
+    if (!cleanText) return;
+    var utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'es-ES';
+    utterance.rate = 1.05;
+    utterance.pitch = 1.0;
+    // Intentar usar una voz española de buena calidad
+    var voices = speechSynthesis.getVoices();
+    var esVoice = voices.find(function(v) { return v.lang.startsWith('es') && v.name.includes('Google'); }) ||
+                  voices.find(function(v) { return v.lang.startsWith('es'); });
+    if (esVoice) utterance.voice = esVoice;
+    speechSynthesis.speak(utterance);
+  }
 
   // ── Burbuja arrastrable ──
   var isDragging = false, dragStartX, dragStartY, bubbleStartX, bubbleStartY, hasMoved;
@@ -10327,7 +10350,25 @@ async function doResetWithCode() {
     div.textContent = text;
     msgsDiv.appendChild(div);
     msgsDiv.scrollTop = msgsDiv.scrollHeight;
+    // Leer en voz alta si es respuesta del bot
+    if (type === 'bot') chatSpeak(text);
   }
+
+  window.chatbotToggleTTS = function() {
+    chatTTSEnabled = !chatTTSEnabled;
+    localStorage.setItem('chatTTS', chatTTSEnabled ? 'on' : 'off');
+    var btn = document.getElementById('chatbot-tts-btn');
+    btn.innerHTML = chatTTSEnabled ? '&#128264;' : '&#128263;';
+    btn.title = chatTTSEnabled ? 'Silenciar voz' : 'Activar voz';
+    if (!chatTTSEnabled) speechSynthesis.cancel();
+  };
+  // Inicializar icono del botón TTS
+  (function() {
+    var btn = document.getElementById('chatbot-tts-btn');
+    if (btn) { btn.innerHTML = chatTTSEnabled ? '&#128264;' : '&#128263;'; btn.title = chatTTSEnabled ? 'Silenciar voz' : 'Activar voz'; }
+    // Pre-cargar voces (algunos navegadores las cargan async)
+    if ('speechSynthesis' in window) speechSynthesis.getVoices();
+  })();
   function addConfirmMsg(desc) {
     var div = document.createElement('div');
     div.className = 'chat-msg bot confirm';
