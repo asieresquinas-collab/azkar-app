@@ -2374,7 +2374,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v207';</script>
+<script>document.getElementById('version-tag').textContent='v208';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2486,7 +2486,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v207';
+var APP_VERSION = 'v208';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -10249,6 +10249,39 @@ async function doResetWithCode() {
       } else if (data.tipo === 'texto') {
         addMsg('bot', data.mensaje);
         chatHistorial.push({ role: 'assistant', content: data.mensaje });
+        // v208: manejar acciones frontend desde herramientas soloLectura
+        if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'abrir_presupuesto') {
+          var refAbrir = data.datos.ref;
+          addMsg('bot', '📂 Abriendo presupuesto ' + refAbrir + '...');
+          (async function() {
+            try {
+              await loadPresupuesto(refAbrir);
+              ST('dossier');
+              // Cerrar panel chat para ver el presupuesto
+              var panel = document.getElementById('chatbot-panel');
+              if (panel) panel.style.display = 'none';
+              addMsg('bot', '✅ Presupuesto ' + refAbrir + ' cargado. He cerrado el chat para que lo veas.');
+            } catch (e) {
+              addMsg('bot', '❌ Error al abrir el presupuesto: ' + e.message);
+            }
+          })();
+        }
+        if (data.datos && data.datos.borrador) {
+          var b = data.datos.borrador;
+          var borradorHTML = '<div style="background:#f0f7ff;border:1px solid #2376C5;border-radius:8px;padding:10px;margin-top:8px;font-size:13px;">' +
+            '<b>📋 BORRADOR DE PERMISO</b><br><br>' +
+            '<b>Tipo:</b> ' + (b.tipo_permiso || '') + '<br>' +
+            '<b>Cliente:</b> ' + (b.cliente || '') + '<br>' +
+            '<b>Recogida:</b> ' + (b.direccion_recogida || '') + '<br>' +
+            '<b>Entrega:</b> ' + (b.direccion_entrega || '') + '<br>' +
+            '<b>Fecha:</b> ' + (b.fecha || '') + '<br>' +
+            '<b>Hora:</b> ' + (b.hora || '') + '<br>' +
+            '<b>Vehículo:</b> ' + (b.vehiculo || '') + '<br>' +
+            '<b>Duración:</b> ' + (b.duracion_estimada || '') + '<br>' +
+            '<b>Notas:</b> ' + (b.notas || '') +
+            '</div>';
+          addMsg('bot', borradorHTML);
+        }
       } else if (data.tipo === 'confirmacion') {
         pendingAction = data.accion;
         addConfirmMsg(data.accion.descripcion);
