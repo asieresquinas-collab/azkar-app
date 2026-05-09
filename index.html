@@ -2374,7 +2374,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v200';</script>
+<script>document.getElementById('version-tag').textContent='v201';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2486,7 +2486,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v200';
+var APP_VERSION = 'v201';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -10033,6 +10033,293 @@ async function doResetWithCode() {
   document.getElementById('topnav').style.display = 'none';
   document.querySelectorAll('.page').forEach(function(p) { p.style.display = 'none'; });
   setTimeout(verificarSesion, 500);
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  CHATBOT AZKAR — Asistente IA                               -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<style>
+#chatbot-bubble{position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#1B4F8A,#2376C5);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;cursor:grab;box-shadow:0 4px 16px rgba(27,79,138,.4);z-index:9998;user-select:none;touch-action:none;transition:transform .2s}
+#chatbot-bubble:hover{transform:scale(1.1)}
+#chatbot-bubble.dragging{cursor:grabbing;transition:none}
+#chatbot-panel{display:none;position:fixed;bottom:86px;right:20px;width:360px;max-width:calc(100vw - 24px);height:520px;max-height:calc(100vh - 100px);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.25);z-index:9999;flex-direction:column;font-family:Barlow,Arial,sans-serif;overflow:hidden}
+#chatbot-panel.open{display:flex}
+#chatbot-header{background:linear-gradient(135deg,#1B4F8A,#2376C5);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#chatbot-header .ch-title{font-weight:700;font-size:15px}
+#chatbot-header .ch-sub{font-size:11px;opacity:.8}
+#chatbot-header button{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0 4px}
+#chatbot-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#f5f7fa}
+.chat-msg{max-width:85%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;word-break:break-word}
+.chat-msg.user{align-self:flex-end;background:#1B4F8A;color:#fff;border-bottom-right-radius:4px}
+.chat-msg.bot{align-self:flex-start;background:#fff;color:#333;border:1px solid #e0e0e0;border-bottom-left-radius:4px}
+.chat-msg.bot.confirm{border:2px solid #E85C0D;background:#FEF0E7}
+.chat-confirm-btns{display:flex;gap:8px;margin-top:8px}
+.chat-confirm-btns button{padding:6px 16px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer}
+.chat-confirm-btns .btn-si{background:#1a7a3f;color:#fff}
+.chat-confirm-btns .btn-no{background:#c0392b;color:#fff}
+.chat-typing{align-self:flex-start;padding:10px 14px;background:#fff;border:1px solid #e0e0e0;border-radius:12px;font-size:13px;color:#999}
+#chatbot-input-area{display:flex;align-items:center;gap:6px;padding:10px 12px;border-top:1px solid #eee;background:#fff;flex-shrink:0}
+#chatbot-input{flex:1;border:1px solid #d0d5de;border-radius:8px;padding:10px 12px;font-size:13px;font-family:Barlow,sans-serif;outline:none;resize:none;max-height:80px}
+#chatbot-input:focus{border-color:#2376C5}
+#chatbot-mic{width:38px;height:38px;border-radius:50%;border:none;background:#e0e0e0;color:#666;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#chatbot-mic.recording{background:#c0392b;color:#fff;animation:pulse-mic 1s infinite}
+#chatbot-send{width:38px;height:38px;border-radius:50%;border:none;background:#1B4F8A;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#chatbot-send:disabled{opacity:.4;cursor:default}
+@keyframes pulse-mic{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+#chatbot-historial{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:10000;justify-content:center;align-items:center}
+#chatbot-historial.open{display:flex}
+#chatbot-historial-panel{background:#fff;border-radius:12px;width:90%;max-width:600px;max-height:80vh;overflow-y:auto;padding:20px}
+#chatbot-historial-panel h3{margin:0 0 12px;color:#1B4F8A}
+.hist-item{border:1px solid #e0e0e0;border-radius:8px;padding:10px;margin-bottom:8px;font-size:12px}
+.hist-item .hist-fecha{color:#999;font-size:11px}
+.hist-item .hist-accion{color:#1B4F8A;font-weight:600}
+@media(max-width:480px){
+  #chatbot-panel{bottom:0;right:0;width:100%;height:100%;max-height:100vh;border-radius:0}
+  #chatbot-bubble{bottom:12px;right:12px;width:50px;height:50px;font-size:22px}
+}
+</style>
+
+<div id="chatbot-bubble" title="Asistente Azkar">&#129302;</div>
+
+<div id="chatbot-panel">
+  <div id="chatbot-header">
+    <div><div class="ch-title">&#129302; Asistente Azkar</div><div class="ch-sub">IA &middot; DeepSeek V4 Pro</div></div>
+    <div>
+      <button onclick="chatbotHistorial()" title="Ver historial de acciones">&#128203;</button>
+      <button onclick="chatbotToggle()" title="Cerrar">&times;</button>
+    </div>
+  </div>
+  <div id="chatbot-msgs">
+    <div class="chat-msg bot">¡Hola! Soy el asistente de Azkar. Puedo buscar clientes, modificar presupuestos, enviar PDFs, solicitar permisos y m&aacute;s. &iquest;En qu&eacute; te ayudo?</div>
+  </div>
+  <div id="chatbot-input-area">
+    <textarea id="chatbot-input" rows="1" placeholder="Escribe un mensaje..."></textarea>
+    <button id="chatbot-mic" onclick="chatbotMicToggle()" title="Dictar por voz">&#127908;</button>
+    <button id="chatbot-send" onclick="chatbotSend()" title="Enviar">&#10148;</button>
+  </div>
+</div>
+
+<div id="chatbot-historial">
+  <div id="chatbot-historial-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3>&#128203; Historial del Chatbot</h3>
+      <button onclick="document.getElementById('chatbot-historial').classList.remove('open')" style="background:none;border:none;font-size:22px;cursor:pointer">&times;</button>
+    </div>
+    <div id="chatbot-historial-list"><p style="color:#999">Cargando...</p></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var bubble = document.getElementById('chatbot-bubble');
+  var panel = document.getElementById('chatbot-panel');
+  var msgsDiv = document.getElementById('chatbot-msgs');
+  var inputEl = document.getElementById('chatbot-input');
+  var sendBtn = document.getElementById('chatbot-send');
+  var micBtn = document.getElementById('chatbot-mic');
+  var chatHistorial = [];
+  var pendingAction = null;
+  var recognition = null;
+  var isRecording = false;
+
+  // ── Burbuja arrastrable ──
+  var isDragging = false, dragStartX, dragStartY, bubbleStartX, bubbleStartY, hasMoved;
+  function onPointerDown(e) {
+    isDragging = true; hasMoved = false;
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    var rect = bubble.getBoundingClientRect();
+    bubbleStartX = rect.left; bubbleStartY = rect.top;
+    bubble.classList.add('dragging');
+    bubble.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }
+  function onPointerMove(e) {
+    if (!isDragging) return;
+    var dx = e.clientX - dragStartX, dy = e.clientY - dragStartY;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMoved = true;
+    var nx = bubbleStartX + dx, ny = bubbleStartY + dy;
+    nx = Math.max(0, Math.min(window.innerWidth - 56, nx));
+    ny = Math.max(0, Math.min(window.innerHeight - 56, ny));
+    bubble.style.left = nx + 'px'; bubble.style.top = ny + 'px';
+    bubble.style.right = 'auto'; bubble.style.bottom = 'auto';
+  }
+  function onPointerUp() {
+    isDragging = false;
+    bubble.classList.remove('dragging');
+    if (!hasMoved) chatbotToggle();
+  }
+  bubble.addEventListener('pointerdown', onPointerDown);
+  document.addEventListener('pointermove', onPointerMove);
+  document.addEventListener('pointerup', onPointerUp);
+
+  window.chatbotToggle = function() {
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) {
+      inputEl.focus();
+      msgsDiv.scrollTop = msgsDiv.scrollHeight;
+    }
+  };
+
+  window.chatbotSend = async function() {
+    var msg = inputEl.value.trim();
+    if (!msg) return;
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    addMsg('user', msg);
+    chatHistorial.push({ role: 'user', content: msg });
+    sendBtn.disabled = true;
+    addTyping();
+    try {
+      var usuario = window._currentUserName || 'desconocido';
+      var resp = await fetch(RAILWAY_API + '/api/chatbot/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '' },
+        body: JSON.stringify({ mensaje: msg, historial: chatHistorial, usuario: usuario })
+      });
+      var data = await resp.json();
+      removeTyping();
+      if (data.error) {
+        addMsg('bot', '❌ Error: ' + data.error);
+      } else if (data.tipo === 'texto') {
+        addMsg('bot', data.mensaje);
+        chatHistorial.push({ role: 'assistant', content: data.mensaje });
+      } else if (data.tipo === 'confirmacion') {
+        pendingAction = data.accion;
+        addConfirmMsg(data.accion.descripcion);
+      } else if (data.tipo === 'resultado') {
+        addMsg('bot', '✅ ' + data.mensaje);
+        chatHistorial.push({ role: 'assistant', content: data.mensaje });
+      }
+    } catch (err) {
+      removeTyping();
+      addMsg('bot', '❌ No pude conectar con el servidor: ' + err.message);
+    }
+    sendBtn.disabled = false;
+  };
+
+  window.chatbotConfirm = async function(si) {
+    if (!pendingAction) return;
+    var accion = pendingAction;
+    pendingAction = null;
+    var btns = msgsDiv.querySelectorAll('.chat-confirm-btns');
+    btns.forEach(function(b) { b.remove(); });
+    if (!si) {
+      addMsg('bot', '❌ Acción cancelada.');
+      chatHistorial.push({ role: 'assistant', content: 'Acción cancelada por el usuario.' });
+      return;
+    }
+    addTyping();
+    try {
+      var usuario = window._currentUserName || 'desconocido';
+      var resp = await fetch(RAILWAY_API + '/api/chatbot/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '' },
+        body: JSON.stringify({
+          mensaje: '(confirmación)',
+          historial: chatHistorial,
+          usuario: usuario,
+          confirmar_accion: { herramienta: accion.herramienta, argumentos: accion.argumentos, confirmado: true }
+        })
+      });
+      var data = await resp.json();
+      removeTyping();
+      if (data.error) {
+        addMsg('bot', '❌ Error: ' + data.error);
+      } else {
+        addMsg('bot', '✅ ' + (data.mensaje || 'Hecho'));
+        chatHistorial.push({ role: 'assistant', content: data.mensaje || 'Acción ejecutada' });
+        if (accion.herramienta === 'agregar_articulos' || accion.herramienta === 'modificar_campo') {
+          if (window._currentPresupuestoRef && accion.argumentos.ref === window._currentPresupuestoRef) {
+            setTimeout(function() { if (typeof forceSync === 'function') forceSync(); }, 1500);
+          }
+        }
+      }
+    } catch (err) {
+      removeTyping();
+      addMsg('bot', '❌ Error: ' + err.message);
+    }
+  };
+
+  window.chatbotMicToggle = function() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('Tu navegador no soporta dictado por voz. Usa Chrome.');
+      return;
+    }
+    if (isRecording) { recognition.stop(); return; }
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.lang = 'es-ES';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+    recognition.onstart = function() { isRecording = true; micBtn.classList.add('recording'); micBtn.innerHTML = '⏹'; };
+    recognition.onresult = function(e) { inputEl.value = (inputEl.value ? inputEl.value + ' ' : '') + e.results[0][0].transcript; };
+    recognition.onend = function() { isRecording = false; micBtn.classList.remove('recording'); micBtn.innerHTML = '🎤'; };
+    recognition.onerror = function(e) { isRecording = false; micBtn.classList.remove('recording'); micBtn.innerHTML = '🎤'; };
+    recognition.start();
+  };
+
+  function addMsg(type, text) {
+    var div = document.createElement('div');
+    div.className = 'chat-msg ' + type;
+    div.textContent = text;
+    msgsDiv.appendChild(div);
+    msgsDiv.scrollTop = msgsDiv.scrollHeight;
+  }
+  function addConfirmMsg(desc) {
+    var div = document.createElement('div');
+    div.className = 'chat-msg bot confirm';
+    div.innerHTML = '<strong>⚠️ Confirmar acción:</strong><br>' + escHtml(desc) +
+      '<div class="chat-confirm-btns"><button class="btn-si" onclick="chatbotConfirm(true)">✅ Sí, ejecutar</button>' +
+      '<button class="btn-no" onclick="chatbotConfirm(false)">❌ No, cancelar</button></div>';
+    msgsDiv.appendChild(div);
+    msgsDiv.scrollTop = msgsDiv.scrollHeight;
+  }
+  function addTyping() {
+    var div = document.createElement('div');
+    div.className = 'chat-typing'; div.id = 'chatbot-typing';
+    div.textContent = 'Pensando...';
+    msgsDiv.appendChild(div);
+    msgsDiv.scrollTop = msgsDiv.scrollHeight;
+  }
+  function removeTyping() { var el = document.getElementById('chatbot-typing'); if (el) el.remove(); }
+  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  inputEl.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatbotSend(); } });
+  inputEl.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 80) + 'px'; });
+
+  window.chatbotHistorial = async function() {
+    document.getElementById('chatbot-historial').classList.add('open');
+    var listDiv = document.getElementById('chatbot-historial-list');
+    listDiv.innerHTML = '<p style="color:#999">Cargando historial...</p>';
+    try {
+      var resp = await fetch(RAILWAY_API + '/api/chatbot/historial?limite=30', {
+        headers: { 'x-api-key': window._apiKey || '' }
+      });
+      var data = await resp.json();
+      if (!data.logs || data.logs.length === 0) {
+        listDiv.innerHTML = '<p style="color:#999">No hay acciones registradas todavía.</p>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < data.logs.length; i++) {
+        var log = data.logs[i];
+        var fecha = log.fecha ? new Date(log.fecha).toLocaleString('es-ES') : '---';
+        var acciones = (log.acciones_ejecutadas || []).map(function(a) {
+          return (a.exito ? '✅' : '❌') + ' ' + a.herramienta + ': ' + (a.resultado_resumen || '');
+        }).join('<br>');
+        html += '<div class="hist-item">' +
+          '<div class="hist-fecha">' + fecha + ' · ' + escHtml(log.usuario || '---') + '</div>' +
+          '<div style="margin:4px 0"><strong>Mensaje:</strong> ' + escHtml(log.mensaje_usuario || '') + '</div>' +
+          '<div class="hist-accion">' + acciones + '</div>' +
+          '<div style="margin-top:4px;font-size:11px;color:#666"><strong>Respuesta:</strong> ' + escHtml((log.respuesta_asistente || '').substring(0, 200)) + '</div>' +
+          '</div>';
+      }
+      listDiv.innerHTML = html;
+    } catch (err) {
+      listDiv.innerHTML = '<p style="color:red">Error cargando historial: ' + err.message + '</p>';
+    }
+  };
 })();
 </script>
 
