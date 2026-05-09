@@ -2374,7 +2374,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v211';</script>
+<script>document.getElementById('version-tag').textContent='v212';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2486,7 +2486,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v211';
+var APP_VERSION = 'v212';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -10277,25 +10277,30 @@ async function doResetWithCode() {
         if (data.datos && data.datos.borrador) {
           try {
           var b = data.datos.borrador;
-          var borradorHTML = '<div style="background:#f0f7ff;border:1px solid #2376C5;border-radius:8px;padding:10px;margin-top:8px;font-size:13px;">' +
-            '<b>📋 BORRADOR DE PERMISO</b><br><br>' +
-            '<b>Tipo:</b> ' + (b.tipo_permiso || '') + '<br>' +
-            '<b>Cliente:</b> ' + (b.cliente || '') + '<br>' +
-            '<b>Dirección:</b> ' + (b.direccion || b.direccion_recogida || '') + '<br>' +
-            '<b>Fecha:</b> ' + (b.fecha || '') + '<br>' +
-            '<b>Hora:</b> ' + (b.hora || '') + '<br>' +
-            '<b>Zona:</b> ' + (b.tipo_zona || 'OTA').toUpperCase() + '<br>' +
-            '<b>Metros:</b> ' + (b.metros || '12') + '<br>' +
-            '<b>Vehículo:</b> ' + (b.vehiculo || '') + '<br>' +
-            '<b>Notas:</b> ' + (b.notas || '') +
-            '</div>';
-          // Si hay DOCX generado, añadir botón de descarga
-          if (data.datos.docx_base64) {
-            var docxBlob = new Blob([Uint8Array.from(atob(data.datos.docx_base64), function(c) { return c.charCodeAt(0); })], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-            var docxUrl = URL.createObjectURL(docxBlob);
-            borradorHTML += '<a href="' + docxUrl + '" download="' + (data.datos.docx_filename || 'permiso_borrador.docx') + '" style="display:inline-block;margin-top:8px;background:#1B4F8A;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold;">📄 Descargar DOCX del permiso</a>';
+          // Si hay PDF generado del permiso, mostrar botón para verlo
+          if (data.datos.pdf_base64) {
+            var permPdfBlob = new Blob([Uint8Array.from(atob(data.datos.pdf_base64), function(c) { return c.charCodeAt(0); })], { type: 'application/pdf' });
+            var permPdfUrl = URL.createObjectURL(permPdfBlob);
+            var permHtml = '<div style="background:#f0f7ff;border:1px solid #2376C5;border-radius:8px;padding:12px;margin-top:8px;">' +
+              '<b>📋 BORRADOR DE PERMISO — ' + (b.cliente || '') + '</b><br>' +
+              '<span style="font-size:12px;color:#555;">' + (b.direccion || '') + ' · ' + (b.fecha || '') + ' · ' + (b.tipo_zona_label || b.tipo_zona || 'OTA') + '</span><br><br>' +
+              '<a href="' + permPdfUrl + '" target="_blank" style="display:inline-block;background:#1B4F8A;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;">📄 Ver PDF del permiso</a>' +
+              '<br><span style="font-size:11px;color:#666;margin-top:4px;display:inline-block;">(Se abre en nueva pestaña para revisarlo)</span>' +
+              '</div>';
+            addMsg('bot', permHtml);
+          } else {
+            // Fallback: solo mostrar datos en texto
+            var borradorHTML = '<div style="background:#f0f7ff;border:1px solid #2376C5;border-radius:8px;padding:10px;margin-top:8px;font-size:13px;">' +
+              '<b>📋 BORRADOR DE PERMISO</b><br><br>' +
+              '<b>Cliente:</b> ' + (b.cliente || '') + '<br>' +
+              '<b>Dirección:</b> ' + (b.direccion || '') + '<br>' +
+              '<b>Fecha:</b> ' + (b.fecha || '') + '<br>' +
+              '<b>Hora:</b> ' + (b.hora || '') + '<br>' +
+              '<b>Zona:</b> ' + (b.tipo_zona_label || b.tipo_zona || 'OTA') + '<br>' +
+              '<b>Vehículo:</b> ' + (b.vehiculo || '') +
+              '</div>';
+            addMsg('bot', borradorHTML);
           }
-          addMsg('bot', borradorHTML);
           } catch(e) { console.warn('[Chatbot] Error mostrando borrador:', e); }
         }
         // v209: Preview PDF del presupuesto en el chat
