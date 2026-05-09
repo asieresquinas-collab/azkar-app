@@ -2374,7 +2374,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v204';</script>
+<script>document.getElementById('version-tag').textContent='v205';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2486,7 +2486,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v204';
+var APP_VERSION = 'v205';
 
 // ── v127: Comprobación agresiva de versión por red ─────────────
 // Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
@@ -10140,6 +10140,7 @@ async function doResetWithCode() {
   var pendingAction = null;
   var recognition = null;
   var isRecording = false;
+  var chatbotGreeted = false; // Para auto-saludo al abrir
 
   // ── Burbuja arrastrable ──
   var isDragging = false, dragStartX, dragStartY, bubbleStartX, bubbleStartY, hasMoved;
@@ -10177,6 +10178,29 @@ async function doResetWithCode() {
     if (panel.classList.contains('open')) {
       inputEl.focus();
       msgsDiv.scrollTop = msgsDiv.scrollHeight;
+      // Auto-saludo: la primera vez que se abre, pedir saludo al bot
+      if (!chatbotGreeted) {
+        chatbotGreeted = true;
+        (async function() {
+          addTyping();
+          try {
+            var resp = await fetch(RAILWAY_API + '/api/chatbot/message', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (_authToken || '') },
+              body: JSON.stringify({ mensaje: 'hola', historial: [] })
+            });
+            var data = await resp.json();
+            removeTyping();
+            if (data.mensaje) {
+              addMsg('bot', data.mensaje);
+              chatHistorial.push({ role: 'user', content: 'hola' });
+              chatHistorial.push({ role: 'assistant', content: data.mensaje });
+            }
+          } catch (err) {
+            removeTyping();
+          }
+        })();
+      }
     }
   };
 
