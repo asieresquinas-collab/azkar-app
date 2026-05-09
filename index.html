@@ -2374,7 +2374,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v208';</script>
+<script>document.getElementById('version-tag').textContent='v209';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2486,10 +2486,17 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v208';
+var APP_VERSION = 'v209';
 
-// ── v127: Comprobación agresiva de versión por red ─────────────
-// Fetch version.json del servidor (sin cache) y si no coincide, forzar actualización completa
+// ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
+// v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
+window._chatbotActivo = false;
+window._updatePendiente = false;
+function ejecutarUpdateSiNoChat() {
+  if (window._chatbotActivo) { window._updatePendiente = true; return; }
+  localStorage.removeItem('azkar-app-version');
+  window.location.reload();
+}
 (function() {
   try {
     fetch('./version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -2497,20 +2504,17 @@ var APP_VERSION = 'v208';
       .then(function(data) {
         if (!data || !data.version) return;
         if (data.version !== APP_VERSION) {
-          console.log('[Azkar] Version servidor=' + data.version + ' local=' + APP_VERSION + ' → forzando actualización');
-          // Limpiar todas las caches
+          console.log('[Azkar] Version servidor=' + data.version + ' local=' + APP_VERSION + ' → actualizando');
           caches.keys().then(function(names) {
             return Promise.all(names.map(function(n) { return caches.delete(n); }));
           }).then(function() {
-            // Forzar update del SW
             if ('serviceWorker' in navigator) {
               return navigator.serviceWorker.getRegistrations().then(function(regs) {
                 return Promise.all(regs.map(function(r) { return r.unregister(); }));
               });
             }
           }).then(function() {
-            localStorage.removeItem('azkar-app-version');
-            window.location.reload();
+            ejecutarUpdateSiNoChat();
           });
         }
       })
@@ -2655,21 +2659,21 @@ if ('serviceWorker' in navigator) {
     // Comprobar actualizaciones cada 30 segundos
     setInterval(function() { reg.update(); }, 30000);
 
-    // Cuando se encuentra una nueva versión → activarla automáticamente y recargar
+    // Cuando se encuentra una nueva versión → activarla (pero diferir si chatbot activo)
     reg.addEventListener('updatefound', function() {
       var nw = reg.installing;
       nw.addEventListener('statechange', function() {
         if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-          showSyncStatus('🔄 Actualizando app...', 2000);
-          setTimeout(function() { window.location.reload(); }, 1500);
+          showSyncStatus('🔄 Actualización disponible...', 2000);
+          setTimeout(function() { ejecutarUpdateSiNoChat(); }, 1500);
         }
       });
     });
   });
 
-  // Si el SW se activa (otra pestaña lo instaló), recargar
+  // Si el SW se activa (otra pestaña lo instaló), recargar (si no hay chat activo)
   navigator.serviceWorker.addEventListener('controllerchange', function() {
-    window.location.reload();
+    ejecutarUpdateSiNoChat();
   });
 }
 
@@ -10198,6 +10202,7 @@ async function doResetWithCode() {
 
   window.chatbotToggle = function() {
     panel.classList.toggle('open');
+    window._chatbotActivo = panel.classList.contains('open');
     if (panel.classList.contains('open')) {
       inputEl.focus();
       msgsDiv.scrollTop = msgsDiv.scrollHeight;
@@ -10224,10 +10229,17 @@ async function doResetWithCode() {
           }
         })();
       }
+    } else {
+      // Al cerrar chatbot, ejecutar update pendiente si lo hay
+      if (window._updatePendiente) {
+        window._updatePendiente = false;
+        setTimeout(function() { ejecutarUpdateSiNoChat(); }, 500);
+      }
     }
   };
 
   window.chatbotSend = async function() {
+    try {
     var msg = inputEl.value.trim();
     if (!msg) return;
     inputEl.value = '';
@@ -10253,20 +10265,17 @@ async function doResetWithCode() {
         if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'abrir_presupuesto') {
           var refAbrir = data.datos.ref;
           addMsg('bot', '📂 Abriendo presupuesto ' + refAbrir + '...');
-          (async function() {
-            try {
-              await loadPresupuesto(refAbrir);
-              ST('dossier');
-              // Cerrar panel chat para ver el presupuesto
-              var panel = document.getElementById('chatbot-panel');
-              if (panel) panel.style.display = 'none';
-              addMsg('bot', '✅ Presupuesto ' + refAbrir + ' cargado. He cerrado el chat para que lo veas.');
-            } catch (e) {
-              addMsg('bot', '❌ Error al abrir el presupuesto: ' + e.message);
-            }
-          })();
+          try {
+            await loadPresupuesto(refAbrir);
+            ST('dossier');
+            panel.classList.remove('open');
+            addMsg('bot', '✅ Presupuesto ' + refAbrir + ' cargado.');
+          } catch (e) {
+            addMsg('bot', '❌ Error al abrir el presupuesto: ' + (e.message || 'desconocido'));
+          }
         }
         if (data.datos && data.datos.borrador) {
+          try {
           var b = data.datos.borrador;
           var borradorHTML = '<div style="background:#f0f7ff;border:1px solid #2376C5;border-radius:8px;padding:10px;margin-top:8px;font-size:13px;">' +
             '<b>📋 BORRADOR DE PERMISO</b><br><br>' +
@@ -10281,6 +10290,7 @@ async function doResetWithCode() {
             '<b>Notas:</b> ' + (b.notas || '') +
             '</div>';
           addMsg('bot', borradorHTML);
+          } catch(e) { console.warn('[Chatbot] Error mostrando borrador:', e); }
         }
       } else if (data.tipo === 'confirmacion') {
         pendingAction = data.accion;
@@ -10291,12 +10301,14 @@ async function doResetWithCode() {
       }
     } catch (err) {
       removeTyping();
-      addMsg('bot', '❌ No pude conectar con el servidor: ' + err.message);
+      addMsg('bot', '❌ No pude conectar con el servidor: ' + (err.message || 'error desconocido'));
     }
     sendBtn.disabled = false;
+    } catch(fatalErr) { console.error('[Chatbot] Error fatal aislado:', fatalErr); sendBtn.disabled = false; }
   };
 
   window.chatbotConfirm = async function(si) {
+    try {
     if (!pendingAction) return;
     var accion = pendingAction;
     pendingAction = null;
@@ -10327,7 +10339,7 @@ async function doResetWithCode() {
         chatHistorial.push({ role: 'assistant', content: data.mensaje || 'Acción ejecutada' });
         if (accion.herramienta === 'agregar_articulos' || accion.herramienta === 'modificar_campo') {
           if (window._currentPresupuestoRef && accion.argumentos.ref === window._currentPresupuestoRef) {
-            setTimeout(function() { if (typeof forceSync === 'function') forceSync(); }, 1500);
+            setTimeout(function() { try { if (typeof forceSync === 'function') forceSync(); } catch(e) {} }, 1500);
           }
         }
         // v205: enviar_pdf_email → usar flujo real PA() (dossier + presupuesto + contrato)
@@ -10336,27 +10348,25 @@ async function doResetWithCode() {
           addMsg('bot', '📄 Cargando presupuesto ' + refEnviar + ' y generando PDF completo...');
           (async function() {
             try {
-              // Si el presupuesto no está cargado en el formulario, cargarlo primero
               var currentRef = document.getElementById('f_ref') ? document.getElementById('f_ref').value : '';
               if (currentRef !== refEnviar) {
                 await loadPresupuesto(refEnviar);
-                // Esperar a que se restaure el formulario
                 await new Promise(function(r) { setTimeout(r, 2000); });
               }
-              // Ejecutar PA() — el flujo real completo
               await PA();
               addMsg('bot', '✅ Presupuesto completo enviado correctamente con dossier, presupuesto y contrato.');
               chatHistorial.push({ role: 'assistant', content: 'Presupuesto completo enviado por el flujo real PA().' });
             } catch (paErr) {
-              addMsg('bot', '❌ Error al generar/enviar el PDF completo: ' + paErr.message);
+              addMsg('bot', '❌ Error al generar/enviar el PDF completo: ' + (paErr.message || 'error'));
             }
           })();
         }
       }
     } catch (err) {
       removeTyping();
-      addMsg('bot', '❌ Error: ' + err.message);
+      addMsg('bot', '❌ Error: ' + (err.message || 'error desconocido'));
     }
+    } catch(fatalErr) { console.error('[Chatbot] Error fatal aislado en confirm:', fatalErr); }
   };
 
   window.chatbotMicToggle = function() {
