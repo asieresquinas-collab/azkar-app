@@ -2374,7 +2374,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v219';</script>
+<script>document.getElementById('version-tag').textContent='v220';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2486,7 +2486,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v219';
+var APP_VERSION = 'v220';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -10149,35 +10149,47 @@ async function doResetWithCode() {
   var chatTTSEnabled = localStorage.getItem('chatTTS') !== 'off'; // Voz activada por defecto
 
   // ── Text-to-Speech: voz del navegador (Google español / Microsoft) ──
+  var _ttsUnlocked = false;
   function chatSpeak(text) {
     if (!chatTTSEnabled) return;
     if (!('speechSynthesis' in window)) return;
     // Limpiar emojis y caracteres especiales
-    var cleanText = text.replace(/[📦🚛💪✅❌⚠️🎉👍📄🔊🔇🤖😊😄😎🤷💼📋🔧⏰📞🏠🚚📦💰🗓️✨🎯🙌👋🤝🫡😅🤔😁😏🧐🤓😉🥳😂🤣😤🙃😬😮‍💨😈🫠🫣🤗😇🤩]/g, '').replace(/\s+/g, ' ').trim();
+    var cleanText = text.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').replace(/\s+/g, ' ').trim();
     if (!cleanText) return;
     if (cleanText.length > 500) cleanText = cleanText.substring(0, 500);
     // Cancelar lo que esté sonando
     speechSynthesis.cancel();
-    // Pequeño delay tras cancel() — Chrome necesita un tick para resetear el engine
+    // Delay tras cancel() — Chrome/Android necesita un tick para resetear el engine
     setTimeout(function() {
-      var utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'es-ES';
-      utterance.rate = 1.05;
-      utterance.pitch = 1.0;
-      var voices = speechSynthesis.getVoices();
-      var esVoice = voices.find(function(v) { return v.lang.startsWith('es') && v.name.includes('Google'); }) ||
-                    voices.find(function(v) { return v.lang.startsWith('es'); });
-      if (esVoice) utterance.voice = esVoice;
-      speechSynthesis.speak(utterance);
-      // Chrome bug: speechSynthesis se pausa solo en textos largos — workaround
-      var keepAlive = setInterval(function() {
-        if (!speechSynthesis.speaking) { clearInterval(keepAlive); return; }
-        speechSynthesis.pause();
-        speechSynthesis.resume();
-      }, 10000);
-      utterance.onend = function() { clearInterval(keepAlive); };
-      utterance.onerror = function() { clearInterval(keepAlive); };
-    }, 50);
+      try {
+        var utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = 'es-ES';
+        utterance.rate = 1.05;
+        utterance.pitch = 1.0;
+        var voices = speechSynthesis.getVoices();
+        // Si las voces no están cargadas (móvil), reintentar en 200ms
+        if (voices.length === 0) {
+          speechSynthesis.onvoiceschanged = function() {
+            speechSynthesis.onvoiceschanged = null;
+            chatSpeak(text);
+          };
+          return;
+        }
+        var esVoice = voices.find(function(v) { return v.lang.startsWith('es') && v.name.includes('Google'); }) ||
+                      voices.find(function(v) { return v.lang.startsWith('es'); });
+        if (esVoice) utterance.voice = esVoice;
+        speechSynthesis.speak(utterance);
+        _ttsUnlocked = true;
+        // Chrome bug: speechSynthesis se pausa solo en textos largos — workaround
+        var keepAlive = setInterval(function() {
+          if (!speechSynthesis.speaking) { clearInterval(keepAlive); return; }
+          speechSynthesis.pause();
+          speechSynthesis.resume();
+        }, 10000);
+        utterance.onend = function() { clearInterval(keepAlive); };
+        utterance.onerror = function(e) { clearInterval(keepAlive); console.warn('[TTS] Error:', e.error); };
+      } catch(e) { console.warn('[TTS] Exception:', e.message); }
+    }, 100);
   }
 
   // ── Burbuja arrastrable ──
@@ -10260,9 +10272,14 @@ async function doResetWithCode() {
     sendBtn.disabled = true;
     addTyping();
     // Desbloquear speechSynthesis con interacción directa del usuario
+    // IMPORTANTE: en móvil (Android/iOS), volume=0 NO desbloquea el audio
+    // Necesitamos volume > 0 con texto inaudible (punto) para que el SO lo acepte
     if (chatTTSEnabled && 'speechSynthesis' in window) {
-      var warmup = new SpeechSynthesisUtterance(' ');
-      warmup.volume = 0;
+      speechSynthesis.cancel();
+      var warmup = new SpeechSynthesisUtterance('.');
+      warmup.volume = 0.01;
+      warmup.rate = 10;
+      warmup.lang = 'es-ES';
       speechSynthesis.speak(warmup);
     }
     try {
