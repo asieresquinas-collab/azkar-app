@@ -2374,7 +2374,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v216';</script>
+<script>document.getElementById('version-tag').textContent='v217';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2486,7 +2486,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v216';
+var APP_VERSION = 'v217';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -10148,40 +10148,46 @@ async function doResetWithCode() {
   var chatbotGreeted = false; // Para auto-saludo al abrir
   var chatTTSEnabled = localStorage.getItem('chatTTS') !== 'off'; // Voz activada por defecto
 
-  // ── Text-to-Speech: Microsoft Álvaro Neural (via backend) ──
+  // ── Text-to-Speech: voz navegador + Microsoft Álvaro Neural (mejora) ──
   var chatAudioPlayer = null;
   function chatSpeak(text) {
     if (!chatTTSEnabled) return;
-    // Cancelar audio anterior
+    if (!('speechSynthesis' in window)) return;
+    // Cancelar lo que esté sonando
+    speechSynthesis.cancel();
     if (chatAudioPlayer) { chatAudioPlayer.pause(); chatAudioPlayer = null; }
     // Limpiar emojis y caracteres especiales
     var cleanText = text.replace(/[📦🚛💪✅❌⚠️🎉👍📄🔊🔇]/g, '').replace(/\s+/g, ' ').trim();
     if (!cleanText) return;
-    // Limitar a 500 chars para respuestas largas
     if (cleanText.length > 500) cleanText = cleanText.substring(0, 500);
-    // Llamar al backend TTS
+    // 1. Arrancar voz del navegador INMEDIATAMENTE (funciona siempre)
+    var utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'es-ES';
+    utterance.rate = 1.05;
+    utterance.pitch = 1.0;
+    var voices = speechSynthesis.getVoices();
+    var esVoice = voices.find(function(v) { return v.lang.startsWith('es') && v.name.includes('Google'); }) ||
+                  voices.find(function(v) { return v.lang.startsWith('es'); });
+    if (esVoice) utterance.voice = esVoice;
+    speechSynthesis.speak(utterance);
+    // 2. En paralelo, intentar Microsoft Álvaro (si funciona, reemplaza)
     fetch(RAILWAY_API + '/api/tts/speak', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (_authToken || '') },
       body: JSON.stringify({ texto: cleanText })
     }).then(function(resp) {
-      if (!resp.ok) throw new Error('TTS error');
+      if (!resp.ok) throw new Error('TTS backend error');
       return resp.blob();
     }).then(function(blob) {
+      // Microsoft TTS listo → cancelar voz navegador y reproducir MP3
+      speechSynthesis.cancel();
       var url = URL.createObjectURL(blob);
       chatAudioPlayer = new Audio(url);
       chatAudioPlayer.playbackRate = 1.05;
-      chatAudioPlayer.play().catch(function() { /* autoplay blocked, ignore */ });
+      chatAudioPlayer.play().catch(function() { /* autoplay blocked */ });
       chatAudioPlayer.onended = function() { URL.revokeObjectURL(url); chatAudioPlayer = null; };
-    }).catch(function(err) {
-      console.warn('[TTS] Fallback to browser voice:', err.message);
-      // Fallback: usar voz del navegador si el backend falla
-      if ('speechSynthesis' in window) {
-        speechSynthesis.cancel();
-        var utt = new SpeechSynthesisUtterance(cleanText);
-        utt.lang = 'es-ES'; utt.rate = 1.05;
-        speechSynthesis.speak(utt);
-      }
+    }).catch(function() {
+      // Microsoft TTS falló → la voz del navegador ya está sonando, no hacer nada
     });
   }
 
