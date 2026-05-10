@@ -2486,7 +2486,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v214';
+var APP_VERSION = 'v215';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -10277,35 +10277,33 @@ async function doResetWithCode() {
         if (data.datos && data.datos.borrador) {
           try {
           var b = data.datos.borrador;
-          // Si hay DOCX oficial generado, mostrar botón para descargarlo/verlo
-          if (data.datos.docx_base64) {
-            var docxBlob = new Blob([Uint8Array.from(atob(data.datos.docx_base64), function(c) { return c.charCodeAt(0); })], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-            var docxUrl = URL.createObjectURL(docxBlob);
-            var docxName = data.datos.docx_filename || 'BORRADOR_PERMISO.docx';
+          // PDF del documento oficial (convertido con LibreOffice, formato 100% fiel)
+          if (data.datos.pdf_base64) {
+            var permPdfBlob = new Blob([Uint8Array.from(atob(data.datos.pdf_base64), function(c) { return c.charCodeAt(0); })], { type: 'application/pdf' });
+            var permPdfUrl = URL.createObjectURL(permPdfBlob);
             var permHtml = '<div style="background:#f0f7ff;border:1px solid #2376C5;border-radius:8px;padding:12px;margin-top:8px;">' +
               '<b>📋 DOCUMENTO OFICIAL — ' + (b.cliente || '') + '</b><br>' +
               '<span style="font-size:12px;color:#555;">' + (b.direccion || '') + ' · ' + (b.fecha || '') + ' · ' + (b.tipo_zona_label || b.tipo_zona || 'OTA') + ' · ' + (b.metros || '12') + 'm</span><br><br>' +
-              '<a href="' + docxUrl + '" download="' + docxName + '" style="display:inline-block;background:#1B4F8A;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;">📄 Descargar documento oficial</a>' +
-              '<br><span style="font-size:11px;color:#666;margin-top:4px;display:inline-block;">Es el MISMO documento que se envía al ayuntamiento. Ábrelo para revisarlo.</span>' +
+              '<a href="' + permPdfUrl + '" target="_blank" style="display:inline-block;background:#1B4F8A;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;">📄 Ver documento oficial (PDF)</a>' +
+              '<br><span style="font-size:11px;color:#666;margin-top:4px;display:inline-block;">Es el MISMO documento que se envía al ayuntamiento, rellenado con los datos.</span>' +
               '</div>';
             addMsg('bot', permHtml);
-          } else if (data.datos.pdf_base64) {
-            var permPdfBlob = new Blob([Uint8Array.from(atob(data.datos.pdf_base64), function(c) { return c.charCodeAt(0); })], { type: 'application/pdf' });
-            var permPdfUrl = URL.createObjectURL(permPdfBlob);
+          } else if (data.datos.docx_base64) {
+            // Fallback: DOCX si LibreOffice no pudo convertir
+            var docxBlob = new Blob([Uint8Array.from(atob(data.datos.docx_base64), function(c) { return c.charCodeAt(0); })], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+            var docxUrl = URL.createObjectURL(docxBlob);
+            var docxName = data.datos.docx_filename || 'BORRADOR_PERMISO.docx';
             var permHtml2 = '<div style="background:#f0f7ff;border:1px solid #2376C5;border-radius:8px;padding:12px;margin-top:8px;">' +
-              '<b>📋 BORRADOR DE PERMISO — ' + (b.cliente || '') + '</b><br>' +
-              '<a href="' + permPdfUrl + '" target="_blank" style="display:inline-block;background:#1B4F8A;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;">📄 Ver PDF</a></div>';
+              '<b>📋 DOCUMENTO OFICIAL — ' + (b.cliente || '') + '</b><br>' +
+              '<a href="' + docxUrl + '" download="' + docxName + '" style="display:inline-block;background:#1B4F8A;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;">📄 Descargar documento oficial</a></div>';
             addMsg('bot', permHtml2);
           } else {
-            // Fallback: solo mostrar datos en texto
+            // Fallback: solo datos en texto
             var borradorHTML = '<div style="background:#f0f7ff;border:1px solid #2376C5;border-radius:8px;padding:10px;margin-top:8px;font-size:13px;">' +
               '<b>📋 BORRADOR DE PERMISO</b><br><br>' +
               '<b>Cliente:</b> ' + (b.cliente || '') + '<br>' +
               '<b>Dirección:</b> ' + (b.direccion || '') + '<br>' +
-              '<b>Fecha:</b> ' + (b.fecha || '') + '<br>' +
-              '<b>Hora:</b> ' + (b.hora || '') + '<br>' +
-              '<b>Zona:</b> ' + (b.tipo_zona_label || b.tipo_zona || 'OTA') + '<br>' +
-              '<b>Metros:</b> ' + (b.metros || '12') + 'm' +
+              '<b>Fecha:</b> ' + (b.fecha || '') + ' · <b>Metros:</b> ' + (b.metros || '12') + 'm' +
               '</div>';
             addMsg('bot', borradorHTML);
           }
