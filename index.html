@@ -2414,7 +2414,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v223';</script>
+<script>document.getElementById('version-tag').textContent='v224';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2526,7 +2526,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v223';
+var APP_VERSION = 'v224';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -2715,7 +2715,140 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', function() {
     ejecutarUpdateSiNoChat();
   });
+
+  // ══════════════════════════════════════════════════════════════
+  //  Azkarin Proactivo · Push (v224)
+  //  Escucha mensajes del SW cuando el usuario pulsa una notif.
+  // ══════════════════════════════════════════════════════════════
+  navigator.serviceWorker.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'AZKARIN_NOTIFICATION') {
+      console.log('[Azkarin] Notificación recibida del SW:', event.data);
+      // Si la app ya estaba abierta, parsear la URL y abrir el chat con contexto
+      try {
+        var u = new URL(event.data.url, location.origin);
+        if (u.searchParams.get('chat') === '1') {
+          var ref = u.searchParams.get('ref');
+          var tema = u.searchParams.get('tema');
+          setTimeout(function() { abrirAzkarinConContexto(ref, tema); }, 200);
+        }
+      } catch(e) {}
+    }
+  });
 }
+
+// ── Abrir el chatbot admin Azkarin con un contexto preseteado ──
+function abrirAzkarinConContexto(ref, tema) {
+  try {
+    var panel = document.getElementById('chatbot-panel');
+    var bubble = document.getElementById('chatbot-bubble');
+    if (!panel) return;
+    if (!panel.classList.contains('open')) panel.classList.add('open');
+    if (bubble) bubble.style.display = 'flex';
+    window._chatbotActivo = true;
+    // Inyectar mensaje con contexto
+    if (ref || tema) {
+      var input = document.getElementById('chatbot-input');
+      if (input) {
+        var msg = 'Vengo de una notificación tuya.';
+        if (ref) msg += ' Es sobre la REF ' + ref + '.';
+        if (tema) msg += ' Tema: ' + tema + '.';
+        msg += ' ¿Qué tengo que mirar?';
+        input.value = msg;
+        // Disparar el envío automáticamente
+        setTimeout(function() {
+          if (typeof window.chatbotSend === 'function') { window.chatbotSend(); }
+          else {
+            var btn = document.getElementById('chatbot-send');
+            if (btn) btn.click();
+          }
+        }, 300);
+      }
+    }
+  } catch(e) { console.warn('[Azkarin] Error abriendo con contexto:', e); }
+}
+
+// ── Detectar ?chat=1&ref=XXX al cargar la app (desde notificación push) ──
+(function() {
+  try {
+    var p = new URLSearchParams(location.search);
+    if (p.get('chat') === '1') {
+      var ref = p.get('ref'); var tema = p.get('tema');
+      // Esperar a que el DOM y el chatbot estén listos
+      window.addEventListener('load', function() {
+        setTimeout(function() { abrirAzkarinConContexto(ref, tema); }, 1200);
+      });
+    }
+  } catch(e) {}
+})();
+
+// ── Suscribirse a Azkarin Push (solo si el usuario lo activa) ──
+async function azkarinPushSubscribe() {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      alert('Tu navegador no soporta notificaciones push. Usa Chrome o Edge actualizado.');
+      return false;
+    }
+    var permiso = await Notification.requestPermission();
+    if (permiso !== 'granted') {
+      alert('No has dado permiso para notificaciones. Actívalas en los ajustes del navegador.');
+      return false;
+    }
+    var reg = await navigator.serviceWorker.ready;
+    // Obtener VAPID public key del backend
+    var keyRes = await fetch(RAILWAY_API + '/api/azkarin/push-key');
+    var keyData = await keyRes.json();
+    var pubKey = keyData.publicKey;
+    if (!pubKey) throw new Error('No VAPID key');
+    // Convertir base64 a Uint8Array
+    function urlBase64ToUint8Array(base64String) {
+      var padding = '='.repeat((4 - base64String.length % 4) % 4);
+      var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      var rawData = atob(base64);
+      var output = new Uint8Array(rawData.length);
+      for (var i = 0; i < rawData.length; ++i) output[i] = rawData.charCodeAt(i);
+      return output;
+    }
+    var sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(pubKey)
+    });
+    // Enviar al backend con el token de usuario
+    var token = localStorage.getItem('azkar_token');
+    if (!token) { alert('Tienes que iniciar sesión en la app antes de activar Azkarin.'); return false; }
+    var resp = await fetch(RAILWAY_API + '/api/azkarin/push-subscribe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'x-api-key': (window.AZKAR_API_KEY || '')
+      },
+      body: JSON.stringify({ subscription: sub })
+    });
+    if (!resp.ok) { var t = await resp.text(); throw new Error('Backend ' + resp.status + ': ' + t.substring(0, 100)); }
+    localStorage.setItem('azkarin_push_activo', '1');
+    console.log('[Azkarin Push] Suscrito correctamente');
+    return true;
+  } catch (e) {
+    console.error('[Azkarin Push] Error:', e);
+    alert('No se pudo activar Azkarin Push: ' + (e.message || e));
+    return false;
+  }
+}
+
+async function azkarinPushUnsubscribe() {
+  try {
+    var reg = await navigator.serviceWorker.ready;
+    var sub = await reg.pushManager.getSubscription();
+    if (sub) await sub.unsubscribe();
+    localStorage.removeItem('azkarin_push_activo');
+    console.log('[Azkarin Push] Desuscrito');
+    return true;
+  } catch(e) { console.error('[Azkarin Push] Error unsubscribe:', e); return false; }
+}
+
+window.azkarinPushSubscribe = azkarinPushSubscribe;
+window.azkarinPushUnsubscribe = azkarinPushUnsubscribe;
+window.abrirAzkarinConContexto = abrirAzkarinConContexto;
 
 // ══════════════════════════════════════════════════════════════
 //  INDEXEDDB — Persistencia local

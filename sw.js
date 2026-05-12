@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  AZKAR PWA · Service Worker · Offline-first
 // ══════════════════════════════════════════════════════════════
-const CACHE_NAME = 'azkar-pwa-v223';
+const CACHE_NAME = 'azkar-pwa-v224';
 const ASSETS = [
   './',
   './index.html',
@@ -78,6 +78,59 @@ self.addEventListener('fetch', e => {
       if (e.request.destination === 'document') {
         return caches.match('./index.html');
       }
+    })
+  );
+});
+
+
+// ══════════════════════════════════════════════════════════════
+//  Azkarin Proactivo · Push notifications (v224)
+// ══════════════════════════════════════════════════════════════
+self.addEventListener('push', function(event) {
+  var data = {
+    title: 'Azkarin',
+    body: 'Tienes una notificación nueva',
+    tag: 'azkarin',
+    requireInteraction: false,
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    data: { url: './?chat=1' }
+  };
+  try { if (event.data) data = Object.assign(data, event.data.json()); } catch(e) {}
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      tag: data.tag,
+      requireInteraction: !!data.requireInteraction,
+      icon: data.icon,
+      badge: data.badge,
+      vibrate: data.urgente ? [300, 100, 300, 100, 300] : [200, 100, 200],
+      data: data.data || { url: './?chat=1' },
+      actions: data.actions || [{ action: 'open', title: 'Abrir chat' }]
+    })
+  );
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  var targetUrl = (event.notification.data && event.notification.data.url) || './?chat=1';
+  // Si la URL es relativa, hacerla absoluta respecto al scope
+  if (targetUrl.startsWith('./') || targetUrl.startsWith('/')) {
+    targetUrl = self.registration.scope.replace(/\/$/, '') + '/' + targetUrl.replace(/^\.?\//, '');
+  }
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      // Si ya hay una ventana abierta de la app, enfocarla y enviarle el URL
+      for (var i = 0; i < clientList.length; i++) {
+        var c = clientList[i];
+        if (c.url.includes('asieresquinas-collab.github.io/azkar-app') || c.url.includes(self.registration.scope)) {
+          c.postMessage({ type: 'AZKARIN_NOTIFICATION', url: targetUrl, data: event.notification.data });
+          return c.focus();
+        }
+      }
+      // Si no hay ventana abierta, abrir una nueva en la URL
+      return clients.openWindow(targetUrl);
     })
   );
 });
