@@ -2414,7 +2414,7 @@ window.addEventListener('DOMContentLoaded',function(){
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v224';</script>
+<script>document.getElementById('version-tag').textContent='v225';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2526,7 +2526,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v224';
+var APP_VERSION = 'v225';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -10328,12 +10328,38 @@ async function openAdminPanel() {
     + '<select id="new-user-rol" style="padding:10px;border:2px solid #D6E4F7;border-radius:8px;font-size:13px;font-family:inherit"><option value="empleado">Empleado</option><option value="admin">Administrador</option></select></div>'
     + '<button onclick="crearUsuarioAdmin()" style="margin-top:10px;padding:10px 24px;background:#1a7a3f;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer">+ Crear usuario</button>'
     + '<div id="admin-msg" style="margin-top:8px;font-size:12px"></div></div>'
-    + '<div style="border-top:2px solid #D6E4F7;padding-top:12px;margin-top:16px;text-align:center">'
+    + '<div style="border-top:2px solid #D6E4F7;padding-top:12px;margin-top:16px">'
+    + '<h3 style="color:#1B4F8A;font-size:15px;margin:0 0 8px">🤖 Azkarin proactivo</h3>'
+    + '<p style="font-size:12px;color:#666;margin:0 0 8px;line-height:1.4">Activa para recibir notificaciones cuando algo falte (DNI, operarios, PDFs sin enviar...). Vigila de lunes a viernes de 8:00 a 18:00.</p>'
+    + '<div id="azkarin-push-status-btn"></div></div>'
+    + '<div style="border-top:2px solid #D6E4F7;padding-top:12px;margin-top:12px;text-align:center">'
     + '<button onclick="cerrarSesion()" style="padding:8px 20px;background:#c0392b;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">Cerrar sesión</button></div></div>';
   document.body.appendChild(m);
   m.onclick = function(e) { if (e.target === m) m.remove(); };
   await cargarUsuariosAdmin();
+  renderAzkarinPushBtn();
 }
+
+function renderAzkarinPushBtn() {
+  var c = document.getElementById('azkarin-push-status-btn'); if (!c) return;
+  var activo = localStorage.getItem('azkarin_push_activo') === '1';
+  if (activo) {
+    c.innerHTML = '<div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px;color:#1a7a3f;font-weight:700">✅ Activado en este dispositivo</span><button onclick="azkarinTogglePush(false)" style="padding:6px 14px;background:#888;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">Desactivar</button></div>';
+  } else {
+    c.innerHTML = '<button onclick="azkarinTogglePush(true)" style="padding:10px 18px;background:#1B4F8A;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">🔔 Activar Azkarin proactivo</button>';
+  }
+}
+
+async function azkarinTogglePush(activar) {
+  var btn = document.querySelector('#azkarin-push-status-btn button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Procesando...'; }
+  var ok;
+  if (activar) ok = await azkarinPushSubscribe();
+  else ok = await azkarinPushUnsubscribe();
+  renderAzkarinPushBtn();
+}
+
+window.azkarinTogglePush = azkarinTogglePush;
 
 async function cargarUsuariosAdmin() {
   var c = document.getElementById('admin-users-list'); if (!c) return;
