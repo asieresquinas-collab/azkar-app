@@ -2586,7 +2586,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v227';
+var APP_VERSION = 'v228';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -10387,6 +10387,28 @@ function hideLoginScreen() {
   ST('dossier');
 }
 
+// ── Llave de Firebase (aditivo): inicia sesión en Firebase Auth tras el login.
+//    No bloquea: si falla, la app sigue funcionando igual que siempre. ──
+async function _firebaseSignIn(customToken) {
+  try {
+    if (customToken) localStorage.setItem('azkar_fb_token', customToken);
+    const tok = customToken || localStorage.getItem('azkar_fb_token');
+    if (!tok) return;
+    const { getApps, getApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    if (!getApps().length) return; // Firebase aún no inicializado; se reintentará en el próximo login
+    const { getAuth, signInWithCustomToken, setPersistence, browserLocalPersistence } =
+      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    const auth = getAuth(getApp());
+    if (auth.currentUser) return; // ya autenticado (sesión persistida)
+    try { await setPersistence(auth, browserLocalPersistence); } catch (_) {}
+    await signInWithCustomToken(auth, tok);
+    console.log('[Firebase Auth] Sesión de Firebase iniciada');
+  } catch (e) {
+    console.warn('[Firebase Auth] opcional, no se pudo iniciar:', e && e.message);
+  }
+}
+window._firebaseSignIn = _firebaseSignIn;
+
 async function doLogin() {
   var user = document.getElementById('login-user').value.trim();
   var pass = document.getElementById('login-pass').value;
@@ -10406,6 +10428,7 @@ async function doLogin() {
       localStorage.setItem('azkar_user', JSON.stringify(data.usuario));
       saveCredentialsIfRemember(user, pass);
       hideLoginScreen(); initAdminUI();
+      _firebaseSignIn(data.firebaseToken); // aditivo, no se espera: no bloquea el login
     } else {
       errDiv.textContent = data.error || 'Error al iniciar sesión'; errDiv.style.display = 'block';
     }
@@ -10423,6 +10446,7 @@ async function verificarSesion() {
     if (data.ok) {
       _authUser = data.usuario; localStorage.setItem('azkar_user', JSON.stringify(data.usuario));
       hideLoginScreen(); initAdminUI();
+      _firebaseSignIn(data.firebaseToken); // re-asegura sesión Firebase al reabrir la app
     } else {
       localStorage.removeItem('azkar_token'); localStorage.removeItem('azkar_user');
       _authToken = null; showLoginScreen();
