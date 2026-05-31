@@ -2474,7 +2474,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v230';</script>
+<script>document.getElementById('version-tag').textContent='v231';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2586,7 +2586,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v230';
+var APP_VERSION = 'v231';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -4134,8 +4134,10 @@ function _buzonAzkRenderLista(data) {
     var border = pide ? '#fcc' : '#dde3ec';
     var pideBadge = pide ? '<span style="background:#e52521;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:800;margin-left:6px;">🆘 PIDE HUMANO</span>' : '';
     var refer = it.referer ? (it.referer.replace(/^https?:\/\/(www\.)?/, '').slice(0, 50)) : '';
-    var primero = (it.first_user || '').slice(0, 90) || '<em style="color:#aaa">sin mensaje del cliente</em>';
-    var ultimo = (it.last_msg || '').slice(0, 90);
+    var primeroRaw = (it.first_user || '').slice(0, 90);
+    var primero = primeroRaw ? _buzonAzkEscapeHTML(primeroRaw) : '<em style="color:#aaa">sin mensaje aun</em>';
+    var ultimoRaw = (it.last_msg || '').slice(0, 90);
+    var ultimo = ultimoRaw ? _buzonAzkEscapeHTML(ultimoRaw) : '';
     var tel = it.phone ? ' · ☎ ' + _buzonAzkEscapeHTML(it.phone) : '';
     return '<div onclick="_buzonAzkAbrirHilo(\'' + _buzonAzkEscapeHTML(it.sid) + '\')" style="background:' + bg + ';border:1px solid ' + border + ';border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:.15s;" onmouseover="this.style.transform=\'translateY(-1px)\';this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.08)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'">'
       + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
@@ -4143,8 +4145,8 @@ function _buzonAzkRenderLista(data) {
         + pideBadge
       + '</div>'
       + (refer ? '<div style="font-size:10px;color:#888;margin-top:2px;">📍 ' + _buzonAzkEscapeHTML(refer) + '</div>' : '')
-      + '<div style="font-size:12px;color:#444;margin-top:4px;"><b>Cliente:</b> ' + _buzonAzkEscapeHTML(primero) + '</div>'
-      + (ultimo ? '<div style="font-size:11px;color:#777;margin-top:2px;"><b>Último:</b> ' + _buzonAzkEscapeHTML(ultimo) + '</div>' : '')
+      + '<div style="font-size:12px;color:#444;margin-top:4px;"><b>Cliente:</b> ' + primero + '</div>'
+      + (ultimo ? '<div style="font-size:11px;color:#777;margin-top:2px;"><b>Último:</b> ' + ultimo + '</div>' : '')
       + '<div style="font-size:10px;color:#aaa;margin-top:4px;">' + it.turns + ' turno(s) · sid ' + _buzonAzkEscapeHTML(it.sid.slice(0, 8)) + '…</div>'
     + '</div>';
   }).join('');
@@ -4167,23 +4169,34 @@ function _buzonAzkRenderHilo(data) {
     inputEl.value = inputEl.value || '';
     setTimeout(function () { inputEl.focus(); }, 100);
   }
-  var bubbles = turns.map(function (t) {
-    var role = (t.role || '').toLowerCase();
-    var content = t.content || t.text || t.message || '';
-    var isUser = role === 'user' || role === 'cliente';
-    var isHuman = role === 'human' || role === 'humano';
+  function _bubbleOne(text, role, ts) {
+    if (!text) return '';
+    var isUser = role === 'user';
+    var isHuman = role === 'human';
     var bg = isUser ? '#e8f1fc' : (isHuman ? '#e8f8ee' : '#f5f5f7');
     var border = isUser ? '#bdd8f6' : (isHuman ? '#b8e6c8' : '#e0e4ea');
     var labelColor = isUser ? '#1B4F8A' : (isHuman ? '#1a7a3f' : '#666');
     var label = isUser ? 'Cliente' : (isHuman ? 'Humano (tú)' : 'Azkarin');
     var align = isUser ? 'flex-start' : 'flex-end';
-    if (!content) return '';
+    var tsLabel = ts ? '<span style="font-weight:400;color:#aaa;margin-left:6px;font-size:9px;">' + _buzonAzkEscapeHTML(ts) + '</span>' : '';
     return '<div style="display:flex;justify-content:' + align + ';margin-bottom:8px;">'
       + '<div style="max-width:78%;background:' + bg + ';border:1px solid ' + border + ';border-radius:12px;padding:8px 12px;">'
-        + '<div style="font-size:10px;font-weight:700;color:' + labelColor + ';margin-bottom:3px;">' + label + '</div>'
-        + '<div style="font-size:13px;color:#222;white-space:pre-wrap;line-height:1.4;">' + _buzonAzkEscapeHTML(content) + '</div>'
+        + '<div style="font-size:10px;font-weight:700;color:' + labelColor + ';margin-bottom:3px;">' + label + tsLabel + '</div>'
+        + '<div style="font-size:13px;color:#222;white-space:pre-wrap;line-height:1.4;">' + _buzonAzkEscapeHTML(text) + '</div>'
       + '</div>'
     + '</div>';
+  }
+  // Formato real WP: cada turn = {ts, user, bot, human?, tel_found?}
+  // Compat: si llega con {role, content} (formato spec), también funciona.
+  var bubbles = turns.map(function (t) {
+    if (t.role && (t.content || t.text || t.message)) {
+      return _bubbleOne(t.content || t.text || t.message, (t.role || '').toLowerCase(), t.ts);
+    }
+    var pieces = '';
+    if (t.user)  pieces += _bubbleOne(t.user,  'user',  t.ts);
+    if (t.human) pieces += _bubbleOne(t.human, 'human', t.ts);
+    if (t.bot)   pieces += _bubbleOne(t.bot,   'bot',   t.ts);
+    return pieces;
   }).filter(Boolean).join('');
   var meta = '<div style="font-size:11px;color:#888;margin-bottom:10px;">Inicio: ' + _buzonAzkEscapeHTML(data.started_at || '') + ' · Último: ' + _buzonAzkEscapeHTML(data.last_at || '') + (data.ip ? ' · IP ' + _buzonAzkEscapeHTML(data.ip) : '') + (data.referer ? ' · ' + _buzonAzkEscapeHTML((data.referer || '').replace(/^https?:\/\/(www\.)?/, '').slice(0, 60)) : '') + '</div>';
   var awaitBanner = awaiting ? '<div style="background:#fff5f5;border:1px solid #fcc;color:#c0392b;padding:10px;border-radius:8px;margin-bottom:10px;font-size:13px;font-weight:600;">🆘 El cliente pide hablar con una persona. Tu respuesta de abajo le llegará en el widget.</div>' : '';
