@@ -2474,7 +2474,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v229';</script>
+<script>document.getElementById('version-tag').textContent='v230';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2586,7 +2586,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v229';
+var APP_VERSION = 'v230';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -3976,6 +3976,306 @@ function closeMgr() {
   const panel = document.getElementById('mgr-panel');
   if (panel) panel.style.display = 'none';
 }
+
+// ══════════════════════════════════════════════════════════════
+// v230: BUZÓN AZKARIN — conversaciones del chatbot del sitio WordPress
+// que puedes responder como humano. Backend: api/azkarin-inbox.js (proxy).
+// Aislado del resto de la app: try/catch envolviendo todo, NO toca nada existente.
+// ══════════════════════════════════════════════════════════════
+var _buzonAzkPollHandle = null;        // setInterval del polling de la lista (cuando panel abierto)
+var _buzonAzkBadgeHandle = null;       // setInterval del badge global (siempre activo)
+var _buzonAzkPrevAwaiting = new Set(); // sids con awaiting_human=true en el tick anterior (para detectar nuevos)
+var _buzonAzkOpenSid = null;           // sid del hilo abierto actualmente (null si lista)
+
+function _buzonAzkHeaders() {
+  var h = (typeof apiHeaders === 'function' ? apiHeaders() : { 'Content-Type': 'application/json' });
+  var tok = localStorage.getItem('azkar_token');
+  if (tok) h['Authorization'] = 'Bearer ' + tok;
+  return h;
+}
+
+function _buzonAzkBeep() {
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    var ac = window._buzonAzkAC = window._buzonAzkAC || new AC();
+    var o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = 880;
+    g.gain.setValueAtTime(0.08, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.35);
+    o.connect(g); g.connect(ac.destination);
+    o.start(); o.stop(ac.currentTime + 0.4);
+    setTimeout(function () {
+      try {
+        var o2 = ac.createOscillator(), g2 = ac.createGain();
+        o2.type = 'sine'; o2.frequency.value = 1175;
+        g2.gain.setValueAtTime(0.08, ac.currentTime);
+        g2.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.35);
+        o2.connect(g2); g2.connect(ac.destination);
+        o2.start(); o2.stop(ac.currentTime + 0.4);
+      } catch (e) {}
+    }, 180);
+  } catch (e) {}
+}
+
+function _buzonAzkSetBadge(n) {
+  try {
+    var btn = document.getElementById('btn-buzon-azkarin');
+    if (!btn) return;
+    var badge = document.getElementById('buzon-azkarin-badge');
+    if (n > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.id = 'buzon-azkarin-badge';
+        badge.style.cssText = 'background:#e52521;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:800;margin-left:4px;display:inline-block;min-width:18px;text-align:center;';
+        btn.appendChild(badge);
+      }
+      badge.textContent = String(n);
+    } else if (badge) {
+      badge.remove();
+    }
+  } catch (e) {}
+}
+
+async function _buzonAzkFetchList(limit) {
+  var r = await fetch(RAILWAY_API + '/api/azkarin-inbox/list?limit=' + (limit || 50), { headers: _buzonAzkHeaders() });
+  var data = await r.json().catch(function () { return null; });
+  if (!r.ok) throw new Error((data && data.error) || ('HTTP ' + r.status));
+  return data;
+}
+
+async function _buzonAzkFetchConv(sid) {
+  var r = await fetch(RAILWAY_API + '/api/azkarin-inbox/conv/' + encodeURIComponent(sid), { headers: _buzonAzkHeaders() });
+  var data = await r.json().catch(function () { return null; });
+  if (!r.ok) throw new Error((data && data.error) || ('HTTP ' + r.status));
+  return data;
+}
+
+async function _buzonAzkInject(sid, text) {
+  var r = await fetch(RAILWAY_API + '/api/azkarin-inbox/inject', {
+    method: 'POST',
+    headers: _buzonAzkHeaders(),
+    body: JSON.stringify({ sid: sid, text: text })
+  });
+  var data = await r.json().catch(function () { return null; });
+  if (!r.ok) throw new Error((data && data.error) || ('HTTP ' + r.status));
+  return data;
+}
+
+function _buzonAzkRefreshBadge() {
+  // Refresca solo el badge global (sin abrir nada). Se llama cada 60s siempre.
+  _buzonAzkFetchList(50).then(function (data) {
+    var items = (data && data.items) || [];
+    var awaitingSet = new Set();
+    items.forEach(function (it) { if (it.awaiting_human) awaitingSet.add(it.sid); });
+    var n = awaitingSet.size;
+    _buzonAzkSetBadge(n);
+    // Detectar nuevos awaiting_human respecto al tick anterior
+    var nuevosCount = 0;
+    awaitingSet.forEach(function (sid) { if (!_buzonAzkPrevAwaiting.has(sid)) nuevosCount++; });
+    if (nuevosCount > 0 && _buzonAzkPrevAwaiting.size > 0) {
+      _buzonAzkBeep();
+    }
+    _buzonAzkPrevAwaiting = awaitingSet;
+  }).catch(function (e) {
+    // Silencioso: no molestamos al usuario por un fallo de polling
+    console.warn('[BuzonAzk] Badge refresh:', e.message);
+  });
+}
+
+function _buzonAzkCreatePanel() {
+  if (document.getElementById('buzon-azkarin-panel')) return;
+  var panel = document.createElement('div');
+  panel.id = 'buzon-azkarin-panel';
+  panel.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(20,30,50,.6);z-index:10000;backdrop-filter:blur(2px);';
+  panel.innerHTML =
+    '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(900px,95vw);height:min(700px,90vh);background:#f5f7fa;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.4);display:flex;flex-direction:column;overflow:hidden;font-family:Barlow,sans-serif;">'
+    + '<div style="background:linear-gradient(135deg,#1B4F8A,#2376C5);color:#fff;padding:14px 18px;display:flex;align-items:center;gap:10px;">'
+      + '<div style="font-size:18px;font-weight:800;flex:1;">💬 Buzón Azkarin <span id="buzon-azkarin-count" style="font-weight:400;font-size:12px;opacity:.85;"></span></div>'
+      + '<button id="buzon-azkarin-back" onclick="_buzonAzkVolverLista()" style="display:none;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:700;">← Volver</button>'
+      + '<button onclick="closeBuzonAzkarin()" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:700;">Cerrar</button>'
+    + '</div>'
+    + '<div id="buzon-azkarin-body" style="flex:1;overflow-y:auto;padding:14px;"></div>'
+    + '<div id="buzon-azkarin-footer" style="display:none;border-top:1px solid #dde3ec;background:#fff;padding:10px;gap:8px;align-items:flex-end;">'
+      + '<textarea id="buzon-azkarin-input" rows="2" placeholder="Escribe tu respuesta como humano…" style="flex:1;border:1px solid #c8d0db;border-radius:8px;padding:8px 10px;font-family:Barlow,sans-serif;font-size:13px;resize:vertical;min-height:40px;max-height:120px;"></textarea>'
+      + '<button id="buzon-azkarin-enviar" onclick="_buzonAzkEnviar()" style="background:linear-gradient(135deg,#1B4F8A,#2376C5);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:800;cursor:pointer;font-size:13px;white-space:nowrap;">📤 Responder</button>'
+    + '</div>'
+    + '</div>';
+  document.body.appendChild(panel);
+  // Cerrar al hacer click fuera del cuadro central
+  panel.addEventListener('click', function (ev) {
+    if (ev.target === panel) closeBuzonAzkarin();
+  });
+}
+
+function _buzonAzkEscapeHTML(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function _buzonAzkRenderLista(data) {
+  var body = document.getElementById('buzon-azkarin-body');
+  var count = document.getElementById('buzon-azkarin-count');
+  var back = document.getElementById('buzon-azkarin-back');
+  var footer = document.getElementById('buzon-azkarin-footer');
+  if (!body) return;
+  back.style.display = 'none';
+  footer.style.display = 'none';
+  _buzonAzkOpenSid = null;
+  var items = (data && data.items) || [];
+  var nAwait = items.filter(function (i) { return i.awaiting_human; }).length;
+  count.textContent = '· ' + items.length + ' conversación(es)' + (nAwait > 0 ? ' · ' + nAwait + ' pide humano' : '');
+  if (items.length === 0) {
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:#888;font-size:14px;">Sin conversaciones por ahora.</div>';
+    return;
+  }
+  var html = items.map(function (it) {
+    var pide = !!it.awaiting_human;
+    var bg = pide ? '#fff5f5' : '#fff';
+    var border = pide ? '#fcc' : '#dde3ec';
+    var pideBadge = pide ? '<span style="background:#e52521;color:#fff;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:800;margin-left:6px;">🆘 PIDE HUMANO</span>' : '';
+    var refer = it.referer ? (it.referer.replace(/^https?:\/\/(www\.)?/, '').slice(0, 50)) : '';
+    var primero = (it.first_user || '').slice(0, 90) || '<em style="color:#aaa">sin mensaje del cliente</em>';
+    var ultimo = (it.last_msg || '').slice(0, 90);
+    var tel = it.phone ? ' · ☎ ' + _buzonAzkEscapeHTML(it.phone) : '';
+    return '<div onclick="_buzonAzkAbrirHilo(\'' + _buzonAzkEscapeHTML(it.sid) + '\')" style="background:' + bg + ';border:1px solid ' + border + ';border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:.15s;" onmouseover="this.style.transform=\'translateY(-1px)\';this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.08)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'">'
+      + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+        + '<div style="font-weight:700;font-size:13px;color:#1B4F8A;">' + _buzonAzkEscapeHTML(it.last_at || it.started_at || '') + tel + '</div>'
+        + pideBadge
+      + '</div>'
+      + (refer ? '<div style="font-size:10px;color:#888;margin-top:2px;">📍 ' + _buzonAzkEscapeHTML(refer) + '</div>' : '')
+      + '<div style="font-size:12px;color:#444;margin-top:4px;"><b>Cliente:</b> ' + _buzonAzkEscapeHTML(primero) + '</div>'
+      + (ultimo ? '<div style="font-size:11px;color:#777;margin-top:2px;"><b>Último:</b> ' + _buzonAzkEscapeHTML(ultimo) + '</div>' : '')
+      + '<div style="font-size:10px;color:#aaa;margin-top:4px;">' + it.turns + ' turno(s) · sid ' + _buzonAzkEscapeHTML(it.sid.slice(0, 8)) + '…</div>'
+    + '</div>';
+  }).join('');
+  body.innerHTML = html;
+}
+
+function _buzonAzkRenderHilo(data) {
+  var body = document.getElementById('buzon-azkarin-body');
+  var back = document.getElementById('buzon-azkarin-back');
+  var footer = document.getElementById('buzon-azkarin-footer');
+  var count = document.getElementById('buzon-azkarin-count');
+  if (!body) return;
+  back.style.display = 'inline-block';
+  count.textContent = '· hilo ' + ((data.sid || '').slice(0, 8)) + '…';
+  var turns = (data && data.turns) || [];
+  var awaiting = !!data.awaiting_human;
+  footer.style.display = awaiting ? 'flex' : 'none';
+  var inputEl = document.getElementById('buzon-azkarin-input');
+  if (inputEl && awaiting) {
+    inputEl.value = inputEl.value || '';
+    setTimeout(function () { inputEl.focus(); }, 100);
+  }
+  var bubbles = turns.map(function (t) {
+    var role = (t.role || '').toLowerCase();
+    var content = t.content || t.text || t.message || '';
+    var isUser = role === 'user' || role === 'cliente';
+    var isHuman = role === 'human' || role === 'humano';
+    var bg = isUser ? '#e8f1fc' : (isHuman ? '#e8f8ee' : '#f5f5f7');
+    var border = isUser ? '#bdd8f6' : (isHuman ? '#b8e6c8' : '#e0e4ea');
+    var labelColor = isUser ? '#1B4F8A' : (isHuman ? '#1a7a3f' : '#666');
+    var label = isUser ? 'Cliente' : (isHuman ? 'Humano (tú)' : 'Azkarin');
+    var align = isUser ? 'flex-start' : 'flex-end';
+    if (!content) return '';
+    return '<div style="display:flex;justify-content:' + align + ';margin-bottom:8px;">'
+      + '<div style="max-width:78%;background:' + bg + ';border:1px solid ' + border + ';border-radius:12px;padding:8px 12px;">'
+        + '<div style="font-size:10px;font-weight:700;color:' + labelColor + ';margin-bottom:3px;">' + label + '</div>'
+        + '<div style="font-size:13px;color:#222;white-space:pre-wrap;line-height:1.4;">' + _buzonAzkEscapeHTML(content) + '</div>'
+      + '</div>'
+    + '</div>';
+  }).filter(Boolean).join('');
+  var meta = '<div style="font-size:11px;color:#888;margin-bottom:10px;">Inicio: ' + _buzonAzkEscapeHTML(data.started_at || '') + ' · Último: ' + _buzonAzkEscapeHTML(data.last_at || '') + (data.ip ? ' · IP ' + _buzonAzkEscapeHTML(data.ip) : '') + (data.referer ? ' · ' + _buzonAzkEscapeHTML((data.referer || '').replace(/^https?:\/\/(www\.)?/, '').slice(0, 60)) : '') + '</div>';
+  var awaitBanner = awaiting ? '<div style="background:#fff5f5;border:1px solid #fcc;color:#c0392b;padding:10px;border-radius:8px;margin-bottom:10px;font-size:13px;font-weight:600;">🆘 El cliente pide hablar con una persona. Tu respuesta de abajo le llegará en el widget.</div>' : '';
+  body.innerHTML = meta + awaitBanner + (bubbles || '<div style="color:#888;font-size:13px;padding:10px;">Sin contenido textual en este hilo.</div>');
+  body.scrollTop = body.scrollHeight;
+}
+
+async function _buzonAzkAbrirHilo(sid) {
+  if (!sid) return;
+  _buzonAzkOpenSid = sid;
+  var body = document.getElementById('buzon-azkarin-body');
+  if (body) body.innerHTML = '<div style="text-align:center;padding:30px;color:#888;">Cargando hilo…</div>';
+  try {
+    var data = await _buzonAzkFetchConv(sid);
+    _buzonAzkRenderHilo(data);
+  } catch (e) {
+    if (body) body.innerHTML = '<div style="color:#c0392b;padding:20px;background:#fff5f5;border:1px solid #fcc;border-radius:8px;">Error cargando hilo: ' + _buzonAzkEscapeHTML(e.message) + '</div>';
+  }
+}
+
+async function _buzonAzkVolverLista() {
+  _buzonAzkOpenSid = null;
+  var body = document.getElementById('buzon-azkarin-body');
+  if (body) body.innerHTML = '<div style="text-align:center;padding:30px;color:#888;">Cargando…</div>';
+  try {
+    var data = await _buzonAzkFetchList(50);
+    _buzonAzkRenderLista(data);
+  } catch (e) {
+    if (body) body.innerHTML = '<div style="color:#c0392b;padding:20px;background:#fff5f5;border:1px solid #fcc;border-radius:8px;">Error: ' + _buzonAzkEscapeHTML(e.message) + '</div>';
+  }
+}
+
+async function _buzonAzkEnviar() {
+  var input = document.getElementById('buzon-azkarin-input');
+  var btn = document.getElementById('buzon-azkarin-enviar');
+  if (!input || !_buzonAzkOpenSid) return;
+  var text = (input.value || '').trim();
+  if (!text) return alert('Escribe el mensaje primero.');
+  if (text.length > 4000) return alert('Mensaje demasiado largo (máx 4000 caracteres).');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+  try {
+    await _buzonAzkInject(_buzonAzkOpenSid, text);
+    input.value = '';
+    // Refresca el hilo para ver el mensaje aplicado
+    await _buzonAzkAbrirHilo(_buzonAzkOpenSid);
+  } catch (e) {
+    alert('No se pudo enviar: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📤 Responder'; }
+  }
+}
+
+async function openBuzonAzkarin() {
+  try {
+    _buzonAzkCreatePanel();
+    var panel = document.getElementById('buzon-azkarin-panel');
+    if (panel) panel.style.display = 'block';
+    await _buzonAzkVolverLista();
+    // Polling cada 15s mientras el panel esté abierto
+    if (_buzonAzkPollHandle) clearInterval(_buzonAzkPollHandle);
+    _buzonAzkPollHandle = setInterval(function () {
+      if (_buzonAzkOpenSid) {
+        _buzonAzkFetchConv(_buzonAzkOpenSid).then(_buzonAzkRenderHilo).catch(function () {});
+      } else {
+        _buzonAzkFetchList(50).then(_buzonAzkRenderLista).catch(function () {});
+      }
+      // refresca también badge
+      _buzonAzkRefreshBadge();
+    }, 15000);
+  } catch (e) {
+    alert('No se pudo abrir el Buzón Azkarin: ' + e.message);
+  }
+}
+
+function closeBuzonAzkarin() {
+  var panel = document.getElementById('buzon-azkarin-panel');
+  if (panel) panel.style.display = 'none';
+  if (_buzonAzkPollHandle) { clearInterval(_buzonAzkPollHandle); _buzonAzkPollHandle = null; }
+}
+
+// Polling global del badge (60s) — siempre activo desde el arranque
+function _buzonAzkStartBadgePoll() {
+  if (_buzonAzkBadgeHandle) return;
+  // Primer tick a los 5s para no bloquear el arranque
+  setTimeout(_buzonAzkRefreshBadge, 5000);
+  _buzonAzkBadgeHandle = setInterval(_buzonAzkRefreshBadge, 60000);
+}
+
+// Exponer para inspector
+window.openBuzonAzkarin = openBuzonAzkarin;
+window.closeBuzonAzkarin = closeBuzonAzkarin;
+
 
 // v171: Buscador de presupuestos — filtra items renderizados en el panel
 function filtrarPresupuestos(query) {
@@ -5782,6 +6082,18 @@ window.addEventListener('DOMContentLoaded', function() {
     callBtn.innerHTML = '📞 NUEVA LLAMADA';
     callBtn.onclick = openTranscriptionModal;
     acts.insertBefore(callBtn, acts.firstChild);
+
+    // v230: Botón "Buzón Azkarin" — conversaciones del chatbot del sitio WP
+    const buzonBtn = document.createElement('button');
+    buzonBtn.id = 'btn-buzon-azkarin';
+    buzonBtn.className = 'nbtn';
+    buzonBtn.style.cssText = 'background:#c0392b;color:#fff;margin-right:4px;';
+    buzonBtn.innerHTML = '💬 BUZÓN';
+    buzonBtn.title = 'Buzón Azkarin: conversaciones del chatbot del sitio web';
+    buzonBtn.onclick = openBuzonAzkarin;
+    acts.insertBefore(buzonBtn, acts.firstChild);
+    // Arrancar polling de badge a los 5s del DOMContentLoaded
+    if (typeof _buzonAzkStartBadgePoll === 'function') _buzonAzkStartBadgePoll();
   }
 
   // Auto-connect Firebase with hardcoded config
