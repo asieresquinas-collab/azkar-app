@@ -2474,7 +2474,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v234';</script>
+<script>document.getElementById('version-tag').textContent='v235';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2586,7 +2586,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v234';
+var APP_VERSION = 'v235';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -3978,7 +3978,7 @@ function closeMgr() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// v234: BUZÓN AZKARIN — añade X para soft-delete por conversación + toggle 'mostrar borradas'
+// v235: BUZÓN AZKARIN — añade ARCHIVO en Firebase (sync 120s) + notas/deleted sincronizados
 // Aislado bajo prefix _buzonAzk*. Try/catch envolviendo todo. NO toca nada externo al módulo.
 // Backend: api/azkarin-inbox.js (proxy seguro al chatbot Azkarin del sitio WordPress).
 var _buzonAzkPollHandle = null;        // polling 15s mientras panel abierto
@@ -4264,7 +4264,7 @@ function _buzonAzkRenderHilo(data) {
   var notaActual = _buzonAzkGetNota(sid);
   var notaHTML = '<div style="background:#fffbe6;border:1px solid #f0e0c0;border-radius:8px;padding:8px;margin-bottom:10px;">'
     + '<div style="font-size:10px;font-weight:700;color:#8b6914;margin-bottom:4px;">📝 NOTA (privada, se guarda en este dispositivo)</div>'
-    + '<textarea id="buzon-azkarin-nota" data-sid="' + _buzonAzkEscapeHTML(sid) + '" onblur="_buzonAzkOnNotaBlur(event)" rows="2" placeholder="Notas internas sobre este cliente / conversación…" style="width:100%;box-sizing:border-box;border:1px solid #e8d4a0;border-radius:6px;padding:6px;font-family:Barlow,sans-serif;font-size:12px;background:#fffef9;resize:vertical;min-height:38px;">' + _buzonAzkEscapeHTML(notaActual) + '</textarea>'
+    + '<textarea id="buzon-azkarin-nota" data-sid="' + _buzonAzkEscapeHTML(sid) + '" onblur="_buzonAzkOnNotaBlurV235(event)" rows="2" placeholder="Notas internas sobre este cliente / conversación…" style="width:100%;box-sizing:border-box;border:1px solid #e8d4a0;border-radius:6px;padding:6px;font-family:Barlow,sans-serif;font-size:12px;background:#fffef9;resize:vertical;min-height:38px;">' + _buzonAzkEscapeHTML(notaActual) + '</textarea>'
   + '</div>';
   detailBody.innerHTML = notaHTML + meta + awaitBanner + (bubbles || '<div style="color:#888;font-size:13px;padding:10px;">Sin contenido textual en este hilo.</div>') + bubblesOpt;
   detailBody.scrollTop = detailBody.scrollHeight;
@@ -4397,6 +4397,249 @@ function _buzonAzkStartBadgePoll() {
   setTimeout(_buzonAzkRefreshBadge, 5000);
   _buzonAzkBadgeHandle = setInterval(_buzonAzkRefreshBadge, 60000);
 }
+
+// ───────────────────────────────────────────────────────────────
+// v235: ARCHIVO HISTÓRICO en Firebase (sync 120s, multidispositivo)
+// Colección Firestore: azkarin_archive
+// Doc id: sid
+// Estructura: { sid, started_at, last_at, date_key, year, month,
+//               referer, ip, phone, turns:[], awaiting_human, human_at,
+//               responded_by, summary, nota, tags:[],
+//               archived_at, last_synced_at, deleted }
+//
+// Las notas y los sids borrados ahora también se persisten en Firestore
+// (con fallback a localStorage para offline). Asier los ve sincronizados
+// entre todos sus dispositivos.
+// ───────────────────────────────────────────────────────────────
+
+var _buzonAzkArchiveSyncHandle = null;
+var _buzonAzkArchiveInProgress = false;
+
+function _buzonAzkFbAvailable() {
+  return !!(typeof firebaseConfigured !== 'undefined' && firebaseConfigured && window._fb && window._fb.db && window._fb.setDoc && window._fb.getDoc);
+}
+
+async function _buzonAzkArchiveGet(sid) {
+  if (!_buzonAzkFbAvailable()) return null;
+  try {
+    var snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'azkarin_archive', sid));
+    return snap.exists() ? snap.data() : null;
+  } catch (e) {
+    console.warn('[BuzonAzkArchive] get error:', e.message);
+    return null;
+  }
+}
+
+async function _buzonAzkArchiveSave(sid, data) {
+  if (!_buzonAzkFbAvailable()) return false;
+  try {
+    await window._fb.setDoc(window._fb.doc(window._fb.db, 'azkarin_archive', sid), data, { merge: true });
+    return true;
+  } catch (e) {
+    console.warn('[BuzonAzkArchive] save error:', e.message);
+    return false;
+  }
+}
+
+function _buzonAzkExtractTel(text) {
+  if (!text) return null;
+  var m = text.match(/(?:\+?34[\s.\-]?)?[679]\d{2}[\s.\-]?\d{3}[\s.\-]?\d{3}/);
+  return m ? m[0].replace(/\s/g, '') : null;
+}
+
+var _BUZON_AZK_LUGARES_BIZKAIA = ['bilbao','getxo','barakaldo','santurtzi','portugalete','abando','indautxu','deusto','santutxu','casco viejo','leioa','basauri','arrigorriaga','durango','gernika','sestao','las arenas','algorta','romo','muskiz','zierbena','erandio','sondika','derio','sopelana','plentzia','mungia','amorebieta','galdakao','etxebarri','madrid','barcelona','valencia','sevilla','zaragoza','santander','valladolid','vitoria','san sebastian','donostia'];
+
+function _buzonAzkRegenerateSummary(conv) {
+  try {
+    if (!conv || !conv.turns) return '(sin mensajes)';
+    // Soportar ambos formatos de turn: {role,content} y {ts,user,bot}
+    var userMsgs = [];
+    var allTexts = [];
+    conv.turns.forEach(function (t) {
+      var u = t.user || (t.role === 'user' ? (t.content || t.text || t.message) : '') || '';
+      var b = t.bot || (t.role === 'assistant' || t.role === 'bot' ? (t.content || t.text || t.message) : '') || '';
+      var h = t.human || (t.role === 'human' || t.role === 'humano' ? (t.content || t.text || t.message) : '') || '';
+      if (u) { userMsgs.push(u); allTexts.push(u); }
+      if (b) allTexts.push(b);
+      if (h) allTexts.push(h);
+    });
+    if (userMsgs.length === 0) return '(sin mensajes del cliente)';
+    var first = String(userMsgs[0] || '').trim().slice(0, 100);
+    var allText = allTexts.join(' ').toLowerCase();
+    var tel = _buzonAzkExtractTel(allText);
+    var lugares = _BUZON_AZK_LUGARES_BIZKAIA.filter(function (l) { return allText.indexOf(l) !== -1; }).slice(0, 2);
+    var s = first;
+    if (lugares.length) s += ' · ' + lugares.join(' → ');
+    if (tel) s += ' · 📞 ' + tel;
+    return conv.awaiting_human ? '🆘 ' + s : s;
+  } catch (e) {
+    return '(error resumen)';
+  }
+}
+
+function _buzonAzkDateKey(s) {
+  // s = "2026-05-31 23:47:20" -> "2026-05-31"
+  if (!s) return '';
+  return String(s).slice(0, 10);
+}
+
+async function _buzonAzkSyncArchive() {
+  if (_buzonAzkArchiveInProgress) return;
+  if (!_buzonAzkFbAvailable()) return;
+  _buzonAzkArchiveInProgress = true;
+  try {
+    var listData = await _buzonAzkFetchList(80);
+    var items = (listData && listData.items) || [];
+    var nNuevas = 0, nActualizadas = 0, nSinCambios = 0, nErrores = 0;
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      try {
+        var existing = await _buzonAzkArchiveGet(it.sid);
+        // Skip si no cambió (mismo last_at y mismo awaiting_human)
+        if (existing && existing.last_at === it.last_at && existing.awaiting_human === it.awaiting_human) {
+          nSinCambios++;
+          continue;
+        }
+        var conv = await _buzonAzkFetchConv(it.sid);
+        var dateKey = _buzonAzkDateKey(conv.last_at || it.last_at || conv.started_at || it.started_at);
+        var doc = Object.assign({}, existing || {}, {
+          sid: it.sid,
+          started_at: conv.started_at || it.started_at || '',
+          last_at: conv.last_at || it.last_at || '',
+          date_key: dateKey,
+          year: dateKey.slice(0, 4),
+          month: dateKey.slice(0, 7),
+          referer: conv.referer || it.referer || '',
+          ip: conv.ip || it.ip || '',
+          phone: it.phone || (existing && existing.phone) || null,
+          turns: conv.turns || [],
+          awaiting_human: !!conv.awaiting_human,
+          human_at: conv.human_at || null,
+          responded_by: (existing && existing.responded_by) || null,
+          summary: _buzonAzkRegenerateSummary(conv),
+          // nota y tags NUNCA se sobrescriben por sync (preserva los del archivo)
+          nota: (existing && existing.nota) || '',
+          tags: (existing && existing.tags) || [],
+          archived_at: (existing && existing.archived_at) || new Date().toISOString(),
+          last_synced_at: new Date().toISOString(),
+          deleted: (existing && existing.deleted) || false
+        });
+        var ok = await _buzonAzkArchiveSave(it.sid, doc);
+        if (ok) { if (existing) nActualizadas++; else nNuevas++; }
+        else nErrores++;
+      } catch (e) {
+        nErrores++;
+        console.warn('[BuzonAzkArchive] item ' + (it && it.sid) + ':', e.message);
+      }
+    }
+    console.log('[BuzonAzkArchive] sync OK · nuevas=' + nNuevas + ' actualizadas=' + nActualizadas + ' sin_cambios=' + nSinCambios + ' errores=' + nErrores);
+  } catch (e) {
+    console.warn('[BuzonAzkArchive] sync error:', e.message);
+  } finally {
+    _buzonAzkArchiveInProgress = false;
+  }
+}
+
+function _buzonAzkStartArchiveSync() {
+  if (_buzonAzkArchiveSyncHandle) return;
+  // Primer sync a los 8s (esperar a que Firebase esté listo)
+  setTimeout(function () {
+    _buzonAzkSyncArchive().catch(function () {});
+  }, 8000);
+  // Después cada 120s
+  _buzonAzkArchiveSyncHandle = setInterval(function () {
+    _buzonAzkSyncArchive().catch(function () {});
+  }, 120000);
+}
+
+// ── Migración de notas a Firestore (con fallback a localStorage) ──
+// Para que las notas se sincronicen entre dispositivos sin perder lo ya guardado en local.
+// Estrategia: leer primero Firestore; si no hay, fallback a localStorage.
+//             escribir SIEMPRE a ambos (Firestore + localStorage).
+
+async function _buzonAzkGetNotaFB(sid) {
+  if (!sid) return '';
+  // Primero local (rápido)
+  var local = _buzonAzkGetNota(sid);
+  // Luego intenta enriquecer desde Firestore
+  if (_buzonAzkFbAvailable()) {
+    try {
+      var doc = await _buzonAzkArchiveGet(sid);
+      if (doc && typeof doc.nota === 'string' && doc.nota.length > 0) return doc.nota;
+    } catch (e) {}
+  }
+  return local;
+}
+
+async function _buzonAzkSaveNotaFB(sid, txt) {
+  if (!sid) return;
+  _buzonAzkSaveNota(sid, txt || '');
+  if (_buzonAzkFbAvailable()) {
+    try {
+      await _buzonAzkArchiveSave(sid, { sid: sid, nota: txt || '', last_synced_at: new Date().toISOString() });
+    } catch (e) {}
+  }
+}
+
+// Sobreescribir el handler de blur de la nota para que también guarde en FB
+function _buzonAzkOnNotaBlurV235(ev) {
+  try {
+    var el = ev && ev.target;
+    if (!el) return;
+    var sid = el.getAttribute('data-sid');
+    if (sid) _buzonAzkSaveNotaFB(sid, el.value || '');
+  } catch (e) {}
+}
+
+// ── Migración de "deleted" a Firestore ──
+async function _buzonAzkSetDeletedFB(sid, val) {
+  if (!sid) return;
+  _buzonAzkSetDeleted(sid, val);
+  if (_buzonAzkFbAvailable()) {
+    try {
+      await _buzonAzkArchiveSave(sid, { sid: sid, deleted: !!val, last_synced_at: new Date().toISOString() });
+    } catch (e) {}
+  }
+}
+
+// Hook al borrar/restaurar para que también propague a Firestore
+var _buzonAzkBorrarItemOrig = _buzonAzkBorrarItem;
+var _buzonAzkRestaurarItemOrig = _buzonAzkRestaurarItem;
+_buzonAzkBorrarItem = function (sid, ev) {
+  _buzonAzkBorrarItemOrig(sid, ev);
+  _buzonAzkSetDeletedFB(sid, true);
+};
+_buzonAzkRestaurarItem = function (sid, ev) {
+  _buzonAzkRestaurarItemOrig(sid, ev);
+  _buzonAzkSetDeletedFB(sid, false);
+};
+
+// Al cargar inbox, hidratar el set de borrados desde Firestore
+async function _buzonAzkHydrateDeletedFromFB() {
+  if (!_buzonAzkFbAvailable()) return;
+  try {
+    var colRef = window._fb.collection(window._fb.db, 'azkarin_archive');
+    var docs = await window._fb.getDocs(colRef);
+    docs.forEach(function (d) {
+      try {
+        var data = d.data();
+        if (data && data.deleted) _buzonAzkSetDeleted(d.id, true);
+        if (data && data.nota) {
+          // sincronizar nota local solo si la local está vacía o más vieja
+          var local = _buzonAzkGetNota(d.id);
+          if (!local) _buzonAzkSaveNota(d.id, data.nota);
+        }
+      } catch (e) {}
+    });
+  } catch (e) {
+    console.warn('[BuzonAzkArchive] hydrate error:', e.message);
+  }
+}
+
+// Arrancar todo al cargar la app
+window._buzonAzkStartArchiveSync = _buzonAzkStartArchiveSync;
+window._buzonAzkSyncArchiveNow = _buzonAzkSyncArchive;
+window._buzonAzkHydrateDeletedFromFB = _buzonAzkHydrateDeletedFromFB;
 
 // Exponer para inspector
 window.openBuzonAzkarin = openBuzonAzkarin;
@@ -6220,6 +6463,9 @@ window.addEventListener('DOMContentLoaded', function() {
     acts.insertBefore(buzonBtn, acts.firstChild);
     // Arrancar polling de badge a los 5s del DOMContentLoaded
     if (typeof _buzonAzkStartBadgePoll === 'function') _buzonAzkStartBadgePoll();
+    // v235: arrancar archivado a Firestore y hidratar deleted/notas locales
+    if (typeof _buzonAzkStartArchiveSync === 'function') _buzonAzkStartArchiveSync();
+    if (typeof _buzonAzkHydrateDeletedFromFB === 'function') setTimeout(_buzonAzkHydrateDeletedFromFB, 10000);
   }
 
   // Auto-connect Firebase with hardcoded config
