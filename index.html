@@ -2474,7 +2474,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v233';</script>
+<script>document.getElementById('version-tag').textContent='v234';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2586,7 +2586,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v233';
+var APP_VERSION = 'v234';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -3978,7 +3978,7 @@ function closeMgr() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// v233: BUZÓN AZKARIN — 2 columnas + nota + dropdown + optimista + footer permanente con sid abierto
+// v234: BUZÓN AZKARIN — añade X para soft-delete por conversación + toggle 'mostrar borradas'
 // Aislado bajo prefix _buzonAzk*. Try/catch envolviendo todo. NO toca nada externo al módulo.
 // Backend: api/azkarin-inbox.js (proxy seguro al chatbot Azkarin del sitio WordPress).
 var _buzonAzkPollHandle = null;        // polling 15s mientras panel abierto
@@ -3987,6 +3987,35 @@ var _buzonAzkPrevAwaiting = new Set(); // sids con awaiting_human en tick anteri
 var _buzonAzkOpenSid = null;           // sid del hilo abierto en el panel derecho
 var _buzonAzkLastItems = [];           // último snapshot de la lista
 var _buzonAzkOptimisticTurns = {};     // sid -> [turns añadidos optimistamente, aún no en WP]
+var _buzonAzkShowHidden = false;       // v234: si true, también muestra las conversaciones marcadas como borradas
+
+// v234: Soft-delete de conversaciones de la lista (localStorage de momento; en v235 pasa a Firestore)
+function _buzonAzkIsDeleted(sid) { try { return localStorage.getItem('_buzonAzkDeleted_' + sid) === '1'; } catch(e) { return false; } }
+function _buzonAzkSetDeleted(sid, val) { try { if (val) localStorage.setItem('_buzonAzkDeleted_' + sid, '1'); else localStorage.removeItem('_buzonAzkDeleted_' + sid); } catch(e) {} }
+function _buzonAzkBorrarItem(sid, ev) {
+  try { if (ev) { ev.stopPropagation(); ev.preventDefault(); } } catch(e) {}
+  if (!sid) return;
+  _buzonAzkSetDeleted(sid, true);
+  // Si estaba abierta, cerramos el detalle
+  if (_buzonAzkOpenSid === sid) {
+    _buzonAzkOpenSid = null;
+    var detail = document.getElementById('buzon-azkarin-detail-body');
+    if (detail) detail.innerHTML = '<div style="text-align:center;color:#888;padding:40px;font-size:14px;">Selecciona una conversación a la izquierda.</div>';
+    var footer = document.getElementById('buzon-azkarin-footer');
+    if (footer) footer.style.display = 'none';
+  }
+  _buzonAzkRenderLista({ items: _buzonAzkLastItems });
+}
+function _buzonAzkRestaurarItem(sid, ev) {
+  try { if (ev) { ev.stopPropagation(); ev.preventDefault(); } } catch(e) {}
+  if (!sid) return;
+  _buzonAzkSetDeleted(sid, false);
+  _buzonAzkRenderLista({ items: _buzonAzkLastItems });
+}
+function _buzonAzkToggleHidden() {
+  _buzonAzkShowHidden = !_buzonAzkShowHidden;
+  _buzonAzkRenderLista({ items: _buzonAzkLastItems });
+}
 
 function _buzonAzkHeaders() {
   var h = (typeof apiHeaders === 'function' ? apiHeaders() : { 'Content-Type': 'application/json' });
@@ -4138,24 +4167,32 @@ function _buzonAzkRenderLista(data) {
   var listEl = document.getElementById('buzon-azkarin-list');
   var count = document.getElementById('buzon-azkarin-count');
   if (!listEl) return;
-  var items = ((data && data.items) || []).slice();
+  var rawItems = ((data && data.items) || []).slice();
   // Orden: awaiting_human PRIMERO, luego por last_at desc
-  items.sort(function (a, b) {
+  rawItems.sort(function (a, b) {
     if (a.awaiting_human !== b.awaiting_human) return a.awaiting_human ? -1 : 1;
     return (b.last_at || '').localeCompare(a.last_at || '');
   });
-  _buzonAzkLastItems = items;
+  _buzonAzkLastItems = rawItems;
+  // v234: filtrar borradas si no estamos en modo "mostrar ocultas"
+  var hiddenCount = rawItems.filter(function (i) { return _buzonAzkIsDeleted(i.sid); }).length;
+  var items = _buzonAzkShowHidden ? rawItems : rawItems.filter(function (i) { return !_buzonAzkIsDeleted(i.sid); });
   var nAwait = items.filter(function (i) { return i.awaiting_human; }).length;
-  if (count) count.textContent = '· ' + items.length + ' conversación(es)' + (nAwait > 0 ? ' · ' + nAwait + ' pide humano' : '');
+  if (count) {
+    var hiddenLabel = hiddenCount > 0 ? ' · <a href="#" onclick="event.preventDefault();_buzonAzkToggleHidden()" style="color:#fff;text-decoration:underline;cursor:pointer;">' + (_buzonAzkShowHidden ? 'ocultar ' : 'mostrar ') + hiddenCount + ' borrada(s)</a>' : '';
+    count.innerHTML = '· ' + items.length + ' conv.' + (nAwait > 0 ? ' · ' + nAwait + ' pide humano' : '') + hiddenLabel;
+  }
   if (items.length === 0) {
-    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:#888;font-size:13px;">Sin conversaciones.</div>';
+    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:#888;font-size:13px;">' + (hiddenCount > 0 && !_buzonAzkShowHidden ? 'Todas borradas. <a href="#" onclick="event.preventDefault();_buzonAzkToggleHidden()">Mostrar</a>' : 'Sin conversaciones.') + '</div>';
     return;
   }
   var html = items.map(function (it) {
     var pide = !!it.awaiting_human;
     var sel = _buzonAzkOpenSid === it.sid;
-    var bg = sel ? (pide ? '#fde8e8' : '#e8f1fc') : (pide ? '#fff5f5' : '#fff');
-    var border = sel ? (pide ? '#e57373' : '#82a7d8') : (pide ? '#fcc' : '#dde3ec');
+    var deleted = _buzonAzkIsDeleted(it.sid);
+    var bg = sel ? (pide ? '#fde8e8' : '#e8f1fc') : (pide ? '#fff5f5' : (deleted ? '#f5f5f5' : '#fff'));
+    var border = sel ? (pide ? '#e57373' : '#82a7d8') : (pide ? '#fcc' : (deleted ? '#ddd' : '#dde3ec'));
+    var opacity = deleted ? '0.55' : '1';
     var pideBadge = pide ? '<span style="background:#e52521;color:#fff;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:800;margin-left:5px;">🆘</span>' : '';
     var slug = it.referer ? (it.referer.replace(/^https?:\/\/(www\.)?azkarmudanzasdevizcaya\.es\//, '/').replace(/\/$/, '').slice(0, 36)) : '';
     var primeroRaw = (it.first_user || '').slice(0, 70);
@@ -4163,8 +4200,14 @@ function _buzonAzkRenderLista(data) {
     var tel = it.phone ? '<span style="color:#1B4F8A;font-size:10px;font-weight:700;"> · 📞 ' + _buzonAzkEscapeHTML(it.phone) + '</span>' : '';
     var hora = (it.last_at || it.started_at || '').slice(11, 16);
     var dia = (it.last_at || it.started_at || '').slice(5, 10);
-    return '<div onclick="_buzonAzkAbrirHilo(\'' + _buzonAzkEscapeHTML(it.sid) + '\')" style="background:' + bg + ';border:1px solid ' + border + ';border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:.1s;" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'">'
-      + '<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888;">'
+    var sidEsc = _buzonAzkEscapeHTML(it.sid);
+    // v234: botón X (o ↩ si está borrada y modo mostrar borradas activo)
+    var btnX = deleted
+      ? '<button onclick="_buzonAzkRestaurarItem(\'' + sidEsc + '\', event)" title="Restaurar" style="background:transparent;border:none;color:#1a7a3f;font-size:14px;font-weight:800;cursor:pointer;padding:0 4px;line-height:1;opacity:.7;">↩</button>'
+      : '<button onclick="_buzonAzkBorrarItem(\'' + sidEsc + '\', event)" title="Quitar de la lista" style="background:transparent;border:none;color:#999;font-size:14px;font-weight:800;cursor:pointer;padding:0 4px;line-height:1;opacity:.5;" onmouseover="this.style.opacity=\'1\';this.style.color=\'#c0392b\'" onmouseout="this.style.opacity=\'.5\';this.style.color=\'#999\'">✕</button>';
+    return '<div onclick="_buzonAzkAbrirHilo(\'' + sidEsc + '\')" style="position:relative;background:' + bg + ';border:1px solid ' + border + ';border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:.1s;opacity:' + opacity + ';" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'">'
+      + '<div style="position:absolute;top:4px;right:4px;">' + btnX + '</div>'
+      + '<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888;padding-right:18px;">'
         + '<span style="font-weight:700;color:#1B4F8A;">' + _buzonAzkEscapeHTML(dia + ' ' + hora) + '</span>'
         + pideBadge + tel
       + '</div>'
