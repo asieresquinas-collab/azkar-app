@@ -2474,7 +2474,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v232';</script>
+<script>document.getElementById('version-tag').textContent='v233';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2586,7 +2586,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v232';
+var APP_VERSION = 'v233';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -3978,7 +3978,7 @@ function closeMgr() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// v232: BUZÓN AZKARIN — layout 2 columnas + nota editable + dropdown responder + refresco optimista
+// v233: BUZÓN AZKARIN — 2 columnas + nota + dropdown + optimista + footer permanente con sid abierto
 // Aislado bajo prefix _buzonAzk*. Try/catch envolviendo todo. NO toca nada externo al módulo.
 // Backend: api/azkarin-inbox.js (proxy seguro al chatbot Azkarin del sitio WordPress).
 var _buzonAzkPollHandle = null;        // polling 15s mientras panel abierto
@@ -4181,7 +4181,9 @@ function _buzonAzkRenderHilo(data) {
   if (!detailBody) return;
   var sid = data.sid || _buzonAzkOpenSid;
   var awaiting = !!data.awaiting_human;
-  if (footer) footer.style.display = awaiting ? 'flex' : 'none';
+  // v233: footer SIEMPRE visible cuando hay un sid abierto.
+  // Asi tras responder no desaparece y puedes seguir escribiendo todo lo que quieras.
+  if (footer) footer.style.display = sid ? 'flex' : 'none';
   var turns = (data && data.turns) || [];
   // Adjuntar turns optimistas locales (los que aún no han subido del WP)
   var optimistic = (_buzonAzkOptimisticTurns[sid] || []);
@@ -4290,18 +4292,17 @@ async function _buzonAzkEnviar() {
     if (!_buzonAzkOptimisticTurns[sid]) _buzonAzkOptimisticTurns[sid] = [];
     _buzonAzkOptimisticTurns[sid].push({ role: 'human', content: text, ts: new Date().toISOString().slice(0, 16).replace('T', ' ') });
     input.value = '';
-    // Re-render del hilo con el optimista
-    _buzonAzkRenderHilo({
-      sid: sid,
-      started_at: '',
-      last_at: '',
-      turns: [], // se rellenan en siguiente fetch
-      awaiting_human: false
-    });
-    // Pedir el hilo real al WP para confirmar
+    // Pedir el hilo real al WP inmediatamente y re-renderizar (con el optimistic ya en el set).
+    // Si falla, re-render con un placeholder que mantenga el footer visible.
+    try {
+      var dNow = await _buzonAzkFetchConv(sid);
+      _buzonAzkRenderHilo(dNow);
+    } catch (e) {
+      _buzonAzkRenderHilo({ sid: sid, turns: [], awaiting_human: false });
+    }
+    // A los 2s, fetch otra vez para limpiar el optimistic si el WP ya lo ha incorporado.
     setTimeout(function () {
       _buzonAzkFetchConv(sid).then(function (d) {
-        // Si el WP ya tiene nuestro turn humano, limpiar optimistic
         var allText = (d.turns || []).map(function (t) { return (t.human || t.content || ''); }).join(' ');
         if (allText.indexOf(text) !== -1) {
           _buzonAzkOptimisticTurns[sid] = (_buzonAzkOptimisticTurns[sid] || []).filter(function (t) { return t.content !== text; });
