@@ -11540,48 +11540,72 @@ async function doResetWithCode() {
   var chatbotGreeted = false; // Para auto-saludo al abrir
   var chatTTSEnabled = localStorage.getItem('chatTTS') !== 'off'; // Voz activada por defecto
 
-  // ── Text-to-Speech: voz del navegador (Google español / Microsoft) ──
+  // ── Text-to-Speech: voz del navegador — v239: lee TODO el texto (sin límite) ──
   var _ttsUnlocked = false;
+  var _ttsQueue = [];
+  var _ttsSpeaking = false;
+
   function chatSpeak(text) {
     if (!chatTTSEnabled) return;
     if (!('speechSynthesis' in window)) return;
     // Limpiar emojis y caracteres especiales
     var cleanText = text.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').replace(/\s+/g, ' ').trim();
     if (!cleanText) return;
-    if (cleanText.length > 500) cleanText = cleanText.substring(0, 500);
     // Cancelar lo que esté sonando
     speechSynthesis.cancel();
+    _ttsQueue = [];
+    _ttsSpeaking = false;
+    // Partir texto en trozos de ~300 chars por frases (punto, coma, salto de línea)
+    // Chrome/Android se cuelga con textos >~400 chars — así se evita
+    var trozos = [];
+    var partes = cleanText.split(/(?<=[.!?\n])\s+/);
+    var trozo = '';
+    for (var i = 0; i < partes.length; i++) {
+      if ((trozo + ' ' + partes[i]).length > 300 && trozo.length > 0) {
+        trozos.push(trozo.trim());
+        trozo = partes[i];
+      } else {
+        trozo += (trozo ? ' ' : '') + partes[i];
+      }
+    }
+    if (trozo.trim()) trozos.push(trozo.trim());
+    _ttsQueue = trozos;
     // Delay tras cancel() — Chrome/Android necesita un tick para resetear el engine
-    setTimeout(function() {
-      try {
-        var utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.lang = 'es-ES';
-        utterance.rate = 1.05;
-        utterance.pitch = 1.0;
-        var voices = speechSynthesis.getVoices();
-        // Si las voces no están cargadas (móvil), reintentar en 200ms
-        if (voices.length === 0) {
-          speechSynthesis.onvoiceschanged = function() {
-            speechSynthesis.onvoiceschanged = null;
-            chatSpeak(text);
-          };
-          return;
-        }
-        var esVoice = voices.find(function(v) { return v.lang.startsWith('es') && v.name.includes('Google'); }) ||
-                      voices.find(function(v) { return v.lang.startsWith('es'); });
-        if (esVoice) utterance.voice = esVoice;
-        speechSynthesis.speak(utterance);
-        _ttsUnlocked = true;
-        // Chrome bug: speechSynthesis se pausa solo en textos largos — workaround
-        var keepAlive = setInterval(function() {
-          if (!speechSynthesis.speaking) { clearInterval(keepAlive); return; }
-          speechSynthesis.pause();
-          speechSynthesis.resume();
-        }, 10000);
-        utterance.onend = function() { clearInterval(keepAlive); };
-        utterance.onerror = function(e) { clearInterval(keepAlive); console.warn('[TTS] Error:', e.error); };
-      } catch(e) { console.warn('[TTS] Exception:', e.message); }
-    }, 100);
+    setTimeout(function() { _ttsPlayNext(); }, 100);
+  }
+
+  function _ttsPlayNext() {
+    if (_ttsQueue.length === 0) { _ttsSpeaking = false; return; }
+    _ttsSpeaking = true;
+    var chunk = _ttsQueue.shift();
+    try {
+      var utterance = new SpeechSynthesisUtterance(chunk);
+      utterance.lang = 'es-ES';
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
+      var voices = speechSynthesis.getVoices();
+      if (voices.length === 0) {
+        speechSynthesis.onvoiceschanged = function() {
+          speechSynthesis.onvoiceschanged = null;
+          _ttsQueue.unshift(chunk);
+          _ttsPlayNext();
+        };
+        return;
+      }
+      var esVoice = voices.find(function(v) { return v.lang.startsWith('es') && v.name.includes('Google'); }) ||
+                    voices.find(function(v) { return v.lang.startsWith('es'); });
+      if (esVoice) utterance.voice = esVoice;
+      // Chrome bug workaround: pause/resume cada 10s para que no se cuelgue
+      var keepAlive = setInterval(function() {
+        if (!speechSynthesis.speaking) { clearInterval(keepAlive); return; }
+        speechSynthesis.pause();
+        speechSynthesis.resume();
+      }, 10000);
+      utterance.onend = function() { clearInterval(keepAlive); _ttsPlayNext(); };
+      utterance.onerror = function(e) { clearInterval(keepAlive); console.warn('[TTS] Error:', e.error); _ttsPlayNext(); };
+      speechSynthesis.speak(utterance);
+      _ttsUnlocked = true;
+    } catch(e) { console.warn('[TTS] Exception:', e.message); _ttsPlayNext(); }
   }
 
   // ── Burbuja arrastrable ──
