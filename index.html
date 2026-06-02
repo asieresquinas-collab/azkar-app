@@ -1588,6 +1588,13 @@ async function PA(){
     return;
   }
 
+  // v236 ESCUDO ANTI-VACIADO: garantizar que el DOM tiene los items antes de generar el PDF
+  var _esc = await _v236EnsureRowsFromLocal();
+  if (!_esc.ok) {
+    showSyncStatus('⚠ El presupuesto se ha quedado sin artículos en pantalla (esperabamos ' + _esc.expected + '). Recarga el cliente desde "Mis Presupuestos" y vuelve a intentarlo.', 8000);
+    return;
+  }
+
   var clientEmail = document.getElementById('f_email') ? document.getElementById('f_email').value.trim() : '';
 
   if (clientEmail && clientEmail.includes('@')) {
@@ -1709,6 +1716,13 @@ async function PA_SOLO_DRIVE(){
     return;
   }
 
+  // v236 ESCUDO ANTI-VACIADO
+  var _esc = await _v236EnsureRowsFromLocal();
+  if (!_esc.ok) {
+    showSyncStatus('⚠ El presupuesto se ha quedado sin artículos en pantalla (esperabamos ' + _esc.expected + '). Recarga el cliente desde "Mis Presupuestos" y vuelve a intentarlo.', 8000);
+    return;
+  }
+
   showSyncStatus('⏳ Guardando PDF en Drive (sin enviar email)...', 0);
 
   try {
@@ -1752,6 +1766,13 @@ async function generarLiquidacion(){
   var numRef = parseInt(number,10);
   if(!number||!number.trim()||numRef<1000){
     showSyncStatus('⚠ Sin nº cliente. Pulsa "+ Nuevo" primero',4000); return;
+  }
+
+  // v236 ESCUDO ANTI-VACIADO
+  var _esc = await _v236EnsureRowsFromLocal();
+  if (!_esc.ok) {
+    showSyncStatus('⚠ El presupuesto se ha quedado sin artículos en pantalla. Recarga el cliente.', 8000);
+    return;
   }
   // Recoger datos del formulario
   var clientDni = (document.getElementById('f_dni')||{}).value||'';
@@ -2474,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v235';</script>
+<script>document.getElementById('version-tag').textContent='v236';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2586,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v235';
+var APP_VERSION = 'v236';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -3734,19 +3755,36 @@ async function initFirebase(config) {
               } else {
                 // No está editando → recargar silenciosamente
                 const remoteData = { ...change.doc.data(), id: change.doc.id };
-                window._presupuestoLoading = true;
-                try {
-                  ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'].forEach(fid => {
-                    var el = document.getElementById(fid); if (el) el.value = '';
-                  });
-                  document.querySelectorAll('#tb .cr').forEach(cr => cr.remove());
-                  rid = 0;
-                  restoreFormData(remoteData);
+                // v236 ESCUDO ANTI-VACIADO: si remoteData no tiene rows pero el DOM SI los tiene,
+                // NO borramos el DOM. Esto previene que un sync remoto deje el formulario vacío.
+                var _v236_remoteHasRows = !!(remoteData.rows && remoteData.rows.length > 0);
+                var _v236_domRowsCount = document.querySelectorAll('#tb .cr').length;
+                if (!_v236_remoteHasRows && _v236_domRowsCount > 0) {
+                  console.warn('[v236 ESCUDO onSnapshot] Cambio remoto SIN rows pero DOM tiene ' + _v236_domRowsCount + ' filas. NO se reescribe el DOM. Solo se actualizan flags de estado.');
+                  // Actualizar solo metadatos (flags de estado), preservar rows del DOM
+                  if (remoteData._enMarcha !== undefined) window._currentEnMarcha = !!remoteData._enMarcha;
+                  if (remoteData._enMarchaDate) window._currentEnMarchaDate = remoteData._enMarchaDate;
+                  if (remoteData._pagadoFinalizado !== undefined) window._currentPagado = !!remoteData._pagadoFinalizado;
+                  if (remoteData._pagadoFinalizadoDate) window._currentPagadoDate = remoteData._pagadoFinalizadoDate;
+                  if (remoteData._guardamuebles !== undefined) window._currentGuardamuebles = !!remoteData._guardamuebles;
+                  if (remoteData._archivado2026 !== undefined) window._currentArchivado2026 = !!remoteData._archivado2026;
                   window._lastSavedTimestamp = remoteTs;
-                } finally {
-                  window._presupuestoLoading = false;
+                  showSyncStatus('🛡️ Cambio remoto sin items detectado, DOM preservado', 4000);
+                } else {
+                  window._presupuestoLoading = true;
+                  try {
+                    ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'].forEach(fid => {
+                      var el = document.getElementById(fid); if (el) el.value = '';
+                    });
+                    document.querySelectorAll('#tb .cr').forEach(cr => cr.remove());
+                    rid = 0;
+                    restoreFormData(remoteData);
+                    window._lastSavedTimestamp = remoteTs;
+                  } finally {
+                    window._presupuestoLoading = false;
+                  }
+                  showSyncStatus('🔄 Actualizado desde otro dispositivo', 3000);
                 }
-                showSyncStatus('🔄 Actualizado desde otro dispositivo', 3000);
               }
             }
             break;
@@ -5965,6 +6003,47 @@ async function renameDriveFolder(number, clientName) {
 }
 
 // Construir HTML completo con estilos para guardar en Drive
+// ════════════════════════════════════════════════════════════════════════
+// v236 ESCUDO ANTI-PRESUPUESTOS-VACIOS
+// Si el DOM esta vacio pero el local (IndexedDB) tiene rows del mismo cliente,
+// repobla el DOM ANTES de generar el PDF. Si el local tambien esta vacio,
+// permite continuar (presupuesto nuevo legitimo).
+// ════════════════════════════════════════════════════════════════════════
+async function _v236EnsureRowsFromLocal() {
+  try {
+    var domRows = document.querySelectorAll('#tb .cr').length;
+    if (domRows > 0) return { ok: true, reason: 'dom_tiene_rows' };
+
+    var ref = window._currentPresupuestoRef || (document.getElementById('f_ref') ? document.getElementById('f_ref').value : '') || '';
+    if (!ref) return { ok: true, reason: 'sin_ref' };
+
+    var local = null;
+    try { local = await getPresupuesto(ref); } catch (e) {}
+    if (!local || !local.rows || local.rows.length === 0) {
+      return { ok: true, reason: 'local_vacio_legitimo' };
+    }
+
+    console.warn('[v236 ESCUDO] DOM vacio pero local tiene ' + local.rows.length + ' rows. Repoblando.');
+    if (typeof AR === 'function') {
+      local.rows.forEach(function (r) {
+        if (r.c !== 'Salida') AR(r.c, r.z, r.u, r.p, r.d, r.tm || '', r.tam || 'Estándar');
+      });
+    }
+    await new Promise(function (resolve) { setTimeout(resolve, 200); });
+    var domAfter = document.querySelectorAll('#tb .cr').length;
+    if (domAfter > 0) {
+      console.log('[v236 ESCUDO] Repoblado OK: ' + domAfter + ' filas restauradas desde IndexedDB.');
+      if (typeof CA === 'function') CA();
+      if (typeof SY === 'function') SY();
+      return { ok: true, reason: 'repoblado_desde_local', restored: domAfter };
+    }
+    return { ok: false, reason: 'no_se_pudo_repoblar', expected: local.rows.length };
+  } catch (e) {
+    console.error('[v236 ESCUDO] Error:', e.message);
+    return { ok: true, reason: 'escudo_con_error_no_bloquear' };
+  }
+}
+
 function buildCompleteHTML(pageIds) {
   // Recoger TODOS los estilos de la página
   var styles = '';
