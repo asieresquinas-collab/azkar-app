@@ -11559,17 +11559,18 @@ async function doResetWithCode() {
     var cleanText = text.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').replace(/\s+/g, ' ').trim();
     if (!cleanText) return;
     // NO cancelar lo anterior — añadir a la cola para que lea todo
-    // Partir texto en trozos de ~300 chars por frases
-    // Chrome/Android se cuelga con textos >~400 chars — así se evita
+    // v239c: Trozos de ~120 chars (~25 palabras = ~10 seg de audio)
+    // Chrome MATA el audio a los 15 seg — con trozos cortos cada uno
+    // termina ANTES del timeout y la cola reproduce el siguiente
     var trozos = [];
-    var partes = cleanText.split(/(?<=[.!?\n])\s+/);
+    var frases = cleanText.split(/(?<=[.!?,:;\n])\s+/);
     var trozo = '';
-    for (var i = 0; i < partes.length; i++) {
-      if ((trozo + ' ' + partes[i]).length > 300 && trozo.length > 0) {
+    for (var i = 0; i < frases.length; i++) {
+      if ((trozo + ' ' + frases[i]).length > 120 && trozo.length > 0) {
         trozos.push(trozo.trim());
-        trozo = partes[i];
+        trozo = frases[i];
       } else {
-        trozo += (trozo ? ' ' : '') + partes[i];
+        trozo += (trozo ? ' ' : '') + frases[i];
       }
     }
     if (trozo.trim()) trozos.push(trozo.trim());
@@ -11602,12 +11603,12 @@ async function doResetWithCode() {
       var esVoice = voices.find(function(v) { return v.lang.startsWith('es') && v.name.includes('Google'); }) ||
                     voices.find(function(v) { return v.lang.startsWith('es'); });
       if (esVoice) utterance.voice = esVoice;
-      // Chrome bug workaround: pause/resume cada 10s para que no se cuelgue
+      // Chrome bug workaround: pause/resume cada 5s para que no se cuelgue
       var keepAlive = setInterval(function() {
         if (!speechSynthesis.speaking) { clearInterval(keepAlive); return; }
         speechSynthesis.pause();
         speechSynthesis.resume();
-      }, 10000);
+      }, 5000);
       utterance.onend = function() { clearInterval(keepAlive); _ttsPlayNext(); };
       utterance.onerror = function(e) { clearInterval(keepAlive); console.warn('[TTS] Error:', e.error); _ttsPlayNext(); };
       speechSynthesis.speak(utterance);
