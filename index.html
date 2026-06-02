@@ -3306,85 +3306,47 @@ async function autoRepair() {
       }
     } catch(e) { console.warn('[AutoRepair] Error en FIX 1:', e.message); }
 
-    // ── FIX 2: Reconciliar IndexedDB ↔ Firebase (sync bidireccional) ──
-    if (firebaseConfigured && window._fb) {
+    // ── FIX 2: Reconciliar IndexedDB ↔ Firebase (SOLO presupuesto activo) ──
+    // v238: Ya NO se hace getDocs de TODA la colección (agotaba la cuota de Firestore).
+    // El onSnapshot ya mantiene IndexedDB sincronizado con la nube.
+    // AutoRepair ahora solo verifica el presupuesto abierto actualmente (1 lectura).
+    if (firebaseConfigured && window._fb && window._currentPresupuestoRef) {
       try {
-        const local = await getAllPresupuestos();
-        const localMap = {};
-        local.forEach(p => { localMap[p.id] = p; });
-
-        // Obtener todos los docs de Firebase
-        const colRef = window._fb.collection(window._fb.db, 'presupuestos');
-        const cloudDocs = await window._fb.getDocs(colRef);
-        const cloudMap = {};
-        cloudDocs.forEach(d => { cloudMap[d.id] = d.data(); });
-
-        // Subir presupuestos que están en local pero NO en Firebase
-        let uploaded = 0;
-        for (const p of local) {
-          if (!cloudMap[p.id]) {
-            try {
-              await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', p.id), p, { merge: true });
-              uploaded++;
+        const activeRef = window._currentPresupuestoRef;
+        const cloudDoc = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', activeRef));
+        if (cloudDoc.exists()) {
+          const cloud = cloudDoc.data();
+          const local = await getPresupuesto(activeRef);
+          if (local && cloud) {
+            const localTs = local.timestamp || 0;
+            const cloudTs = cloud.timestamp || 0;
+            if (localTs > cloudTs) {
+              // Local más reciente → subir a Firebase (preservar flags)
+              const toUpload = { ...local };
+              if (cloud._enMarcha && !toUpload._enMarcha) toUpload._enMarcha = cloud._enMarcha;
+              if (cloud._enMarchaDate && !toUpload._enMarchaDate) toUpload._enMarchaDate = cloud._enMarchaDate;
+              if (cloud._pagadoFinalizado && !toUpload._pagadoFinalizado) toUpload._pagadoFinalizado = cloud._pagadoFinalizado;
+              if (cloud._pagadoFinalizadoDate && !toUpload._pagadoFinalizadoDate) toUpload._pagadoFinalizadoDate = cloud._pagadoFinalizadoDate;
+              if (cloud._guardamuebles && !toUpload._guardamuebles) toUpload._guardamuebles = cloud._guardamuebles;
+              if (cloud._archivado2026 && !toUpload._archivado2026) toUpload._archivado2026 = cloud._archivado2026;
+              await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', activeRef), toUpload, { merge: true });
               fixes++;
-            } catch(e) { /* skip if fails */ }
-          }
-        }
-        if (uploaded > 0) console.log('[AutoRepair] Subidos', uploaded, 'presupuestos locales a Firebase');
-
-        // Bajar presupuestos que están en Firebase pero NO en local
-        let downloaded = 0;
-        for (const [id, data] of Object.entries(cloudMap)) {
-          if (!localMap[id]) {
-            try {
-              await savePresupuesto({ ...data, id: id });
-              downloaded++;
+              console.log('[AutoRepair] Subido presupuesto activo', activeRef);
+            } else if (cloudTs > localTs) {
+              // Firebase más reciente → bajar a local (preservar flags)
+              const merged = { ...cloud, id: activeRef };
+              if (local._enMarcha && !merged._enMarcha) merged._enMarcha = local._enMarcha;
+              if (local._enMarchaDate && !merged._enMarchaDate) merged._enMarchaDate = local._enMarchaDate;
+              if (local._pagadoFinalizado && !merged._pagadoFinalizado) merged._pagadoFinalizado = local._pagadoFinalizado;
+              if (local._pagadoFinalizadoDate && !merged._pagadoFinalizadoDate) merged._pagadoFinalizadoDate = local._pagadoFinalizadoDate;
+              if (local._guardamuebles && !merged._guardamuebles) merged._guardamuebles = local._guardamuebles;
+              if (local._archivado2026 && !merged._archivado2026) merged._archivado2026 = local._archivado2026;
+              await savePresupuesto(merged);
               fixes++;
-            } catch(e) { /* skip if fails */ }
-          }
-        }
-        if (downloaded > 0) console.log('[AutoRepair] Bajados', downloaded, 'presupuestos de Firebase a local');
-
-        // Detectar presupuestos con datos más recientes en un lado
-        let updated = 0;
-        for (const p of local) {
-          const cloud = cloudMap[p.id];
-          if (cloud && p.timestamp && cloud.timestamp) {
-            if (p.timestamp > cloud.timestamp) {
-              // Local más reciente → subir a Firebase
-              // v134: PRESERVAR flags de estado de Firebase que local no tenga
-              try {
-                const toUpload = { ...p };
-                if (cloud._enMarcha && !toUpload._enMarcha) toUpload._enMarcha = cloud._enMarcha;
-                if (cloud._enMarchaDate && !toUpload._enMarchaDate) toUpload._enMarchaDate = cloud._enMarchaDate;
-                if (cloud._pagadoFinalizado && !toUpload._pagadoFinalizado) toUpload._pagadoFinalizado = cloud._pagadoFinalizado;
-                if (cloud._pagadoFinalizadoDate && !toUpload._pagadoFinalizadoDate) toUpload._pagadoFinalizadoDate = cloud._pagadoFinalizadoDate;
-                if (cloud._guardamuebles && !toUpload._guardamuebles) toUpload._guardamuebles = cloud._guardamuebles;
-                if (cloud._archivado2026 && !toUpload._archivado2026) toUpload._archivado2026 = cloud._archivado2026;
-                await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', p.id), toUpload, { merge: true });
-                updated++;
-                fixes++;
-              } catch(e) {}
-            } else if (cloud.timestamp > p.timestamp) {
-              // Firebase más reciente → bajar a local
-              // v134: PRESERVAR flags de estado locales que Firebase no tenga
-              try {
-                const merged = { ...cloud, id: p.id };
-                if (p._enMarcha && !merged._enMarcha) merged._enMarcha = p._enMarcha;
-                if (p._enMarchaDate && !merged._enMarchaDate) merged._enMarchaDate = p._enMarchaDate;
-                if (p._pagadoFinalizado && !merged._pagadoFinalizado) merged._pagadoFinalizado = p._pagadoFinalizado;
-                if (p._pagadoFinalizadoDate && !merged._pagadoFinalizadoDate) merged._pagadoFinalizadoDate = p._pagadoFinalizadoDate;
-                if (p._guardamuebles && !merged._guardamuebles) merged._guardamuebles = p._guardamuebles;
-                if (p._archivado2026 && !merged._archivado2026) merged._archivado2026 = p._archivado2026;
-                await savePresupuesto(merged);
-                updated++;
-                fixes++;
-              } catch(e) {}
+              console.log('[AutoRepair] Bajado presupuesto activo', activeRef);
             }
           }
         }
-        if (updated > 0) console.log('[AutoRepair] Actualizados', updated, 'presupuestos (sync timestamps)');
-
       } catch(e) { console.warn('[AutoRepair] Error en FIX 2:', e.message); }
     }
 
@@ -3799,17 +3761,16 @@ async function initFirebase(config) {
           openMgr(); // Re-render del panel con datos actualizados
         }
       }
-      // Después de recibir datos de la nube, subir los locales que no estén
+      // v238: Subir locales que no estén en la nube (SIN hacer getDocs extra)
+      // Usamos los IDs que ya trajo el onSnapshot para no duplicar lecturas
       if (firstSync) {
         firstSync = false;
-        // Esperar un momento para que se guarden los de la nube primero
         setTimeout(async () => {
           try {
             const local = await getAllPresupuestos();
+            // Recoger IDs de la nube del snapshot actual (ya están en memoria)
             const cloudIds = new Set();
-            const cloudDocs = await getDocs(colRef);
-            cloudDocs.forEach(d => cloudIds.add(d.id));
-            // Subir los que solo están en local
+            snapshot.docs.forEach(d => cloudIds.add(d.id));
             let uploaded = 0;
             for (const p of local) {
               if (!cloudIds.has(p.id)) {
@@ -6619,9 +6580,11 @@ window.addEventListener('DOMContentLoaded', function() {
   // v119: Health check al abrir — verificar backend y Firebase tras 3s
   setTimeout(checkAppHealth, 3000);
 
-  // v120: Auto-repair — primera revisión a los 10s, luego cada 5 minutos
-  setTimeout(autoRepair, 10000);
-  setInterval(autoRepair, 300000); // Cada 5 minutos
+  // v120→v238: Auto-repair — primera revisión a los 30s, luego 4 veces/día (cada 6h)
+  // Antes: cada 5 min con getDocs de TODA la colección → 86.400 lecturas/día (cuota=50K)
+  // Ahora: cada 6h solo verificando el presupuesto activo → 4 lecturas/día
+  setTimeout(autoRepair, 30000);
+  setInterval(autoRepair, 21600000); // Cada 6 horas (4 veces al día)
 
   // v124: Al arrancar, recuperar estados del presupuesto desde Firebase (fuente de verdad)
   setTimeout(async () => {
@@ -6651,7 +6614,7 @@ window.addEventListener('DOMContentLoaded', function() {
     } catch(e) { console.warn('[Azkar] Error recuperando estados:', e); }
   }, 2000);
 
-  // v119: Auto-save every 60 seconds (cadena completa con cola offline)
+  // v119→v238: Auto-save every 120 seconds (antes: 60s → duplicaba escrituras Firebase)
   setInterval(async () => {
     // v123e: NUNCA guardar mientras se está cargando un presupuesto
     if (window._presupuestoLoading) return;
@@ -6673,7 +6636,7 @@ window.addEventListener('DOMContentLoaded', function() {
         await savePresupuestoFull(data);
       } catch(e) { console.warn('[Azkar] Auto-save error:', e); }
     }
-  }, 60000);
+  }, 120000);
 
   // ── MEJORA 1: Guardar al refrescar/cerrar la página ──
   // Función para guardar INMEDIATAMENTE (sin debounce)
@@ -6715,7 +6678,8 @@ window.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // ── MEJORA 2: Guardado automático al cambiar campos (debounced 1s) ──
+  // ── MEJORA 2: Guardado automático al cambiar campos (debounced 3s) ──
+  // v238: subido de 1s a 3s para reducir escrituras Firebase (cuota)
   let _saveTimeout = null;
   function debouncedAutoSave() {
     if (window._presupuestoLoading) return;
@@ -6723,7 +6687,7 @@ window.addEventListener('DOMContentLoaded', function() {
     _saveTimeout = setTimeout(() => {
       if (window._presupuestoLoading) return;
       saveNow();
-    }, 1000);
+    }, 3000);
   }
   // Escuchar cambios en TODOS los campos del presupuesto Y dossier
   document.querySelectorAll('#page-presupuesto input, #page-presupuesto textarea, #page-presupuesto select, #page-dossier input, #page-dossier textarea, #page-dossier select').forEach(el => {
