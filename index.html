@@ -11545,17 +11545,21 @@ async function doResetWithCode() {
   var _ttsQueue = [];
   var _ttsSpeaking = false;
 
+  // v239b: chatSpeakStop() solo se llama cuando el USUARIO envía un mensaje nuevo
+  function chatSpeakStop() {
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    _ttsQueue = [];
+    _ttsSpeaking = false;
+  }
+
   function chatSpeak(text) {
     if (!chatTTSEnabled) return;
     if (!('speechSynthesis' in window)) return;
     // Limpiar emojis y caracteres especiales
     var cleanText = text.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').replace(/\s+/g, ' ').trim();
     if (!cleanText) return;
-    // Cancelar lo que esté sonando
-    speechSynthesis.cancel();
-    _ttsQueue = [];
-    _ttsSpeaking = false;
-    // Partir texto en trozos de ~300 chars por frases (punto, coma, salto de línea)
+    // NO cancelar lo anterior — añadir a la cola para que lea todo
+    // Partir texto en trozos de ~300 chars por frases
     // Chrome/Android se cuelga con textos >~400 chars — así se evita
     var trozos = [];
     var partes = cleanText.split(/(?<=[.!?\n])\s+/);
@@ -11569,9 +11573,12 @@ async function doResetWithCode() {
       }
     }
     if (trozo.trim()) trozos.push(trozo.trim());
-    _ttsQueue = trozos;
-    // Delay tras cancel() — Chrome/Android necesita un tick para resetear el engine
-    setTimeout(function() { _ttsPlayNext(); }, 100);
+    // Añadir a la cola existente (no borrar la anterior)
+    for (var j = 0; j < trozos.length; j++) _ttsQueue.push(trozos[j]);
+    // Si no está hablando, arrancar
+    if (!_ttsSpeaking) {
+      setTimeout(function() { _ttsPlayNext(); }, 100);
+    }
   }
 
   function _ttsPlayNext() {
@@ -11687,11 +11694,10 @@ async function doResetWithCode() {
     chatHistorial.push({ role: 'user', content: msg });
     sendBtn.disabled = true;
     addTyping();
+    // v239b: Parar audio anterior cuando el usuario envía un mensaje nuevo
+    chatSpeakStop();
     // Desbloquear speechSynthesis con interacción directa del usuario
-    // IMPORTANTE: en móvil (Android/iOS), volume=0 NO desbloquea el audio
-    // Necesitamos volume > 0 con texto inaudible (punto) para que el SO lo acepte
     if (chatTTSEnabled && 'speechSynthesis' in window) {
-      speechSynthesis.cancel();
       var warmup = new SpeechSynthesisUtterance('.');
       warmup.volume = 0.01;
       warmup.rate = 10;
