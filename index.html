@@ -6580,11 +6580,11 @@ window.addEventListener('DOMContentLoaded', function() {
   // v119: Health check al abrir — verificar backend y Firebase tras 3s
   setTimeout(checkAppHealth, 3000);
 
-  // v120→v238: Auto-repair — primera revisión a los 30s, luego 4 veces/día (cada 6h)
-  // Antes: cada 5 min con getDocs de TODA la colección → 86.400 lecturas/día (cuota=50K)
-  // Ahora: cada 6h solo verificando el presupuesto activo → 4 lecturas/día
+  // v120→v238: Auto-repair — primera revisión a los 30s, luego cada 10 min
+  // Antes: cada 5 min con getDocs de TODA la colección → 86.400 lecturas/día
+  // Ahora: cada 10 min solo verificando el presupuesto activo → 144 lecturas/día
   setTimeout(autoRepair, 30000);
-  setInterval(autoRepair, 21600000); // Cada 6 horas (4 veces al día)
+  setInterval(autoRepair, 600000); // Cada 10 minutos
 
   // v124: Al arrancar, recuperar estados del presupuesto desde Firebase (fuente de verdad)
   setTimeout(async () => {
