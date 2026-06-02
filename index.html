@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v238';</script>
+<script>document.getElementById('version-tag').textContent='v239';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v238';
+var APP_VERSION = 'v239';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -11453,7 +11453,8 @@ async function doResetWithCode() {
 <!--  CHATBOT AZKAR — Asistente IA                               -->
 <!-- ══════════════════════════════════════════════════════════════ -->
 <style>
-#chatbot-bubble{position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#1B4F8A,#2376C5);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;cursor:grab;box-shadow:0 4px 16px rgba(27,79,138,.4);z-index:9998;user-select:none;touch-action:none;transition:transform .2s}
+#chatbot-bubble{position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:#fff;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;cursor:grab;box-shadow:0 4px 16px rgba(27,79,138,.4);z-index:9998;user-select:none;touch-action:none;transition:transform .2s;overflow:hidden;padding:0}
+#chatbot-bubble img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 #chatbot-bubble:hover{transform:scale(1.1)}
 #chatbot-bubble.dragging{cursor:grabbing;transition:none}
 #chatbot-panel{display:none;position:fixed;bottom:86px;right:20px;width:360px;max-width:calc(100vw - 24px);height:520px;max-height:calc(100vh - 100px);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.25);z-index:9999;flex-direction:column;font-family:Barlow,Arial,sans-serif;overflow:hidden}
@@ -11489,15 +11490,15 @@ async function doResetWithCode() {
 .hist-item .hist-accion{color:#1B4F8A;font-weight:600}
 @media(max-width:480px){
   #chatbot-panel{bottom:0;right:0;width:100%;height:100%;max-height:100vh;border-radius:0}
-  #chatbot-bubble{bottom:12px;right:12px;width:50px;height:50px;font-size:22px}
+  #chatbot-bubble{bottom:12px;right:12px;width:50px;height:50px}
 }
 </style>
 
-<div id="chatbot-bubble" title="Asistente Azkar" style="display:none">&#129302;</div>
+<div id="chatbot-bubble" title="Azkarin — Asistente IA" style="display:none"><img src="icons/azkarin-128.png" alt="Azkarin"></div>
 
 <div id="chatbot-panel">
   <div id="chatbot-header">
-    <div><div class="ch-title">&#129302; Asistente Azkar</div><div class="ch-sub">IA &middot; DeepSeek V4 Pro</div></div>
+    <div style="display:flex;align-items:center;gap:10px"><img src="icons/azkarin-64.png" alt="Azkarin" style="width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.3)"><div><div class="ch-title">Azkarin</div><div class="ch-sub">Asistente IA &middot; MiniMax M3</div></div></div>
     <div>
       <button onclick="chatbotHistorial()" title="Ver historial de acciones">&#128203;</button>
       <button id="chatbot-tts-btn" onclick="chatbotToggleTTS()" title="Activar/silenciar voz">&#128264;</button>
