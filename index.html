@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v236';</script>
+<script>document.getElementById('version-tag').textContent='v237';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v236';
+var APP_VERSION = 'v237';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -5461,6 +5461,8 @@ async function loadPresupuesto(id) {
   closeMgr();
   if (typeof ST === 'function') ST('presupuesto');
   showSyncStatus('📄 Presupuesto cargado');
+  // v237: si este cliente ya tiene PDF generado previamente, reactivar botón WA
+  setTimeout(_v237TryReactivarBtnWA, 800);
 }
 
 async function newPresupuesto() {
@@ -5783,12 +5785,40 @@ function _crearBtnWAPdf() {
 }
 
 // v122: Cuando se genera un PDF, mostrar el botón de enviar presupuesto
+// v237: persistir el link en localStorage por ref para que siga disponible
+//       aunque recargues la app o rellenes el teléfono más tarde.
+function _v237SaveWaLink(ref, pdfLink, clientName) {
+  try {
+    if (!ref || !pdfLink) return;
+    var data = { link: pdfLink, name: clientName || '', ts: Date.now() };
+    localStorage.setItem('_waPdfLink_' + ref, JSON.stringify(data));
+  } catch(e) {}
+}
+function _v237GetWaLink(ref) {
+  try {
+    if (!ref) return null;
+    var raw = localStorage.getItem('_waPdfLink_' + ref);
+    if (!raw) return null;
+    var data = JSON.parse(raw);
+    // TTL 60 dias
+    if (data && data.ts && (Date.now() - data.ts) > 60 * 24 * 60 * 60 * 1000) {
+      localStorage.removeItem('_waPdfLink_' + ref);
+      return null;
+    }
+    return data;
+  } catch(e) { return null; }
+}
 function _ofrecerWhatsApp(tel, clientName, clientNum, pdfLink) {
+  // v237: aunque NO haya teléfono aún, persistimos el link para que el botón
+  // aparezca después si el usuario añade el teléfono.
+  if (pdfLink) {
+    _whatsappPdfLink = pdfLink;
+    _whatsappClientName = clientName || '';
+    _whatsappClientNum = clientNum || '';
+    _v237SaveWaLink(clientNum, pdfLink, clientName);
+  }
+  // Solo creamos el botón si hay teléfono (la lógica original)
   if (!tel || !pdfLink) return;
-  _whatsappPdfLink = pdfLink;
-  _whatsappClientName = clientName || '';
-  _whatsappClientNum = clientNum || '';
-  // Crear/mostrar botón de enviar presupuesto
   _crearBtnWAPdf();
   var btn = document.getElementById('btn-wa-pdf');
   if (btn) {
@@ -5796,6 +5826,24 @@ function _ofrecerWhatsApp(tel, clientName, clientNum, pdfLink) {
     btn.style.animation = 'waFlash 1s ease 3';
   }
   showSyncStatus('📱 Pulsa "📄 PDF" junto al WhatsApp para enviar el presupuesto', 6000);
+}
+
+// v237: Re-activar el botón WA si el cliente tiene PDF generado previamente
+async function _v237TryReactivarBtnWA() {
+  try {
+    var ref = (document.getElementById('f_ref') || {}).value || '';
+    var tel = (document.getElementById('f_tel') || {}).value || '';
+    if (!ref || !tel || tel.trim().length < 6) return;
+    var saved = _v237GetWaLink(ref);
+    if (!saved || !saved.link) return;
+    // Hay un link guardado y hay teléfono. Repoblar y mostrar botón.
+    _whatsappPdfLink = saved.link;
+    _whatsappClientName = saved.name || '';
+    _whatsappClientNum = ref;
+    _crearBtnWAPdf();
+    var btn = document.getElementById('btn-wa-pdf');
+    if (btn) btn.style.display = 'flex';
+  } catch(e) {}
 }
 
 // v122: Enviar presupuesto por WhatsApp (botón dedicado)
@@ -6545,6 +6593,16 @@ window.addEventListener('DOMContentLoaded', function() {
     // v235: arrancar archivado a Firestore y hidratar deleted/notas locales
     if (typeof _buzonAzkStartArchiveSync === 'function') _buzonAzkStartArchiveSync();
     if (typeof _buzonAzkHydrateDeletedFromFB === 'function') setTimeout(_buzonAzkHydrateDeletedFromFB, 10000);
+    // v237: cuando el usuario añade/cambia teléfono, intentar reactivar botón WA si hay link guardado
+    var _telWatch = document.getElementById('f_tel');
+    if (_telWatch) {
+      _telWatch.addEventListener('blur', function() {
+        if (typeof _v237TryReactivarBtnWA === 'function') _v237TryReactivarBtnWA();
+      });
+      _telWatch.addEventListener('change', function() {
+        if (typeof _v237TryReactivarBtnWA === 'function') _v237TryReactivarBtnWA();
+      });
+    }
   }
 
   // Auto-connect Firebase with hardcoded config
