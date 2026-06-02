@@ -6614,7 +6614,7 @@ window.addEventListener('DOMContentLoaded', function() {
     } catch(e) { console.warn('[Azkar] Error recuperando estados:', e); }
   }, 2000);
 
-  // v119→v238: Auto-save every 120 seconds (antes: 60s → duplicaba escrituras Firebase)
+  // v119: Auto-save every 60 seconds (cadena completa con cola offline)
   setInterval(async () => {
     // v123e: NUNCA guardar mientras se está cargando un presupuesto
     if (window._presupuestoLoading) return;
@@ -6636,7 +6636,7 @@ window.addEventListener('DOMContentLoaded', function() {
         await savePresupuestoFull(data);
       } catch(e) { console.warn('[Azkar] Auto-save error:', e); }
     }
-  }, 120000);
+  }, 60000);
 
   // ── MEJORA 1: Guardar al refrescar/cerrar la página ──
   // Función para guardar INMEDIATAMENTE (sin debounce)
@@ -6678,8 +6678,7 @@ window.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // ── MEJORA 2: Guardado automático al cambiar campos (debounced 3s) ──
-  // v238: subido de 1s a 3s para reducir escrituras Firebase (cuota)
+  // ── MEJORA 2: Guardado automático al cambiar campos (debounced 1s) ──
   let _saveTimeout = null;
   function debouncedAutoSave() {
     if (window._presupuestoLoading) return;
@@ -6687,7 +6686,7 @@ window.addEventListener('DOMContentLoaded', function() {
     _saveTimeout = setTimeout(() => {
       if (window._presupuestoLoading) return;
       saveNow();
-    }, 3000);
+    }, 1000);
   }
   // Escuchar cambios en TODOS los campos del presupuesto Y dossier
   document.querySelectorAll('#page-presupuesto input, #page-presupuesto textarea, #page-presupuesto select, #page-dossier input, #page-dossier textarea, #page-dossier select').forEach(el => {
