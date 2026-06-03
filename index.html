@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v239';</script>
+<script>document.getElementById('version-tag').textContent='v240';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v239';
+var APP_VERSION = 'v240';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -11895,8 +11895,25 @@ async function doResetWithCode() {
     recognition.start();
   };
 
+  // Abre WhatsApp Business (mismo método que el botón del presupuesto) con fallback
+  window._waEnviar = function(num, textoEnc) {
+    num = String(num).replace(/[^0-9]/g, '');
+    var isAndroid = /android/i.test(navigator.userAgent);
+    if (isAndroid) {
+      window.location.href = 'intent://send?phone=' + num + '&text=' + textoEnc + '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=' + encodeURIComponent('https://wa.me/' + num + '?text=' + textoEnc) + ';end';
+    } else {
+      window.open('https://wa.me/' + num + '?text=' + textoEnc, '_blank');
+    }
+  };
   function chatMarkdown(t) {
     // Convertir markdown básico a HTML para mensajes del bot
+    // Detectar enlaces de WhatsApp (wa.me) y convertirlos en un BOTÓN VERDE pulsable
+    function _waBtn(num, enc) {
+      enc = String(enc).replace(/[)\]>\s]+$/, '');
+      return '<button onclick="_waEnviar(\'' + num + '\',\'' + enc.replace(/'/g, '%27') + '\')" style="background:#25D366;color:#fff;border:none;padding:11px 20px;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer;margin:8px 0;box-shadow:0 2px 6px rgba(37,211,102,.4);">📲 Enviar WhatsApp</button>';
+    }
+    t = t.replace(/\[[^\]]*\]\(\s*https:\/\/wa\.me\/(\d+)\?text=([^)]+)\)/g, function(m, num, enc) { return _waBtn(num, enc); });
+    t = t.replace(/https:\/\/wa\.me\/(\d+)\?text=([^\s<]+)/g, function(m, num, enc) { return _waBtn(num, enc); });
     return t
       .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
       .replace(/\*(.+?)\*/g, '<i>$1</i>')
