@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v242';</script>
+<script>document.getElementById('version-tag').textContent='v243';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v242';
+var APP_VERSION = 'v243';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -5665,64 +5665,68 @@ async function moverGuardamueblesEnMarcha(ref) {
 // ── Devolver un presupuesto HACIA ATRÁS: de "Pagado Finalizado" a "EN MARCHA" ──
 async function volverAEnMarcha(ref) {
   if (!ref) return;
-  if (!confirm('¿Devolver el cliente ' + ref + ' de "Pagado Finalizado" a "EN MARCHA"?\n\nQuita el estado de pagado y lo vuelve a poner en marcha.')) return;
+  if (!confirm('¿Devolver el cliente ' + ref + ' de "Pagado Finalizado" a "EN MARCHA"?')) return;
   showSyncStatus('↩️ Devolviendo a En Marcha...', 0);
   try {
-    var res = await fetch(RAILWAY_API + '/api/drive/captacion/move-guardamuebles-enmarcha', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ number: ref }) });
-    var data = await res.json();
-    if (data.success) {
-      var pres = await getPresupuesto(ref);
-      if (pres) {
-        pres._pagadoFinalizado = false;
-        delete pres._pagadoFinalizadoDate;
-        pres._enMarcha = true;
-        pres._enMarchaDate = Date.now();
-        await savePresupuesto(pres);
-        if (firebaseConfigured && window._fb) {
-          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
-        }
+    // 1) Cambiar el ESTADO siempre (es lo que mueve al cliente de sección en la app)
+    var pres = await getPresupuesto(ref);
+    if (pres) {
+      pres._pagadoFinalizado = false;
+      delete pres._pagadoFinalizadoDate;
+      pres._enMarcha = true;
+      pres._enMarchaDate = Date.now();
+      await savePresupuesto(pres);
+      if (firebaseConfigured && window._fb) {
+        await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
       }
-      window._currentPagado = false; window._currentEnMarcha = true;
-      showSyncStatus('✅ Cliente ' + (data.folderName || ref) + ' devuelto a "EN MARCHA"', 5000);
-      openMgr();
-    } else {
-      showSyncStatus('❌ Error: ' + (data.error || 'No se pudo mover'), 6000);
     }
+    window._currentPagado = false; window._currentEnMarcha = true;
+    // 2) Intentar mover la carpeta de Drive (si existe). Si no, NO bloquea el cambio de estado.
+    var aviso = '';
+    try {
+      var res = await fetch(RAILWAY_API + '/api/drive/captacion/move-guardamuebles-enmarcha', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ number: ref }) });
+      var data = await res.json();
+      if (!data || !data.success) aviso = ' (la carpeta de Drive no se movió: ' + ((data && data.error) || 'no encontrada') + ')';
+    } catch(e) { aviso = ' (no se pudo mover la carpeta de Drive)'; }
+    showSyncStatus('✅ Cliente ' + ref + ' devuelto a "EN MARCHA"' + aviso, 6000);
+    openMgr();
   } catch(e) {
     console.error('[VolverEnMarcha] Error:', e);
-    showSyncStatus('❌ Error de conexión: ' + e.message, 6000);
+    showSyncStatus('❌ Error: ' + e.message, 6000);
   }
 }
 
 // ── Devolver un presupuesto a "CAPTACIÓN" (desde En Marcha o Pagado) ──
 async function volverACaptacion(ref) {
   if (!ref) return;
-  if (!confirm('¿Devolver el cliente ' + ref + ' a "CAPTACIÓN"?\n\nQuita el estado de En Marcha / Pagado y mueve la carpeta a Captación.')) return;
+  if (!confirm('¿Devolver el cliente ' + ref + ' a "CAPTACIÓN"?')) return;
   showSyncStatus('↩️ Devolviendo a Captación...', 0);
   try {
-    var res = await fetch(RAILWAY_API + '/api/drive/captacion/move-a-captacion', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ number: ref }) });
-    var data = await res.json();
-    if (data.success) {
-      var pres = await getPresupuesto(ref);
-      if (pres) {
-        pres._pagadoFinalizado = false;
-        delete pres._pagadoFinalizadoDate;
-        pres._enMarcha = false;
-        delete pres._enMarchaDate;
-        await savePresupuesto(pres);
-        if (firebaseConfigured && window._fb) {
-          await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
-        }
+    // 1) Cambiar el ESTADO siempre (es lo que mueve al cliente de sección en la app)
+    var pres = await getPresupuesto(ref);
+    if (pres) {
+      pres._pagadoFinalizado = false;
+      delete pres._pagadoFinalizadoDate;
+      pres._enMarcha = false;
+      delete pres._enMarchaDate;
+      await savePresupuesto(pres);
+      if (firebaseConfigured && window._fb) {
+        await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
       }
-      window._currentPagado = false; window._currentEnMarcha = false;
-      showSyncStatus('✅ Cliente ' + (data.folderName || ref) + ' devuelto a "CAPTACIÓN"', 5000);
-      openMgr();
-    } else {
-      showSyncStatus('❌ Error: ' + (data.error || 'No se pudo mover'), 6000);
     }
+    window._currentPagado = false; window._currentEnMarcha = false;
+    // 2) Intentar mover la carpeta de Drive (si existe). Si no, NO bloquea el cambio de estado.
+    var aviso = '';
+    try {
+      var res = await fetch(RAILWAY_API + '/api/drive/captacion/move-a-captacion', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ number: ref }) });
+      var data = await res.json();
+      if (!data || !data.success) aviso = ' (la carpeta de Drive no se movió: ' + ((data && data.error) || 'no encontrada') + ')';
+    } catch(e) { aviso = ' (no se pudo mover la carpeta de Drive)'; }
+    showSyncStatus('✅ Cliente ' + ref + ' devuelto a "CAPTACIÓN"' + aviso, 6000);
+    openMgr();
   } catch(e) {
     console.error('[VolverCaptacion] Error:', e);
-    showSyncStatus('❌ Error de conexión: ' + e.message, 6000);
+    showSyncStatus('❌ Error: ' + e.message, 6000);
   }
 }
 
