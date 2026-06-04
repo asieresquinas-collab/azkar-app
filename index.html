@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v240';</script>
+<script>document.getElementById('version-tag').textContent='v241';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v240';
+var APP_VERSION = 'v241';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -11480,6 +11480,10 @@ async function doResetWithCode() {
 #chatbot-mic.recording{background:#c0392b;color:#fff;animation:pulse-mic 1s infinite}
 #chatbot-send{width:38px;height:38px;border-radius:50%;border:none;background:#1B4F8A;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 #chatbot-send:disabled{opacity:.4;cursor:default}
+#chatbot-foto-btn{width:38px;height:38px;border-radius:50%;border:none;background:#eef2f7;color:#1B4F8A;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#chatbot-foto-btn:active{background:#dde6f1}
+#chatbot-foto-ind{display:flex;align-items:center;gap:8px;padding:7px 12px;background:#eef7ee;border-top:1px solid #d6e8d6;font-size:12px;color:#2e6b2e}
+#chatbot-foto-ind span{cursor:pointer;color:#a33;font-weight:bold;margin-left:auto;font-size:14px}
 @keyframes pulse-mic{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
 #chatbot-historial{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:10000;justify-content:center;align-items:center}
 #chatbot-historial.open{display:flex}
@@ -11508,7 +11512,10 @@ async function doResetWithCode() {
   <div id="chatbot-msgs">
     <div class="chat-msg bot">¡Hola! Soy el asistente de Azkar. Puedo buscar clientes, modificar presupuestos, enviar PDFs, solicitar permisos y m&aacute;s. &iquest;En qu&eacute; te ayudo?</div>
   </div>
+  <div id="chatbot-foto-ind" style="display:none"></div>
   <div id="chatbot-input-area">
+    <input type="file" id="chatbot-foto-input" accept="image/*" style="display:none">
+    <button id="chatbot-foto-btn" onclick="document.getElementById('chatbot-foto-input').click()" title="Adjuntar foto">&#128206;</button>
     <textarea id="chatbot-input" rows="1" placeholder="Escribe un mensaje..."></textarea>
     <button id="chatbot-mic" onclick="chatbotMicToggle()" title="Dictar por voz">&#127908;</button>
     <button id="chatbot-send" onclick="chatbotSend()" title="Enviar">&#10148;</button>
@@ -11534,6 +11541,7 @@ async function doResetWithCode() {
   var sendBtn = document.getElementById('chatbot-send');
   var micBtn = document.getElementById('chatbot-mic');
   var chatHistorial = [];
+  var pendingFoto = null;
   var pendingAction = null;
   var recognition = null;
   var isRecording = false;
@@ -11688,11 +11696,16 @@ async function doResetWithCode() {
   window.chatbotSend = async function() {
     try {
     var msg = inputEl.value.trim();
-    if (!msg) return;
+    var fotoEnviar = pendingFoto;
+    if (!msg && !fotoEnviar) return;
+    pendingFoto = null;
+    var _fInd = document.getElementById('chatbot-foto-ind');
+    if (_fInd) { _fInd.style.display = 'none'; _fInd.innerHTML = ''; }
     inputEl.value = '';
     inputEl.style.height = 'auto';
-    addMsg('user', msg);
-    chatHistorial.push({ role: 'user', content: msg });
+    var msgEnviar = msg || 'Te he enviado una foto.';
+    addMsg('user', fotoEnviar ? ((msg ? msg + ' ' : '') + '📷') : msg);
+    chatHistorial.push({ role: 'user', content: msgEnviar });
     sendBtn.disabled = true;
     addTyping();
     // v239b: Parar audio anterior cuando el usuario envía un mensaje nuevo
@@ -11709,7 +11722,9 @@ async function doResetWithCode() {
       var resp = await fetch(RAILWAY_API + '/api/chatbot/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (_authToken || '') },
-        body: JSON.stringify({ mensaje: msg, historial: chatHistorial })
+        body: JSON.stringify(fotoEnviar
+          ? { mensaje: msgEnviar, historial: chatHistorial, imagen: fotoEnviar.base64, imagenMime: fotoEnviar.mime }
+          : { mensaje: msgEnviar, historial: chatHistorial })
       });
       var data = await resp.json();
       removeTyping();
@@ -11976,6 +11991,67 @@ async function doResetWithCode() {
 
   inputEl.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatbotSend(); } });
   inputEl.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 80) + 'px'; });
+
+  // ── Adjuntar foto al chat (Azkarin la guarda en la carpeta Drive del cliente) ──
+  function _comprimirFoto(file) {
+    return new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+          try {
+            var maxDim = 1600, w = img.width, h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w >= h) { h = Math.round(h * maxDim / w); w = maxDim; }
+              else { w = Math.round(w * maxDim / h); h = maxDim; }
+            }
+            var canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+            resolve({ base64: dataUrl.split(',')[1], mime: 'image/jpeg' });
+          } catch (err) { reject(err); }
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+  function _leerFotoRaw(file) {
+    return new Promise(function(resolve, reject) {
+      var r = new FileReader();
+      r.onload = function(e) { resolve({ base64: (e.target.result || '').split(',')[1], mime: file.type || 'image/jpeg' }); };
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+  function _mostrarFotoAdjunta(nombre) {
+    var ind = document.getElementById('chatbot-foto-ind');
+    if (!ind) return;
+    ind.innerHTML = '';
+    ind.appendChild(document.createTextNode('📷 ' + (nombre || 'foto') + ' lista para enviar'));
+    var x = document.createElement('span');
+    x.textContent = '✕'; x.title = 'Quitar foto';
+    x.onclick = function() { pendingFoto = null; ind.style.display = 'none'; ind.innerHTML = ''; };
+    ind.appendChild(x);
+    ind.style.display = 'flex';
+  }
+  var _fotoInput = document.getElementById('chatbot-foto-input');
+  if (_fotoInput) {
+    _fotoInput.addEventListener('change', async function() {
+      var file = this.files && this.files[0];
+      this.value = '';
+      if (!file) return;
+      try { pendingFoto = await _comprimirFoto(file); }
+      catch (err) {
+        try { pendingFoto = await _leerFotoRaw(file); }
+        catch (e2) { addMsg('bot', '❌ No he podido leer la foto. Prueba con otra.'); return; }
+      }
+      _mostrarFotoAdjunta(file.name);
+    });
+  }
 
   window.chatbotHistorial = async function() {
     document.getElementById('chatbot-historial').classList.add('open');
