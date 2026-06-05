@@ -2801,6 +2801,22 @@ if ('serviceWorker' in navigator) {
   //  Azkarin Proactivo · Push (v224)
   //  Escucha mensajes del SW cuando el usuario pulsa una notif.
   // ══════════════════════════════════════════════════════════════
+  // ── Leer avisos de Azkarin en voz alta (reutiliza el mismo toggle de voz 'chatTTS') ──
+  window.azkarinHablar = function(txt) {
+    try {
+      if (!txt) return;
+      if (localStorage.getItem('chatTTS') === 'off') return;
+      if (!('speechSynthesis' in window)) return;
+      var u = new SpeechSynthesisUtterance(String(txt));
+      u.lang = 'es-ES';
+      var vs = speechSynthesis.getVoices() || [];
+      var es = vs.filter(function(v) { return /es/i.test(v.lang); })[0];
+      if (es) u.voice = es;
+      try { speechSynthesis.cancel(); } catch(e) {}
+      speechSynthesis.speak(u);
+    } catch(e) {}
+  };
+
   navigator.serviceWorker.addEventListener('message', function(event) {
     if (event.data && event.data.type === 'AZKARIN_NOTIFICATION') {
       console.log('[Azkarin] Notificación recibida del SW:', event.data);
@@ -2813,6 +2829,12 @@ if ('serviceWorker' in navigator) {
           setTimeout(function() { abrirAzkarinConContexto(ref, tema); }, 200);
         }
       } catch(e) {}
+      // Leer el aviso en voz alta al tocar la notificación
+      try { window.azkarinHablar(event.data.data && event.data.data._body); } catch(e) {}
+    }
+    // Push recibido con la app ABIERTA -> leerlo en voz alta directamente
+    if (event.data && event.data.type === 'AZKARIN_SPEAK') {
+      try { window.azkarinHablar((event.data.title ? event.data.title + '. ' : '') + (event.data.body || '')); } catch(e) {}
     }
   });
 }
@@ -2854,9 +2876,13 @@ function abrirAzkarinConContexto(ref, tema) {
     var p = new URLSearchParams(location.search);
     if (p.get('chat') === '1') {
       var ref = p.get('ref'); var tema = p.get('tema');
+      var say = p.get('say');
       // Esperar a que el DOM y el chatbot estén listos
       window.addEventListener('load', function() {
-        setTimeout(function() { abrirAzkarinConContexto(ref, tema); }, 1200);
+        setTimeout(function() {
+          abrirAzkarinConContexto(ref, tema);
+          if (say && window.azkarinHablar) { try { window.azkarinHablar(decodeURIComponent(say)); } catch(e) {} }
+        }, 1200);
       });
     }
   } catch(e) {}

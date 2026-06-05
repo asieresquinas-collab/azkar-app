@@ -98,7 +98,8 @@ self.addEventListener('push', function(event) {
   };
   try { if (event.data) data = Object.assign(data, event.data.json()); } catch(e) {}
 
-  event.waitUntil(
+  var _notifData = Object.assign({ url: './?chat=1' }, data.data || {}, { _body: data.body, _title: data.title });
+  event.waitUntil(Promise.all([
     self.registration.showNotification(data.title, {
       body: data.body,
       tag: data.tag,
@@ -106,15 +107,19 @@ self.addEventListener('push', function(event) {
       icon: data.icon,
       badge: data.badge,
       vibrate: data.urgente ? [300, 100, 300, 100, 300] : [200, 100, 200],
-      data: data.data || { url: './?chat=1' },
+      data: _notifData,
       actions: data.actions || [{ action: 'open', title: 'Abrir chat' }]
+    }),
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(cl) {
+      cl.forEach(function(c) { try { c.postMessage({ type: 'AZKARIN_SPEAK', title: data.title, body: data.body }); } catch(e) {} });
     })
-  );
+  ]));
 });
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   var targetUrl = (event.notification.data && event.notification.data.url) || './?chat=1';
+  var _sayBody = (event.notification.data && event.notification.data._body) || '';
   // Si la URL es relativa, hacerla absoluta respecto al scope
   if (targetUrl.startsWith('./') || targetUrl.startsWith('/')) {
     targetUrl = self.registration.scope.replace(/\/$/, '') + '/' + targetUrl.replace(/^\.?\//, '');
@@ -130,7 +135,7 @@ self.addEventListener('notificationclick', function(event) {
         }
       }
       // Si no hay ventana abierta, abrir una nueva en la URL
-      return clients.openWindow(targetUrl);
+      return clients.openWindow(targetUrl + (targetUrl.indexOf('?') >= 0 ? '&' : '?') + 'say=' + encodeURIComponent(_sayBody));
     })
   );
 });
