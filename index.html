@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v244';</script>
+<script>document.getElementById('version-tag').textContent='v245';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v244';
+var APP_VERSION = 'v245';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -11615,6 +11615,8 @@ async function doResetWithCode() {
   <div id="chatbot-input-area">
     <input type="file" id="chatbot-foto-input" accept="image/*" style="display:none">
     <button id="chatbot-foto-btn" onclick="document.getElementById('chatbot-foto-input').click()" title="Adjuntar foto">&#128206;</button>
+    <input type="file" id="chatbot-video-input" accept="video/*" style="display:none">
+    <button id="chatbot-video-btn" onclick="document.getElementById('chatbot-video-input').click()" title="Adjuntar vídeo (borrador de presupuesto)">&#127909;</button>
     <textarea id="chatbot-input" rows="1" placeholder="Escribe un mensaje..."></textarea>
     <button id="chatbot-mic" onclick="chatbotMicToggle()" title="Dictar por voz">&#127908;</button>
     <button id="chatbot-send" onclick="chatbotSend()" title="Enviar">&#10148;</button>
@@ -11796,14 +11798,16 @@ async function doResetWithCode() {
     try {
     var msg = inputEl.value.trim();
     var fotoEnviar = pendingFoto;
-    if (!msg && !fotoEnviar) return;
+    var framesEnviar = window._pendingFrames;
+    if (!msg && !fotoEnviar && !(framesEnviar && framesEnviar.length)) return;
     pendingFoto = null;
+    window._pendingFrames = null;
     var _fInd = document.getElementById('chatbot-foto-ind');
     if (_fInd) { _fInd.style.display = 'none'; _fInd.innerHTML = ''; }
     inputEl.value = '';
     inputEl.style.height = 'auto';
-    var msgEnviar = msg || 'Te he enviado una foto.';
-    addMsg('user', fotoEnviar ? ((msg ? msg + ' ' : '') + '📷') : msg);
+    var msgEnviar = msg || ((framesEnviar && framesEnviar.length) ? ('Te he enviado un vídeo (' + framesEnviar.length + ' fotogramas). Házme el borrador del presupuesto con lo que veas.') : 'Te he enviado una foto.');
+    addMsg('user', (framesEnviar && framesEnviar.length) ? ((msg ? msg + ' ' : '') + '🎥') : (fotoEnviar ? ((msg ? msg + ' ' : '') + '📷') : msg));
     chatHistorial.push({ role: 'user', content: msgEnviar });
     sendBtn.disabled = true;
     addTyping();
@@ -11821,9 +11825,11 @@ async function doResetWithCode() {
       var resp = await fetch(RAILWAY_API + '/api/chatbot/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (_authToken || '') },
-        body: JSON.stringify(fotoEnviar
-          ? { mensaje: msgEnviar, historial: chatHistorial, imagen: fotoEnviar.base64, imagenMime: fotoEnviar.mime }
-          : { mensaje: msgEnviar, historial: chatHistorial })
+        body: JSON.stringify((framesEnviar && framesEnviar.length)
+          ? { mensaje: msgEnviar, historial: chatHistorial, imagenes: framesEnviar }
+          : fotoEnviar
+            ? { mensaje: msgEnviar, historial: chatHistorial, imagen: fotoEnviar.base64, imagenMime: fotoEnviar.mime }
+            : { mensaje: msgEnviar, historial: chatHistorial })
       });
       var data = await resp.json();
       removeTyping();
@@ -12149,6 +12155,70 @@ async function doResetWithCode() {
         catch (e2) { addMsg('bot', '❌ No he podido leer la foto. Prueba con otra.'); return; }
       }
       _mostrarFotoAdjunta(file.name);
+    });
+  }
+
+  // ── Adjuntar VÍDEO al chat: extrae ~1 fotograma/seg en el móvil y los manda como lote ──
+  function _extraerFramesVideo(file, opts) {
+    opts = opts || {};
+    var fps = opts.fps || 1, maxFrames = opts.maxFrames || 45, maxDim = opts.maxDim || 1024;
+    return new Promise(function(resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var video = document.createElement('video');
+      video.preload = 'auto'; video.muted = true; video.playsInline = true; video.src = url;
+      var frames = [], canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
+      function cleanup() { try { URL.revokeObjectURL(url); } catch(e){} }
+      video.onloadedmetadata = function() {
+        var dur = video.duration || 0;
+        if (!isFinite(dur) || dur <= 0) { cleanup(); return reject(new Error('duración no legible')); }
+        var step = 1 / fps, times = [];
+        if (dur / step > maxFrames) { for (var i = 0; i < maxFrames; i++) times.push((i + 0.5) * dur / maxFrames); }
+        else { for (var t = 0; t < dur && times.length < maxFrames; t += step) times.push(t); }
+        var idx = 0;
+        function seekNext() {
+          if (idx >= times.length) { cleanup(); return resolve(frames); }
+          try { video.currentTime = Math.min(times[idx], Math.max(0, dur - 0.05)); } catch(e) { idx++; seekNext(); }
+        }
+        video.onseeked = function() {
+          try {
+            var w = video.videoWidth, h = video.videoHeight;
+            if (w > maxDim || h > maxDim) { if (w >= h) { h = Math.round(h*maxDim/w); w = maxDim; } else { w = Math.round(w*maxDim/h); h = maxDim; } }
+            canvas.width = w; canvas.height = h;
+            ctx.drawImage(video, 0, 0, w, h);
+            var b64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+            if (b64) frames.push({ b64: b64, mime: 'image/jpeg' });
+          } catch(e) {}
+          idx++; seekNext();
+        };
+        seekNext();
+      };
+      video.onerror = function() { cleanup(); reject(new Error('no se pudo cargar el vídeo')); };
+    });
+  }
+  var _videoInput = document.getElementById('chatbot-video-input');
+  if (_videoInput) {
+    _videoInput.addEventListener('change', async function() {
+      var file = this.files && this.files[0];
+      this.value = '';
+      if (!file) return;
+      var ind = document.getElementById('chatbot-foto-ind');
+      if (ind) { ind.style.display = 'flex'; ind.innerHTML = ''; ind.appendChild(document.createTextNode('🎥 Procesando vídeo…')); }
+      try {
+        var frames = await _extraerFramesVideo(file, { fps: 1, maxFrames: 45 });
+        if (!frames.length) throw new Error('no se extrajeron fotogramas');
+        window._pendingFrames = frames;
+        if (ind) {
+          ind.innerHTML = '';
+          ind.appendChild(document.createTextNode('🎥 Vídeo listo (' + frames.length + ' fotogramas)'));
+          var x = document.createElement('span'); x.textContent = ' ✕'; x.title = 'Quitar vídeo'; x.style.cursor = 'pointer'; x.style.marginLeft = '8px';
+          x.onclick = function() { window._pendingFrames = null; ind.style.display = 'none'; ind.innerHTML = ''; };
+          ind.appendChild(x);
+        }
+      } catch (e) {
+        window._pendingFrames = null;
+        if (ind) { ind.style.display = 'none'; ind.innerHTML = ''; }
+        addMsg('bot', '❌ No pude procesar el vídeo (' + (e.message || '') + '). Prueba con uno más corto o de menor calidad.');
+      }
     });
   }
 
