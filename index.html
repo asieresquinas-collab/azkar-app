@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v245';</script>
+<script>document.getElementById('version-tag').textContent='v246';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v245';
+var APP_VERSION = 'v246';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -11613,7 +11613,7 @@ async function doResetWithCode() {
   </div>
   <div id="chatbot-foto-ind" style="display:none"></div>
   <div id="chatbot-input-area">
-    <input type="file" id="chatbot-foto-input" accept="image/*" style="display:none">
+    <input type="file" id="chatbot-foto-input" accept="image/*" multiple style="display:none">
     <button id="chatbot-foto-btn" onclick="document.getElementById('chatbot-foto-input').click()" title="Adjuntar foto">&#128206;</button>
     <input type="file" id="chatbot-video-input" accept="video/*" style="display:none">
     <button id="chatbot-video-btn" onclick="document.getElementById('chatbot-video-input').click()" title="Adjuntar vídeo (borrador de presupuesto)">&#127909;</button>
@@ -11799,15 +11799,17 @@ async function doResetWithCode() {
     var msg = inputEl.value.trim();
     var fotoEnviar = pendingFoto;
     var framesEnviar = window._pendingFrames;
+    var framesTipo = window._pendingFramesTipo || 'video';
     if (!msg && !fotoEnviar && !(framesEnviar && framesEnviar.length)) return;
     pendingFoto = null;
     window._pendingFrames = null;
+    window._pendingFramesTipo = null;
     var _fInd = document.getElementById('chatbot-foto-ind');
     if (_fInd) { _fInd.style.display = 'none'; _fInd.innerHTML = ''; }
     inputEl.value = '';
     inputEl.style.height = 'auto';
-    var msgEnviar = msg || ((framesEnviar && framesEnviar.length) ? ('Te he enviado un vídeo (' + framesEnviar.length + ' fotogramas). Házme el borrador del presupuesto con lo que veas.') : 'Te he enviado una foto.');
-    addMsg('user', (framesEnviar && framesEnviar.length) ? ((msg ? msg + ' ' : '') + '🎥') : (fotoEnviar ? ((msg ? msg + ' ' : '') + '📷') : msg));
+    var msgEnviar = msg || ((framesEnviar && framesEnviar.length) ? (framesTipo === 'fotos' ? ('Te he enviado ' + framesEnviar.length + ' fotos. Hazme el borrador del presupuesto con lo que veas.') : ('Te he enviado un vídeo (' + framesEnviar.length + ' fotogramas). Házme el borrador del presupuesto con lo que veas.')) : 'Te he enviado una foto.');
+    addMsg('user', (framesEnviar && framesEnviar.length) ? ((msg ? msg + ' ' : '') + (framesTipo === 'fotos' ? ('📷×' + framesEnviar.length) : '🎥')) : (fotoEnviar ? ((msg ? msg + ' ' : '') + '📷') : msg));
     chatHistorial.push({ role: 'user', content: msgEnviar });
     sendBtn.disabled = true;
     addTyping();
@@ -12124,6 +12126,33 @@ async function doResetWithCode() {
       reader.readAsDataURL(file);
     });
   }
+  function _comprimirFotoLote(file) {
+    // Compresión más ligera para lotes grandes (hasta 50 fotos)
+    return new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+          try {
+            var maxDim = 1280, w = img.width, h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w >= h) { h = Math.round(h * maxDim / w); w = maxDim; }
+              else { w = Math.round(w * maxDim / h); h = maxDim; }
+            }
+            var canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            var dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+            resolve({ base64: dataUrl.split(',')[1], mime: 'image/jpeg' });
+          } catch (err) { reject(err); }
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
   function _leerFotoRaw(file) {
     return new Promise(function(resolve, reject) {
       var r = new FileReader();
@@ -12146,15 +12175,39 @@ async function doResetWithCode() {
   var _fotoInput = document.getElementById('chatbot-foto-input');
   if (_fotoInput) {
     _fotoInput.addEventListener('change', async function() {
-      var file = this.files && this.files[0];
+      var files = Array.from(this.files || []);
       this.value = '';
-      if (!file) return;
-      try { pendingFoto = await _comprimirFoto(file); }
-      catch (err) {
-        try { pendingFoto = await _leerFotoRaw(file); }
-        catch (e2) { addMsg('bot', '❌ No he podido leer la foto. Prueba con otra.'); return; }
+      if (!files.length) return;
+      if (files.length === 1) {
+        // Una sola foto: comportamiento de siempre (sirve también para guardar_foto_cliente)
+        try { pendingFoto = await _comprimirFoto(files[0]); }
+        catch (err) {
+          try { pendingFoto = await _leerFotoRaw(files[0]); }
+          catch (e2) { addMsg('bot', '❌ No he podido leer la foto. Prueba con otra.'); return; }
+        }
+        _mostrarFotoAdjunta(files[0].name);
+        return;
       }
-      _mostrarFotoAdjunta(file.name);
+      // Varias fotos (hasta 50) → lote por el mismo canal que el vídeo
+      var aviso = files.length > 50 ? ' (cojo las 50 primeras)' : '';
+      files = files.slice(0, 50);
+      var ind = document.getElementById('chatbot-foto-ind');
+      if (ind) { ind.style.display = 'flex'; ind.innerHTML = ''; ind.appendChild(document.createTextNode('📷 Procesando ' + files.length + ' fotos…' + aviso)); }
+      var lote = [];
+      for (var fi = 0; fi < files.length; fi++) {
+        try { var cf = await _comprimirFotoLote(files[fi]); lote.push({ b64: cf.base64, mime: cf.mime }); }
+        catch (ef) { /* foto ilegible: saltar */ }
+      }
+      if (!lote.length) { if (ind) { ind.style.display = 'none'; ind.innerHTML = ''; } addMsg('bot', '❌ No pude leer ninguna de las fotos.'); return; }
+      window._pendingFrames = lote;
+      window._pendingFramesTipo = 'fotos';
+      if (ind) {
+        ind.innerHTML = '';
+        ind.appendChild(document.createTextNode('📷 ' + lote.length + ' fotos listas para enviar'));
+        var xq = document.createElement('span'); xq.textContent = ' ✕'; xq.title = 'Quitar fotos'; xq.style.cursor = 'pointer'; xq.style.marginLeft = '8px';
+        xq.onclick = function() { window._pendingFrames = null; window._pendingFramesTipo = null; ind.style.display = 'none'; ind.innerHTML = ''; };
+        ind.appendChild(xq);
+      }
     });
   }
 
@@ -12207,6 +12260,7 @@ async function doResetWithCode() {
         var frames = await _extraerFramesVideo(file, { fps: 1, maxFrames: 45 });
         if (!frames.length) throw new Error('no se extrajeron fotogramas');
         window._pendingFrames = frames;
+        window._pendingFramesTipo = 'video';
         if (ind) {
           ind.innerHTML = '';
           ind.appendChild(document.createTextNode('🎥 Vídeo listo (' + frames.length + ' fotogramas)'));
