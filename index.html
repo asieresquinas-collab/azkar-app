@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v246';</script>
+<script>document.getElementById('version-tag').textContent='v247';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v246';
+var APP_VERSION = 'v247';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -2809,8 +2809,9 @@ if ('serviceWorker' in navigator) {
       if (!('speechSynthesis' in window)) return;
       var u = new SpeechSynthesisUtterance(String(txt));
       u.lang = 'es-ES';
-      var vs = speechSynthesis.getVoices() || [];
-      var es = vs.filter(function(v) { return /es/i.test(v.lang); })[0];
+      var vs = (window._vocesTTS && window._vocesTTS.length) ? window._vocesTTS : (speechSynthesis.getVoices() || []);
+      var _vp = localStorage.getItem('azkar_tts_voz') || '';
+      var es = (_vp && vs.filter(function(v) { return v.name === _vp; })[0]) || vs.filter(function(v) { return /^es/i.test(v.lang); })[0];
       if (es) u.voice = es;
       try { speechSynthesis.cancel(); } catch(e) {}
       speechSynthesis.speak(u);
@@ -11390,12 +11391,27 @@ async function openAdminPanel() {
     + '<h3 style="color:#1B4F8A;font-size:15px;margin:0 0 8px">🤖 Azkarin proactivo</h3>'
     + '<p style="font-size:12px;color:#666;margin:0 0 8px;line-height:1.4">Activa para recibir notificaciones cuando algo falte (DNI, operarios, PDFs sin enviar...). Vigila de lunes a viernes de 8:00 a 18:00.</p>'
     + '<div id="azkarin-push-status-btn"></div></div>'
+    + '<div style="border-top:2px solid #D6E4F7;padding-top:12px;margin-top:12px">'
+    + '<h3 style="color:#1B4F8A;font-size:15px;margin:0 0 8px">🔊 Voz de Azkarin</h3>'
+    + '<p style="font-size:12px;color:#666;margin:0 0 8px">Elige con qué voz te habla. "Automática" usa la mejor voz en español del móvil.</p>'
+    + '<div style="display:flex;gap:8px;align-items:center">'
+    + '<select id="azkar-voz-select" style="flex:1;padding:8px;border:2px solid #D6E4F7;border-radius:8px;font-size:13px;font-family:inherit"></select>'
+    + '<button onclick="azkarProbarVoz()" style="padding:8px 14px;background:#2376C5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">Probar</button>'
+    + '</div></div>'
     + '<div style="border-top:2px solid #D6E4F7;padding-top:12px;margin-top:12px;text-align:center">'
     + '<button onclick="cerrarSesion()" style="padding:8px 20px;background:#c0392b;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">Cerrar sesión</button></div></div>';
   document.body.appendChild(m);
   m.onclick = function(e) { if (e.target === m) m.remove(); };
   await cargarUsuariosAdmin();
   renderAzkarinPushBtn();
+  try {
+    var _selVoz = document.getElementById('azkar-voz-select');
+    if (_selVoz && window._cargarVocesTTS) {
+      window._cargarVocesTTS();
+      window._renderVozOptions(_selVoz);
+      _selVoz.onchange = function() { localStorage.setItem('azkar_tts_voz', this.value); };
+    }
+  } catch (e) {}
 }
 
 function renderAzkarinPushBtn() {
@@ -11655,6 +11671,51 @@ async function doResetWithCode() {
   var _ttsSpeaking = false;
 
   // v239b: chatSpeakStop() solo se llama cuando el USUARIO envía un mensaje nuevo
+  // ── Voces TTS: cargar TODAS (Chrome las carga async → escuchar voiceschanged) ──
+  window._vocesTTS = [];
+  window._cargarVocesTTS = function() {
+    try {
+      window._vocesTTS = speechSynthesis.getVoices() || [];
+      if (window._vocesTTS.length) console.log('[TTS] Voces cargadas:', window._vocesTTS.length);
+      var selV = document.getElementById('azkar-voz-select');
+      if (selV) window._renderVozOptions(selV);
+    } catch (e) {}
+  };
+  window._renderVozOptions = function(sel) {
+    var actual = localStorage.getItem('azkar_tts_voz') || '';
+    sel.innerHTML = '';
+    var voces = window._vocesTTS || [];
+    var esV = voces.filter(function(v) { return (v.lang || '').toLowerCase().indexOf('es') === 0; });
+    var resto = voces.filter(function(v) { return (v.lang || '').toLowerCase().indexOf('es') !== 0; });
+    var optAuto = document.createElement('option');
+    optAuto.value = ''; optAuto.textContent = 'Automática (mejor voz en español)';
+    sel.appendChild(optAuto);
+    esV.concat(resto).forEach(function(v) {
+      var o = document.createElement('option');
+      o.value = v.name; o.textContent = v.name + ' (' + v.lang + ')';
+      if (v.name === actual) o.selected = true;
+      sel.appendChild(o);
+    });
+  };
+  if ('speechSynthesis' in window) {
+    window._cargarVocesTTS();
+    try { speechSynthesis.addEventListener('voiceschanged', window._cargarVocesTTS); }
+    catch (e) { speechSynthesis.onvoiceschanged = window._cargarVocesTTS; }
+  }
+  window.azkarProbarVoz = function() {
+    try {
+      var sel = document.getElementById('azkar-voz-select');
+      if (sel) localStorage.setItem('azkar_tts_voz', sel.value);
+      var u = new SpeechSynthesisUtterance('Hola Asier, así sueno yo. ¿Te gusta esta voz?');
+      u.lang = 'es-ES';
+      var vs = (window._vocesTTS && window._vocesTTS.length) ? window._vocesTTS : speechSynthesis.getVoices();
+      var vp = localStorage.getItem('azkar_tts_voz') || '';
+      var vSel = (vp && vs.filter(function(x) { return x.name === vp; })[0]) || vs.filter(function(x) { return /^es/i.test(x.lang); })[0];
+      if (vSel) u.voice = vSel;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    } catch (e) {}
+  };
+
   function chatSpeakStop() {
     if ('speechSynthesis' in window) speechSynthesis.cancel();
     _ttsQueue = [];
@@ -11700,7 +11761,7 @@ async function doResetWithCode() {
       utterance.lang = 'es-ES';
       utterance.rate = 1.05;
       utterance.pitch = 1.0;
-      var voices = speechSynthesis.getVoices();
+      var voices = (window._vocesTTS && window._vocesTTS.length) ? window._vocesTTS : speechSynthesis.getVoices();
       if (voices.length === 0) {
         speechSynthesis.onvoiceschanged = function() {
           speechSynthesis.onvoiceschanged = null;
@@ -11709,7 +11770,9 @@ async function doResetWithCode() {
         };
         return;
       }
-      var esVoice = voices.find(function(v) { return v.lang.startsWith('es') && v.name.includes('Google'); }) ||
+      var _vozPref = localStorage.getItem('azkar_tts_voz') || '';
+      var esVoice = (_vozPref && voices.find(function(v) { return v.name === _vozPref; })) ||
+                    voices.find(function(v) { return v.lang.startsWith('es') && v.name.includes('Google'); }) ||
                     voices.find(function(v) { return v.lang.startsWith('es'); });
       if (esVoice) utterance.voice = esVoice;
       // Chrome bug workaround: pause/resume cada 5s para que no se cuelgue
