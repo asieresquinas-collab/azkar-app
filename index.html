@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v247';</script>
+<script>document.getElementById('version-tag').textContent='v248';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v247';
+var APP_VERSION = 'v248';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -2807,6 +2807,8 @@ if ('serviceWorker' in navigator) {
       if (!txt) return;
       if (localStorage.getItem('chatTTS') === 'off') return;
       if (!('speechSynthesis' in window)) return;
+      // Usar la cola troceada del chat (aguanta textos largos sin cortarse)
+      if (typeof window.chatSpeak === 'function') { window.chatSpeak(String(txt)); return; }
       var u = new SpeechSynthesisUtterance(String(txt));
       u.lang = 'es-ES';
       var vs = (window._vocesTTS && window._vocesTTS.length) ? window._vocesTTS : (speechSynthesis.getVoices() || []);
@@ -11751,6 +11753,7 @@ async function doResetWithCode() {
       setTimeout(function() { _ttsPlayNext(); }, 100);
     }
   }
+  window.chatSpeak = chatSpeak;
 
   function _ttsPlayNext() {
     if (_ttsQueue.length === 0) { _ttsSpeaking = false; return; }
@@ -11775,14 +11778,32 @@ async function doResetWithCode() {
                     voices.find(function(v) { return v.lang.startsWith('es') && v.name.includes('Google'); }) ||
                     voices.find(function(v) { return v.lang.startsWith('es'); });
       if (esVoice) utterance.voice = esVoice;
-      // Chrome bug workaround: pause/resume cada 5s para que no se cuelgue
-      var keepAlive = setInterval(function() {
-        if (!speechSynthesis.speaking) { clearInterval(keepAlive); return; }
-        speechSynthesis.pause();
-        speechSynthesis.resume();
-      }, 5000);
-      utterance.onend = function() { clearInterval(keepAlive); _ttsPlayNext(); };
-      utterance.onerror = function(e) { clearInterval(keepAlive); console.warn('[TTS] Error:', e.error); _ttsPlayNext(); };
+      // Workaround Chrome ESCRITORIO: pause/resume cada 5s (en ANDROID pause() MATA el audio → no usar)
+      var _esAndroid = /Android|iPhone|iPad/i.test(navigator.userAgent);
+      var keepAlive = null;
+      if (!_esAndroid) {
+        keepAlive = setInterval(function() {
+          if (!speechSynthesis.speaking) { clearInterval(keepAlive); return; }
+          speechSynthesis.pause();
+          speechSynthesis.resume();
+        }, 5000);
+      }
+      // Vigilante anti-atasco: si onend/onerror no llegan (bug Android), avanzar igualmente
+      var _avanzado = false;
+      function _ttsSigue() {
+        if (_avanzado) return; _avanzado = true;
+        if (keepAlive) clearInterval(keepAlive);
+        _ttsPlayNext();
+      }
+      var _msEst = Math.max(4000, chunk.length * 95) + 3000;
+      var _watchdog = setTimeout(function() {
+        if (_avanzado) return;
+        console.warn('[TTS] watchdog: trozo atascado, paso al siguiente');
+        try { speechSynthesis.cancel(); } catch (e) {}
+        _ttsSigue();
+      }, _msEst);
+      utterance.onend = function() { clearTimeout(_watchdog); _ttsSigue(); };
+      utterance.onerror = function(e) { clearTimeout(_watchdog); console.warn('[TTS] Error:', e.error); _ttsSigue(); };
       speechSynthesis.speak(utterance);
       _ttsUnlocked = true;
     } catch(e) { console.warn('[TTS] Exception:', e.message); _ttsPlayNext(); }
