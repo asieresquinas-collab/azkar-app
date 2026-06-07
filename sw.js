@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  AZKAR PWA · Service Worker · Offline-first
 // ══════════════════════════════════════════════════════════════
-const CACHE_NAME = 'azkar-pwa-v253';
+const CACHE_NAME = 'azkar-pwa-v254';
 const ASSETS = [
   './',
   './index.html',
@@ -92,8 +92,8 @@ self.addEventListener('push', function(event) {
     body: 'Tienes una notificación nueva',
     tag: 'azkarin',
     requireInteraction: false,
-    icon: './icons/icon-192.png',
-    badge: './icons/icon-192.png',
+    icon: './icons/azkarin-128.png',
+    badge: './icons/azkarin-64.png',
     data: { url: './?chat=1' }
   };
   try { if (event.data) data = Object.assign(data, event.data.json()); } catch(e) {}
