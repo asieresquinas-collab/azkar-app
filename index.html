@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v255';</script>
+<script>document.getElementById('version-tag').textContent='v256';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v255';
+var APP_VERSION = 'v256';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -3536,7 +3536,85 @@ async function savePresupuestoFull(data) {
     showSyncStatus('⚠ Error al guardar — intentando recuperar...', 5000);
   }
 
+  // v256: AZKARIN PROACTIVO — analizar presupuesto después de guardar
+  if (savedFB && ref && data.rows && data.rows.length > 0) {
+    setTimeout(function() { azkarinAnalizarPresupuesto(ref); }, 1500);
+  }
+
   return { savedIDB, savedFB };
+}
+
+// ══════════════════════════════════════════════════════════════
+//  v256: AZKARIN PROACTIVO — Análisis post-guardado
+// ══════════════════════════════════════════════════════════════
+var _azkarinUltimoAnalisis = null; // evitar repetir el mismo análisis
+async function azkarinAnalizarPresupuesto(ref) {
+  if (_azkarinUltimoAnalisis === ref + '_' + Math.floor(Date.now() / 60000)) return; // no repetir en <1min
+  _azkarinUltimoAnalisis = ref + '_' + Math.floor(Date.now() / 60000);
+  try {
+    var token = localStorage.getItem('azkar_token');
+    if (!token) return;
+    var r = await fetch(RAILWAY_API + '/api/chatbot/suggest/' + encodeURIComponent(ref), {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!r.ok) return;
+    var data = await r.json();
+    if (data.error) return;
+    // Solo mostrar si hay azkarinDice con contenido
+    var msgs = data.azkarinDice || [];
+    if (msgs.length === 0) return;
+    // Construir y mostrar popup
+    _mostrarPopupAzkarin(data, msgs);
+  } catch(e) { console.warn('[Azkarin] Error análisis post-save:', e.message); }
+}
+
+function _mostrarPopupAzkarin(data, msgs) {
+  // Eliminar popup anterior si existe
+  var prev = document.getElementById('azkarin-popup-analisis');
+  if (prev) prev.remove();
+  var overlay = document.createElement('div');
+  overlay.id = 'azkarin-popup-analisis';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:20000;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px;';
+  var html = '<div style="background:#fff;border-radius:16px;max-width:450px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .3s ease">';
+  // Header
+  html += '<div style="background:linear-gradient(135deg,#1B4F8A,#2376C5);padding:16px 20px;border-radius:16px 16px 0 0;display:flex;align-items:center;gap:10px">';
+  html += '<img src="./icons/azkarin-64.png" style="width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.4)" onerror="this.style.display=\'none\'">';
+  html += '<div><div style="color:#fff;font-weight:800;font-size:14px">Azkarin te habla</div>';
+  html += '<div style="color:rgba(255,255,255,.7);font-size:11px">' + (data.cliente || '') + ' · REF ' + (data.ref || '') + ' · ' + Math.round(data.importe_base || 0) + '€ base</div></div>';
+  html += '<button onclick="document.getElementById(\'azkarin-popup-analisis\').remove()" style="margin-left:auto;background:rgba(255,255,255,.2);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;font-weight:700">×</button>';
+  html += '</div>';
+  // Body con mensajes
+  html += '<div style="padding:16px 20px">';
+  for (var i = 0; i < msgs.length; i++) {
+    var m = msgs[i];
+    var bgColor = m.tipo === 'objetivo_apretado' ? '#FEF0E7' : m.tipo === 'objetivo_cumplido' ? '#e8f5e9' : '#f5f7fa';
+    var borderColor = m.tipo === 'objetivo_apretado' ? '#E85C0D' : m.tipo === 'objetivo_cumplido' ? '#1a7a3f' : '#2376C5';
+    html += '<div style="background:' + bgColor + ';border-left:3px solid ' + borderColor + ';border-radius:8px;padding:12px;margin-bottom:10px">';
+    html += '<div style="font-size:13px;line-height:1.5;color:#333">' + (m.emoji || '') + ' ' + (m.mensaje || '') + '</div>';
+    html += '</div>';
+  }
+  // Advertencias si las hay
+  var advs = data.advertencias || [];
+  if (advs.length > 0) {
+    html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #eee">';
+    html += '<div style="font-size:10px;text-transform:uppercase;color:#999;margin-bottom:6px;font-weight:700">Advertencias</div>';
+    for (var j = 0; j < advs.length; j++) {
+      html += '<div style="font-size:12px;color:#666;margin-bottom:4px">⚠ ' + advs[j].mensaje + '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  // Footer
+  html += '<div style="padding:12px 20px;border-top:1px solid #eee;text-align:right">';
+  html += '<button onclick="document.getElementById(\'azkarin-popup-analisis\').remove()" style="background:#1B4F8A;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Enterado, ¡vamos!</button>';
+  html += '</div></div>';
+  overlay.innerHTML = html;
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  // Leer en voz alta el primer mensaje
+  if (msgs[0] && window.azkarinHablar) {
+    try { window.azkarinHablar(msgs[0].mensaje); } catch(e) {}
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -4907,6 +4985,25 @@ async function openDashboard() {
       }
     });
 
+    // v256: OBJETIVO MENSUAL — ingresos del mes (en marcha + pagado con fecha en este mes)
+    var _mesActual = new Date();
+    var _mesStr = _mesActual.getFullYear() + '-' + String(_mesActual.getMonth() + 1).padStart(2, '0');
+    var _ingresosMes = 0;
+    var _diasOcupadosMes = new Set();
+    current.forEach(function(p) {
+      if (!(p._enMarcha || p._pagadoFinalizado)) return;
+      if (!p.f_fserv || String(p.f_fserv).slice(0, 7) !== _mesStr) return;
+      var rowsP = Array.isArray(p.rows) ? p.rows : [];
+      var baseP = rowsP.reduce(function(s, r) { return s + (parseFloat(r.u) || 0) * (parseFloat(r.p) || 0) * (1 - ((parseFloat(r.d) || 0) / 100)); }, 0);
+      _ingresosMes += baseP;
+      _diasOcupadosMes.add(String(p.f_fserv).slice(0, 10));
+    });
+    var _ultimoDiaMes = new Date(_mesActual.getFullYear(), _mesActual.getMonth() + 1, 0).getDate();
+    var _diasRestantes = Math.max(0, _ultimoDiaMes - _mesActual.getDate());
+    var _diasLibres = Math.max(0, _diasRestantes - _diasOcupadosMes.size);
+    // Guardar globalmente para el análisis post-save de Azkarin
+    window._azkarinObjetivoMes = { ingresos: _ingresosMes, diasRestantes: _diasRestantes, diasLibres: _diasLibres, diasOcupados: _diasOcupadosMes.size };
+
     // Render
     var cs = 'style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.1);"';
     var html = '';
@@ -4938,6 +5035,12 @@ async function openDashboard() {
     html += '<div style="font-size:28px;font-weight:800;color:#1a7a3f;">' + totalFacturado.toLocaleString('es-ES', {style:'currency',currency:'EUR'}) + '</div>';
     html += '<div style="font-size:11px;color:#888;margin-top:4px;">' + pagado.length + ' servicios pagados</div>';
     html += '</div>';
+    html += '</div>';
+
+    // v256: PANEL OBJETIVO MENSUAL — Azkarin compañero
+    html += '<div id="dash-objetivo-mes" style="background:linear-gradient(135deg,#1B4F8A 0%,#2376C5 100%);border-radius:12px;padding:20px;margin-bottom:14px;color:#fff;box-shadow:0 4px 20px rgba(27,79,138,.3);">';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><img src="./icons/azkarin-64.png" style="width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,.4)" onerror="this.style.display=\'none\'"><div style="font-weight:800;font-size:15px;font-family:\'Barlow Condensed\',sans-serif;">OBJETIVO DEL MES — Azkarin vigila</div></div>';
+    html += '<div id="dash-objetivo-contenido" style="font-size:13px;color:rgba(255,255,255,.8);">Calculando objetivo...</div>';
     html += '</div>';
 
     // Servicios próximos 7 días
@@ -5178,6 +5281,8 @@ async function cargarGastosDashboard() {
       var ahora = new Date();
       act.textContent = 'Actualizado ' + ahora.getHours().toString().padStart(2,'0') + ':' + ahora.getMinutes().toString().padStart(2,'0');
     }
+    // v256: Actualizar panel de objetivo con los gastos reales del mes
+    try { _actualizarPanelObjetivo(d.total_mensual); } catch(eObj) { console.warn('[Dashboard] Error panel objetivo:', eObj.message); }
   } catch(e) {
     cont.innerHTML = '<div style="color:#c00;font-size:12px;padding:10px">Error: ' + e.message + '</div>';
     if (act) act.textContent = 'Error';
@@ -5190,6 +5295,65 @@ function _fmtEur(n) {
 }
 function _esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// v256: Actualizar panel de Objetivo Mensual cuando los gastos se cargan
+function _actualizarPanelObjetivo(gastosMes) {
+  var cont = document.getElementById('dash-objetivo-contenido');
+  if (!cont) return;
+  var obj = window._azkarinObjetivoMes || {};
+  var ingresos = Math.round(obj.ingresos || 0);
+  var gastos = Math.round(gastosMes || 0);
+  var diasR = obj.diasRestantes || 0;
+  var diasL = obj.diasLibres || 0;
+  if (!gastos) { cont.innerHTML = '<div style="opacity:.7">No se pudieron cargar los gastos del mes.</div>'; return; }
+  // Objetivo: cubrir gastos + 20% beneficio
+  var objetivo = Math.round(gastos * 1.2);
+  var pct = Math.min(100, Math.round((ingresos / objetivo) * 100));
+  var falta = Math.max(0, objetivo - ingresos);
+  var faltaGastos = Math.max(0, gastos - ingresos);
+  // Nivel de urgencia
+  var nivel, colorBarra, emoji, mensaje;
+  if (ingresos >= objetivo) {
+    nivel = 'exito'; colorBarra = '#27ae60'; emoji = '🏆';
+    mensaje = '¡OBJETIVO CUMPLIDO! Beneficio: ' + _fmtEur(ingresos - gastos) + ' (+' + Math.round((ingresos / gastos - 1) * 100) + '%). ¡Lo que entre ahora es nata, crack!';
+  } else if (ingresos >= gastos) {
+    nivel = 'bien'; colorBarra = '#f39c12'; emoji = '✅';
+    var falta20 = objetivo - ingresos;
+    mensaje = 'Gastos SALVADOS (+' + _fmtEur(ingresos - gastos) + '). Ahora a por el +20%: faltan ' + _fmtEur(falta20);
+    if (diasL > 0) mensaje += '. Con ~' + _fmtEur(Math.ceil(falta20 / diasL)) + '/día libre en tus ' + diasL + ' días libres ¡lo tenemos!';
+  } else {
+    nivel = 'urgente'; colorBarra = '#e74c3c'; emoji = '⚠️';
+    mensaje = 'FALTAN ' + _fmtEur(faltaGastos) + ' para cubrir gastos. Quedan ' + diasR + ' días (' + diasL + ' libres).';
+    if (diasL > 0) mensaje += ' Necesitas ~' + _fmtEur(Math.ceil(faltaGastos / diasL)) + '/día libre. ¡Aprieta captaciones frías, ajusta precios, agrupa servicios! Los gastos se salvan SÍ o SÍ.';
+    else mensaje += ' No quedan días libres: aprieta cobros pendientes y recupera captaciones. No se pierde.';
+  }
+  // Guardar objetivo globalmente para análisis post-save
+  window._azkarinObjetivoMes.gastos = gastos;
+  window._azkarinObjetivoMes.objetivo = objetivo;
+  window._azkarinObjetivoMes.falta = falta;
+  window._azkarinObjetivoMes.faltaGastos = faltaGastos;
+  window._azkarinObjetivoMes.nivel = nivel;
+
+  var h = '';
+  // Barra de progreso
+  h += '<div style="margin-bottom:10px">';
+  h += '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;opacity:.85"><span>Ingresos previstos</span><span>' + pct + '% del objetivo</span></div>';
+  h += '<div style="background:rgba(255,255,255,.2);border-radius:20px;height:18px;overflow:hidden;position:relative">';
+  h += '<div style="background:' + colorBarra + ';height:100%;width:' + pct + '%;border-radius:20px;transition:width .5s ease;min-width:2px"></div>';
+  h += '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4)">' + _fmtEur(ingresos) + ' / ' + _fmtEur(objetivo) + '</div>';
+  h += '</div></div>';
+  // Tres minitarjetas
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">';
+  h += '<div style="background:rgba(255,255,255,.12);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;opacity:.7">Gastos mes</div><div style="font-size:16px;font-weight:800">' + _fmtEur(gastos) + '</div></div>';
+  h += '<div style="background:rgba(255,255,255,.12);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;opacity:.7">Te falta</div><div style="font-size:16px;font-weight:800;color:' + (faltaGastos > 0 ? '#ff6b6b' : '#69db7c') + '">' + (faltaGastos > 0 ? _fmtEur(faltaGastos) : '¡Cubierto!') + '</div></div>';
+  h += '<div style="background:rgba(255,255,255,.12);border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;opacity:.7">Días quedan</div><div style="font-size:16px;font-weight:800">' + diasR + ' <span style="font-size:10px;opacity:.7">(' + diasL + ' libres)</span></div></div>';
+  h += '</div>';
+  // Mensaje de Azkarin
+  h += '<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;border-left:3px solid ' + colorBarra + '">';
+  h += '<div style="font-size:12px;line-height:1.5">' + emoji + ' <b>Azkarin dice:</b> ' + mensaje + '</div>';
+  h += '</div>';
+  cont.innerHTML = h;
 }
 
 function _dashCard(icon, label, count, color) {
