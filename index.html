@@ -289,7 +289,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 </div>
 <div style='margin-top:16px;padding-top:14px;border-top:1px solid #eee;display:flex;gap:10px;flex-wrap:wrap'>
 <button onclick='closeParteEditModal()' style='background:#eee;color:#333;border:none;padding:10px 18px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;flex:1'>Cancelar</button>
-<button onclick='confirmarParteEdit()' style='background:#E85C0D;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;flex:2'>Generar Parte PDF</button>
+<button onclick='closeParteEditModal();IMPRIMIR_PARTE()' style='padding:10px 18px;background:#555;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer'>🖨️ Imprimir ahora</button><button onclick='confirmarParteEdit()' style='background:#E85C0D;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;flex:2'>Generar Parte PDF</button>
 </div>
 </div>
 </div>
@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v251';</script>
+<script>document.getElementById('version-tag').textContent='v252';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v251';
+var APP_VERSION = 'v252';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -6863,6 +6863,54 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 
 // === PARTE DE TRABAJO ===
+async function IMPRIMIR_PARTE() {
+  // Collect data from presupuesto fields
+  var nom = document.getElementById('f_nom');
+  var fserv = document.getElementById('f_fserv');
+  var rec = document.getElementById('f_rec');
+  var ent = document.getElementById('f_ent');
+  var obs = document.getElementById('f_obs');
+  var ref = document.getElementById('f_ref');
+  
+  // Fill parte fields
+  document.getElementById('pt_nom').textContent = nom ? nom.value || '—' : '—';
+  document.getElementById('pt_fecha').textContent = fserv ? fserv.value || '—' : '—';
+  document.getElementById('pt_rec').textContent = rec ? rec.value || '—' : '—';
+  document.getElementById('pt_ent').textContent = ent ? ent.value || '—' : '—';
+  document.getElementById('pt_obs').textContent = obs ? obs.value || '—' : '—';
+  document.getElementById('pt_ref').textContent = ref ? ref.value || '—' : '—';
+
+  // Collect table rows (concepto, zona, unidades - NO prices)
+  var rowsDiv = document.getElementById('pt_rows');
+  rowsDiv.innerHTML = '';
+  var hasRows = false;
+
+  var crs = document.querySelectorAll('#tb .cr');
+  crs.forEach(function(cr) {
+    var inputs = cr.querySelectorAll('input');
+    var selects = cr.querySelectorAll('select');
+    if (inputs.length >= 1 && inputs[0].value.trim()) {
+      hasRows = true;
+      var row = document.createElement('div');
+      row.className = 'pt-row';
+      var concepto = inputs[0] ? inputs[0].value : '';
+      var uds = inputs[1] ? inputs[1].value : '1';
+      row.innerHTML = '<span>' + concepto + '</span><span style="text-align:center">' + uds + '</span>';
+      rowsDiv.appendChild(row);
+    }
+  });
+  if (!hasRows) {
+    rowsDiv.innerHTML = '<div style="padding:20px;text-align:center;color:#888;font-style:italic">No hay enseres registrados</div>';
+  }
+  
+  // Imprimir en local usando el modo print-parte (solo se ve el parte)
+  document.body.classList.add('print-parte');
+  setTimeout(function() {
+    window.print();
+    setTimeout(function() { document.body.classList.remove('print-parte'); }, 800);
+  }, 200);
+}
+
 async function PRINT_PARTE() {
   // Collect data from presupuesto fields
   var nom = document.getElementById('f_nom');
@@ -6922,7 +6970,9 @@ async function PRINT_PARTE() {
     var result = await savePdfViaServer(number, clientName, completeHTML, 'PARTE_TRABAJO');
 
     if (result && result.success) {
-      showSyncStatus('✅ Parte PDF guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase());
+      var _lnkP = result.drive && (result.drive.pdfProxyLink || result.drive.webViewLink);
+      if (_lnkP) { try { window.open(_lnkP, '_blank'); } catch(e) {} }
+      showSyncStatus('✅ Parte PDF guardado en Drive → carpeta ' + number + ' ' + (clientName || '').toUpperCase() + (_lnkP ? ' · abierto para imprimir' : ''), 6000);
     } else {
       showSyncStatus('❌ Error: ' + (result ? (result.error || 'sin respuesta') : 'sin conexión'), 5000);
     }
@@ -7152,7 +7202,9 @@ async function confirmarParteEdit() {
     var completeHTML = buildCompleteHTML(['page-parte']);
     var result = await savePdfViaServer(number, clientName, completeHTML, 'PARTE_TRABAJO');
     if (result && result.success) {
-      showSyncStatus('Parte PDF guardado en Drive -> carpeta ' + number + ' ' + (clientName || '').toUpperCase());
+      var _lnkP2 = result.drive && (result.drive.pdfProxyLink || result.drive.webViewLink);
+      if (_lnkP2) { try { window.open(_lnkP2, '_blank'); } catch(e) {} }
+      showSyncStatus('Parte PDF guardado en Drive -> carpeta ' + number + ' ' + (clientName || '').toUpperCase() + (_lnkP2 ? ' · abierto para imprimir' : ''), 6000);
     } else {
       showSyncStatus('Error: ' + (result ? (result.error || 'sin respuesta') : 'sin conexion'), 5000);
     }
