@@ -3590,7 +3590,7 @@ function _mostrarPopupAzkarin(data, msgs) {
     var bgColor = m.tipo === 'objetivo_apretado' ? '#FEF0E7' : m.tipo === 'objetivo_cumplido' ? '#e8f5e9' : '#f5f7fa';
     var borderColor = m.tipo === 'objetivo_apretado' ? '#E85C0D' : m.tipo === 'objetivo_cumplido' ? '#1a7a3f' : '#2376C5';
     html += '<div style="background:' + bgColor + ';border-left:3px solid ' + borderColor + ';border-radius:8px;padding:12px;margin-bottom:10px">';
-    html += '<div style="font-size:13px;line-height:1.5;color:#333">' + (m.emoji || '') + ' ' + (m.mensaje || '') + '</div>';
+    html += '<div style="font-size:13px;line-height:1.5;color:#333;white-space:pre-line">' + (m.emoji || '') + ' ' + (m.mensaje || '').replace(/</g,'&lt;') + '</div>';
     html += '</div>';
   }
   // Advertencias si las hay
