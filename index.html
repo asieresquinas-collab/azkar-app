@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v249';</script>
+<script>document.getElementById('version-tag').textContent='v250';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v249';
+var APP_VERSION = 'v250';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12171,14 +12171,26 @@ async function doResetWithCode() {
     msgsDiv.appendChild(div);
     msgsDiv.scrollTop = msgsDiv.scrollHeight;
   }
+  var _typingInterval = null;
   function addTyping() {
+    removeTyping();
     var div = document.createElement('div');
     div.className = 'chat-typing'; div.id = 'chatbot-typing';
-    div.textContent = 'Pensando...';
+    div.textContent = 'Procesando';
     msgsDiv.appendChild(div);
     msgsDiv.scrollTop = msgsDiv.scrollHeight;
+    var n = 0; var t0 = Date.now();
+    _typingInterval = setInterval(function() {
+      var el = document.getElementById('chatbot-typing');
+      if (!el) { clearInterval(_typingInterval); _typingInterval = null; return; }
+      n = (n + 1) % 4;
+      var seg = (Date.now() - t0) / 1000;
+      var base = seg > 90 ? '🔍 Trabajo largo en marcha, aguanta (hasta 3-4 min)' : (seg > 15 ? '🔍 Sigo trabajando — las búsquedas largas tardan 1-3 min' : 'Procesando');
+      el.textContent = base + Array(n + 1).join('.');
+      msgsDiv.scrollTop = msgsDiv.scrollHeight;
+    }, 500);
   }
-  function removeTyping() { var el = document.getElementById('chatbot-typing'); if (el) el.remove(); }
+  function removeTyping() { if (_typingInterval) { clearInterval(_typingInterval); _typingInterval = null; } var el = document.getElementById('chatbot-typing'); if (el) el.remove(); }
   function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   inputEl.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatbotSend(); } });
