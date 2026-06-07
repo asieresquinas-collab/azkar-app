@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v254';</script>
+<script>document.getElementById('version-tag').textContent='v255';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v254';
+var APP_VERSION = 'v255';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -2957,6 +2957,16 @@ async function azkarinPushUnsubscribe() {
 }
 
 window.azkarinPushSubscribe = azkarinPushSubscribe;
+window.azkarinTestPush = async function() {
+  try {
+    var r = await fetch(RAILWAY_API + '/api/azkarin/test-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (localStorage.getItem('azkar_token') || '') }
+    });
+    var d = await r.json().catch(function() { return {}; });
+    alert(r.ok ? '🔔 Notificación de prueba enviada. Debería sonar AHORA (mejor con la app cerrada o en segundo plano).' : ('No se pudo enviar: ' + (d.error || ('HTTP ' + r.status))));
+  } catch (e) { alert('Error: ' + e.message); }
+};
 window.azkarinPushUnsubscribe = azkarinPushUnsubscribe;
 window.abrirAzkarinConContexto = abrirAzkarinConContexto;
 
@@ -11448,7 +11458,8 @@ async function openAdminPanel() {
     + '<div style="border-top:2px solid #D6E4F7;padding-top:12px;margin-top:16px">'
     + '<h3 style="color:#1B4F8A;font-size:15px;margin:0 0 8px">🤖 Azkarin proactivo</h3>'
     + '<p style="font-size:12px;color:#666;margin:0 0 8px;line-height:1.4">Activa para recibir notificaciones cuando algo falte (DNI, operarios, PDFs sin enviar...). Vigila de lunes a viernes de 8:00 a 18:00.</p>'
-    + '<div id="azkarin-push-status-btn"></div></div>'
+    + '<div id="azkarin-push-status-btn"></div>'
+    + '<button onclick="azkarinTestPush()" style="margin-top:8px;padding:8px 14px;background:#E85C0D;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">🔔 Probar notificación</button></div>'
     + '<div style="border-top:2px solid #D6E4F7;padding-top:12px;margin-top:12px">'
     + '<h3 style="color:#1B4F8A;font-size:15px;margin:0 0 8px">🔊 Voz de Azkarin</h3>'
     + '<p style="font-size:12px;color:#666;margin:0 0 8px">Elige con qué voz te habla. "Automática" usa la mejor voz en español del móvil.</p>'
