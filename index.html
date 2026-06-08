@@ -2533,7 +2533,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v260';</script>
+<script>document.getElementById('version-tag').textContent='v261';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2645,7 +2645,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v260';
+var APP_VERSION = 'v261';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -11374,6 +11374,19 @@ async function cargarOfertasAutonomos() {
           html += '<img src="' + f.url + '" onclick="verFotoAdmin(\'' + f.url + '\')" style="width:70px;height:70px;object-fit:cover;border-radius:4px;border:1px solid #ddd;cursor:pointer" loading="lazy">';
         });
         html += '</div></div></div>';
+      }
+      // v260: Galería de vídeos desplegable
+      var vidsAdm = (o.media || []).filter(function(m) { return m.tipo === 'video'; });
+      if (vidsAdm.length) {
+        html += '<div style="margin-bottom:8px">';
+        html += '<button onclick="toggleFotosAdmin(\'vid-' + o.presupuestoRef + '\')" style="padding:4px 10px;font-size:11px;background:#f0f2f5;border:1px solid #ddd;border-radius:4px;cursor:pointer;color:var(--na);font-weight:600">🎥 Ver vídeos (' + vidsAdm.length + ') <span id="fadm-arrow-vid-' + o.presupuestoRef + '">▸</span></button>';
+        html += '<div id="fadm-vid-' + o.presupuestoRef + '" style="display:none;margin-top:6px">';
+        vidsAdm.forEach(function(v) {
+          html += '<div style="margin-bottom:8px"><video controls preload="metadata" playsinline style="width:100%;max-width:320px;border-radius:6px;border:1px solid #ddd"><source src="' + v.url + '" type="video/mp4">No soportado</video>';
+          if (v.nombre) html += '<div style="font-size:10px;color:#888">' + v.nombre + '</div>';
+          html += '</div>';
+        });
+        html += '</div></div>';
       }
 
       if (o.precios && o.precios.length) {
