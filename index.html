@@ -2495,7 +2495,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v257';</script>
+<script>document.getElementById('version-tag').textContent='v258';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v257';
+var APP_VERSION = 'v258';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -11820,7 +11820,13 @@ async function doResetWithCode() {
 .chat-confirm-btns button{padding:6px 16px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer}
 .chat-confirm-btns .btn-si{background:#1a7a3f;color:#fff}
 .chat-confirm-btns .btn-no{background:#c0392b;color:#fff}
-.chat-typing{align-self:flex-start;padding:10px 14px;background:#fff;border:1px solid #e0e0e0;border-radius:12px;font-size:13px;color:#999}
+.chat-typing{align-self:flex-start;padding:10px 14px;background:#f0f4ff;border:1px solid #c5d4e8;border-radius:12px;font-size:13px;color:#1B4F8A;display:flex;align-items:center;gap:8px}
+.chat-typing-dots{display:flex;gap:4px;align-items:center}
+.chat-typing-dots span{width:8px;height:8px;background:#2376C5;border-radius:50%;display:inline-block;animation:chatDotBounce 1.4s infinite ease-in-out both}
+.chat-typing-dots span:nth-child(1){animation-delay:-0.32s}
+.chat-typing-dots span:nth-child(2){animation-delay:-0.16s}
+.chat-typing-dots span:nth-child(3){animation-delay:0s}
+@keyframes chatDotBounce{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
 #chatbot-input-area{display:flex;align-items:center;gap:6px;padding:10px 12px;border-top:1px solid #eee;background:#fff;flex-shrink:0}
 #chatbot-input{flex:1;border:1px solid #d0d5de;border-radius:8px;padding:10px 12px;font-size:13px;font-family:Barlow,sans-serif;outline:none;resize:none;max-height:80px}
 #chatbot-input:focus{border-color:#2376C5}
@@ -12410,19 +12416,21 @@ async function doResetWithCode() {
     removeTyping();
     var div = document.createElement('div');
     div.className = 'chat-typing'; div.id = 'chatbot-typing';
-    div.textContent = 'Procesando';
+    div.innerHTML = '<div class="chat-typing-dots"><span></span><span></span><span></span></div><span class="chat-typing-text">Procesando</span>';
     msgsDiv.appendChild(div);
     msgsDiv.scrollTop = msgsDiv.scrollHeight;
-    var n = 0; var t0 = Date.now();
+    var t0 = Date.now();
     _typingInterval = setInterval(function() {
       var el = document.getElementById('chatbot-typing');
       if (!el) { clearInterval(_typingInterval); _typingInterval = null; return; }
-      n = (n + 1) % 4;
+      var textEl = el.querySelector('.chat-typing-text');
+      if (!textEl) return;
       var seg = (Date.now() - t0) / 1000;
-      var base = seg > 90 ? '🔍 Trabajo largo en marcha, aguanta (hasta 3-4 min)' : (seg > 15 ? '🔍 Sigo trabajando — las búsquedas largas tardan 1-3 min' : 'Procesando');
-      el.textContent = base + Array(n + 1).join('.');
+      if (seg > 90) textEl.textContent = 'Trabajo largo, aguanta...';
+      else if (seg > 30) textEl.textContent = 'Sigo trabajando...';
+      else if (seg > 10) textEl.textContent = 'Buscando datos...';
       msgsDiv.scrollTop = msgsDiv.scrollHeight;
-    }, 500);
+    }, 3000);
   }
   function removeTyping() { if (_typingInterval) { clearInterval(_typingInterval); _typingInterval = null; } var el = document.getElementById('chatbot-typing'); if (el) el.remove(); }
   function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
