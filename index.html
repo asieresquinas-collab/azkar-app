@@ -764,14 +764,29 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 <div style='margin-bottom:20px'>
 <h3 style='color:var(--az);font-size:14px;margin-bottom:10px'>📦 Pedir precio a autónomos</h3>
 <p style='font-size:11px;color:#888;margin-bottom:8px'>Coge los datos del presupuesto actual y lo publica para que los autónomos te den precio.</p>
-<!-- v158: Fotos para autónomos -->
+<!-- v260: Fotos + Vídeos para autónomos -->
 <div style='margin-bottom:10px'>
+<div style='display:flex;gap:8px;flex-wrap:wrap'>
 <label style='display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f0f2f5;border:1px dashed #aaa;border-radius:6px;cursor:pointer;font-size:12px;color:#555'>
 <span>📷 Añadir fotos</span>
 <input type='file' id='fotos-autonomos-input' accept='image/*' multiple style='display:none' onchange='previsualizarFotos(this)'>
 </label>
-<span style='font-size:10px;color:#888;margin-left:6px'>Máx 10 fotos (se comprimen automáticamente)</span>
+<label style='display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f0f2f5;border:1px dashed #aaa;border-radius:6px;cursor:pointer;font-size:12px;color:#555'>
+<span>🎥 Añadir vídeo</span>
+<input type='file' id='video-autonomos-input' accept='video/*' style='display:none' onchange='prepararVideo(this)'>
+</label>
+</div>
+<span style='font-size:10px;color:#888'>Fotos: máx 10 (se comprimen). Vídeos: máx 500 MB (suben directo a Drive)</span>
 <div id='fotos-preview' style='display:flex;flex-wrap:wrap;gap:6px;margin-top:8px'></div>
+<div id='video-preview' style='margin-top:8px'></div>
+<div id='video-progress' style='display:none;margin-top:8px'>
+<div style='display:flex;align-items:center;gap:8px'>
+<div style='flex:1;height:8px;background:#e0e0e0;border-radius:4px;overflow:hidden'>
+<div id='video-progress-bar' style='height:100%;background:var(--az2);width:0%;transition:width 0.3s;border-radius:4px'></div>
+</div>
+<span id='video-progress-text' style='font-size:11px;color:#666;min-width:60px'>0%</span>
+</div>
+</div>
 </div>
 <button onclick='publicarParaAutonomos()' style='padding:10px 24px;background:var(--na);color:#fff;border:none;border-radius:4px;font-weight:700;font-size:13px;cursor:pointer'>Publicar presupuesto actual</button>
 <div id='publicar-resultado' style='margin-top:8px;font-size:12px'></div>
@@ -2518,7 +2533,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v259';</script>
+<script>document.getElementById('version-tag').textContent='v260';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2630,7 +2645,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v259';
+var APP_VERSION = 'v260';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -10729,6 +10744,138 @@ function quitarFoto(idx) {
   renderFotosPreview();
 }
 
+// ── v260: Vídeos para autónomos (subida directa a Google Drive) ──
+var _videosAutonomos = []; // {file, name, size, uploaded, fileId}
+
+function prepararVideo(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 500 * 1024 * 1024) {
+    alert('El vídeo es demasiado grande (' + (file.size / 1024 / 1024).toFixed(0) + ' MB). Máximo 500 MB.');
+    input.value = '';
+    return;
+  }
+  if (_videosAutonomos.length >= 3) {
+    alert('Máximo 3 vídeos por publicación.');
+    input.value = '';
+    return;
+  }
+  _videosAutonomos.push({ file: file, name: file.name, size: file.size, uploaded: false, fileId: null });
+  renderVideoPreview();
+  input.value = '';
+}
+
+function renderVideoPreview() {
+  var div = document.getElementById('video-preview');
+  if (!div) return;
+  if (!_videosAutonomos.length) { div.innerHTML = ''; return; }
+  var html = '';
+  _videosAutonomos.forEach(function(v, i) {
+    var sizeMB = (v.size / 1024 / 1024).toFixed(1);
+    var estado = v.uploaded ? '✅' : '⏳';
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8f9fa;border-radius:6px;border:1px solid #e0e0e0;margin-bottom:4px">';
+    html += '<span style="font-size:16px">🎥</span>';
+    html += '<span style="flex:1;font-size:11px;color:#333">' + estado + ' ' + v.name + ' (' + sizeMB + ' MB)</span>';
+    if (!v.uploaded) {
+      html += '<button onclick="quitarVideo(' + i + ')" style="background:#c00;color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:18px">✕</button>';
+    }
+    html += '</div>';
+  });
+  div.innerHTML = html;
+}
+
+function quitarVideo(idx) {
+  _videosAutonomos.splice(idx, 1);
+  renderVideoPreview();
+}
+
+async function subirVideosAutonomos(ref) {
+  if (!_videosAutonomos.length) return true;
+  var progressDiv = document.getElementById('video-progress');
+  var progressBar = document.getElementById('video-progress-bar');
+  var progressText = document.getElementById('video-progress-text');
+  if (progressDiv) progressDiv.style.display = 'block';
+
+  for (var vi = 0; vi < _videosAutonomos.length; vi++) {
+    var v = _videosAutonomos[vi];
+    if (v.uploaded) continue;
+    try {
+      if (progressText) progressText.textContent = 'Preparando vídeo ' + (vi + 1) + '/' + _videosAutonomos.length + '...';
+      if (progressBar) progressBar.style.width = '0%';
+
+      // 1. Pedir URL de subida al backend
+      var initResp = await fetch(RAILWAY_API + '/api/autonomos/video-init', {
+        method: 'POST', headers: apiHeaders(),
+        body: JSON.stringify({ presupuestoRef: ref, fileName: v.name, mimeType: v.file.type || 'video/mp4', fileSize: v.size })
+      });
+      var initData = await initResp.json();
+      if (!initData.ok || !initData.uploadUrl) {
+        alert('Error preparando subida: ' + (initData.error || 'sin URL'));
+        if (progressDiv) progressDiv.style.display = 'none';
+        return false;
+      }
+
+      // 2. Subir directamente a Google Drive con progreso
+      var uploadOk = await new Promise(function(resolve) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('PUT', initData.uploadUrl, true);
+        xhr.setRequestHeader('Content-Type', v.file.type || 'video/mp4');
+
+        xhr.upload.onprogress = function(e) {
+          if (e.lengthComputable) {
+            var pct = Math.round((e.loaded / e.total) * 100);
+            if (progressBar) progressBar.style.width = pct + '%';
+            if (progressText) progressText.textContent = 'Subiendo ' + (vi + 1) + '/' + _videosAutonomos.length + ': ' + pct + '%  (' + (e.loaded / 1024 / 1024).toFixed(0) + '/' + (e.total / 1024 / 1024).toFixed(0) + ' MB)';
+          }
+        };
+
+        xhr.onload = function() {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              var driveResp = JSON.parse(xhr.responseText);
+              v.fileId = driveResp.id;
+              v.uploaded = true;
+              resolve(true);
+            } catch(pe) { resolve(true); } // A veces Drive no devuelve JSON pero sí subió OK
+          } else {
+            console.error('Error subiendo vídeo:', xhr.status, xhr.responseText);
+            resolve(false);
+          }
+        };
+        xhr.onerror = function() { resolve(false); };
+        xhr.send(v.file);
+      });
+
+      if (!uploadOk) {
+        alert('Error subiendo el vídeo ' + v.name + '. Inténtalo de nuevo.');
+        if (progressDiv) progressDiv.style.display = 'none';
+        return false;
+      }
+
+      // 3. Confirmar al backend
+      if (v.fileId) {
+        await fetch(RAILWAY_API + '/api/autonomos/video-complete', {
+          method: 'POST', headers: apiHeaders(),
+          body: JSON.stringify({ presupuestoRef: ref, fileId: v.fileId, fileName: v.name })
+        });
+      }
+
+      renderVideoPreview();
+    } catch (e) {
+      alert('Error subiendo vídeo: ' + e.message);
+      if (progressDiv) progressDiv.style.display = 'none';
+      return false;
+    }
+  }
+
+  if (progressBar) progressBar.style.width = '100%';
+  if (progressText) progressText.textContent = '✅ Vídeos subidos';
+  setTimeout(function() { if (progressDiv) progressDiv.style.display = 'none'; }, 3000);
+  _videosAutonomos = [];
+  renderVideoPreview();
+  return true;
+}
+
 async function subirFotosAutonomos(ref) {
   if (!_fotosAutonomos.length) return true; // No hay fotos, OK
   try {
@@ -11172,6 +11319,16 @@ async function publicarParaAutonomos() {
         if (divRes) divRes.innerHTML = '<span style="color:var(--az)">📷 Subiendo fotos...</span>';
         if (divResPres) divResPres.innerHTML = '<span style="color:var(--az)">📷 Subiendo fotos...</span>';
         await subirFotosAutonomos(ref);
+      }
+      // v260: Subir vídeos si los hay (directo a Drive con progreso)
+      if (_videosAutonomos.length) {
+        if (divRes) divRes.innerHTML = '<span style="color:var(--az)">🎥 Subiendo vídeos a Drive...</span>';
+        if (divResPres) divResPres.innerHTML = '<span style="color:var(--az)">🎥 Subiendo vídeos a Drive...</span>';
+        var videoOk = await subirVideosAutonomos(ref);
+        if (!videoOk) {
+          if (divRes) divRes.innerHTML = '<span style="color:#c00">Error subiendo vídeos. El trabajo se publicó pero sin vídeos.</span>';
+          return;
+        }
       }
       comprobarOfertaAutonomo();
       var msg = data.actualizado
