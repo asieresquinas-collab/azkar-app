@@ -2533,7 +2533,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v261';</script>
+<script>document.getElementById('version-tag').textContent='v262';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2645,7 +2645,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v261';
+var APP_VERSION = 'v262';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -10800,25 +10800,17 @@ async function subirVideosAutonomos(ref) {
     var v = _videosAutonomos[vi];
     if (v.uploaded) continue;
     try {
-      if (progressText) progressText.textContent = 'Preparando vídeo ' + (vi + 1) + '/' + _videosAutonomos.length + '...';
+      if (progressText) progressText.textContent = 'Subiendo vídeo ' + (vi + 1) + '/' + _videosAutonomos.length + '...';
       if (progressBar) progressBar.style.width = '0%';
 
-      // 1. Pedir URL de subida al backend
-      var initResp = await fetch(RAILWAY_API + '/api/autonomos/video-init', {
-        method: 'POST', headers: apiHeaders(),
-        body: JSON.stringify({ presupuestoRef: ref, fileName: v.name, mimeType: v.file.type || 'video/mp4', fileSize: v.size })
-      });
-      var initData = await initResp.json();
-      if (!initData.ok || !initData.uploadUrl) {
-        alert('Error preparando subida: ' + (initData.error || 'sin URL'));
-        if (progressDiv) progressDiv.style.display = 'none';
-        return false;
-      }
-
-      // 2. Subir directamente a Google Drive con progreso
+      // Subir via backend proxy (backend → Drive, sin CORS)
       var uploadOk = await new Promise(function(resolve) {
         var xhr = new XMLHttpRequest();
-        xhr.open('PUT', initData.uploadUrl, true);
+        xhr.open('PUT', RAILWAY_API + '/api/autonomos/video-upload', true);
+        xhr.setRequestHeader('X-Api-Key', localStorage.getItem('azkar_api_key') || '');
+        xhr.setRequestHeader('X-Presupuesto-Ref', ref);
+        xhr.setRequestHeader('X-File-Name', encodeURIComponent(v.name));
+        xhr.setRequestHeader('X-Mime-Type', v.file.type || 'video/mp4');
         xhr.setRequestHeader('Content-Type', v.file.type || 'video/mp4');
 
         xhr.upload.onprogress = function(e) {
@@ -10832,32 +10824,31 @@ async function subirVideosAutonomos(ref) {
         xhr.onload = function() {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
-              var driveResp = JSON.parse(xhr.responseText);
-              v.fileId = driveResp.id;
-              v.uploaded = true;
-              resolve(true);
-            } catch(pe) { resolve(true); } // A veces Drive no devuelve JSON pero sí subió OK
+              var resp = JSON.parse(xhr.responseText);
+              if (resp.ok && resp.fileId) {
+                v.fileId = resp.fileId;
+                v.uploaded = true;
+                resolve(true);
+              } else {
+                alert('Error: ' + (resp.error || 'sin fileId'));
+                resolve(false);
+              }
+            } catch(pe) { resolve(false); }
           } else {
             console.error('Error subiendo vídeo:', xhr.status, xhr.responseText);
+            try { var e = JSON.parse(xhr.responseText); alert('Error: ' + (e.error || xhr.status)); } catch(x) {}
             resolve(false);
           }
         };
-        xhr.onerror = function() { resolve(false); };
+        xhr.onerror = function() { alert('Error de conexión subiendo el vídeo'); resolve(false); };
+        xhr.timeout = 600000; // 10 min
+        xhr.ontimeout = function() { alert('Timeout subiendo el vídeo (>10 min)'); resolve(false); };
         xhr.send(v.file);
       });
 
       if (!uploadOk) {
-        alert('Error subiendo el vídeo ' + v.name + '. Inténtalo de nuevo.');
         if (progressDiv) progressDiv.style.display = 'none';
         return false;
-      }
-
-      // 3. Confirmar al backend
-      if (v.fileId) {
-        await fetch(RAILWAY_API + '/api/autonomos/video-complete', {
-          method: 'POST', headers: apiHeaders(),
-          body: JSON.stringify({ presupuestoRef: ref, fileId: v.fileId, fileName: v.name })
-        });
       }
 
       renderVideoPreview();
@@ -10869,7 +10860,7 @@ async function subirVideosAutonomos(ref) {
   }
 
   if (progressBar) progressBar.style.width = '100%';
-  if (progressText) progressText.textContent = '✅ Vídeos subidos';
+  if (progressText) progressText.textContent = '✅ Vídeos subidos a Drive';
   setTimeout(function() { if (progressDiv) progressDiv.style.display = 'none'; }, 3000);
   _videosAutonomos = [];
   renderVideoPreview();
