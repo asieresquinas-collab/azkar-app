@@ -2415,28 +2415,46 @@ window.addEventListener('DOMContentLoaded',function(){
   setTimeout(function(){ azkarinLoadAlerts(); }, 4000);
 });
 
-// ── v226 FASE 3: alertas proactivas de Azkarin al cargar la app ──
+// ── v259: alertas proactivas al cargar → sistema buzón ──
+// Primera apertura de la sesión: mini-banner auto-dismiss 5s
+// Siguientes: solo badge en la burbuja
+var _alertasYaMostradas = false;
 async function azkarinLoadAlerts() {
   try {
-    // Solo si hay sesión iniciada (token JWT)
     var token = (typeof getAzkarToken === 'function' ? getAzkarToken() : (window.AZKAR_TOKEN || localStorage.getItem('azkar_token') || ''));
     if (!token) { console.log('[Azkarin] No hay sesión, omito alertas'); return; }
     var apiKey = (window.AZKAR_API_KEY || '');
     var url = (typeof RAILWAY_API !== 'undefined' ? RAILWAY_API : '') + '/api/chatbot/alerts?gravedad=media';
     var resp = await fetch(url, {
-      headers: {
-        'Authorization': 'Bearer ' + token,
-        'x-api-key': apiKey
-      }
+      headers: { 'Authorization': 'Bearer ' + token, 'x-api-key': apiKey }
     });
     if (!resp.ok) { console.warn('[Azkarin] alerts respuesta no OK:', resp.status); return; }
     var data = await resp.json();
     if (!data || !data.problemas || data.problemas.length === 0) {
-      console.log('[Azkarin] Sin alertas pendientes ✅');
+      console.log('[Azkarin] Sin alertas pendientes');
       return;
     }
-    // Mostrar banner con los avisos
-    mostrarBannerAzkarin(data);
+    // Convertir alertas en formato buzón
+    var msgs = (data.problemas || []).slice(0, 6).map(function(p) {
+      return {
+        emoji: p.gravedad === 'alta' ? '🚨' : (p.gravedad === 'media' ? '⚠️' : 'ℹ️'),
+        mensaje: p.mensaje || '',
+        tipo: p.gravedad === 'alta' ? 'objetivo_apretado' : 'info'
+      };
+    });
+    var resumen = '';
+    if (data.alta > 0) resumen += data.alta + ' urgente(s)';
+    if (data.media > 0) resumen += (resumen ? ', ' : '') + data.media + ' medio(s)';
+    // Meter en el buzón
+    if (typeof _azkarinBuzon !== 'undefined') {
+      _azkarinBuzon.push({ data: { cliente: 'Alertas generales', ref: resumen, importe_base: 0 }, msgs: msgs, ts: Date.now() });
+      if (typeof _azkarinActualizarBadge === 'function') _azkarinActualizarBadge();
+    }
+    // Primera vez: mini-banner auto-dismiss (no bloqueante)
+    if (!_alertasYaMostradas) {
+      _alertasYaMostradas = true;
+      mostrarBannerAzkarin(data);
+    }
   } catch(e) {
     console.warn('[Azkarin] Error cargando alertas:', e.message);
   }
@@ -2448,26 +2466,31 @@ function mostrarBannerAzkarin(data) {
     if (existente) existente.remove();
     var div = document.createElement('div');
     div.id = 'azkarin-banner';
-    div.style.cssText = 'position:fixed;top:8px;right:8px;z-index:9999;max-width:380px;background:#FEF0E7;border:2px solid #E85C0D;border-radius:10px;padding:12px 14px;box-shadow:0 4px 14px rgba(0,0,0,.15);font-family:Barlow,sans-serif;font-size:13px;color:#1B4F8A';
+    div.style.cssText = 'position:fixed;top:12px;right:12px;z-index:9999;max-width:320px;background:linear-gradient(135deg,#1B4F8A,#2376C5);color:#fff;border-radius:12px;padding:12px 16px;box-shadow:0 4px 20px rgba(27,79,138,.4);font-family:Barlow,sans-serif;font-size:13px;cursor:pointer;animation:azToastIn .3s ease;opacity:1;transition:opacity .3s';
     var resumen = '';
-    if (data.alta > 0) resumen += '<strong style="color:#C94A00">' + data.alta + ' urgente(s)</strong>';
-    if (data.media > 0) resumen += (resumen ? ' · ' : '') + '<strong>' + data.media + ' medio(s)</strong>';
+    if (data.alta > 0) resumen += data.alta + ' urgente(s)';
+    if (data.media > 0) resumen += (resumen ? ' · ' : '') + data.media + ' medio(s)';
     if (data.baja > 0) resumen += (resumen ? ' · ' : '') + data.baja + ' menor(es)';
-    var lista = '';
-    var top = (data.problemas || []).slice(0, 4);
-    for (var i = 0; i < top.length; i++) {
-      var p = top[i];
-      var icono = p.gravedad === 'alta' ? '🚨' : (p.gravedad === 'media' ? '⚠️' : 'ℹ️');
-      lista += '<div style="margin-top:6px;line-height:1.35">' + icono + ' ' + (p.mensaje || '').replace(/</g, '&lt;') + '</div>';
-    }
-    var mas = (data.problemas || []).length > 4 ? '<div style="margin-top:6px;font-size:11px;color:#666">+ ' + ((data.problemas || []).length - 4) + ' más…</div>' : '';
-    div.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
-      + '<strong>🤖 Azkarin · ' + resumen + '</strong>'
-      + '<button onclick="document.getElementById(\'azkarin-banner\').remove()" style="background:transparent;border:none;color:#666;font-size:18px;cursor:pointer;line-height:1">×</button>'
+    var topProblema = (data.problemas && data.problemas[0]) ? data.problemas[0].mensaje : '';
+    if (topProblema.length > 70) topProblema = topProblema.substring(0, 70) + '…';
+    div.innerHTML = '<div style="display:flex;align-items:center;gap:8px">'
+      + '<img src="./icons/azkarin-64.png" style="width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.3)" onerror="this.style.display=\'none\'">'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-weight:700;font-size:12px;opacity:.8">Alertas · ' + resumen + '</div>'
+      + '<div style="font-size:12px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + topProblema.replace(/</g,'&lt;') + '</div>'
       + '</div>'
-      + lista + mas;
+      + '<div style="font-size:9px;opacity:.6;white-space:nowrap">Toca para ver</div>'
+      + '</div>';
+    // Al tocar → abrir buzón
+    div.onclick = function() { div.remove(); if (typeof _azkarinAbrirBuzon === 'function') _azkarinAbrirBuzon(); };
     document.body.appendChild(div);
+    // Auto-desaparecer en 5s (no bloquea nada)
+    setTimeout(function() {
+      if (div.parentNode) {
+        div.style.opacity = '0';
+        setTimeout(function() { if (div.parentNode) div.remove(); }, 300);
+      }
+    }, 5000);
   } catch(e) {
     console.warn('[Azkarin] Error mostrando banner:', e.message);
   }
@@ -2495,7 +2518,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v258';</script>
+<script>document.getElementById('version-tag').textContent='v259';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2607,7 +2630,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v258';
+var APP_VERSION = 'v259';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -2835,9 +2858,19 @@ if ('serviceWorker' in navigator) {
       // Leer el aviso en voz alta al tocar la notificación
       try { window.azkarinHablar(event.data.data && event.data.data._body); } catch(e) {}
     }
-    // Push recibido con la app ABIERTA -> leerlo en voz alta directamente
+    // v259: Push recibido con la app ABIERTA → guardar en buzón + badge (no hablar encima)
     if (event.data && event.data.type === 'AZKARIN_SPEAK') {
-      try { window.azkarinHablar((event.data.title ? event.data.title + '. ' : '') + (event.data.body || '')); } catch(e) {}
+      try {
+        var pushMsg = (event.data.title ? event.data.title + '. ' : '') + (event.data.body || '');
+        if (pushMsg && typeof _azkarinBuzon !== 'undefined') {
+          _azkarinBuzon.push({
+            data: { cliente: event.data.title || 'Push', ref: '', importe_base: 0 },
+            msgs: [{ emoji: '🔔', mensaje: pushMsg, tipo: 'info' }],
+            ts: Date.now()
+          });
+          if (typeof _azkarinActualizarBadge === 'function') _azkarinActualizarBadge();
+        }
+      } catch(e) {}
     }
   });
 }
@@ -3545,12 +3578,19 @@ async function savePresupuestoFull(data) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  v256: AZKARIN PROACTIVO — Análisis post-guardado
+//  v259: AZKARIN PROACTIVO — Sistema buzón (no bloqueante)
+//  Primera vez: mini-toast 3s + badge en burbuja
+//  Siguientes: solo badge (buzón). Toca la burbuja para ver todo.
 // ══════════════════════════════════════════════════════════════
-var _azkarinUltimoAnalisis = null; // evitar repetir el mismo análisis
+var _azkarinUltimoAnalisis = null;
+var _azkarinBuzon = []; // cola de mensajes no leídos
+var _azkarinPrimeraVezSesion = true; // primera notif de esta sesión = toast
+
 async function azkarinAnalizarPresupuesto(ref) {
-  if (_azkarinUltimoAnalisis === ref + '_' + Math.floor(Date.now() / 60000)) return; // no repetir en <1min
-  _azkarinUltimoAnalisis = ref + '_' + Math.floor(Date.now() / 60000);
+  // v259: rate-limit 5 minutos por ref (antes era 1 min)
+  var clave = ref + '_' + Math.floor(Date.now() / 300000);
+  if (_azkarinUltimoAnalisis === clave) return;
+  _azkarinUltimoAnalisis = clave;
   try {
     var token = localStorage.getItem('azkar_token');
     if (!token) return;
@@ -3560,16 +3600,76 @@ async function azkarinAnalizarPresupuesto(ref) {
     if (!r.ok) return;
     var data = await r.json();
     if (data.error) return;
-    // Solo mostrar si hay azkarinDice con contenido
     var msgs = data.azkarinDice || [];
     if (msgs.length === 0) return;
-    // Construir y mostrar popup
-    _mostrarPopupAzkarin(data, msgs);
+    // Guardar en buzón
+    _azkarinBuzon.push({ data: data, msgs: msgs, ts: Date.now() });
+    // Actualizar badge
+    _azkarinActualizarBadge();
+    // Primera vez en la sesión: mini-toast no bloqueante de 4s
+    if (_azkarinPrimeraVezSesion) {
+      _azkarinPrimeraVezSesion = false;
+      _azkarinMiniToast(data, msgs);
+    }
   } catch(e) { console.warn('[Azkarin] Error análisis post-save:', e.message); }
 }
 
-function _mostrarPopupAzkarin(data, msgs) {
-  // Eliminar popup anterior si existe
+// Badge: punto rojo con número en la burbuja de Azkarin
+function _azkarinActualizarBadge() {
+  var bubble = document.getElementById('chatbot-bubble');
+  if (!bubble) return;
+  var badge = document.getElementById('azkarin-badge');
+  var count = _azkarinBuzon.length;
+  if (count === 0) {
+    if (badge) badge.remove();
+    return;
+  }
+  if (!badge) {
+    badge = document.createElement('div');
+    badge.id = 'azkarin-badge';
+    badge.style.cssText = 'position:absolute;top:-2px;right:-2px;min-width:20px;height:20px;background:#E85C0D;color:#fff;border-radius:10px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px;box-shadow:0 2px 6px rgba(232,92,13,.5);animation:azBadgePulse 1.5s ease infinite;pointer-events:none;font-family:Barlow,sans-serif';
+    bubble.style.position = 'fixed'; // asegurar que relative funcione para el badge
+    bubble.style.overflow = 'visible';
+    bubble.appendChild(badge);
+  }
+  badge.textContent = count > 9 ? '9+' : count;
+}
+
+// Mini-toast: aviso pequeño arriba a la derecha, no bloquea nada, desaparece en 4s
+function _azkarinMiniToast(data, msgs) {
+  var prev = document.getElementById('azkarin-mini-toast');
+  if (prev) prev.remove();
+  var toast = document.createElement('div');
+  toast.id = 'azkarin-mini-toast';
+  toast.style.cssText = 'position:fixed;top:12px;right:12px;z-index:9999;max-width:320px;background:linear-gradient(135deg,#1B4F8A,#2376C5);color:#fff;border-radius:12px;padding:12px 16px;box-shadow:0 4px 20px rgba(27,79,138,.4);font-family:Barlow,sans-serif;cursor:pointer;animation:azToastIn .3s ease;opacity:1;transition:opacity .3s';
+  var resumen = msgs[0] ? ((msgs[0].emoji || '') + ' ' + (msgs[0].mensaje || '').substring(0, 80) + (msgs[0].mensaje.length > 80 ? '…' : '')) : '';
+  toast.innerHTML = '<div style="display:flex;align-items:center;gap:8px">'
+    + '<img src="./icons/azkarin-64.png" style="width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.3)" onerror="this.style.display=\'none\'">'
+    + '<div style="flex:1;min-width:0">'
+    + '<div style="font-weight:700;font-size:12px;opacity:.8">' + (data.cliente || '') + ' · REF ' + (data.ref || '') + '</div>'
+    + '<div style="font-size:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + resumen.replace(/</g,'&lt;') + '</div>'
+    + '</div>'
+    + '<div style="font-size:9px;opacity:.6;white-space:nowrap">Toca para ver</div>'
+    + '</div>';
+  // Al tocar el toast → abrir el buzón completo
+  toast.onclick = function() {
+    toast.remove();
+    _azkarinAbrirBuzon();
+  };
+  document.body.appendChild(toast);
+  // Auto-desaparecer en 4s
+  setTimeout(function() {
+    if (toast.parentNode) {
+      toast.style.opacity = '0';
+      setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300);
+    }
+  }, 4000);
+  // NO hablar automáticamente (v259: el usuario decide cuándo leer)
+}
+
+// Buzón completo: se abre al tocar la burbuja cuando hay mensajes sin leer
+function _azkarinAbrirBuzon() {
+  if (_azkarinBuzon.length === 0) return false; // no hay nada → abrir chat normal
   var prev = document.getElementById('azkarin-popup-analisis');
   if (prev) prev.remove();
   var overlay = document.createElement('div');
@@ -3579,43 +3679,48 @@ function _mostrarPopupAzkarin(data, msgs) {
   // Header
   html += '<div style="background:linear-gradient(135deg,#1B4F8A,#2376C5);padding:16px 20px;border-radius:16px 16px 0 0;display:flex;align-items:center;gap:10px">';
   html += '<img src="./icons/azkarin-64.png" style="width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.4)" onerror="this.style.display=\'none\'">';
-  html += '<div><div style="color:#fff;font-weight:800;font-size:14px">Azkarin te habla</div>';
-  html += '<div style="color:rgba(255,255,255,.7);font-size:11px">' + (data.cliente || '') + ' · REF ' + (data.ref || '') + ' · ' + Math.round(data.importe_base || 0) + '€ base</div></div>';
+  html += '<div><div style="color:#fff;font-weight:800;font-size:14px">Buzón de Azkarin</div>';
+  html += '<div style="color:rgba(255,255,255,.7);font-size:11px">' + _azkarinBuzon.length + ' aviso(s) pendiente(s)</div></div>';
   html += '<button onclick="document.getElementById(\'azkarin-popup-analisis\').remove()" style="margin-left:auto;background:rgba(255,255,255,.2);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;font-weight:700">×</button>';
   html += '</div>';
-  // Body con mensajes
+  // Body: todos los mensajes del buzón
   html += '<div style="padding:16px 20px">';
-  for (var i = 0; i < msgs.length; i++) {
-    var m = msgs[i];
-    var bgColor = m.tipo === 'objetivo_apretado' ? '#FEF0E7' : m.tipo === 'objetivo_cumplido' ? '#e8f5e9' : '#f5f7fa';
-    var borderColor = m.tipo === 'objetivo_apretado' ? '#E85C0D' : m.tipo === 'objetivo_cumplido' ? '#1a7a3f' : '#2376C5';
-    html += '<div style="background:' + bgColor + ';border-left:3px solid ' + borderColor + ';border-radius:8px;padding:12px;margin-bottom:10px">';
-    html += '<div style="font-size:13px;line-height:1.5;color:#333;white-space:pre-line">' + (m.emoji || '') + ' ' + (m.mensaje || '').replace(/</g,'&lt;') + '</div>';
-    html += '</div>';
-  }
-  // Advertencias si las hay
-  var advs = data.advertencias || [];
-  if (advs.length > 0) {
-    html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #eee">';
-    html += '<div style="font-size:10px;text-transform:uppercase;color:#999;margin-bottom:6px;font-weight:700">Advertencias</div>';
+  for (var b = _azkarinBuzon.length - 1; b >= 0; b--) {
+    var item = _azkarinBuzon[b];
+    html += '<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #eee">';
+    html += '<div style="font-size:11px;color:#999;margin-bottom:6px;font-weight:600">' + (item.data.cliente || '') + ' · REF ' + (item.data.ref || '') + ' · ' + Math.round(item.data.importe_base || 0) + '€</div>';
+    for (var i = 0; i < item.msgs.length; i++) {
+      var m = item.msgs[i];
+      var bgColor = m.tipo === 'objetivo_apretado' ? '#FEF0E7' : m.tipo === 'objetivo_cumplido' ? '#e8f5e9' : '#f5f7fa';
+      var borderColor = m.tipo === 'objetivo_apretado' ? '#E85C0D' : m.tipo === 'objetivo_cumplido' ? '#1a7a3f' : '#2376C5';
+      html += '<div style="background:' + bgColor + ';border-left:3px solid ' + borderColor + ';border-radius:8px;padding:10px;margin-bottom:6px">';
+      html += '<div style="font-size:12px;line-height:1.4;color:#333;white-space:pre-line">' + (m.emoji || '') + ' ' + (m.mensaje || '').replace(/</g,'&lt;') + '</div>';
+      html += '</div>';
+    }
+    // Advertencias
+    var advs = item.data.advertencias || [];
     for (var j = 0; j < advs.length; j++) {
-      html += '<div style="font-size:12px;color:#666;margin-bottom:4px">⚠ ' + advs[j].mensaje + '</div>';
+      html += '<div style="font-size:11px;color:#666;margin-top:4px">⚠ ' + advs[j].mensaje + '</div>';
     }
     html += '</div>';
   }
   html += '</div>';
   // Footer
-  html += '<div style="padding:12px 20px;border-top:1px solid #eee;text-align:right">';
-  html += '<button onclick="document.getElementById(\'azkarin-popup-analisis\').remove()" style="background:#1B4F8A;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Enterado, ¡vamos!</button>';
+  html += '<div style="padding:12px 20px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end">';
+  html += '<button onclick="_azkarinLimpiarBuzon();document.getElementById(\'azkarin-popup-analisis\').remove()" style="background:#1B4F8A;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Enterado, ¡vamos!</button>';
   html += '</div></div>';
   overlay.innerHTML = html;
   overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
-  // Leer en voz alta el primer mensaje
-  if (msgs[0] && window.azkarinHablar) {
-    try { window.azkarinHablar(msgs[0].mensaje); } catch(e) {}
-  }
+  return true; // indica que se abrió el buzón
 }
+window._azkarinAbrirBuzon = _azkarinAbrirBuzon;
+
+function _azkarinLimpiarBuzon() {
+  _azkarinBuzon = [];
+  _azkarinActualizarBadge();
+}
+window._azkarinLimpiarBuzon = _azkarinLimpiarBuzon;
 
 // ══════════════════════════════════════════════════════════════
 //  RECOPILAR / RESTAURAR DATOS DEL FORMULARIO
@@ -11839,6 +11944,9 @@ async function doResetWithCode() {
 #chatbot-foto-ind{display:flex;align-items:center;gap:8px;padding:7px 12px;background:#eef7ee;border-top:1px solid #d6e8d6;font-size:12px;color:#2e6b2e}
 #chatbot-foto-ind span{cursor:pointer;color:#a33;font-weight:bold;margin-left:auto;font-size:14px}
 @keyframes pulse-mic{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+@keyframes azBadgePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+@keyframes azToastIn{from{transform:translateY(-20px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
 #chatbot-historial{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:10000;justify-content:center;align-items:center}
 #chatbot-historial.open{display:flex}
 #chatbot-historial-panel{background:#fff;border-radius:12px;width:90%;max-width:600px;max-height:80vh;overflow-y:auto;padding:20px}
@@ -12072,7 +12180,14 @@ async function doResetWithCode() {
     if (!isDragging) return; // v203: solo si el click empezó en la burbuja
     isDragging = false;
     bubble.classList.remove('dragging');
-    if (!hasMoved) chatbotToggle();
+    // v259: si hay buzón pendiente, abrir buzón; si no, chat normal
+    if (!hasMoved) {
+      if (typeof _azkarinAbrirBuzon === 'function' && _azkarinBuzon && _azkarinBuzon.length > 0) {
+        _azkarinAbrirBuzon();
+      } else {
+        chatbotToggle();
+      }
+    }
   }
   bubble.addEventListener('pointerdown', onPointerDown);
   document.addEventListener('pointermove', onPointerMove);
@@ -12321,19 +12436,40 @@ async function doResetWithCode() {
     } catch(fatalErr) { console.error('[Chatbot] Error fatal aislado en confirm:', fatalErr); }
   };
 
+  // v259: fix voz repetida 40 veces — guardar texto pre-grabación y REEMPLAZAR (no append)
+  var _micPreText = '';
+  var _micResultHandled = false;
   window.chatbotMicToggle = function() {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       alert('Tu navegador no soporta dictado por voz. Usa Chrome.');
       return;
     }
     if (isRecording) { recognition.stop(); return; }
+    // Guardar lo que había ANTES de grabar
+    _micPreText = inputEl.value || '';
+    _micResultHandled = false;
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SR();
     recognition.lang = 'es-ES';
     recognition.interimResults = false;
     recognition.continuous = false;
+    recognition.maxAlternatives = 1;
     recognition.onstart = function() { isRecording = true; micBtn.classList.add('recording'); micBtn.innerHTML = '⏹'; };
-    recognition.onresult = function(e) { inputEl.value = (inputEl.value ? inputEl.value + ' ' : '') + e.results[0][0].transcript; };
+    recognition.onresult = function(e) {
+      // v259: REEMPLAZAR en vez de concatenar — evita duplicación en Android Chrome
+      if (_micResultHandled) return; // solo procesar el primer resultado final
+      _micResultHandled = true;
+      var transcript = '';
+      for (var i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) transcript += e.results[i][0].transcript + ' ';
+      }
+      transcript = transcript.trim();
+      if (transcript) {
+        inputEl.value = _micPreText ? (_micPreText + ' ' + transcript) : transcript;
+      }
+      // Forzar parada para evitar más eventos
+      try { recognition.stop(); } catch(ex) {}
+    };
     recognition.onend = function() { isRecording = false; micBtn.classList.remove('recording'); micBtn.innerHTML = '🎤'; };
     recognition.onerror = function(e) { isRecording = false; micBtn.classList.remove('recording'); micBtn.innerHTML = '🎤'; };
     recognition.start();
