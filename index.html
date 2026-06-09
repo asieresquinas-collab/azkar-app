@@ -2533,7 +2533,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v263';</script>
+<script>document.getElementById('version-tag').textContent='v264';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2645,7 +2645,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v263';
+var APP_VERSION = 'v264';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12077,6 +12077,7 @@ async function doResetWithCode() {
 #chatbot-header .ch-title{font-weight:700;font-size:15px}
 #chatbot-header .ch-sub{font-size:11px;opacity:.8}
 #chatbot-header button{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0 4px}
+#chatbot-speed-btn{font-size:13px;font-weight:700;border:1px solid rgba(255,255,255,.55);border-radius:10px;padding:1px 7px;min-width:34px;line-height:1.5}
 #chatbot-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#f5f7fa}
 .chat-msg{max-width:85%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;word-break:break-word}
 .chat-msg.user{align-self:flex-end;background:#1B4F8A;color:#fff;border-bottom-right-radius:4px}
@@ -12131,6 +12132,7 @@ async function doResetWithCode() {
     <div>
       <button onclick="chatbotHistorial()" title="Ver historial de acciones">&#128203;</button>
       <button onclick="chatbotCopiarConv()" title="Copiar toda la conversación (para pegársela a Claude)">&#128228;</button>
+      <button id="chatbot-speed-btn" onclick="chatbotCycleSpeed()" title="Velocidad del audio (pulsa para acelerar)">1&times;</button>
       <button id="chatbot-tts-btn" onclick="chatbotToggleTTS()" title="Activar/silenciar voz">&#128264;</button>
       <button onclick="chatbotToggle()" title="Cerrar">&times;</button>
     </div>
@@ -12175,6 +12177,7 @@ async function doResetWithCode() {
   var isRecording = false;
   var chatbotGreeted = false; // Para auto-saludo al abrir
   var chatTTSEnabled = localStorage.getItem('chatTTS') !== 'off'; // Voz activada por defecto
+  var chatTTSRate = parseFloat(localStorage.getItem('chatTTSRate')) || 1; // v264: velocidad del audio (1x..2x)
 
   // ── Text-to-Speech: voz del navegador — v239: lee TODO el texto (sin límite) ──
   var _ttsUnlocked = false;
@@ -12271,7 +12274,7 @@ async function doResetWithCode() {
     try {
       var utterance = new SpeechSynthesisUtterance(chunk);
       utterance.lang = 'es-ES';
-      utterance.rate = 1.05;
+      utterance.rate = chatTTSRate;
       utterance.pitch = 1.0;
       var voices = (window._vocesTTS && window._vocesTTS.length) ? window._vocesTTS : speechSynthesis.getVoices();
       if (voices.length === 0) {
@@ -12700,6 +12703,15 @@ async function doResetWithCode() {
     }
   }
 
+  window.chatbotCycleSpeed = function() {
+    var pasos = [1, 1.25, 1.5, 1.75, 2];
+    var idx = pasos.indexOf(chatTTSRate);
+    chatTTSRate = pasos[(idx + 1) % pasos.length];
+    localStorage.setItem('chatTTSRate', String(chatTTSRate));
+    var b = document.getElementById('chatbot-speed-btn');
+    if (b) b.innerHTML = chatTTSRate + '&times;';
+  };
+
   window.chatbotToggleTTS = function() {
     chatTTSEnabled = !chatTTSEnabled;
     localStorage.setItem('chatTTS', chatTTSEnabled ? 'on' : 'off');
@@ -12714,6 +12726,7 @@ async function doResetWithCode() {
   (function() {
     var btn = document.getElementById('chatbot-tts-btn');
     if (btn) { btn.innerHTML = chatTTSEnabled ? '&#128264;' : '&#128263;'; btn.title = chatTTSEnabled ? 'Silenciar voz' : 'Activar voz'; }
+    var sb = document.getElementById('chatbot-speed-btn'); if (sb) sb.innerHTML = chatTTSRate + '&times;';
     // Pre-cargar voces (algunos navegadores las cargan async)
     if ('speechSynthesis' in window) speechSynthesis.getVoices();
   })();
