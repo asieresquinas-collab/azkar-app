@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v273';</script>
+<script>document.getElementById('version-tag').textContent='v274';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v273';
+var APP_VERSION = 'v274';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -6245,7 +6245,21 @@ async function _crearFirmaParaWA() {
       var tot = row.querySelector('.ctot');
       if (ci && ci.value) firmaItems.push({ concepto: ci.value, unidades: ns[0] ? ns[0].value : '', total: tot ? tot.textContent : '' });
     });
+    // v274: renombrar carpeta Drive con el nombre del cliente (igual que el envio por email)
+    try {
+      var _numRefWA = parseInt(number, 10);
+      if (clientName && clientName.trim() && _numRefWA >= 1000) await renameDriveFolder(_numRefWA, clientName);
+    } catch(eRn) { console.warn('[Firma WA] rename folder:', eRn.message); }
+    // v274: ocultar ZBE antes de capturar el HTML (igual que el envio por email)
+    var zbeRecW = document.getElementById('zbe-f-recogida');
+    var zbeEntW = document.getElementById('zbe-f-entrega');
+    var zbeRecHTMLW = zbeRecW ? zbeRecW.innerHTML : '';
+    var zbeEntHTMLW = zbeEntW ? zbeEntW.innerHTML : '';
+    if (zbeRecW) zbeRecW.innerHTML = '';
+    if (zbeEntW) zbeEntW.innerHTML = '';
     var completeHTML = buildCompleteHTML(['page-dossier', 'page-presupuesto', 'page-contrato']);
+    if (zbeRecW) zbeRecW.innerHTML = zbeRecHTMLW;
+    if (zbeEntW) zbeEntW.innerHTML = zbeEntHTMLW;
     var r = await fetch(RAILWAY_API + '/api/firma/crear', {
       method: 'POST', headers: apiHeaders(),
       body: JSON.stringify({ numero: number, nombre: clientName, email: clientEmail, telefono: clientTel, total: clientTotal, direccionRecogida: clientRec, direccionEntrega: clientEnt, fechaServicio: clientFecha, items: firmaItems, presupuestoHtml: completeHTML })
@@ -6267,6 +6281,13 @@ async function enviarPresupuestoWhatsApp() {
   var _entWA = (document.getElementById('f_ent') || {}).value || '';
   if (_esDireccionPrueba(_recWA) || _esDireccionPrueba(_entWA)) {
     if (!confirm('⚠️ La dirección parece de PRUEBA (' + (_recWA || _entWA) + '). ¿Enviar igualmente?')) return;
+  }
+
+  // v274 ESCUDO ANTI-VACIADO: no crear enlace de firma si la tabla se ha quedado sin articulos
+  var _escWA = await _v236EnsureRowsFromLocal();
+  if (!_escWA.ok) {
+    showSyncStatus('⚠ El presupuesto se ha quedado sin artículos en pantalla (esperabamos ' + _escWA.expected + '). Recarga el cliente desde "Mis Presupuestos" y vuelve a intentarlo.', 8000);
+    return;
   }
 
   // v273: si no hay enlace de firma FRESCO de ESTE cliente, crearlo ahora
@@ -6307,6 +6328,8 @@ async function enviarPresupuestoWhatsApp() {
   }
   var btn = document.getElementById('btn-wa-pdf');
   if (btn) { btn.style.animation = ''; }
+  // v274: registrar el envio por WhatsApp en el historial de envios
+  if (typeof enviosRegistrar === 'function') enviosRegistrar('presupuesto', ['WhatsApp ' + tel], (nombre || '').toUpperCase(), _curRefWA, 'OK', 'Enlace de firma enviado por WhatsApp', '');
 }
 
 // v270: si el usuario cambia recogida/entrega, el PDF ya generado deja de valer →
