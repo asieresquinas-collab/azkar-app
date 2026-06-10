@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v293';</script>
+<script>document.getElementById('version-tag').textContent='v294';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v293';
+var APP_VERSION = 'v294';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12395,7 +12395,7 @@ async function doResetWithCode() {
     var frases = cleanText.split(/(?<=[.!?,:;\n])\s+/);
     var trozo = '';
     // v289: 1er trozo CORTO (empieza a hablar enseguida), siguientes medianos
-    var _esNeuronal = (localStorage.getItem('azkarinVozNeuronal') !== 'off');
+    var _esNeuronal = (localStorage.getItem('azkarinVozNeuronal') === 'on');
     var _maxTrozo = _esNeuronal ? 110 : 120; // v290: 1ª frase sola → audio casi inmediato
     for (var i = 0; i < frases.length; i++) {
       if (_esNeuronal && trozos.length >= 1) _maxTrozo = 350;
@@ -12445,7 +12445,10 @@ async function doResetWithCode() {
   }
   document.addEventListener('click', _desbloquearAudio, { once: false, capture: true });
   function _vozNeuronalActiva() {
-    return localStorage.getItem('azkarinVozNeuronal') !== 'off';
+    // v294: APAGADA por defecto (Asier prefiere la voz instantánea del móvil;
+    // la neuronal tardaba 2-3s y al fallar se mezclaban las dos voces).
+    // Para reactivarla en un dispositivo: localStorage.setItem('azkarinVozNeuronal','on')
+    return localStorage.getItem('azkarinVozNeuronal') === 'on';
   }
   function _fetchTTS(texto) {
     var opts = {
