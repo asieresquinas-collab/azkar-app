@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v281';</script>
+<script>document.getElementById('version-tag').textContent='v282';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v281';
+var APP_VERSION = 'v282';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12225,6 +12225,9 @@ async function doResetWithCode() {
 #chatbot-input-area{display:flex;align-items:center;gap:6px;padding:10px 12px;border-top:1px solid #eee;background:#fff;flex-shrink:0}
 #chatbot-input{flex:1;border:1px solid #d0d5de;border-radius:8px;padding:10px 12px;font-size:13px;font-family:Barlow,sans-serif;outline:none;resize:none;max-height:80px}
 #chatbot-input:focus{border-color:#2376C5}
+#chatbot-conv{width:38px;height:38px;border-radius:50%;border:none;background:#e0e0e0;color:#666;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#chatbot-conv.activo{background:#1a7a3f;color:#fff}
+#chatbot-conv.escuchando{background:#c0392b;color:#fff;animation:pulse-mic 1s infinite}
 #chatbot-mic{width:38px;height:38px;border-radius:50%;border:none;background:#e0e0e0;color:#666;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 #chatbot-mic.recording{background:#c0392b;color:#fff;animation:pulse-mic 1s infinite}
 #chatbot-send{width:38px;height:38px;border-radius:50%;border:none;background:#1B4F8A;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -12273,6 +12276,7 @@ async function doResetWithCode() {
     <input type="file" id="chatbot-video-input" accept="video/*" style="display:none">
     <button id="chatbot-video-btn" onclick="document.getElementById('chatbot-video-input').click()" title="Adjuntar vídeo (borrador de presupuesto)">&#127909;</button>
     <textarea id="chatbot-input" rows="1" placeholder="Escribe un mensaje..."></textarea>
+    <button id="chatbot-conv" onclick="chatbotConvToggle()" title="Modo conversación (manos libres)">&#127911;</button>
     <button id="chatbot-mic" onclick="chatbotMicToggle()" title="Dictar por voz">&#127908;</button>
     <button id="chatbot-send" onclick="chatbotSend()" title="Enviar">&#10148;</button>
   </div>
@@ -12394,7 +12398,12 @@ async function doResetWithCode() {
   window.chatSpeak = chatSpeak;
 
   function _ttsPlayNext() {
-    if (_ttsQueue.length === 0) { _ttsSpeaking = false; return; }
+    if (_ttsQueue.length === 0) {
+      _ttsSpeaking = false;
+      // v282 MODO CONVERSACIÓN: terminó de hablar → volver a escuchar
+      if (window._azkarinConv) setTimeout(function() { if (window._azkarinConv && typeof window._convEscuchar === 'function') window._convEscuchar(); }, 450);
+      return;
+    }
     _ttsSpeaking = true;
     var chunk = _ttsQueue.shift();
     try {
@@ -12771,6 +12780,66 @@ async function doResetWithCode() {
     recognition.onend = function() { isRecording = false; micBtn.classList.remove('recording'); micBtn.innerHTML = '🎤'; };
     recognition.onerror = function(e) { isRecording = false; micBtn.classList.remove('recording'); micBtn.innerHTML = '🎤'; };
     recognition.start();
+  };
+
+  // ── v282 MODO CONVERSACIÓN (manos libres, tipo ChatGPT): hablar → enviar solo →
+  // Azkarin responde con voz → al callar, vuelve a escuchar. Bucle hasta apagarlo. ──
+  var _convSilencios = 0;
+  window._azkarinConv = false;
+  window._convEscuchar = function() {
+    if (!window._azkarinConv) return;
+    if (!panel.classList.contains('open')) { window.chatbotConvToggle(false); return; }
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) { alert('Tu navegador no soporta voz. Usa Chrome.'); window.chatbotConvToggle(false); return; }
+    if (isRecording) return; // hay un dictado manual en marcha
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var rec = new SR();
+    rec.lang = 'es-ES'; rec.interimResults = false; rec.continuous = false; rec.maxAlternatives = 1;
+    var btn = document.getElementById('chatbot-conv');
+    var _resultado = false;
+    rec.onstart = function() { if (btn) btn.classList.add('escuchando'); };
+    rec.onresult = function(e) {
+      var t = '';
+      for (var i = 0; i < e.results.length; i++) if (e.results[i].isFinal) t += e.results[i][0].transcript + ' ';
+      t = t.trim();
+      if (t) {
+        _resultado = true; _convSilencios = 0;
+        inputEl.value = t;
+        try { rec.stop(); } catch (ex) {}
+        setTimeout(function() { window.chatbotSend(); }, 150);
+      }
+    };
+    rec.onend = function() {
+      if (btn) btn.classList.remove('escuchando');
+      if (!window._azkarinConv || _resultado) return;
+      _convSilencios++;
+      if (_convSilencios >= 6) { window.chatbotConvToggle(false); return; } // ~1 min de silencio → se apaga solo
+      setTimeout(function() { window._convEscuchar(); }, 400);
+    };
+    rec.onerror = function(e) {
+      if (btn) btn.classList.remove('escuchando');
+      if (e && (e.error === 'not-allowed' || e.error === 'service-not-allowed')) {
+        window.chatbotConvToggle(false);
+        alert('Necesito permiso del micrófono: toca el micro 🎤 una vez, acepta el permiso, y vuelve a activar el auricular 🎧.');
+      }
+    };
+    window._convRec = rec;
+    try { rec.start(); } catch (e) {}
+  };
+  window.chatbotConvToggle = function(forzar) {
+    var nuevo = (typeof forzar === 'boolean') ? forzar : !window._azkarinConv;
+    if (nuevo === window._azkarinConv && typeof forzar === 'boolean') { if (nuevo) window._convEscuchar(); return; }
+    window._azkarinConv = nuevo;
+    _convSilencios = 0;
+    var btn = document.getElementById('chatbot-conv');
+    if (btn) { btn.classList.toggle('activo', nuevo); btn.title = nuevo ? 'Conversación activa — toca para parar' : 'Modo conversación (manos libres)'; }
+    if (nuevo) {
+      chatTTSEnabled = true; try { localStorage.setItem('chatTTS', 'on'); } catch (e) {}
+      addMsg('bot', '🎧 Modo conversación: te escucho. Habla cuando quieras y toca el auricular para parar.');
+      window._convEscuchar();
+    } else {
+      try { if (window._convRec) window._convRec.stop(); } catch (e) {}
+      addMsg('bot', '🎧 Modo conversación apagado.');
+    }
   };
 
   // Abre WhatsApp Business (mismo método que el botón del presupuesto) con fallback
@@ -13184,10 +13253,10 @@ async function doResetWithCode() {
       if (!panel.classList.contains('open')) panel.classList.add('open');
       if (bubble) bubble.style.display = 'flex';
       window._chatbotActivo = true;
-      if (modoVoz && typeof window.chatbotMicToggle === 'function') {
-        // Espera a que el panel pinte; si el navegador exige un gesto para el
-        // micro, el usuario solo tiene que tocar el botón del micro.
-        setTimeout(function() { try { window.chatbotMicToggle(); } catch (e) {} }, 900);
+      if (modoVoz && typeof window.chatbotConvToggle === 'function') {
+        // Modo conversación completo: escucha → responde con voz → vuelve a escuchar.
+        // Si el navegador exige un gesto para el micro, basta tocar el auricular 🎧.
+        setTimeout(function() { try { window.chatbotConvToggle(true); } catch (e) {} }, 900);
       }
     } catch (e) { console.warn('[AzkarinVoz]', e.message); }
   }
