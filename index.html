@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v294';</script>
+<script>document.getElementById('version-tag').textContent='v295';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v294';
+var APP_VERSION = 'v295';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12674,9 +12674,14 @@ async function doResetWithCode() {
       speechSynthesis.speak(warmup);
     }
     try {
+      var _turnoId = nuevoTurnoId();
+      startProgPoll(_turnoId);
+      var _ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var _tAbort = _ctrl ? setTimeout(function() { try { _ctrl.abort(); } catch(e) {} }, 150000) : null;
       var resp = await fetch(RAILWAY_API + '/api/chatbot/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (_authToken || '') },
+        signal: _ctrl ? _ctrl.signal : undefined,
         body: JSON.stringify((function() {
           var _b = (framesEnviar && framesEnviar.length)
             ? { mensaje: msgEnviar, historial: chatHistorial, imagenes: framesEnviar }
@@ -12684,9 +12689,11 @@ async function doResetWithCode() {
               ? { mensaje: msgEnviar, historial: chatHistorial, imagen: fotoEnviar.base64, imagenMime: fotoEnviar.mime }
               : { mensaje: msgEnviar, historial: chatHistorial };
           if (pdfsEnviar && pdfsEnviar.length) _b.pdfs = pdfsEnviar;
+          _b.turno_id = _turnoId;
           return _b;
         })())
       });
+      if (_tAbort) clearTimeout(_tAbort);
       var data = await resp.json();
       removeTyping();
       if (data.error) {
@@ -12785,7 +12792,11 @@ async function doResetWithCode() {
       }
     } catch (err) {
       removeTyping();
-      addMsg('bot', '❌ No pude conectar con el servidor: ' + (err.message || 'error desconocido'));
+      if (err && err.name === 'AbortError') {
+        addMsg('bot', '⏱️ He cortado la espera: el servidor llevaba más de 2 minutos y medio sin responder. Reenvía el mensaje — lo normal es que a la segunda entre.');
+      } else {
+        addMsg('bot', '❌ No pude conectar con el servidor: ' + (err.message || 'error desconocido'));
+      }
     }
     sendBtn.disabled = false;
     } catch(fatalErr) { console.error('[Chatbot] Error fatal aislado:', fatalErr); sendBtn.disabled = false; }
@@ -12805,15 +12816,22 @@ async function doResetWithCode() {
     }
     addTyping();
     try {
+      var _turnoIdC = nuevoTurnoId();
+      startProgPoll(_turnoIdC);
+      var _ctrlC = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var _tAbortC = _ctrlC ? setTimeout(function() { try { _ctrlC.abort(); } catch(e) {} }, 150000) : null;
       var resp = await fetch(RAILWAY_API + '/api/chatbot/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (_authToken || '') },
+        signal: _ctrlC ? _ctrlC.signal : undefined,
         body: JSON.stringify({
           mensaje: '(confirmación)',
           historial: chatHistorial,
+          turno_id: _turnoIdC,
           confirmar_accion: { herramienta: accion.herramienta, argumentos: accion.argumentos, confirmado: true }
         })
       });
+      if (_tAbortC) clearTimeout(_tAbortC);
       var data = await resp.json();
       removeTyping();
       if (data.error) {
@@ -13096,13 +13114,32 @@ async function doResetWithCode() {
       var textEl = el.querySelector('.chat-typing-text');
       if (!textEl) return;
       var seg = (Date.now() - t0) / 1000;
+      if (window._progRealActivo) { msgsDiv.scrollTop = msgsDiv.scrollHeight; return; } // v295: el progreso real manda
       if (seg > 90) textEl.textContent = 'Trabajo largo, aguanta...';
       else if (seg > 30) textEl.textContent = 'Sigo trabajando...';
       else if (seg > 10) textEl.textContent = 'Buscando datos...';
       msgsDiv.scrollTop = msgsDiv.scrollHeight;
     }, 3000);
   }
-  function removeTyping() { if (_typingInterval) { clearInterval(_typingInterval); _typingInterval = null; } var el = document.getElementById('chatbot-typing'); if (el) el.remove(); }
+  function removeTyping() { if (_typingInterval) { clearInterval(_typingInterval); _typingInterval = null; } stopProgPoll(); var el = document.getElementById('chatbot-typing'); if (el) el.remove(); }
+  // v295 PROGRESO EN VIVO: polling de pasos reales del backend mientras Azkarin trabaja
+  var _progPollInt = null;
+  function startProgPoll(turnoId) {
+    stopProgPoll();
+    _progPollInt = setInterval(async function() {
+      try {
+        var r = await fetch(RAILWAY_API + '/api/chatbot/progress/' + turnoId, { headers: { 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (_authToken || '') } });
+        var d = await r.json();
+        if (d && d.pasos && d.pasos.length) {
+          var el = document.getElementById('chatbot-typing');
+          var textEl = el && el.querySelector('.chat-typing-text');
+          if (textEl) { textEl.textContent = d.pasos[d.pasos.length - 1]; window._progRealActivo = true; }
+        }
+      } catch(e) {}
+    }, 1800);
+  }
+  function stopProgPoll() { if (_progPollInt) { clearInterval(_progPollInt); _progPollInt = null; } window._progRealActivo = false; }
+  function nuevoTurnoId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
   function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   inputEl.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatbotSend(); } });
