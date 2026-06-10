@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  AZKAR PWA · Service Worker · Offline-first
 // ══════════════════════════════════════════════════════════════
-const CACHE_NAME = 'azkar-pwa-v284';
+const CACHE_NAME = 'azkar-pwa-v285';
 const ASSETS = [
   './',
   './index.html',
@@ -99,21 +99,25 @@ self.addEventListener('push', function(event) {
   try { if (event.data) data = Object.assign(data, event.data.json()); } catch(e) {}
 
   var _notifData = Object.assign({ url: './?chat=1' }, data.data || {}, { _body: data.body, _title: data.title });
-  event.waitUntil(Promise.all([
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      tag: data.tag,
-      requireInteraction: !!data.requireInteraction,
-      icon: data.icon,
-      badge: data.badge,
-      vibrate: data.urgente ? [300, 100, 300, 100, 300] : [200, 100, 200],
-      data: _notifData,
-      actions: data.actions || [{ action: 'open', title: 'Abrir chat' }]
-    }),
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(cl) {
+  var _esQuick = data.tag === 'azkarin-quick' || (data.data && data.data._quick);
+  var _opts = {
+    body: data.body,
+    tag: data.tag,
+    requireInteraction: !!data.requireInteraction,
+    icon: data.icon,
+    badge: data.badge,
+    data: _notifData,
+    actions: data.actions || [{ action: 'open', title: 'Abrir chat' }]
+  };
+  if (_esQuick) { _opts.silent = true; _opts.renotify = false; }
+  else { _opts.vibrate = data.urgente ? [300, 100, 300, 100, 300] : [200, 100, 200]; }
+  var _tareas = [self.registration.showNotification(data.title, _opts)];
+  if (!_esQuick) {
+    _tareas.push(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(cl) {
       cl.forEach(function(c) { try { c.postMessage({ type: 'AZKARIN_SPEAK', title: data.title, body: data.body }); } catch(e) {} });
-    })
-  ]));
+    }));
+  }
+  event.waitUntil(Promise.all(_tareas));
 });
 
 self.addEventListener('notificationclick', function(event) {
