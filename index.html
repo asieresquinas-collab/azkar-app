@@ -1656,9 +1656,10 @@ async function PA(){
 
     // Crear sesión de firma si hay email del cliente
     var firmaUrl = '';
-    if (clientEmail && clientEmail.includes('@')) {
+    var _telFirma = document.getElementById('f_tel') ? document.getElementById('f_tel').value : '';
+    if ((clientEmail && clientEmail.includes('@')) || (_telFirma && _telFirma.trim().length >= 6)) {
       try {
-        var clientTel = document.getElementById('f_tel') ? document.getElementById('f_tel').value : '';
+        var clientTel = _telFirma;
         var clientRec = (document.getElementById('tx-recogida') || {}).value || (document.getElementById('f_rec') || {}).value || '';
         var clientEnt = (document.getElementById('tx-entrega') || {}).value || (document.getElementById('f_ent') || {}).value || '';
         var clientFecha = (document.getElementById('tx-fecha') || {}).value || (document.getElementById('f_fserv') || {}).value || '';
@@ -1696,8 +1697,10 @@ async function PA(){
       // v122: Ofrecer envío por WhatsApp si hay teléfono y enlace al PDF
       var clientTelWA = (document.getElementById('f_tel') || {}).value || '';
       var pdfLink = result.drive && result.drive.pdfProxyLink ? result.drive.pdfProxyLink : (result.drive && result.drive.webViewLink ? result.drive.webViewLink : '');
-      if (clientTelWA && pdfLink) {
-        _ofrecerWhatsApp(clientTelWA, clientName, number, pdfLink);
+      // v271: si se creó sesión de firma, por WhatsApp se manda el enlace de FIRMA (el cliente revisa y firma)
+      var _waLink = firmaUrl || pdfLink;
+      if (clientTelWA && _waLink) {
+        _ofrecerWhatsApp(clientTelWA, clientName, number, _waLink);
       }
 
       // Mensaje según si se envió email o no
@@ -2550,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v270';</script>
+<script>document.getElementById('version-tag').textContent='v271';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2662,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v270';
+var APP_VERSION = 'v271';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -6244,7 +6247,7 @@ function enviarPresupuestoWhatsApp() {
   num = num.replace(/^\+/, '');
   var nombre = (document.getElementById('f_nom') || {}).value || '';
   var primerNombre = nombre ? nombre.split(' ')[0] : '';
-  var texto = 'Buenos días' + (primerNombre ? ' ' + primerNombre : '') + ', le envío el presupuesto de su mudanza con Azkar Mudanzas.\n\n📄 Presupuesto: ' + _whatsappPdfLink + '\n\nPara cualquier duda estamos a su disposición. ¡Un saludo!';
+  var texto = 'Buenos días' + (primerNombre ? ' ' + primerNombre : '') + ', le envío su presupuesto de mudanza con Azkar Mudanzas. Puede revisarlo y, si está conforme, firmarlo desde este enlace:\n\n📄 ' + _whatsappPdfLink + '\n\nUna vez firmado podrá descargar su copia. Para cualquier duda estamos a su disposición. ¡Un saludo!';
   var textoEnc = encodeURIComponent(texto);
   var isAndroid = /android/i.test(navigator.userAgent);
   if (isAndroid) {
@@ -7135,6 +7138,13 @@ window.addEventListener('DOMContentLoaded', function() {
     var el = document.getElementById(id);
     if (el) { el.addEventListener('input', _invalidarPdfWA); el.addEventListener('change', _invalidarPdfWA); }
   });
+  // v271: al escribir el teléfono, reaparecer el botón de enviar por WhatsApp si ya hay PDF/firma de este cliente
+  var _telEl = document.getElementById('f_tel');
+  if (_telEl) {
+    var _reTryWA = function(){ if (typeof _v237TryReactivarBtnWA === 'function') _v237TryReactivarBtnWA(); };
+    _telEl.addEventListener('input', _reTryWA);
+    _telEl.addEventListener('change', _reTryWA);
+  }
   // También en filas de la tabla (observer para filas nuevas)
   const tbObserver = new MutationObserver(() => {
     document.querySelectorAll('#tb .cr input, #tb .cr select').forEach(el => {
