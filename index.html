@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v282';</script>
+<script>document.getElementById('version-tag').textContent='v283';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v282';
+var APP_VERSION = 'v283';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12785,9 +12785,14 @@ async function doResetWithCode() {
   // ── v282 MODO CONVERSACIÓN (manos libres, tipo ChatGPT): hablar → enviar solo →
   // Azkarin responde con voz → al callar, vuelve a escuchar. Bucle hasta apagarlo. ──
   var _convSilencios = 0;
+  var _convSesion = false;       // v282b: solo UNA sesión de micro a la vez
+  var _convUltimoToggle = 0;     // v282b: anti rebote del botón
   window._azkarinConv = false;
   window._convEscuchar = function() {
     if (!window._azkarinConv) return;
+    if (_convSesion) return;                                   // ya hay micro abierto
+    if (_ttsSpeaking || _ttsQueue.length > 0) return;          // Azkarin está hablando → esperar (el hook del TTS nos llama al acabar)
+    if (sendBtn && sendBtn.disabled) return;                   // está pensando una respuesta
     if (!panel.classList.contains('open')) { window.chatbotConvToggle(false); return; }
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) { alert('Tu navegador no soporta voz. Usa Chrome.'); window.chatbotConvToggle(false); return; }
     if (isRecording) return; // hay un dictado manual en marcha
@@ -12796,7 +12801,7 @@ async function doResetWithCode() {
     rec.lang = 'es-ES'; rec.interimResults = false; rec.continuous = false; rec.maxAlternatives = 1;
     var btn = document.getElementById('chatbot-conv');
     var _resultado = false;
-    rec.onstart = function() { if (btn) btn.classList.add('escuchando'); };
+    rec.onstart = function() { _convSesion = true; if (btn) btn.classList.add('escuchando'); };
     rec.onresult = function(e) {
       var t = '';
       for (var i = 0; i < e.results.length; i++) if (e.results[i].isFinal) t += e.results[i][0].transcript + ' ';
@@ -12809,13 +12814,15 @@ async function doResetWithCode() {
       }
     };
     rec.onend = function() {
+      _convSesion = false;
       if (btn) btn.classList.remove('escuchando');
       if (!window._azkarinConv || _resultado) return;
       _convSilencios++;
-      if (_convSilencios >= 6) { window.chatbotConvToggle(false); return; } // ~1 min de silencio → se apaga solo
-      setTimeout(function() { window._convEscuchar(); }, 400);
+      if (_convSilencios >= 10) { window.chatbotConvToggle(false); return; } // ~1-2 min de silencio → se apaga solo
+      // el vigilante reengancha el micro; no relanzar aquí (evita sesiones dobles)
     };
     rec.onerror = function(e) {
+      _convSesion = false;
       if (btn) btn.classList.remove('escuchando');
       if (e && (e.error === 'not-allowed' || e.error === 'service-not-allowed')) {
         window.chatbotConvToggle(false);
@@ -12826,21 +12833,36 @@ async function doResetWithCode() {
     try { rec.start(); } catch (e) {}
   };
   window.chatbotConvToggle = function(forzar) {
+    var ahora = Date.now();
+    if (ahora - _convUltimoToggle < 800) return; // anti doble-toque
+    _convUltimoToggle = ahora;
     var nuevo = (typeof forzar === 'boolean') ? forzar : !window._azkarinConv;
-    if (nuevo === window._azkarinConv && typeof forzar === 'boolean') { if (nuevo) window._convEscuchar(); return; }
+    if (nuevo === window._azkarinConv) return;
     window._azkarinConv = nuevo;
     _convSilencios = 0;
     var btn = document.getElementById('chatbot-conv');
     if (btn) { btn.classList.toggle('activo', nuevo); btn.title = nuevo ? 'Conversación activa — toca para parar' : 'Modo conversación (manos libres)'; }
     if (nuevo) {
       chatTTSEnabled = true; try { localStorage.setItem('chatTTS', 'on'); } catch (e) {}
-      addMsg('bot', '🎧 Modo conversación: te escucho. Habla cuando quieras y toca el auricular para parar.');
-      window._convEscuchar();
+      // El saludo se lee por TTS; el micro arranca SOLO cuando la voz termina
+      // (lo reengancha el hook del TTS o el vigilante). Nunca a la vez.
+      addMsg('bot', '🎧 Modo conversación: cuando termine de hablar te escucho. Toca el auricular para parar.');
     } else {
       try { if (window._convRec) window._convRec.stop(); } catch (e) {}
+      _convSesion = false;
       addMsg('bot', '🎧 Modo conversación apagado.');
     }
   };
+  // v282b VIGILANTE: cada 1,5s — si el modo está activo y no hay voz sonando,
+  // ni micro abierto, ni respuesta en camino → (re)enganchar el micro.
+  setInterval(function() {
+    try {
+      if (!window._azkarinConv) return;
+      if (_convSesion || _ttsSpeaking || _ttsQueue.length > 0 || isRecording) return;
+      if (sendBtn && sendBtn.disabled) return;
+      window._convEscuchar();
+    } catch (e) {}
+  }, 1500);
 
   // Abre WhatsApp Business (mismo método que el botón del presupuesto) con fallback
   window._waEnviar = function(num, textoEnc) {
