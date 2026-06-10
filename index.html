@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v272';</script>
+<script>document.getElementById('version-tag').textContent='v273';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v272';
+var APP_VERSION = 'v273';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -6224,30 +6224,79 @@ async function _v237TryReactivarBtnWA() {
 }
 
 // v122: Enviar presupuesto por WhatsApp (botón dedicado)
-function enviarPresupuestoWhatsApp() {
+// v273: crea una sesión de firma FRESCA del cliente actual (mismo que usa "Enviar")
+async function _crearFirmaParaWA() {
+  try {
+    var number = (document.getElementById('f_ref') || {}).value || '';
+    var clientName = (document.getElementById('f_nom') || {}).value || '';
+    if (!number) return '';
+    var clientTel = (document.getElementById('f_tel') || {}).value || '';
+    var clientEmail = (document.getElementById('f_email') || {}).value || '';
+    var clientRec = (document.getElementById('tx-recogida') || {}).value || (document.getElementById('f_rec') || {}).value || '';
+    var clientEnt = (document.getElementById('tx-entrega') || {}).value || (document.getElementById('f_ent') || {}).value || '';
+    var clientFecha = (document.getElementById('tx-fecha') || {}).value || (document.getElementById('f_fserv') || {}).value || '';
+    var clientHora = (document.getElementById('f_hserv') || {}).value || '';
+    if (clientHora) clientFecha += ' ' + clientHora + 'h';
+    var clientTotal = document.getElementById('t_t') ? document.getElementById('t_t').textContent : '';
+    var firmaItems = [];
+    document.querySelectorAll('#tb .cr').forEach(function(row) {
+      var ci = row.querySelector('input[list]');
+      var ns = row.querySelectorAll('input[type=number]');
+      var tot = row.querySelector('.ctot');
+      if (ci && ci.value) firmaItems.push({ concepto: ci.value, unidades: ns[0] ? ns[0].value : '', total: tot ? tot.textContent : '' });
+    });
+    var completeHTML = buildCompleteHTML(['page-dossier', 'page-presupuesto', 'page-contrato']);
+    var r = await fetch(RAILWAY_API + '/api/firma/crear', {
+      method: 'POST', headers: apiHeaders(),
+      body: JSON.stringify({ numero: number, nombre: clientName, email: clientEmail, telefono: clientTel, total: clientTotal, direccionRecogida: clientRec, direccionEntrega: clientEnt, fechaServicio: clientFecha, items: firmaItems, presupuestoHtml: completeHTML })
+    });
+    var d = await r.json();
+    return (d && d.ok) ? d.url : '';
+  } catch (e) { console.error('[Firma WA] error creando sesión:', e); return ''; }
+}
+
+// v122/v273: Enviar presupuesto por WhatsApp — SIEMPRE con enlace de firma del cliente actual
+async function enviarPresupuestoWhatsApp() {
   var tel = (document.getElementById('f_tel') || {}).value || '';
   if (!tel || tel.trim().length < 6) { alert('Escribe primero el número de teléfono del cliente'); return; }
-  if (!_whatsappPdfLink && !_whatsappFirmaUrl) { alert('Primero genera el presupuesto (botón GUARDAR)'); return; }
-  // v269 GUARDARRAÍL 1: el PDF preparado tiene que ser de ESTE cliente, no del anterior
   var _curRefWA = (document.getElementById('f_ref') || {}).value || '';
-  if (_curRefWA && _whatsappClientNum && String(_whatsappClientNum) !== String(_curRefWA)) {
-    var _reWA = (typeof _v237GetWaLink === 'function') ? _v237GetWaLink(_curRefWA) : null;
-    if (_reWA && _reWA.link) { _whatsappPdfLink = _reWA.link; _whatsappFirmaUrl = _reWA.firma || ''; _whatsappClientName = _reWA.name || ''; _whatsappClientNum = _curRefWA; }
-    else { alert('⚠️ El presupuesto en pantalla es el ' + _curRefWA + ' pero el PDF preparado es de OTRO cliente. Genera primero el PDF de ESTE cliente (botón Enviar/GUARDAR) y vuelve a darle.'); return; }
-  }
-  // v269 GUARDARRAÍL 2: no mandar si la dirección parece de prueba
+  if (!_curRefWA) { alert('Abre o crea un presupuesto primero.'); return; }
+
+  // GUARDARRAÍL: no mandar si la dirección parece de prueba
   var _recWA = (document.getElementById('f_rec') || {}).value || '';
   var _entWA = (document.getElementById('f_ent') || {}).value || '';
   if (_esDireccionPrueba(_recWA) || _esDireccionPrueba(_entWA)) {
     if (!confirm('⚠️ La dirección parece de PRUEBA (' + (_recWA || _entWA) + '). ¿Enviar igualmente?')) return;
   }
+
+  // v273: si no hay enlace de firma FRESCO de ESTE cliente, crearlo ahora
+  if (!_whatsappFirmaUrl || String(_whatsappClientNum) !== String(_curRefWA)) {
+    var _btnG = document.getElementById('btn-wa-pdf');
+    if (_btnG) { _btnG.disabled = true; _btnG.innerHTML = '⏳'; }
+    showSyncStatus('⏳ Preparando el presupuesto para firmar...', 0);
+    var _fu = await _crearFirmaParaWA();
+    if (_btnG) { _btnG.disabled = false; _btnG.innerHTML = '📄 PDF'; }
+    if (!_fu) { showSyncStatus('', 1); alert('No he podido preparar el enlace de firma. Revisa la conexión e inténtalo otra vez.'); return; }
+    _whatsappFirmaUrl = _fu;
+    _whatsappClientNum = _curRefWA;
+    _whatsappClientName = (document.getElementById('f_nom') || {}).value || '';
+    _v237SaveWaLink(_curRefWA, _whatsappPdfLink || _fu, _whatsappClientName, _fu);
+    showSyncStatus('✅ Listo para enviar', 1500);
+  }
+
   var num = tel.replace(/[\s\-\(\)\.]/g, '');
   if (num.startsWith('0')) num = '34' + num.substring(1);
   if (!num.startsWith('+') && !num.startsWith('34')) num = '34' + num;
   num = num.replace(/^\+/, '');
   var nombre = (document.getElementById('f_nom') || {}).value || '';
   var primerNombre = nombre ? nombre.split(' ')[0] : '';
-  var texto = 'Buenos días' + (primerNombre ? ' ' + primerNombre : '') + ', le envío su presupuesto de mudanza con Azkar Mudanzas de Vizcaya.\n\n📄 Ver presupuesto: ' + _whatsappPdfLink + (_whatsappFirmaUrl ? ('\n\n✍️ Para aceptarlo, fírmelo aquí: ' + _whatsappFirmaUrl + '\n\nAl firmar podrá descargar su copia.') : '') + '\n\nPara cualquier duda estamos a su disposición. ¡Un saludo!';
+  var saludo = 'Buenos días' + (primerNombre ? ' ' + primerNombre : '') + ', le envío su presupuesto de mudanza con Azkar Mudanzas de Vizcaya.';
+  var texto;
+  if (_whatsappPdfLink) {
+    texto = saludo + '\n\n📄 Ver presupuesto: ' + _whatsappPdfLink + '\n\n✍️ Para aceptarlo, fírmelo aquí: ' + _whatsappFirmaUrl + '\n\nAl firmar podrá descargar su copia. Para cualquier duda estamos a su disposición. ¡Un saludo!';
+  } else {
+    texto = saludo + ' Puede revisarlo y, si está conforme, firmarlo desde este enlace:\n\n✍️ ' + _whatsappFirmaUrl + '\n\nAl firmar podrá descargar su copia. Para cualquier duda estamos a su disposición. ¡Un saludo!';
+  }
   var textoEnc = encodeURIComponent(texto);
   var isAndroid = /android/i.test(navigator.userAgent);
   if (isAndroid) {
@@ -6256,13 +6305,8 @@ function enviarPresupuestoWhatsApp() {
   } else {
     window.open('https://wa.me/' + num + '?text=' + textoEnc, '_blank');
   }
-  // Limpiar y ocultar botón
-  _whatsappFirmaUrl = '';
-  _whatsappPdfLink = null;
-  _whatsappClientName = '';
-  _whatsappClientNum = '';
   var btn = document.getElementById('btn-wa-pdf');
-  if (btn) { btn.style.display = 'none'; btn.style.animation = ''; }
+  if (btn) { btn.style.animation = ''; }
 }
 
 // v270: si el usuario cambia recogida/entrega, el PDF ya generado deja de valer →
