@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v289';</script>
+<script>document.getElementById('version-tag').textContent='v290';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v289';
+var APP_VERSION = 'v290';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12396,7 +12396,7 @@ async function doResetWithCode() {
     var trozo = '';
     // v289: 1er trozo CORTO (empieza a hablar enseguida), siguientes medianos
     var _esNeuronal = (localStorage.getItem('azkarinVozNeuronal') !== 'off');
-    var _maxTrozo = _esNeuronal ? 180 : 120;
+    var _maxTrozo = _esNeuronal ? 110 : 120; // v290: 1ª frase sola → audio casi inmediato
     for (var i = 0; i < frases.length; i++) {
       if (_esNeuronal && trozos.length >= 1) _maxTrozo = 350;
       if ((trozo + ' ' + frases[i]).length > _maxTrozo && trozo.length > 0) {
@@ -12448,11 +12448,13 @@ async function doResetWithCode() {
     return localStorage.getItem('azkarinVozNeuronal') !== 'off';
   }
   function _fetchTTS(texto) {
-    return fetch(RAILWAY_API + '/api/tts', {
+    var opts = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (window._authToken || (typeof _authToken !== 'undefined' ? _authToken : '') || '') },
       body: JSON.stringify({ texto: texto })
-    }).then(function(r) {
+    };
+    try { if (AbortSignal && AbortSignal.timeout) opts.signal = AbortSignal.timeout(8000); } catch (e) {}
+    return fetch(RAILWAY_API + '/api/tts', opts).then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.blob();
     });
@@ -12460,8 +12462,12 @@ async function doResetWithCode() {
   // v289 PREGENERACIÓN: mientras suena un trozo, ya se está generando el siguiente → sin huecos
   var _prefetchTexto = null, _prefetchPromesa = null;
   function _reproducirNeuronal(texto, alAcabar, alFallar) {
-    var prom = (_prefetchTexto === texto && _prefetchPromesa) ? _prefetchPromesa : _fetchTTS(texto);
-    _prefetchTexto = null; _prefetchPromesa = null;
+    var prom;
+    if (_prefetchTexto === texto && _prefetchPromesa) {
+      prom = _prefetchPromesa; _prefetchTexto = null; _prefetchPromesa = null;
+    } else {
+      prom = _fetchTTS(texto);
+    }
     prom.then(function(blob) {
       if (!blob) throw new Error('prefetch vacío');
       var a = _getAudioNeuronal();
@@ -12494,6 +12500,11 @@ async function doResetWithCode() {
     var chunk = _ttsQueue.shift();
     // v288: primero la voz neuronal del servidor; si falla, voz del navegador
     if (_vozNeuronalActiva()) {
+      // v290: pregenerar el SIGUIENTE trozo a la vez que este (cero huecos)
+      if (_ttsQueue.length > 0 && _prefetchTexto !== _ttsQueue[0]) {
+        _prefetchTexto = _ttsQueue[0];
+        _prefetchPromesa = _fetchTTS(_ttsQueue[0]).catch(function() { return null; });
+      }
       _reproducirNeuronal(chunk, function() { _ttsPlayNext(); }, function() { _ttsHablarNavegador(chunk); });
       return;
     }
