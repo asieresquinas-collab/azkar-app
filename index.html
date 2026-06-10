@@ -2533,7 +2533,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v265';</script>
+<script>document.getElementById('version-tag').textContent='v266';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2645,7 +2645,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v265';
+var APP_VERSION = 'v266';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -9390,9 +9390,11 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     return addr
       // 1) Quitar prefijos de calle: "Calle", "C/", "Avda", "Plaza"...
       .replace(/^(calle|c\/|c\.|cl\.|avda\.?|avenida|av\.|plaza|pza\.?|plza\.?|paseo|pº|travesía|trav\.?|camino|cno\.?|carretera|ctra\.?|ronda|glorieta|urbanización|urb\.?)\s+/i, '')
-      // 2) Quitar piso/puerta/escalera: "2c", "3ºA", "piso 2", "esc. B", "pta 1", "bajo dcha"
-      .replace(/\s+(piso|pta\.?|puerta|esc\.?|escalera|bajo|entreplanta|entresuelo|entlo\.?|bjo\.?|sob?re?ático|sático)\s*\S*/gi, '')
-      // 3) Quitar letra de piso pegada al número: "n2 2c" → "2", "nº3 1ºB" → "3"
+      // 2) Quitar piso/puerta/escalera/orientación: "2c", "3ºA", "piso 2", "esc. B", "bajo dcha", "izda"
+      .replace(/\s+(piso|pta\.?|puerta|esc\.?|escalera|bajo|entreplanta|entresuelo|entlo\.?|bjo\.?|sob?re?ático|sático|izda\.?|izquierda|dcha\.?|derecha|izq\.?|der\.?)\s*\S*/gi, '')
+      // 3) Quitar piso con orientación pegado al número: "10 3 izda" → "10", "nº3 2 dcha" → "3"
+      .replace(/\s+\d+\s*[ºªo]?\s*(izda|izquierda|dcha|derecha|izq|der)\b\.?/gi, ' ')
+      // 3b) Quitar letra de piso pegada al número: "n2 2c" → "2", "nº3 1ºB" → "3"
       .replace(/\s+\d+\s*[ºª]?\s*[a-zA-Z](?:\s|,|$)/g, ' ')
       // 4) Quitar "nº" o "n" delante del número: "n2" → "2", "nº 5" → "5"
       .replace(/\bn[ºª]?\s*(\d)/gi, '$1')
