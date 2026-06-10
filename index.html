@@ -1699,8 +1699,8 @@ async function PA(){
       var pdfLink = result.drive && result.drive.pdfProxyLink ? result.drive.pdfProxyLink : (result.drive && result.drive.webViewLink ? result.drive.webViewLink : '');
       // v271: si se creó sesión de firma, por WhatsApp se manda el enlace de FIRMA (el cliente revisa y firma)
       var _waLink = firmaUrl || pdfLink;
-      if (clientTelWA && _waLink) {
-        _ofrecerWhatsApp(clientTelWA, clientName, number, _waLink);
+      if (clientTelWA && pdfLink) {
+        _ofrecerWhatsApp(clientTelWA, clientName, number, pdfLink, firmaUrl);
       }
 
       // Mensaje según si se envió email o no
@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v271';</script>
+<script>document.getElementById('version-tag').textContent='v272';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v271';
+var APP_VERSION = 'v272';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -6144,7 +6144,7 @@ function apiHeaders(extra) {
 // v122: Variable global para enlace PDF pendiente de enviar por WhatsApp
 var _whatsappPdfLink = null;
 var _whatsappClientName = '';
-var _whatsappClientNum = '';
+var _whatsappClientNum = ''; var _whatsappFirmaUrl = '';
 
 // v122: Crear botón "Enviar Presupuesto" por WhatsApp (se inyecta al lado del botón existente)
 function _crearBtnWAPdf() {
@@ -6164,10 +6164,10 @@ function _crearBtnWAPdf() {
 // v122: Cuando se genera un PDF, mostrar el botón de enviar presupuesto
 // v237: persistir el link en localStorage por ref para que siga disponible
 //       aunque recargues la app o rellenes el teléfono más tarde.
-function _v237SaveWaLink(ref, pdfLink, clientName) {
+function _v237SaveWaLink(ref, pdfLink, clientName, firmaUrl) {
   try {
     if (!ref || !pdfLink) return;
-    var data = { link: pdfLink, name: clientName || '', ts: Date.now() };
+    var data = { link: pdfLink, name: clientName || '', firma: firmaUrl || '', ts: Date.now() };
     localStorage.setItem('_waPdfLink_' + ref, JSON.stringify(data));
   } catch(e) {}
 }
@@ -6185,14 +6185,14 @@ function _v237GetWaLink(ref) {
     return data;
   } catch(e) { return null; }
 }
-function _ofrecerWhatsApp(tel, clientName, clientNum, pdfLink) {
+function _ofrecerWhatsApp(tel, clientName, clientNum, pdfLink, firmaUrl) {
   // v237: aunque NO haya teléfono aún, persistimos el link para que el botón
   // aparezca después si el usuario añade el teléfono.
   if (pdfLink) {
-    _whatsappPdfLink = pdfLink;
+    _whatsappPdfLink = pdfLink; _whatsappFirmaUrl = firmaUrl || '';
     _whatsappClientName = clientName || '';
     _whatsappClientNum = clientNum || '';
-    _v237SaveWaLink(clientNum, pdfLink, clientName);
+    _v237SaveWaLink(clientNum, pdfLink, clientName, firmaUrl);
   }
   // Solo creamos el botón si hay teléfono (la lógica original)
   if (!tel || !pdfLink) return;
@@ -6214,7 +6214,7 @@ async function _v237TryReactivarBtnWA() {
     var saved = _v237GetWaLink(ref);
     if (!saved || !saved.link) return;
     // Hay un link guardado y hay teléfono. Repoblar y mostrar botón.
-    _whatsappPdfLink = saved.link;
+    _whatsappPdfLink = saved.link; _whatsappFirmaUrl = saved.firma || '';
     _whatsappClientName = saved.name || '';
     _whatsappClientNum = ref;
     _crearBtnWAPdf();
@@ -6227,12 +6227,12 @@ async function _v237TryReactivarBtnWA() {
 function enviarPresupuestoWhatsApp() {
   var tel = (document.getElementById('f_tel') || {}).value || '';
   if (!tel || tel.trim().length < 6) { alert('Escribe primero el número de teléfono del cliente'); return; }
-  if (!_whatsappPdfLink) { alert('Primero genera el presupuesto (botón GUARDAR)'); return; }
+  if (!_whatsappPdfLink && !_whatsappFirmaUrl) { alert('Primero genera el presupuesto (botón GUARDAR)'); return; }
   // v269 GUARDARRAÍL 1: el PDF preparado tiene que ser de ESTE cliente, no del anterior
   var _curRefWA = (document.getElementById('f_ref') || {}).value || '';
   if (_curRefWA && _whatsappClientNum && String(_whatsappClientNum) !== String(_curRefWA)) {
     var _reWA = (typeof _v237GetWaLink === 'function') ? _v237GetWaLink(_curRefWA) : null;
-    if (_reWA && _reWA.link) { _whatsappPdfLink = _reWA.link; _whatsappClientName = _reWA.name || ''; _whatsappClientNum = _curRefWA; }
+    if (_reWA && _reWA.link) { _whatsappPdfLink = _reWA.link; _whatsappFirmaUrl = _reWA.firma || ''; _whatsappClientName = _reWA.name || ''; _whatsappClientNum = _curRefWA; }
     else { alert('⚠️ El presupuesto en pantalla es el ' + _curRefWA + ' pero el PDF preparado es de OTRO cliente. Genera primero el PDF de ESTE cliente (botón Enviar/GUARDAR) y vuelve a darle.'); return; }
   }
   // v269 GUARDARRAÍL 2: no mandar si la dirección parece de prueba
@@ -6247,7 +6247,7 @@ function enviarPresupuestoWhatsApp() {
   num = num.replace(/^\+/, '');
   var nombre = (document.getElementById('f_nom') || {}).value || '';
   var primerNombre = nombre ? nombre.split(' ')[0] : '';
-  var texto = 'Buenos días' + (primerNombre ? ' ' + primerNombre : '') + ', le envío su presupuesto de mudanza con Azkar Mudanzas. Puede revisarlo y, si está conforme, firmarlo desde este enlace:\n\n📄 ' + _whatsappPdfLink + '\n\nUna vez firmado podrá descargar su copia. Para cualquier duda estamos a su disposición. ¡Un saludo!';
+  var texto = 'Buenos días' + (primerNombre ? ' ' + primerNombre : '') + ', le envío su presupuesto de mudanza con Azkar Mudanzas de Vizcaya.\n\n📄 Ver presupuesto: ' + _whatsappPdfLink + (_whatsappFirmaUrl ? ('\n\n✍️ Para aceptarlo, fírmelo aquí: ' + _whatsappFirmaUrl + '\n\nAl firmar podrá descargar su copia.') : '') + '\n\nPara cualquier duda estamos a su disposición. ¡Un saludo!';
   var textoEnc = encodeURIComponent(texto);
   var isAndroid = /android/i.test(navigator.userAgent);
   if (isAndroid) {
@@ -6257,6 +6257,7 @@ function enviarPresupuestoWhatsApp() {
     window.open('https://wa.me/' + num + '?text=' + textoEnc, '_blank');
   }
   // Limpiar y ocultar botón
+  _whatsappFirmaUrl = '';
   _whatsappPdfLink = null;
   _whatsappClientName = '';
   _whatsappClientNum = '';
@@ -6270,7 +6271,7 @@ function _invalidarPdfWA() {
   try {
     var ref = (document.getElementById('f_ref') || {}).value || '';
     if (ref) { try { localStorage.removeItem('_waPdfLink_' + ref); } catch(e){} }
-    _whatsappPdfLink = null; _whatsappClientName = ''; _whatsappClientNum = '';
+    _whatsappPdfLink = null; _whatsappFirmaUrl = ''; _whatsappClientName = ''; _whatsappClientNum = '';
     var b = document.getElementById('btn-wa-pdf'); if (b) b.style.display = 'none';
   } catch(e){}
 }
