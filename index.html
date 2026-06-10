@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v283';</script>
+<script>document.getElementById('version-tag').textContent='v284';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v283';
+var APP_VERSION = 'v284';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -2884,6 +2884,20 @@ if ('serviceWorker' in navigator) {
       // Si la app ya estaba abierta, parsear la URL y abrir el chat con contexto
       try {
         var u = new URL(event.data.url, location.origin);
+        // v284: botón rápido de la barra de notificaciones → modo conversación
+        if (u.searchParams.get('azkarin') === 'voz') {
+          setTimeout(function() {
+            try {
+              var panel = document.getElementById('chatbot-panel');
+              var bubble = document.getElementById('chatbot-bubble');
+              if (panel && !panel.classList.contains('open')) panel.classList.add('open');
+              if (bubble) bubble.style.display = 'flex';
+              window._chatbotActivo = true;
+              if (typeof window.chatbotConvToggle === 'function') window.chatbotConvToggle(true);
+            } catch (e) {}
+          }, 300);
+          return;
+        }
         if (u.searchParams.get('chat') === '1') {
           var ref = u.searchParams.get('ref');
           var tema = u.searchParams.get('tema');
@@ -13284,6 +13298,33 @@ async function doResetWithCode() {
   }
   if (document.readyState === 'complete') setTimeout(_lanzarAzkarinVoz, 600);
   else window.addEventListener('load', function() { setTimeout(_lanzarAzkarinVoz, 600); });
+
+  // v284: BOTÓN RÁPIDO de Azkarin en la barra de notificaciones del móvil.
+  // Notificación fija (silenciosa): desde cualquier pantalla → deslizar arriba →
+  // tocar "🎙 Azkarin" → la app se abre en modo conversación escuchando.
+  // Se puede quitar deslizándola; reaparece al abrir la app. Desactivable:
+  // localStorage.setItem('azkarinQuickBtn','off')
+  window._azkarinQuickBtn = function() {
+    try {
+      if (localStorage.getItem('azkarinQuickBtn') === 'off') return;
+      if (!('serviceWorker' in navigator) || !('Notification' in window)) return;
+      if (Notification.permission !== 'granted') return;
+      navigator.serviceWorker.ready.then(function(reg) {
+        reg.showNotification('🎙 Azkarin — toca para hablar', {
+          body: 'Manos libres: te escucho nada más abrir',
+          tag: 'azkarin-quick',
+          icon: './icons/azkarin-128.png',
+          badge: './icons/azkarin-64.png',
+          requireInteraction: true,
+          silent: true,
+          renotify: false,
+          data: { url: './?azkarin=voz', _quick: true },
+          actions: [{ action: 'open', title: '🎙 Hablar con Azkarin' }]
+        }).catch(function(){});
+      });
+    } catch (e) {}
+  };
+  setTimeout(function() { window._azkarinQuickBtn(); }, 3000);
 })();
 </script>
 </body>

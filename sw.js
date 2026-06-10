@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  AZKAR PWA · Service Worker · Offline-first
 // ══════════════════════════════════════════════════════════════
-const CACHE_NAME = 'azkar-pwa-v283';
+const CACHE_NAME = 'azkar-pwa-v284';
 const ASSETS = [
   './',
   './index.html',
@@ -118,6 +118,16 @@ self.addEventListener('push', function(event) {
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
+  // v284: si es el botón rápido, reponerlo para que siga siempre en la barra
+  if (event.notification.tag === 'azkarin-quick') {
+    event.waitUntil(self.registration.showNotification('🎙 Azkarin — toca para hablar', {
+      body: 'Manos libres: te escucho nada más abrir',
+      tag: 'azkarin-quick', icon: './icons/azkarin-128.png', badge: './icons/azkarin-64.png',
+      requireInteraction: true, silent: true,
+      data: { url: './?azkarin=voz', _quick: true },
+      actions: [{ action: 'open', title: '🎙 Hablar con Azkarin' }]
+    }).catch(function(){}));
+  }
   var targetUrl = (event.notification.data && event.notification.data.url) || './?chat=1';
   var _sayBody = (event.notification.data && event.notification.data._body) || '';
   // Si la URL es relativa, hacerla absoluta respecto al scope
