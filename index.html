@@ -2533,7 +2533,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v266';</script>
+<script>document.getElementById('version-tag').textContent='v267';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2645,7 +2645,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v266';
+var APP_VERSION = 'v267';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12144,7 +12144,7 @@ async function doResetWithCode() {
   </div>
   <div id="chatbot-foto-ind" style="display:none"></div>
   <div id="chatbot-input-area">
-    <input type="file" id="chatbot-foto-input" accept="image/*" multiple style="display:none">
+    <input type="file" id="chatbot-foto-input" accept="image/*,application/pdf" multiple style="display:none">
     <button id="chatbot-foto-btn" onclick="document.getElementById('chatbot-foto-input').click()" title="Adjuntar foto">&#128206;</button>
     <input type="file" id="chatbot-video-input" accept="video/*" style="display:none">
     <button id="chatbot-video-btn" onclick="document.getElementById('chatbot-video-input').click()" title="Adjuntar vídeo (borrador de presupuesto)">&#127909;</button>
@@ -12405,16 +12405,18 @@ async function doResetWithCode() {
     var fotoEnviar = pendingFoto;
     var framesEnviar = window._pendingFrames;
     var framesTipo = window._pendingFramesTipo || 'video';
-    if (!msg && !fotoEnviar && !(framesEnviar && framesEnviar.length)) return;
+    var pdfsEnviar = window._pendingPdfs;
+    if (!msg && !fotoEnviar && !(framesEnviar && framesEnviar.length) && !(pdfsEnviar && pdfsEnviar.length)) return;
     pendingFoto = null;
     window._pendingFrames = null;
     window._pendingFramesTipo = null;
+    window._pendingPdfs = null;
     var _fInd = document.getElementById('chatbot-foto-ind');
     if (_fInd) { _fInd.style.display = 'none'; _fInd.innerHTML = ''; }
     inputEl.value = '';
     inputEl.style.height = 'auto';
-    var msgEnviar = msg || ((framesEnviar && framesEnviar.length) ? (framesTipo === 'fotos' ? ('Te he enviado ' + framesEnviar.length + ' fotos. Hazme el borrador del presupuesto con lo que veas.') : ('Te he enviado un vídeo (' + framesEnviar.length + ' fotogramas). Házme el borrador del presupuesto con lo que veas.')) : 'Te he enviado una foto.');
-    addMsg('user', (framesEnviar && framesEnviar.length) ? ((msg ? msg + ' ' : '') + (framesTipo === 'fotos' ? ('📷×' + framesEnviar.length) : '🎥')) : (fotoEnviar ? ((msg ? msg + ' ' : '') + '📷') : msg));
+    var msgEnviar = msg || ((framesEnviar && framesEnviar.length) ? (framesTipo === 'fotos' ? ('Te he enviado ' + framesEnviar.length + ' fotos. Hazme el borrador del presupuesto con lo que veas.') : ('Te he enviado un vídeo (' + framesEnviar.length + ' fotogramas). Házme el borrador del presupuesto con lo que veas.')) : ((pdfsEnviar && pdfsEnviar.length) ? 'Te he enviado un PDF. Léelo y dime qué pone.' : 'Te he enviado una foto.'));
+    addMsg('user', (framesEnviar && framesEnviar.length) ? ((msg ? msg + ' ' : '') + (framesTipo === 'fotos' ? ('📷×' + framesEnviar.length) : '🎥')) : (fotoEnviar ? ((msg ? msg + ' ' : '') + '📷') : ((pdfsEnviar && pdfsEnviar.length) ? ((msg ? msg + ' ' : '') + '📄') : msg)));
     chatHistorial.push({ role: 'user', content: msgEnviar });
     sendBtn.disabled = true;
     addTyping();
@@ -12432,11 +12434,15 @@ async function doResetWithCode() {
       var resp = await fetch(RAILWAY_API + '/api/chatbot/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (_authToken || '') },
-        body: JSON.stringify((framesEnviar && framesEnviar.length)
-          ? { mensaje: msgEnviar, historial: chatHistorial, imagenes: framesEnviar }
-          : fotoEnviar
-            ? { mensaje: msgEnviar, historial: chatHistorial, imagen: fotoEnviar.base64, imagenMime: fotoEnviar.mime }
-            : { mensaje: msgEnviar, historial: chatHistorial })
+        body: JSON.stringify((function() {
+          var _b = (framesEnviar && framesEnviar.length)
+            ? { mensaje: msgEnviar, historial: chatHistorial, imagenes: framesEnviar }
+            : fotoEnviar
+              ? { mensaje: msgEnviar, historial: chatHistorial, imagen: fotoEnviar.base64, imagenMime: fotoEnviar.mime }
+              : { mensaje: msgEnviar, historial: chatHistorial };
+          if (pdfsEnviar && pdfsEnviar.length) _b.pdfs = pdfsEnviar;
+          return _b;
+        })())
       });
       var data = await resp.json();
       removeTyping();
@@ -12848,6 +12854,37 @@ async function doResetWithCode() {
     _fotoInput.addEventListener('change', async function() {
       var files = Array.from(this.files || []);
       this.value = '';
+      if (!files.length) return;
+      // v267: PDFs → se mandan aparte para que Azkarin los lea (máx 3, 15MB cada uno)
+      var _esPdf = function(f) { return f.type === 'application/pdf' || /\.pdf$/i.test(f.name || ''); };
+      var pdfs = files.filter(_esPdf).slice(0, 3);
+      files = files.filter(function(f) { return !_esPdf(f); });
+      if (pdfs.length) {
+        var lotePdf = [];
+        for (var pi = 0; pi < pdfs.length; pi++) {
+          if (pdfs[pi].size > 15 * 1024 * 1024) { addMsg('bot', '❌ El PDF "' + pdfs[pi].name + '" pesa más de 15MB, no puedo con él.'); continue; }
+          try {
+            var leido = await new Promise(function(res, rej) {
+              var rr = new FileReader();
+              rr.onload = function(e) { res((e.target.result || '').split(',')[1]); };
+              rr.onerror = rej;
+              rr.readAsDataURL(pdfs[pi]);
+            });
+            if (leido) lotePdf.push({ b64: leido, nombre: pdfs[pi].name });
+          } catch (ep) { addMsg('bot', '❌ No pude leer el PDF "' + pdfs[pi].name + '".'); }
+        }
+        if (lotePdf.length) {
+          window._pendingPdfs = lotePdf;
+          var indP = document.getElementById('chatbot-foto-ind');
+          if (indP) {
+            indP.style.display = 'flex'; indP.innerHTML = '';
+            indP.appendChild(document.createTextNode('📄 ' + lotePdf.map(function(x) { return x.nombre; }).join(', ') + ' listo' + (lotePdf.length > 1 ? 's' : '') + ' para enviar'));
+            var xp = document.createElement('span'); xp.textContent = ' ✕'; xp.title = 'Quitar PDF'; xp.style.cursor = 'pointer'; xp.style.marginLeft = '8px';
+            xp.onclick = function() { window._pendingPdfs = null; indP.style.display = 'none'; indP.innerHTML = ''; };
+            indP.appendChild(xp);
+          }
+        }
+      }
       if (!files.length) return;
       if (files.length === 1) {
         // Una sola foto: comportamiento de siempre (sirve también para guardar_foto_cliente)
