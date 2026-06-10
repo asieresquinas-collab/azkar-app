@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v285';</script>
+<script>document.getElementById('version-tag').textContent='v288';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v285';
+var APP_VERSION = 'v288';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12376,6 +12376,7 @@ async function doResetWithCode() {
 
   function chatSpeakStop() {
     if ('speechSynthesis' in window) speechSynthesis.cancel();
+    try { if (_audioNeuronal) { _audioNeuronal.onended = null; _audioNeuronal.pause(); _audioNeuronal.currentTime = 0; } } catch (e) {}
     _ttsQueue = [];
     _ttsSpeaking = false;
   }
@@ -12393,8 +12394,10 @@ async function doResetWithCode() {
     var trozos = [];
     var frases = cleanText.split(/(?<=[.!?,:;\n])\s+/);
     var trozo = '';
+    // v288: con voz neuronal los trozos pueden ser largos (no existe el corte de 15s de Chrome)
+    var _maxTrozo = (localStorage.getItem('azkarinVozNeuronal') !== 'off') ? 600 : 120;
     for (var i = 0; i < frases.length; i++) {
-      if ((trozo + ' ' + frases[i]).length > 120 && trozo.length > 0) {
+      if ((trozo + ' ' + frases[i]).length > _maxTrozo && trozo.length > 0) {
         trozos.push(trozo.trim());
         trozo = frases[i];
       } else {
@@ -12411,6 +12414,60 @@ async function doResetWithCode() {
   }
   window.chatSpeak = chatSpeak;
 
+  // ── v288 VOZ NEURONAL (tipo ChatGPT): el servidor genera el audio y se reproduce
+  // con <audio> → suena a persona y SIGUE SONANDO en segundo plano (la voz del
+  // navegador no puede). Si el servidor falla, cae solo a la voz del navegador.
+  // Desactivable: localStorage.setItem('azkarinVozNeuronal','off')
+  var _audioNeuronal = null;
+  function _getAudioNeuronal() {
+    if (!_audioNeuronal) {
+      _audioNeuronal = new Audio();
+      _audioNeuronal.preload = 'auto';
+      try {
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.metadata = new MediaMetadata({ title: 'Azkarin', artist: 'Azkar Mudanzas', album: 'Asistente' });
+        }
+      } catch (e) {}
+    }
+    return _audioNeuronal;
+  }
+  // Desbloquear el reproductor con un gesto del usuario (política de autoplay)
+  var _audioDesbloqueado = false;
+  function _desbloquearAudio() {
+    if (_audioDesbloqueado) return;
+    try {
+      var a = _getAudioNeuronal();
+      a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+      a.play().then(function() { _audioDesbloqueado = true; a.pause(); }).catch(function() {});
+    } catch (e) {}
+  }
+  document.addEventListener('click', _desbloquearAudio, { once: false, capture: true });
+  function _vozNeuronalActiva() {
+    return localStorage.getItem('azkarinVozNeuronal') !== 'off';
+  }
+  function _reproducirNeuronal(texto, alAcabar, alFallar) {
+    fetch(RAILWAY_API + '/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (window._authToken || (typeof _authToken !== 'undefined' ? _authToken : '') || '') },
+      body: JSON.stringify({ texto: texto })
+    }).then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.blob();
+    }).then(function(blob) {
+      var a = _getAudioNeuronal();
+      try { URL.revokeObjectURL(a.src); } catch (e) {}
+      a.src = URL.createObjectURL(blob);
+      a.playbackRate = chatTTSRate || 1;
+      a.onended = function() { alAcabar(); };
+      a.onerror = function() { alFallar(); };
+      var p = a.play();
+      if (p && p.catch) p.catch(function(err) { console.warn('[TTSNeuronal] play bloqueado:', err.message); alFallar(); });
+    }).catch(function(err) {
+      console.warn('[TTSNeuronal] fallo, uso voz del navegador:', err.message);
+      alFallar();
+    });
+  }
+
   function _ttsPlayNext() {
     if (_ttsQueue.length === 0) {
       _ttsSpeaking = false;
@@ -12420,6 +12477,15 @@ async function doResetWithCode() {
     }
     _ttsSpeaking = true;
     var chunk = _ttsQueue.shift();
+    // v288: primero la voz neuronal del servidor; si falla, voz del navegador
+    if (_vozNeuronalActiva()) {
+      _reproducirNeuronal(chunk, function() { _ttsPlayNext(); }, function() { _ttsHablarNavegador(chunk); });
+      return;
+    }
+    _ttsHablarNavegador(chunk);
+  }
+
+  function _ttsHablarNavegador(chunk) {
     try {
       var utterance = new SpeechSynthesisUtterance(chunk);
       utterance.lang = 'es-ES';
