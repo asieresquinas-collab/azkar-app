@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v296';</script>
+<script>document.getElementById('version-tag').textContent='v297';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v296';
+var APP_VERSION = 'v297';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12749,7 +12749,8 @@ async function doResetWithCode() {
           }
           } catch(e) { console.warn('[Chatbot] Error mostrando borrador:', e); }
         }
-        // v296: Reproductor de grabaciones de llamadas (Gesditel) en el chat
+        // v297: Reproductor de grabaciones de llamadas (Gesditel) en el chat
+        // — botón de velocidad (1/1,25/1,5/2×) y AUTOBORRADO por protección de datos
         if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'reproducir_llamada') {
           (async function() {
             var cidLl = data.datos.call_id;
@@ -12766,7 +12767,56 @@ async function doResetWithCode() {
               }
               var blobAu = await rAu.blob();
               var urlAu = URL.createObjectURL(blobAu);
-              addMsg('bot', '🎧 <b>' + titLl.replace(/</g, '&lt;') + '</b><br><audio controls preload="metadata" src="' + urlAu + '" style="width:100%;max-width:340px;margin-top:6px;"></audio>');
+              // Mensaje construido a mano (necesita listeners: velocidad + autoborrado)
+              var divLl = document.createElement('div');
+              divLl.className = 'chat-msg bot';
+              divLl.innerHTML = '🎧 <b>' + titLl.replace(/</g, '&lt;') + '</b><br>';
+              var auEl = document.createElement('audio');
+              auEl.controls = true; auEl.preload = 'metadata'; auEl.src = urlAu;
+              auEl.style.cssText = 'width:100%;max-width:300px;margin-top:6px;vertical-align:middle;';
+              try { auEl.preservesPitch = true; auEl.mozPreservesPitch = true; auEl.webkitPreservesPitch = true; } catch (e) {}
+              divLl.appendChild(auEl);
+              // Botón de velocidad: 1× → 1,25× → 1,5× → 2×
+              var velsLl = [1, 1.25, 1.5, 2], velLl = 1;
+              var spBtnLl = document.createElement('button');
+              spBtnLl.type = 'button';
+              spBtnLl.textContent = '1×';
+              spBtnLl.title = 'Velocidad de reproducción';
+              spBtnLl.style.cssText = 'margin:6px 0 0 8px;padding:3px 12px;border:1px solid #2376C5;border-radius:14px;background:#fff;color:#2376C5;font-weight:bold;font-size:13px;cursor:pointer;vertical-align:middle;';
+              spBtnLl.onclick = function() {
+                velLl = velsLl[(velsLl.indexOf(velLl) + 1) % velsLl.length];
+                try { auEl.preservesPitch = true; auEl.mozPreservesPitch = true; auEl.webkitPreservesPitch = true; } catch (e) {}
+                auEl.playbackRate = velLl;
+                spBtnLl.textContent = String(velLl).replace('.', ',') + '×';
+              };
+              divLl.appendChild(spBtnLl);
+              var notaLl = document.createElement('div');
+              notaLl.style.cssText = 'font-size:11px;color:#999;margin-top:4px;';
+              notaLl.textContent = '🔒 Se borra sola del chat al acabar de sonar (o tras 5 min sin usarla) — protección de datos.';
+              divLl.appendChild(notaLl);
+              msgsDiv.appendChild(divLl);
+              msgsDiv.scrollTop = msgsDiv.scrollHeight;
+              // Autoborrado (protección de datos), SIN cortar llamadas largas:
+              // mientras está SONANDO nunca se borra (da igual que dure 20 min);
+              // al acabar → 30 s de margen y se borra; si está parada 5 min → se borra.
+              var borradoLl = false;
+              var ultimaActLl = Date.now();
+              var borrarLl = function() {
+                if (borradoLl) return;
+                borradoLl = true;
+                try { auEl.pause(); } catch (e) {}
+                try { URL.revokeObjectURL(urlAu); } catch (e) {}
+                try { clearInterval(vigiaLl); } catch (e) {}
+                try { divLl.innerHTML = '🔒 <i style="color:#999;font-size:12px;">Grabación eliminada del chat (protección de datos).</i>'; } catch (e) {}
+              };
+              var vigiaLl = setInterval(function() {
+                if (borradoLl) { clearInterval(vigiaLl); return; }
+                if (!auEl.paused && !auEl.ended) { ultimaActLl = Date.now(); return; } // sonando: no se toca
+                if (Date.now() - ultimaActLl > 5 * 60 * 1000) borrarLl();
+              }, 15 * 1000);
+              auEl.addEventListener('play', function() { ultimaActLl = Date.now(); });
+              auEl.addEventListener('pause', function() { ultimaActLl = Date.now(); });
+              auEl.addEventListener('ended', function() { setTimeout(borrarLl, 30 * 1000); });
             } catch (eLl) {
               addMsg('bot', '❌ Error cargando la grabación: ' + (eLl.message || 'error de red'));
             }
