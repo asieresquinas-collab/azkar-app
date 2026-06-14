@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v305';</script>
+<script>document.getElementById('version-tag').textContent='v306';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v305';
+var APP_VERSION = 'v306';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12654,12 +12654,32 @@ async function doResetWithCode() {
   // ── v305: comando /voz — voces neuronales (cambian en movil) + voces del dispositivo ──
   function _vozEsc(s){ return String(s==null?'':s).replace(/[<>&"]/g, function(c){ return ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'})[c]; }); }
   window.VOCES_NEURONALES = [
-    { id:'Orus', etq:'Orus — firme y profesional' },
-    { id:'Charon', etq:'Charon — grave y serio' },
-    { id:'Puck', etq:'Puck — animada y cercana' },
-    { id:'Fenrir', etq:'Fenrir — energica' },
-    { id:'Kore', etq:'Kore — femenina, clara' },
-    { id:'Aoede', etq:'Aoede — femenina, suave' }
+    { id:'Orus', etq:'Orus — firme y profesional', cat:'g' },
+    { id:'Charon', etq:'Charon — grave e informativa', cat:'g' },
+    { id:'Algenib', etq:'Algenib — grave y rasposa', cat:'g' },
+    { id:'Alnilam', etq:'Alnilam — firme y seria', cat:'g' },
+    { id:'Iapetus', etq:'Iapetus — clara y neutra', cat:'g' },
+    { id:'Rasalgethi', etq:'Rasalgethi — didactica', cat:'g' },
+    { id:'Sadaltager', etq:'Sadaltager — experta y segura', cat:'g' },
+    { id:'Schedar', etq:'Schedar — equilibrada', cat:'g' },
+    { id:'Umbriel', etq:'Umbriel — tranquila', cat:'g' },
+    { id:'Zubenelgenubi', etq:'Zubenelgenubi — casual', cat:'g' },
+    { id:'Puck', etq:'Puck — animada y alegre', cat:'a' },
+    { id:'Fenrir', etq:'Fenrir — energica', cat:'a' },
+    { id:'Laomedeia', etq:'Laomedeia — animada', cat:'a' },
+    { id:'Sadachbia', etq:'Sadachbia — viva', cat:'a' },
+    { id:'Autonoe', etq:'Autonoe — brillante', cat:'a' },
+    { id:'Zephyr', etq:'Zephyr — brillante', cat:'a' },
+    { id:'Kore', etq:'Kore — firme (femenina)', cat:'s' },
+    { id:'Aoede', etq:'Aoede — fresca y ligera', cat:'s' },
+    { id:'Leda', etq:'Leda — juvenil', cat:'s' },
+    { id:'Callirrhoe', etq:'Callirrhoe — relajada', cat:'s' },
+    { id:'Despina', etq:'Despina — suave', cat:'s' },
+    { id:'Achernar', etq:'Achernar — suave y delicada', cat:'s' },
+    { id:'Sulafat', etq:'Sulafat — calida y cercana', cat:'s' },
+    { id:'Vindemiatrix', etq:'Vindemiatrix — gentil', cat:'s' },
+    { id:'Gacrux', etq:'Gacrux — madura', cat:'s' },
+    { id:'Achird', etq:'Achird — amigable', cat:'s' }
   ];
   window.azkarinSelectorVoz = function() {
     var todas = (window._vocesTTS && window._vocesTTS.length) ? window._vocesTTS : (('speechSynthesis' in window) ? (speechSynthesis.getVoices() || []) : []);
@@ -12671,9 +12691,13 @@ async function doResetWithCode() {
     var vozNeu = localStorage.getItem('azkar_tts_voz_neuronal') || 'Orus';
     var html = '🎙️ <b>Elige mi voz</b> — toca una para probarla y dejarla puesta:<br><br>';
     html += '<b>🤖 Voces neuronales</b> <small style="color:#7a8aa0;">(suenan natural y SI cambian en el movil; la 1a frase tarda un poco)</small><br>';
-    window.VOCES_NEURONALES.forEach(function(v){
-      var p = (neuronal && vozNeu === v.id);
-      html += '<button onclick="azkarinSetVozNeuronal(\'' + v.id + '\')" style="display:block;width:100%;text-align:left;margin:5px 0;padding:10px 12px;border:1px solid #c8a0d0;border-radius:9px;background:' + (p ? '#efe0f7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:14px;color:#1c2530;">' + (p ? '✅ ' : '🤖 ') + v.etq + '</button>';
+    var _gruposVoz = [['g','🎩 Serias y graves'],['a','⚡ Animadas'],['s','🌸 Suaves y calidas']];
+    _gruposVoz.forEach(function(g){
+      html += '<div style="font-weight:700;margin:9px 0 2px;color:#5b4b7a;">' + g[1] + '</div>';
+      window.VOCES_NEURONALES.filter(function(v){ return v.cat === g[0]; }).forEach(function(v){
+        var p = (neuronal && vozNeu === v.id);
+        html += '<button onclick="azkarinSetVozNeuronal(\'' + v.id + '\')" style="display:block;width:100%;text-align:left;margin:4px 0;padding:9px 12px;border:1px solid #c8a0d0;border-radius:9px;background:' + (p ? '#efe0f7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:14px;color:#1c2530;">' + (p ? '✅ ' : '🤖 ') + v.etq + '</button>';
+      });
     });
     html += '<br><b>📱 Voces del dispositivo</b> <small style="color:#7a8aa0;">(en el movil Android puede que NO cambien; en ordenador si)</small><br>';
     if (!es.length) {
