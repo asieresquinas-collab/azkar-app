@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v312';</script>
+<script>document.getElementById('version-tag').textContent='v313';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v312';
+var APP_VERSION = 'v313';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -13076,7 +13076,23 @@ async function doResetWithCode() {
   // v259: fix voz repetida 40 veces — guardar texto pre-grabación y REEMPLAZAR (no append)
   var _micPreText = '';
   var _micResultHandled = false;
+  // v313: micro NATIVO en la app (el reconocimiento de voz web no va en el WebView de Android)
+  async function _micNativo() {
+    try {
+      var SR = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition;
+      if (!SR) return null;
+      try { await SR.requestPermissions(); } catch (e) {}
+      var res = await SR.start({ language: 'es-ES', maxResults: 1, partialResults: false, popup: false });
+      return (res && res.matches && res.matches.length) ? String(res.matches[0]) : '';
+    } catch (e) { console.warn('[MicNativo]', e && e.message); return null; }
+  }
   window.chatbotMicToggle = function() {
+    if (_esAppNativa() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
+      var _mb = document.getElementById('chatbot-mic');
+      if (_mb) { _mb.classList.add('recording'); _mb.innerHTML = '⏹'; }
+      _micNativo().then(function(txt){ if (_mb) { _mb.classList.remove('recording'); _mb.innerHTML = '🎙'; } if (txt) { inputEl.value = txt; chatbotSend(); } });
+      return;
+    }
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       alert('Tu navegador no soporta dictado por voz. Usa Chrome.');
       return;
@@ -13124,6 +13140,16 @@ async function doResetWithCode() {
     if (_ttsSpeaking || _ttsQueue.length > 0) return;          // Azkarin está hablando → esperar (el hook del TTS nos llama al acabar)
     if (sendBtn && sendBtn.disabled) return;                   // está pensando una respuesta
     if (!panel.classList.contains('open')) { window.chatbotConvToggle(false); return; }
+    if (_esAppNativa() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
+      _convSesion = true;
+      _micNativo().then(function(txt){
+        _convSesion = false;
+        if (!window._azkarinConv) return;
+        if (txt) { inputEl.value = txt; chatbotSend(); }
+        else { setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 800); }
+      });
+      return;
+    }
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) { alert('Tu navegador no soporta voz. Usa Chrome.'); window.chatbotConvToggle(false); return; }
     if (isRecording) return; // hay un dictado manual en marcha
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
