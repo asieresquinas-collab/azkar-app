@@ -1,14 +1,22 @@
 apply plugin: 'com.android.application'
 
 android {
+    signingConfigs {
+        azkarin {
+            storeFile file('../../azkarin.keystore')
+            storePassword 'azkarin2026'
+            keyAlias 'azkarin'
+            keyPassword 'azkarin2026'
+        }
+    }
     namespace "com.azkar.azkarin"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.azkar.azkarin"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -17,7 +25,11 @@ android {
         }
     }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.azkarin
+        }
         release {
+            signingConfig signingConfigs.azkarin
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
