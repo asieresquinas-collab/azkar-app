@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "description": "Azkarin — asistente de Azkar Mudanzas (app Android)",
   "private": true,
-  "scripts": { "build": "echo sin-build" },
+  "scripts": {
+    "build": "echo sin-build"
+  },
   "dependencies": {
-    "@capacitor/core": "^6.1.2",
-    "@capacitor/android": "^6.1.2"
+    "@capacitor-community/speech-recognition": "^6.0.1",
+    "@capacitor-community/text-to-speech": "^4.0.2",
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.1.2"
