@@ -1,0 +1,11 @@
+{
+  "appId": "com.azkar.azkarin",
+  "appName": "Azkarin",
+  "webDir": "www",
+  "server": {
+    "url": "https://asieresquinas-collab.github.io/azkar-app/?app=1",
+    "cleartext": false,
+    "androidScheme": "https"
+  },
+  "android": { "allowMixedContent": false }
+}
