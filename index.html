@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v310';</script>
+<script>document.getElementById('version-tag').textContent='v311';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v310';
+var APP_VERSION = 'v311';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -13158,6 +13158,13 @@ async function doResetWithCode() {
     window._convRec = rec;
     try { rec.start(); } catch (e) {}
   };
+  // v311: Wake Lock — mantiene la pantalla encendida durante la conversacion
+  var _convWakeLock = null;
+  async function _convPedirWake() {
+    try { if ('wakeLock' in navigator && !_convWakeLock) { _convWakeLock = await navigator.wakeLock.request('screen'); _convWakeLock.addEventListener('release', function(){ _convWakeLock = null; }); } } catch (e) { console.warn('[Conv] wakeLock:', e.message); }
+  }
+  function _convLiberarWake() { try { if (_convWakeLock) { _convWakeLock.release(); _convWakeLock = null; } } catch (e) {} }
+  document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible' && window._azkarinConv && !_convWakeLock) _convPedirWake(); });
   window.chatbotConvToggle = function(forzar) {
     var ahora = Date.now();
     if (ahora - _convUltimoToggle < 800) return; // anti doble-toque
@@ -13170,10 +13177,12 @@ async function doResetWithCode() {
     if (btn) { btn.classList.toggle('activo', nuevo); btn.title = nuevo ? 'Conversación activa — toca para parar' : 'Modo conversación (manos libres)'; }
     if (nuevo) {
       chatTTSEnabled = true; try { localStorage.setItem('chatTTS', 'on'); } catch (e) {}
+      _convPedirWake();
       // El saludo se lee por TTS; el micro arranca SOLO cuando la voz termina
       // (lo reengancha el hook del TTS o el vigilante). Nunca a la vez.
-      addMsg('bot', '🎧 Modo conversación: cuando termine de hablar te escucho. Toca el auricular para parar.');
+      addMsg('bot', '🎧 Modo conversación activo: mantengo la pantalla encendida y, cuando termine de hablar, te escucho. Toca el auricular para parar. (Si bloqueas el móvil o sales de la app, Android corta el micro y se para — es un límite del sistema.)');
     } else {
+      _convLiberarWake();
       try { if (window._convRec) window._convRec.stop(); } catch (e) {}
       _convSesion = false;
       addMsg('bot', '🎧 Modo conversación apagado.');
