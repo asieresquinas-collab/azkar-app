@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v309';</script>
+<script>document.getElementById('version-tag').textContent='v310';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v309';
+var APP_VERSION = 'v310';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12459,7 +12459,7 @@ async function doResetWithCode() {
       headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (window._authToken || (typeof _authToken !== 'undefined' ? _authToken : '') || '') },
       body: JSON.stringify({ texto: texto, voz: localStorage.getItem('azkar_tts_voz_neuronal') || '' })
     };
-    try { if (AbortSignal && AbortSignal.timeout) opts.signal = AbortSignal.timeout(8000); } catch (e) {}
+    try { if (AbortSignal && AbortSignal.timeout) opts.signal = AbortSignal.timeout(18000); } catch (e) {}
     return fetch(RAILWAY_API + '/api/tts', opts).then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.blob();
@@ -12496,23 +12496,36 @@ async function doResetWithCode() {
   function _ttsPlayNext() {
     if (_ttsQueue.length === 0) {
       _ttsSpeaking = false;
-      // v282 MODO CONVERSACIÓN: terminó de hablar → volver a escuchar
+      window._ttsModo = null;        // reset: nueva respuesta elegira voz de nuevo
+      window._ttsReintento = {};
+      // v282 MODO CONVERSACION: termino de hablar, volver a escuchar
       if (window._azkarinConv) setTimeout(function() { if (window._azkarinConv && typeof window._convEscuchar === 'function') window._convEscuchar(); }, 450);
       return;
     }
     _ttsSpeaking = true;
     var chunk = _ttsQueue.shift();
-    // v288: primero la voz neuronal del servidor; si falla, voz del navegador
-    if (_vozNeuronalActiva()) {
-      // v290: pregenerar el SIGUIENTE trozo a la vez que este (cero huecos)
-      if (_ttsQueue.length > 0 && _prefetchTexto !== _ttsQueue[0]) {
-        _prefetchTexto = _ttsQueue[0];
-        _prefetchPromesa = _fetchTTS(_ttsQueue[0]).catch(function() { return null; });
-      }
-      _reproducirNeuronal(chunk, function() { _ttsPlayNext(); }, function() { _ttsHablarNavegador(chunk); });
+    // COHERENCIA v310: una sola voz por respuesta. Si ya se fijo navegador, todo navegador.
+    if (window._ttsModo === 'navegador' || !_vozNeuronalActiva()) {
+      _ttsHablarNavegador(chunk);
       return;
     }
-    _ttsHablarNavegador(chunk);
+    // Neuronal (o aun sin fijar): pregenerar los proximos para no dejar huecos
+    for (var _pk = 0; _pk < Math.min(2, _ttsQueue.length); _pk++) _prefetchTTS(_ttsQueue[_pk]);
+    _reproducirNeuronal(chunk, function() {
+      window._ttsModo = 'neuronal';  // sono neuronal -> toda la respuesta neuronal
+      _ttsPlayNext();
+    }, function() {
+      if (window._ttsModo === 'neuronal') {
+        // ya iba neuronal: NO meter la voz del navegador. Reintentar 1 vez y si no, saltar.
+        window._ttsReintento = window._ttsReintento || {};
+        if (!window._ttsReintento[chunk]) { window._ttsReintento[chunk] = 1; try { delete _ttsPrefetchMap[chunk]; } catch (e) {} _ttsQueue.unshift(chunk); }
+        _ttsPlayNext();
+      } else {
+        // el PRIMER trozo fallo -> toda la respuesta con la voz del navegador (coherente)
+        window._ttsModo = 'navegador';
+        _ttsHablarNavegador(chunk);
+      }
+    });
   }
 
   function _ttsHablarNavegador(chunk) {
