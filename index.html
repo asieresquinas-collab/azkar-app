@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v315';</script>
+<script>document.getElementById('version-tag').textContent='v316';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v315';
+var APP_VERSION = 'v316';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12771,10 +12771,62 @@ async function doResetWithCode() {
     chatTTSEnabled = _prev;
     addMsg('bot', '✅ Voz neuronal <b>' + voz + '</b> puesta. Si quieres otra, escribe /voz. (La primera frase tarda un poco en sonar.)');
   };
+  // ── Wake word "Azkarin": escucha en segundo plano (solo app nativa Android) ──
+  function _azkEsApp(){ try { return (typeof window.Capacitor !== 'undefined') || /[?&]app=1/.test(location.search||''); } catch(e){ return false; } }
+  function _azkWakePlugin(){ try { return (window.Capacitor && window.Capacitor.registerPlugin) ? window.Capacitor.registerPlugin('WakeWord') : null; } catch(e){ return null; } }
+  // La app nativa llama a esto cuando oye "Azkarin" con el movil bloqueado
+  window.__azkarinWakeFromNative = function(){
+    try {
+      var panel = document.getElementById('chatbot-panel');
+      var bubble = document.getElementById('chatbot-bubble');
+      if (panel && !panel.classList.contains('open')) panel.classList.add('open');
+      if (bubble) bubble.style.display = 'flex';
+      window._chatbotActivo = true;
+      if (typeof window.chatbotConvToggle === 'function') {
+        setTimeout(function(){ try { window.chatbotConvToggle(true); } catch(e){} }, 400);
+      }
+    } catch(e){}
+  };
+  window.azkarinEscuchaSet = function(on){
+    var p = _azkWakePlugin();
+    if (!_azkEsApp() || !p){
+      addMsg('bot','\u{1F442} La escucha por voz «Azkarin» solo funciona dentro de la <b>app de Azkarin</b> (Android), no en el navegador. Ábrela desde su icono.');
+      return;
+    }
+    if (on){
+      try { p.start(); } catch(e){}
+      localStorage.setItem('azkarinEscucha','on');
+      addMsg('bot','✅ <b>Escucha activada.</b> Aunque bloquees el móvil, di <b>«Azkarin»</b> y se abre para hablar contigo.<br><small>Verás una notificación fija «Azkarin te escucha»: es normal, así Android no la corta. Es la versión gratis, gasta algo de batería.</small>');
+    } else {
+      try { p.stop(); } catch(e){}
+      localStorage.setItem('azkarinEscucha','off');
+      addMsg('bot','\u{1F507} <b>Escucha desactivada.</b> Ya no escucho «Azkarin» en segundo plano.');
+    }
+  };
+  window.azkarinEscuchaToggle = function(){
+    if (!_azkEsApp()){
+      addMsg('bot','\u{1F442} <b>Escucha «Azkarin»</b><br>Esto solo va dentro de la <b>app de Azkarin</b> (Android), no en el navegador. Ábrela desde su icono y vuelve a escribir <b>/escucha</b>.');
+      return;
+    }
+    var on = localStorage.getItem('azkarinEscucha') === 'on';
+    var html = '\u{1F442} <b>Escucha «Azkarin» con el móvil bloqueado</b><br><br>';
+    html += 'Estado ahora: ' + (on ? '\u{1F7E2} <b>activada</b>' : '⚪ desactivada') + '<br><br>';
+    html += '<button onclick="azkarinEscuchaSet(true)" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F399}️ <b>Activar</b> — di «Azkarin» y se abre sola</button>';
+    html += '<button onclick="azkarinEscuchaSet(false)" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F507} <b>Desactivar</b></button>';
+    html += '<div style="background:#fff7e6;border:1px solid #f0d9a0;border-radius:8px;padding:9px 11px;margin:8px 0;font-size:12.5px;color:#7a5b1e;">⚠️ Para que no falle: Ajustes → Apps → Azkarin → Batería → <b>Sin restricciones</b>. Es la versión gratis: gasta algo de batería y a veces hay que repetir «Azkarin» claro y un poco alto.</div>';
+    addMsg('bot', html);
+  };
+  (function(){
+    function _autoEsc(){ try { if (_azkEsApp() && localStorage.getItem('azkarinEscucha')==='on'){ var p=_azkWakePlugin(); if(p){ try{p.start();}catch(e){} } } } catch(e){} }
+    if (document.readyState === 'complete') setTimeout(_autoEsc, 2500);
+    else window.addEventListener('load', function(){ setTimeout(_autoEsc, 2500); });
+  })();
+
   window.chatbotSend = async function() {
     try {
     var msg = inputEl.value.trim();
     if (msg && /^\/voz\b/i.test(msg)) { inputEl.value = ''; inputEl.style.height = 'auto'; try { azkarinSelectorVoz(); } catch(e) { addMsg('bot', 'No pude abrir el selector de voz: ' + e.message); } return; }
+    if (msg && /^\/escucha\b/i.test(msg)) { inputEl.value=''; inputEl.style.height='auto'; try { azkarinEscuchaToggle(); } catch(e){ addMsg('bot','No pude abrir la escucha: '+e.message); } return; }
     var fotoEnviar = pendingFoto;
     var framesEnviar = window._pendingFrames;
     var framesTipo = window._pendingFramesTipo || 'video';
