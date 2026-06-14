@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v304';</script>
+<script>document.getElementById('version-tag').textContent='v305';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v304';
+var APP_VERSION = 'v305';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12456,7 +12456,7 @@ async function doResetWithCode() {
     var opts = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (window._authToken || (typeof _authToken !== 'undefined' ? _authToken : '') || '') },
-      body: JSON.stringify({ texto: texto })
+      body: JSON.stringify({ texto: texto, voz: localStorage.getItem('azkar_tts_voz_neuronal') || '' })
     };
     try { if (AbortSignal && AbortSignal.timeout) opts.signal = AbortSignal.timeout(8000); } catch (e) {}
     return fetch(RAILWAY_API + '/api/tts', opts).then(function(r) {
@@ -12651,22 +12651,39 @@ async function doResetWithCode() {
     inp.value = cmd;
     if (typeof window.chatbotSend === 'function') window.chatbotSend();
   };
-  // ── v304: comando /voz — elegir la voz de Azkarin (voces del navegador + neuronal) ──
+  // ── v305: comando /voz — voces neuronales (cambian en movil) + voces del dispositivo ──
   function _vozEsc(s){ return String(s==null?'':s).replace(/[<>&"]/g, function(c){ return ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'})[c]; }); }
+  window.VOCES_NEURONALES = [
+    { id:'Orus', etq:'Orus — firme y profesional' },
+    { id:'Charon', etq:'Charon — grave y serio' },
+    { id:'Puck', etq:'Puck — animada y cercana' },
+    { id:'Fenrir', etq:'Fenrir — energica' },
+    { id:'Kore', etq:'Kore — femenina, clara' },
+    { id:'Aoede', etq:'Aoede — femenina, suave' }
+  ];
   window.azkarinSelectorVoz = function() {
     var todas = (window._vocesTTS && window._vocesTTS.length) ? window._vocesTTS : (('speechSynthesis' in window) ? (speechSynthesis.getVoices() || []) : []);
     var es = todas.filter(function(v){ return v && v.lang && v.lang.toLowerCase().indexOf('es') === 0; });
     if (!es.length) es = todas;
     window._vocesVozSel = es;
-    var actual = localStorage.getItem('azkar_tts_voz') || '';
+    var actualNav = localStorage.getItem('azkar_tts_voz') || '';
     var neuronal = localStorage.getItem('azkarinVozNeuronal') === 'on';
-    if (!es.length) { addMsg('bot', '🎙️ Tu dispositivo no me da voces ahora mismo. Cierra y abre la app y prueba otra vez con /voz.'); return; }
+    var vozNeu = localStorage.getItem('azkar_tts_voz_neuronal') || 'Orus';
     var html = '🎙️ <b>Elige mi voz</b> — toca una para probarla y dejarla puesta:<br><br>';
-    es.forEach(function(v, i){
-      var puesta = (!neuronal && (v.name === actual || (!actual && i === 0)));
-      html += '<button onclick="azkarinSetVozIdx(' + i + ')" style="display:block;width:100%;text-align:left;margin:5px 0;padding:10px 12px;border:1px solid #c8d0db;border-radius:9px;background:' + (puesta ? '#D6E4F7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:14px;color:#1c2530;">' + (puesta ? '✅ ' : '🔊 ') + _vozEsc(v.name) + ' <small style="color:#7a8aa0;">(' + _vozEsc(v.lang) + ')</small></button>';
+    html += '<b>🤖 Voces neuronales</b> <small style="color:#7a8aa0;">(suenan natural y SI cambian en el movil; la 1a frase tarda un poco)</small><br>';
+    window.VOCES_NEURONALES.forEach(function(v){
+      var p = (neuronal && vozNeu === v.id);
+      html += '<button onclick="azkarinSetVozNeuronal(\'' + v.id + '\')" style="display:block;width:100%;text-align:left;margin:5px 0;padding:10px 12px;border:1px solid #c8a0d0;border-radius:9px;background:' + (p ? '#efe0f7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:14px;color:#1c2530;">' + (p ? '✅ ' : '🤖 ') + v.etq + '</button>';
     });
-    html += '<button onclick="azkarinVozNeuronalSet(true)" style="display:block;width:100%;text-align:left;margin:10px 0 4px;padding:10px 12px;border:1px solid #c8a0d0;border-radius:9px;background:' + (neuronal ? '#efe0f7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:14px;color:#1c2530;">' + (neuronal ? '✅ ' : '🤖 ') + 'Voz neuronal (más natural, va un poco más lenta)</button>';
+    html += '<br><b>📱 Voces del dispositivo</b> <small style="color:#7a8aa0;">(en el movil Android puede que NO cambien; en ordenador si)</small><br>';
+    if (!es.length) {
+      html += '<small style="color:#7a8aa0;">Tu dispositivo no me da voces propias ahora mismo.</small>';
+    } else {
+      es.forEach(function(v, i){
+        var p = (!neuronal && (v.name === actualNav || (!actualNav && i === 0)));
+        html += '<button onclick="azkarinSetVozIdx(' + i + ')" style="display:block;width:100%;text-align:left;margin:5px 0;padding:10px 12px;border:1px solid #c8d0db;border-radius:9px;background:' + (p ? '#D6E4F7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:14px;color:#1c2530;">' + (p ? '✅ ' : '🔊 ') + _vozEsc(v.name) + ' <small style="color:#7a8aa0;">(' + _vozEsc(v.lang) + ')</small></button>';
+      });
+    }
     addMsg('bot', html);
   };
   window.azkarinSetVozIdx = function(i) {
@@ -12678,17 +12695,17 @@ async function doResetWithCode() {
     var _prev = chatTTSEnabled; chatTTSEnabled = true;
     try { chatSpeak('Hola Asier, soy Azkarin. Esta es mi nueva voz.'); } catch(e){}
     chatTTSEnabled = _prev;
-    addMsg('bot', '✅ Voz cambiada a <b>' + _vozEsc(v.name) + '</b>. Si no te gusta, escribe /voz otra vez y prueba otra.');
+    addMsg('bot', '✅ Voz cambiada a <b>' + _vozEsc(v.name) + '</b>. (En el movil quiza no la notes; usa una de las 🤖 neuronales para que cambie seguro.)');
   };
-  window.azkarinVozNeuronalSet = function(on) {
-    localStorage.setItem('azkarinVozNeuronal', on ? 'on' : 'off');
+  window.azkarinSetVozNeuronal = function(voz) {
+    localStorage.setItem('azkarinVozNeuronal', 'on');
+    localStorage.setItem('azkar_tts_voz_neuronal', voz);
     try { if (typeof chatSpeakStop === 'function') chatSpeakStop(); } catch(e){}
     var _prev = chatTTSEnabled; chatTTSEnabled = true;
-    try { chatSpeak(on ? 'Hola Asier, esta es mi voz neuronal. Suena más natural pero tarda un poco más.' : 'Vale, vuelvo a la voz del navegador.'); } catch(e){}
+    try { chatSpeak('Hola Asier, soy Azkarin con la voz ' + voz + '. Que tal sueno asi?'); } catch(e){}
     chatTTSEnabled = _prev;
-    addMsg('bot', on ? '✅ Voz neuronal activada. Más natural, pero tarda un pelín más en arrancar.' : '✅ Voz del navegador activada.');
+    addMsg('bot', '✅ Voz neuronal <b>' + voz + '</b> puesta. Si quieres otra, escribe /voz. (La primera frase tarda un poco en sonar.)');
   };
-
   window.chatbotSend = async function() {
     try {
     var msg = inputEl.value.trim();
