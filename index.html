@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v308';</script>
+<script>document.getElementById('version-tag').textContent='v309';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v308';
+var APP_VERSION = 'v309';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12688,27 +12688,38 @@ async function doResetWithCode() {
     var actualNav = localStorage.getItem('azkar_tts_voz') || '';
     var neuronal = localStorage.getItem('azkarinVozNeuronal') === 'on';
     var vozNeu = localStorage.getItem('azkar_tts_voz_neuronal') || 'Orus';
-    var html = '🎙️ <b>Elige mi voz</b> — toca una para probarla y dejarla puesta:<br><br>';
-    html += '<b>🤖 Voces neuronales</b> <small style="color:#7a8aa0;">(suenan natural y SI cambian en el movil; la 1a frase tarda un poco)</small><br>';
+    var html = '🎙️ <b>Elige cómo quiero hablarte</b><br><br>';
+    html += '<div style="font-weight:800;color:#1B4F8A;margin:2px 0;">⚡ Voz instantánea (sin esperas) — la mejor para conversar</div>';
+    html += '<button onclick="azkarinVozInstantanea()" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:2px solid #1B4F8A;border-radius:10px;background:' + (!neuronal ? '#D6E4F7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;color:#1B4F8A;">' + (!neuronal ? '✅ ' : '⚡ ') + 'Usar la voz instantánea de mi móvil</button>';
+    if (es.length > 1) {
+      html += '<small style="color:#7a8aa0;display:block;margin:2px 0;">Y si tu móvil lo permite, prueba estas (siguen siendo instantáneas):</small>';
+      es.forEach(function(v, i){
+        var p = (!neuronal && v.name === actualNav);
+        html += '<button onclick="azkarinSetVozIdx(' + i + ')" style="display:block;width:100%;text-align:left;margin:4px 0;padding:9px 12px;border:1px solid #c8d0db;border-radius:9px;background:' + (p ? '#D6E4F7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:14px;color:#1c2530;">' + (p ? '✅ ' : '🔊 ') + _vozEsc(v.name) + '</button>';
+      });
+    }
+    html += '<div style="background:#eef4fb;border:1px solid #c8d8ec;border-radius:8px;padding:9px 11px;margin:8px 0;font-size:12.5px;color:#33506e;">📱 <b>¿Quieres OTRA voz instantánea?</b> Cámbiala una vez en tu móvil: <b>Ajustes → Administración general → Idioma → Texto a voz</b>. Elige el motor <b>Google</b> y, en <b>Ajustes de voz</b>, la voz que más te guste. La app la cogerá al instante y sin esperas.</div>';
+    html += '<br><div style="font-weight:800;color:#7a4b9a;margin:6px 0 2px;">🤖 Voces distintas (más naturales, pero con ~1 seg de espera)</div>';
     var _gruposVoz = [['g','🎩 Serias y graves'],['a','⚡ Animadas'],['s','🌸 Suaves y calidas']];
     _gruposVoz.forEach(function(g){
-      html += '<div style="font-weight:700;margin:9px 0 2px;color:#5b4b7a;">' + g[1] + '</div>';
+      html += '<div style="font-weight:700;margin:8px 0 2px;color:#5b4b7a;">' + g[1] + '</div>';
       window.VOCES_NEURONALES.filter(function(v){ return v.cat === g[0]; }).forEach(function(v){
         var p = (neuronal && vozNeu === v.id);
         html += '<button onclick="azkarinSetVozNeuronal(\'' + v.id + '\')" style="display:block;width:100%;text-align:left;margin:4px 0;padding:9px 12px;border:1px solid #c8a0d0;border-radius:9px;background:' + (p ? '#efe0f7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:14px;color:#1c2530;">' + (p ? '✅ ' : '🤖 ') + v.etq + '</button>';
       });
     });
-    html += '<br><b>📱 Voces del dispositivo</b> <small style="color:#7a8aa0;">(en el movil Android puede que NO cambien; en ordenador si)</small><br>';
-    if (!es.length) {
-      html += '<small style="color:#7a8aa0;">Tu dispositivo no me da voces propias ahora mismo.</small>';
-    } else {
-      es.forEach(function(v, i){
-        var p = (!neuronal && (v.name === actualNav || (!actualNav && i === 0)));
-        html += '<button onclick="azkarinSetVozIdx(' + i + ')" style="display:block;width:100%;text-align:left;margin:5px 0;padding:10px 12px;border:1px solid #c8d0db;border-radius:9px;background:' + (p ? '#D6E4F7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:14px;color:#1c2530;">' + (p ? '✅ ' : '🔊 ') + _vozEsc(v.name) + ' <small style="color:#7a8aa0;">(' + _vozEsc(v.lang) + ')</small></button>';
-      });
-    }
     addMsg('bot', html);
   };
+  window.azkarinVozInstantanea = function() {
+    localStorage.setItem('azkarinVozNeuronal', 'off');
+    try { if (typeof chatSpeakStop === 'function') chatSpeakStop(); } catch(e){}
+    try { if (window._audioNeuronal) window._audioNeuronal.pause(); } catch(e){}
+    var _prev = chatTTSEnabled; chatTTSEnabled = true;
+    try { chatSpeak('Listo, vuelvo a la voz instantánea. Así hablo al momento, sin esperas.'); } catch(e){}
+    chatTTSEnabled = _prev;
+    addMsg('bot', '✅ <b>Voz instantánea activada</b> — sin esperas, salta al momento como antes. (Para cambiarla por otra instantánea, mira el recuadro azul de arriba: se hace en los ajustes del móvil.)');
+  };
+
   window.azkarinSetVozIdx = function(i) {
     var v = (window._vocesVozSel || [])[i];
     if (!v) return;
