@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v303';</script>
+<script>document.getElementById('version-tag').textContent='v304';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v303';
+var APP_VERSION = 'v304';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12651,9 +12651,48 @@ async function doResetWithCode() {
     inp.value = cmd;
     if (typeof window.chatbotSend === 'function') window.chatbotSend();
   };
+  // ── v304: comando /voz — elegir la voz de Azkarin (voces del navegador + neuronal) ──
+  function _vozEsc(s){ return String(s==null?'':s).replace(/[<>&"]/g, function(c){ return ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'})[c]; }); }
+  window.azkarinSelectorVoz = function() {
+    var todas = (window._vocesTTS && window._vocesTTS.length) ? window._vocesTTS : (('speechSynthesis' in window) ? (speechSynthesis.getVoices() || []) : []);
+    var es = todas.filter(function(v){ return v && v.lang && v.lang.toLowerCase().indexOf('es') === 0; });
+    if (!es.length) es = todas;
+    window._vocesVozSel = es;
+    var actual = localStorage.getItem('azkar_tts_voz') || '';
+    var neuronal = localStorage.getItem('azkarinVozNeuronal') === 'on';
+    if (!es.length) { addMsg('bot', '🎙️ Tu dispositivo no me da voces ahora mismo. Cierra y abre la app y prueba otra vez con /voz.'); return; }
+    var html = '🎙️ <b>Elige mi voz</b> — toca una para probarla y dejarla puesta:<br><br>';
+    es.forEach(function(v, i){
+      var puesta = (!neuronal && (v.name === actual || (!actual && i === 0)));
+      html += '<button onclick="azkarinSetVozIdx(' + i + ')" style="display:block;width:100%;text-align:left;margin:5px 0;padding:10px 12px;border:1px solid #c8d0db;border-radius:9px;background:' + (puesta ? '#D6E4F7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:14px;color:#1c2530;">' + (puesta ? '✅ ' : '🔊 ') + _vozEsc(v.name) + ' <small style="color:#7a8aa0;">(' + _vozEsc(v.lang) + ')</small></button>';
+    });
+    html += '<button onclick="azkarinVozNeuronalSet(true)" style="display:block;width:100%;text-align:left;margin:10px 0 4px;padding:10px 12px;border:1px solid #c8a0d0;border-radius:9px;background:' + (neuronal ? '#efe0f7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:14px;color:#1c2530;">' + (neuronal ? '✅ ' : '🤖 ') + 'Voz neuronal (más natural, va un poco más lenta)</button>';
+    addMsg('bot', html);
+  };
+  window.azkarinSetVozIdx = function(i) {
+    var v = (window._vocesVozSel || [])[i];
+    if (!v) return;
+    localStorage.setItem('azkar_tts_voz', v.name);
+    localStorage.setItem('azkarinVozNeuronal', 'off');
+    try { if (typeof chatSpeakStop === 'function') chatSpeakStop(); } catch(e){}
+    var _prev = chatTTSEnabled; chatTTSEnabled = true;
+    try { chatSpeak('Hola Asier, soy Azkarin. Esta es mi nueva voz.'); } catch(e){}
+    chatTTSEnabled = _prev;
+    addMsg('bot', '✅ Voz cambiada a <b>' + _vozEsc(v.name) + '</b>. Si no te gusta, escribe /voz otra vez y prueba otra.');
+  };
+  window.azkarinVozNeuronalSet = function(on) {
+    localStorage.setItem('azkarinVozNeuronal', on ? 'on' : 'off');
+    try { if (typeof chatSpeakStop === 'function') chatSpeakStop(); } catch(e){}
+    var _prev = chatTTSEnabled; chatTTSEnabled = true;
+    try { chatSpeak(on ? 'Hola Asier, esta es mi voz neuronal. Suena más natural pero tarda un poco más.' : 'Vale, vuelvo a la voz del navegador.'); } catch(e){}
+    chatTTSEnabled = _prev;
+    addMsg('bot', on ? '✅ Voz neuronal activada. Más natural, pero tarda un pelín más en arrancar.' : '✅ Voz del navegador activada.');
+  };
+
   window.chatbotSend = async function() {
     try {
     var msg = inputEl.value.trim();
+    if (msg && /^\/voz\b/i.test(msg)) { inputEl.value = ''; inputEl.style.height = 'auto'; try { azkarinSelectorVoz(); } catch(e) { addMsg('bot', 'No pude abrir el selector de voz: ' + e.message); } return; }
     var fotoEnviar = pendingFoto;
     var framesEnviar = window._pendingFrames;
     var framesTipo = window._pendingFramesTipo || 'video';
