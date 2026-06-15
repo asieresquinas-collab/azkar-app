@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v325';</script>
+<script>document.getElementById('version-tag').textContent='v326';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v325';
+var APP_VERSION = 'v326';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -13344,12 +13344,14 @@ async function doResetWithCode() {
   function addMsg(type, text) {
     var div = document.createElement('div');
     div.className = 'chat-msg ' + type;
+    var _h = new Date().toLocaleTimeString('es-ES', { hour12:false }); div.setAttribute('data-hora', _h); div.setAttribute('data-rol', type);
     // v212: Mensajes del bot siempre como HTML (soporta markdown y botones inyectados)
     if (type === 'bot') {
       div.innerHTML = chatMarkdown(text);
     } else {
       div.textContent = text;
     }
+    try { var _hs = document.createElement('div'); _hs.className='chat-hora'; _hs.textContent=_h; _hs.style.cssText='font-size:10px;color:#9aa7b8;margin-top:2px;opacity:.85;'; div.appendChild(_hs); } catch(e){}
     msgsDiv.appendChild(div);
     msgsDiv.scrollTop = msgsDiv.scrollHeight;
     // Leer en voz alta si es respuesta del bot (solo texto limpio)
@@ -13714,10 +13716,20 @@ async function doResetWithCode() {
       var _limpiaCopia = function(x){ return String(x==null?'':x)
         .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,'')
         .replace(/[\u0400-\u052F\u0590-\u05FF\u0600-\u06FF\u3000-\u9FFF\uAC00-\uD7AF\uFF00-\uFFEF]/g,''); };
-      var txt = (chatHistorial || []).map(function(m) {
-        var c = (typeof m.content === 'string') ? m.content : JSON.stringify(m.content);
-        return (m.role === 'user' ? 'YO: ' : 'AZKARIN: ') + _limpiaCopia(c);
-      }).join('\n\n');
+      var _nodes = document.querySelectorAll('#chatbot-msgs .chat-msg');
+      var _lineas = [];
+      for (var _n = 0; _n < _nodes.length; _n++) {
+        var d = _nodes[_n];
+        var rol = d.getAttribute('data-rol') || (d.classList.contains('user') ? 'user' : 'bot');
+        var hora = d.getAttribute('data-hora') || '';
+        var clone = d.cloneNode(true);
+        var quitar = clone.querySelectorAll('.chat-hora, .chat-tts-repeat, button');
+        for (var _q = 0; _q < quitar.length; _q++) quitar[_q].remove();
+        var c = _limpiaCopia(clone.textContent || '').replace(/\s+/g,' ').trim();
+        if (!c) continue;
+        _lineas.push((hora ? '[' + hora + '] ' : '') + (rol === 'user' ? 'YO: ' : 'AZKARIN: ') + c);
+      }
+      var txt = _lineas.join('\n\n');
       if (!txt.trim()) { alert('Aún no hay conversación que copiar.'); return; }
       txt = '=== CONVERSACIÓN AZKARIN · ' + new Date().toLocaleString('es-ES') + ' · APP ' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?') + ' ===\n\n' + txt;
       var nMsg = (chatHistorial || []).length;
