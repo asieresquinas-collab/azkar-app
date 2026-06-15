@@ -16,6 +16,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(WakeWordPlugin.class);
+        registerPlugin(WhatsAppBizPlugin.class);
         super.onCreate(savedInstanceState);
         handleWake(getIntent());
     }
