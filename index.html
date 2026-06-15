@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v323';</script>
+<script>document.getElementById('version-tag').textContent='v324';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v323';
+var APP_VERSION = 'v324';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -13826,5 +13826,45 @@ async function doResetWithCode() {
   setTimeout(function() { window._azkarinQuickBtn(); }, 3000);
 })();
 </script>
+<script>
+// Autocompletado de muebles SOLO en la app (el <datalist> va mal en la WebView de Android).
+// En el navegador NO se activa: ahí el datalist nativo ya funciona bien.
+(function(){
+  function esApp(){ try { return (typeof window.Capacitor !== 'undefined') || /[?&]app=1/.test(location.search||''); } catch(e){ return false; } }
+  if (!esApp()) return;
+  var box = document.createElement('div');
+  box.id = 'ac-muebles';
+  box.style.cssText = 'position:fixed;z-index:99999;background:#fff;border:1px solid #c8d0db;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);max-height:240px;overflow-y:auto;display:none;font-family:inherit;font-size:14px;-webkit-overflow-scrolling:touch;';
+  document.body.appendChild(box);
+  var actual = null;
+  function opciones(){ var dl = document.getElementById('dl'); return dl ? Array.prototype.map.call(dl.options, function(o){ return o.value; }) : []; }
+  function pintar(input){
+    var q = (input.value||'').toLowerCase().trim();
+    if (!q){ box.style.display='none'; return; }
+    var ops = opciones().filter(function(v){ return v.toLowerCase().indexOf(q) >= 0; }).slice(0, 8);
+    if (!ops.length){ box.style.display='none'; return; }
+    box.innerHTML = ops.map(function(v){ return '<div class="ac-it" style="padding:12px 13px;border-bottom:1px solid #eef1f5;cursor:pointer">'+v.replace(/</g,'&lt;')+'</div>'; }).join('');
+    var r = input.getBoundingClientRect();
+    box.style.left = r.left+'px'; box.style.top = (r.bottom+2)+'px'; box.style.width = Math.max(r.width, 170)+'px';
+    box.style.display = 'block'; actual = input;
+  }
+  function esConcepto(t){ return t && t.tagName==='INPUT' && (t.getAttribute('list')==='dl' || t.getAttribute('data-ac')==='dl'); }
+  document.addEventListener('focusin', function(e){ if (esConcepto(e.target)){ e.target.setAttribute('data-ac','dl'); e.target.removeAttribute('list'); } }, true);
+  document.addEventListener('input', function(e){ if (esConcepto(e.target) || e.target===actual){ if(esConcepto(e.target)){ e.target.setAttribute('data-ac','dl'); e.target.removeAttribute('list'); } pintar(e.target); } }, true);
+  box.addEventListener('mousedown', function(e){
+    var it = e.target; while (it && it!==box && !(it.className && String(it.className).indexOf('ac-it')>=0)) it = it.parentNode;
+    if (!it || it===box || !actual) return;
+    e.preventDefault();
+    actual.value = it.textContent;
+    box.style.display='none';
+    var _inp = actual; actual = null;
+    try { if (typeof CA==='function') CA(); } catch(_){}
+    try { _inp.blur(); } catch(_){}
+  });
+  document.addEventListener('click', function(e){ if (e.target!==actual && !box.contains(e.target)) box.style.display='none'; }, true);
+  document.addEventListener('scroll', function(){ if (box.style.display==='block' && actual){ var r=actual.getBoundingClientRect(); box.style.left=r.left+'px'; box.style.top=(r.bottom+2)+'px'; } }, true);
+})();
+</script>
+
 </body>
 </html>
