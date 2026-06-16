@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v327';</script>
+<script>document.getElementById('version-tag').textContent='v328';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v327';
+var APP_VERSION = 'v328';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12405,7 +12405,7 @@ async function doResetWithCode() {
       window._hablandoNativo = true; window._ultimoHabla = clean.toLowerCase();
       try { var _SRc = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition; if (_SRc) { try { _SRc.stop(); } catch(e){} } } catch (e) {}
       try { await TTS.stop(); } catch (e) {}
-      try { await TTS.speak({ text: clean.slice(0, 1500), lang: 'es-ES', rate: 1.0, pitch: 1.0, volume: 1.0, category: 'playback' }); } catch (e) {}
+      try { var _ttsRate = parseFloat(localStorage.getItem('chatTTSRate')); if (!(_ttsRate >= 0.5 && _ttsRate <= 2)) _ttsRate = 1.0; await TTS.speak({ text: clean.slice(0, 1500), lang: 'es-ES', rate: _ttsRate, pitch: 1.0, volume: 1.0, category: 'playback' }); } catch (e) {}
       window._hablandoNativo = false;
       if (window._azkarinConv && typeof window._convEscuchar === 'function') setTimeout(function(){ if (window._azkarinConv && !window._hablandoNativo) window._convEscuchar(); }, 500);
     } catch (e) { console.warn('[TTSNativo]', e && e.message); }
