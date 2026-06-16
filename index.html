@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v329';</script>
+<script>document.getElementById('version-tag').textContent='v330';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v329';
+var APP_VERSION = 'v330';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -11502,7 +11502,10 @@ async function cargarOfertasAutonomos() {
     var html = '';
     data.ofertas.forEach(function(o) {
       html += '<div style="border:1px solid var(--gb);border-radius:6px;padding:12px;margin-bottom:10px;background:#fafafa">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">';
       html += '<div style="font-weight:700;color:var(--az);font-size:13px">Ref ' + o.presupuestoRef + ' — ' + o.origen + ' → ' + o.destino + '</div>';
+      html += '<button onclick="archivarTrabajoAutonomos(\'' + o.presupuestoRef + '\')" style="flex-shrink:0;padding:4px 9px;font-size:10px;background:#fff;border:1px solid #c0392b;color:#c0392b;border-radius:4px;cursor:pointer;font-weight:700" title="Quitar del portal (se guarda para estadisticas)">🗑️ Archivar</button>';
+      html += '</div>';
       html += '<div style="font-size:11px;color:#888;margin-bottom:8px">Fecha: ' + (o.fecha || 'Sin fecha') + ' · Estado: ' + o.estado + '</div>';
 
       // v158: Galería de fotos desplegable
@@ -11585,6 +11588,25 @@ function actualizarIvaAutonomo(input, key) {
   if (ivaSpan) {
     var precioBase = parseFloat(input.value) || 0;
     ivaSpan.textContent = (precioBase * 1.21).toFixed(0) + ' €';
+  }
+}
+
+async function archivarTrabajoAutonomos(ref) {
+  if (!confirm('¿Archivar el trabajo ' + ref + '?\n\nDesaparecerá del portal de autónomos, pero se guardará para las estadísticas.')) return;
+  try {
+    var res = await fetch(RAILWAY_API + '/api/autonomos/archivar', {
+      method: 'POST', headers: apiHeaders(),
+      body: JSON.stringify({ ref: ref })
+    });
+    var data = await res.json();
+    if (data.ok) {
+      showSyncStatus('✅ Trabajo ' + ref + ' archivado (guardado para estadísticas)', 3000);
+      cargarOfertasAutonomos();
+    } else {
+      alert('No se pudo archivar: ' + (data.error || '?'));
+    }
+  } catch (e) {
+    alert('Error: ' + e.message);
   }
 }
 
