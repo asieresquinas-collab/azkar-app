@@ -2553,7 +2553,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v326';</script>
+<script>document.getElementById('version-tag').textContent='v327';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2665,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v326';
+var APP_VERSION = 'v327';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12389,6 +12389,8 @@ async function doResetWithCode() {
   function chatSpeakStop() {
     if ('speechSynthesis' in window) speechSynthesis.cancel();
     try { if (_audioNeuronal) { _audioNeuronal.onended = null; _audioNeuronal.pause(); _audioNeuronal.currentTime = 0; } } catch (e) {}
+    try { if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech) window.Capacitor.Plugins.TextToSpeech.stop(); } catch (e) {}
+    window._hablandoNativo = false;
     _ttsQueue = [];
     _ttsSpeaking = false;
   }
@@ -13166,6 +13168,7 @@ async function doResetWithCode() {
     } catch (e) { console.warn('[MicNativo]', e && e.message); return null; }
   }
   window.chatbotMicToggle = function() {
+    try { if (typeof chatSpeakStop === 'function') chatSpeakStop(); } catch(e){}
     if (_esAppNativa() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
       var _mb = document.getElementById('chatbot-mic');
       if (_mb) { _mb.classList.add('recording'); _mb.innerHTML = '⏹'; }
@@ -13878,5 +13881,26 @@ async function doResetWithCode() {
 })();
 </script>
 
+<script>
+// Botón "Parar" la voz de Azkarin: cortar el audio al instante, sin esperar a que acabe.
+(function(){
+  function _hablando(){ return (window._hablandoNativo === true) || (window._ttsSpeaking === true); }
+  var b = document.createElement('button');
+  b.id = 'azk-stop-voz';
+  b.textContent = '\u23F9 Parar';
+  b.style.cssText = 'display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:96px;z-index:100000;background:#c0392b;color:#fff;border:none;border-radius:22px;padding:11px 26px;font-size:15px;font-weight:800;box-shadow:0 4px 16px rgba(0,0,0,.35);cursor:pointer;font-family:inherit;';
+  b.onclick = function(){
+    try { if (typeof chatSpeakStop === 'function') chatSpeakStop(); } catch(e){}
+    try { if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech) window.Capacitor.Plugins.TextToSpeech.stop(); } catch(e){}
+    window._hablandoNativo = false; b.style.display='none';
+  };
+  document.body.appendChild(b);
+  setInterval(function(){
+    var panel = document.getElementById('chatbot-panel');
+    var abierto = panel && panel.classList.contains('open');
+    b.style.display = (_hablando() && abierto) ? 'block' : 'none';
+  }, 300);
+})();
+</script>
 </body>
 </html>
