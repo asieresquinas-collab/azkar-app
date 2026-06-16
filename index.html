@@ -798,6 +798,8 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 <div>
 <h3 style='color:var(--az);font-size:14px;margin-bottom:10px'>💰 Precios recibidos</h3>
 <button onclick='cargarOfertasAutonomos()' style='padding:6px 12px;background:var(--az2);color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;margin-bottom:8px'>Actualizar</button>
+<button onclick="verArchivadosAutonomos()" style="padding:6px 12px;font-size:12px;background:#fff;border:1px solid #1B4F8A;color:#1B4F8A;border-radius:6px;cursor:pointer;font-weight:700;margin-bottom:10px">📁 Ver archivados</button>
+<div id="archivados-autonomos" style="display:none;margin-bottom:14px"></div>
 <div id='ofertas-autonomos' style='font-size:12px;color:#888'>Pulsa "Actualizar" para ver ofertas</div>
 </div>
 
@@ -879,6 +881,10 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     <div class='ayuda-index-item' onclick='ayudaIr("sec-autonomos")'>
       <span class='idx-icon'>🚛</span>
       <span class='idx-title'>Autónomos</span>
+    </div>
+    <div class='ayuda-index-item' onclick='ayudaIr("sec-portal-autonomos")'>
+      <span class='idx-icon'>🔁</span>
+      <span class='idx-title'>Portal autónomos (vuelta)</span>
     </div>
     <div class='ayuda-index-item' onclick='ayudaIr("sec-liquidacion")'>
       <span class='idx-icon'>🧾</span>
@@ -1040,6 +1046,37 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>En el presupuesto al cliente, pon en observaciones:</p>
       <p style='background:#f7f9fc;padding:10px;border-radius:6px;font-size:12px;border-left:3px solid var(--az);margin:8px 0'><em>"Precio basado en los artículos mencionados en el presupuesto, dando el precio mínimo por viaje. En caso de que sean menos cosas el precio no variará, y en caso de ser más cosas se sumarán al presupuesto bajo las tablas de precio de Azkar Mudanzas."</em></p>
+    </div>
+  </div>
+
+  <!-- SECCIÓN: PORTAL DE AUTÓNOMOS (CARGAS DE VUELTA) -->
+  <div class='ayuda-section' id='sec-portal-autonomos'>
+    <h3 onclick='ayudaToggle(this)'>PORTAL DE AUTÓNOMOS (CARGAS DE VUELTA)</h3>
+    <div class='ayuda-content'>
+      <p><strong>¿Qué es?</strong> Es el portal donde publicamos trabajos para que transportistas autónomos echen precio. Sirve para <strong>cargas de vuelta y subcontratación</strong>: cuando nos interesa que el porte lo haga un autónomo en lugar de un camión nuestro.</p>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>1) Publicar un trabajo</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Desde la ficha del presupuesto, pulsa <strong>"Publicar trabajo"</strong>. Se envía el origen, el destino, la fecha y el inventario al portal.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Los autónomos reciben un aviso y mandan su precio para ese trabajo.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>2) Ver ofertas y adjudicar</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En la sección de <strong>Autónomos</strong> se ven los trabajos publicados con los precios de cada autónomo. <strong>El más barato aparece resaltado.</strong></div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Pulsa <strong>"Adjudicar"</strong> para asignárselo a uno de ellos. Al adjudicar se genera el PDF del cliente.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>3) Archivar un trabajo</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En cada trabajo hay un botón 🗑️ <strong>"Archivar"</strong>. Al pulsarlo, el trabajo se quita del portal (los autónomos dejan de verlo) pero <strong>se guarda</strong> para las estadísticas. Es útil para que el portal no se llene.</div></div>
+      <div class='ayuda-warn'>Ojo: al archivar, el trabajo <strong>desaparece del portal</strong> y los autónomos ya no podrán mandar precio. No se borra: queda guardado para las estadísticas.</div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>4) Ver archivados</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con el botón 📁 <strong>"Ver archivados"</strong> (arriba de la lista de precios) se muestra la lista de todos los trabajos que se quitaron del portal, con su referencia, origen/destino, estado y precio.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>5) Auto-archivo</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando llega la <strong>fecha</strong> del trabajo y sigue en el portal, <strong>se archiva solo automáticamente</strong> (la app lo revisa cada pocas horas). Así no hay que limpiar los trabajos viejos a mano.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>6) Estadísticas</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Se le piden al asistente <strong>Azkarin</strong> ("dame las estadísticas de autónomos"). Cuentan <strong>todos</strong> los trabajos (activos + archivados): total, adjudicados, precio medio, facturación estimada, destinos y orígenes más frecuentes y el reparto por mes.</div></div>
+
+      <div class='ayuda-tip'>Desde el chat de <strong>Azkarin</strong> también puedes pedir cosas como: "archiva el trabajo 6178", "enséñame los archivados" o "cuál es el último trabajo publicado".</div>
     </div>
   </div>
 
@@ -2553,7 +2590,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v330';</script>
+<script>document.getElementById('version-tag').textContent='v331';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2665,7 +2702,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v330';
+var APP_VERSION = 'v331';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -11608,6 +11645,29 @@ async function archivarTrabajoAutonomos(ref) {
   } catch (e) {
     alert('Error: ' + e.message);
   }
+}
+
+async function verArchivadosAutonomos() {
+  var cont = document.getElementById('archivados-autonomos');
+  if (cont.style.display === 'block') { cont.style.display = 'none'; return; }
+  cont.style.display = 'block';
+  cont.innerHTML = '<span style="color:#888">Cargando archivados...</span>';
+  try {
+    var res = await fetch(RAILWAY_API + '/api/autonomos/archivados', { headers: apiHeaders() });
+    var data = await res.json();
+    if (!data.archivados || !data.archivados.length) { cont.innerHTML = '<div style="color:#888;font-size:12px;padding:8px">No hay trabajos archivados todavía.</div>'; return; }
+    var html = '<div style="font-weight:700;color:#1B4F8A;font-size:13px;margin-bottom:8px">📁 Trabajos archivados (' + data.archivados.length + ')</div>';
+    data.archivados.forEach(function(r){
+      var precio = (r.precio_adjudicado != null ? r.precio_adjudicado : r.mejor_precio);
+      var fechaArch = r.archivado ? new Date(r.archivado).toLocaleDateString('es-ES') : '';
+      html += '<div style="border:1px solid #e0e4ea;border-radius:6px;padding:10px;margin-bottom:8px;background:#f7f9fc;font-size:12px">'
+        + '<div style="font-weight:700;color:#1B4F8A">Ref ' + r.ref + ' — ' + (r.origen||'?') + ' → ' + (r.destino||'?') + '</div>'
+        + '<div style="color:#666;margin-top:3px">Fecha trabajo: ' + (r.fecha||'—') + ' · Estado: ' + (r.estado_final||'—') + (precio!=null?(' · Precio: ' + precio + ' €'):'') + '</div>'
+        + '<div style="color:#999;font-size:11px;margin-top:2px">Archivado el ' + fechaArch + (r.motivo?(' · ' + r.motivo):'') + '</div>'
+        + '</div>';
+    });
+    cont.innerHTML = html;
+  } catch(e) { cont.innerHTML = '<span style="color:#c00">Error: ' + e.message + '</span>'; }
 }
 
 async function adjudicarOferta(ref, token, nombre, tokenCorto) {
