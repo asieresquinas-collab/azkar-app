@@ -894,6 +894,30 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <span class='idx-icon'>📋</span>
       <span class='idx-title'>Relación de enseres</span>
     </div>
+    <div class='ayuda-index-item' onclick='ayudaIr("sec-azkarin-ia")'>
+      <span class='idx-icon'>🤖</span>
+      <span class='idx-title'>Azkarin: IA y coste</span>
+    </div>
+    <div class='ayuda-index-item' onclick='ayudaIr("sec-azkarin-voz")'>
+      <span class='idx-icon'>🎧</span>
+      <span class='idx-title'>Azkarin: voz</span>
+    </div>
+    <div class='ayuda-index-item' onclick='ayudaIr("sec-llamadas")'>
+      <span class='idx-icon'>📞</span>
+      <span class='idx-title'>Llamadas (Gesditel)</span>
+    </div>
+    <div class='ayuda-index-item' onclick='ayudaIr("sec-correo")'>
+      <span class='idx-icon'>📧</span>
+      <span class='idx-title'>Correo info@</span>
+    </div>
+    <div class='ayuda-index-item' onclick='ayudaIr("sec-tareas")'>
+      <span class='idx-icon'>⏰</span>
+      <span class='idx-title'>Tareas automáticas</span>
+    </div>
+    <div class='ayuda-index-item' onclick='ayudaIr("sec-directorios")'>
+      <span class='idx-icon'>🗂️</span>
+      <span class='idx-title'>Directorios / Altas</span>
+    </div>
     <div class='ayuda-index-item' onclick='ayudaIr("sec-problemas")'>
       <span class='idx-icon'>🔧</span>
       <span class='idx-title'>Problemas comunes</span>
@@ -1115,6 +1139,110 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Cuando esté listo, pulsa <strong>Imprimir</strong> para generar el PDF o imprimirlo.</div></div>
 
       <div class='ayuda-tip'>Útil para dárselo al equipo el día de la mudanza o para que el cliente repase qué se va a transportar.</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN: AZKARIN IA Y COSTE -->
+  <div class='ayuda-section' id='sec-azkarin-ia'>
+    <h3 onclick='ayudaToggle(this)'>AZKARIN: ASISTENTE DE IA, MODELOS Y COSTE</h3>
+    <div class='ayuda-content'>
+      <p><strong>Azkarin</strong> es el asistente de inteligencia artificial de la app. Le hablas por chat (o por voz) y te ayuda con presupuestos, llamadas, calendario, correos y mucho más. Puedes escribirle como a un compañero: "haz un cliente con esta llamada", "qué tengo el viernes", "cuánto llevo gastado".</p>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Elegir el modelo de IA — comando /model:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Escribe <strong>/model</strong> en el chat de Azkarin. Es el centro de mando de la IA: enciendes/apagas el modo AUTO y eliges qué modelo trabaja.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>MODO AUTO (recomendado):</strong> la charla ligera la contesta un modelo <strong>gratis</strong> de Ollama (gemma4) y lo pesado (presupuestos, llamadas, calendario...) lo coge <strong>Gemini</strong>, cambiando solo. No tienes que hacer nada.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>MODO PRUEBA</strong> (con AUTO apagado): Azkarin trabaja SOLO con el modelo que elijas, sin Gemini de reserva. Sirve para probar modelos. Los modelos gratis fallan más en tareas con herramientas, por eso el modo AUTO deja esas para Gemini.</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Las etiquetas ⚡ y 🧠:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cada respuesta de Azkarin lleva una etiqueta: <strong>⚡ = modelo gratis</strong> (Ollama/gemma4) y <strong>🧠 = Gemini</strong> (de pago). Así ves de un vistazo qué motor contestó.</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Controlar el gasto — comando /gasto:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Escribe <strong>/gasto</strong> para ver cuánto se lleva gastado en Gemini este mes. También puedes preguntárselo en lenguaje normal: "¿cuánto llevo de gasto en Gemini este mes?".</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Hay un <strong>tope de 40 €/mes</strong>. Al llegar al tope, Azkarin <strong>deja de usar Gemini solo</strong> y sigue con el modelo gratis. Así no hay sustos en la factura.</div></div>
+      <div class='ayuda-tip'>gemma4 es el mejor de los modelos gratuitos para esta app. Para el día a día, deja el <strong>modo AUTO</strong> activado y olvídate: él decide cuándo usar el gratis y cuándo Gemini.</div>
+      <div class='ayuda-warn'>Azkarin NUNCA inventa datos (teléfonos, precios, direcciones, refs). Si no lo sabe, lo dice o lo busca con una herramienta.</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN: AZKARIN VOZ -->
+  <div class='ayuda-section' id='sec-azkarin-voz'>
+    <h3 onclick='ayudaToggle(this)'>AZKARIN: VOZ Y MODO CONVERSACIÓN</h3>
+    <div class='ayuda-content'>
+      <p>Azkarin puede <strong>hablar</strong> y <strong>escucharte</strong>, para usarlo con las manos libres mientras conduces o trabajas.</p>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Elegir cómo habla — comando /voz:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Escribe <strong>/voz</strong> en el chat para elegir cómo suena Azkarin. La opción recomendada es la <strong>voz instantánea del móvil</strong> (responde al momento).</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Modo conversación 🎧:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Pulsa el icono del <strong>auricular 🎧</strong> para entrar en modo conversación. Azkarin mantiene la pantalla encendida y, después de hablar, <strong>se queda escuchando</strong> tu respuesta: hablas con él como en una llamada.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Para <strong>salir</strong> del modo conversación, vuelve a tocar el auricular 🎧.</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Parar el audio — botón ⏹:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Si quieres cortar lo que está diciendo, pulsa el botón <strong>⏹ Parar</strong>. Corta el audio al momento.</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Activar por voz (solo en la app instalada / APK):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con la app abierta puedes decir <strong>"Azkarin escúchame"</strong> para activarlo por voz, sin tocar la pantalla.</div></div>
+      <div class='ayuda-tip'>Si la voz va lenta o falla, en /voz puedes volver a la voz del móvil, que es instantánea.</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN: LLAMADAS GESDITEL -->
+  <div class='ayuda-section' id='sec-llamadas'>
+    <h3 onclick='ayudaToggle(this)'>LLAMADAS DE LA CENTRALITA (GESDITEL)</h3>
+    <div class='ayuda-content'>
+      <p>Azkarin tiene acceso a las llamadas de la centralita (Gesditel): puede listarlas, ponerte la grabación, pasarlas a texto y analizarlas. Todo se le pide por chat.</p>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Ver las últimas llamadas:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Pídele a Azkarin: <strong>"enséñame las últimas llamadas"</strong>. Lista las llamadas recientes (entrantes y salientes) con su grabación.</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Escuchar una llamada:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Di <strong>"escucha la llamada de [número/cliente]"</strong> o pulsa sobre la llamada de la lista. Aparece un <strong>reproductor</strong> para oírla (con botón de velocidad).</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Transcribir y analizar:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>"transcribe esa llamada"</strong> la pasa a texto.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>"analiza comercialmente la llamada"</strong> hace un resumen comercial (qué pidió el cliente, datos, oportunidades).</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Repasar las llamadas de un día:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>"revisa las llamadas de hoy"</strong> (o de un rango de fechas) repasa todas las llamadas de ese periodo.</div></div>
+      <div class='ayuda-warn'>Azkarin nunca afirma quién dijo qué sin tener la transcripción delante (con la cita textual). Si no la ha leído, no se lo inventa.</div>
+      <div class='ayuda-tip'>Las grabaciones llevan siempre seguridad: solo se oyen desde aquí, no son enlaces públicos.</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN: CORREO INFO -->
+  <div class='ayuda-section' id='sec-correo'>
+    <h3 onclick='ayudaToggle(this)'>CORREO info@azkarmudanzas.com</h3>
+    <div class='ayuda-content'>
+      <p>Azkarin puede leer el buzón de <strong>info@azkarmudanzas.com</strong> y trabajar con lo que llega (leads, fotos de muebles, facturas).</p>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Leer el correo:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Pídele <strong>"lee los correos de info"</strong> para ver los últimos mensajes del buzón. Puedes filtrar: "busca en info los correos de [nombre]".</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>"abre ese correo"</strong> muestra el correo entero (con el cuerpo del mensaje).</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Ver fotos y PDFs adjuntos:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Azkarin puede <strong>ver</strong> las fotos y los PDFs de los correos: describe los muebles de las fotos y transcribe las direcciones que vengan en los adjuntos. Dile "mira los adjuntos de ese correo".</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Facturas y fotos de clientes:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>"procesa las facturas de info"</strong> trata las facturas que llegan al buzón.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>"guarda las fotos de ese correo en la carpeta del cliente"</strong> mueve las fotos de un lead a su carpeta de Drive.</div></div>
+      <div class='ayuda-tip'>Cuando llega un lead con fotos, lo más rápido es: "mira los adjuntos" para que describa los muebles, y luego "haz un presupuesto con esos datos".</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN: TAREAS AUTOMATICAS -->
+  <div class='ayuda-section' id='sec-tareas'>
+    <h3 onclick='ayudaToggle(this)'>TAREAS AUTOMÁTICAS Y VIGÍA DE PUJAS</h3>
+    <div class='ayuda-content'>
+      <p>Azkarin puede hacer cosas <strong>solo</strong>, a horas fijas, sin que estés delante. Se lo pides una vez y él se encarga de repetirlo.</p>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Programar una tarea automática:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Dile lo que quieres y cuándo, por ejemplo: <strong>"cada mañana a las 8 repásame las llamadas de ayer"</strong> o "todos los lunes mándame el resumen de la semana". Azkarin crea la tarea.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>"qué tareas automáticas tengo"</strong> lista las que están programadas.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>"borra la tarea de [...]"</strong> elimina una tarea automática que ya no quieras.</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Vigía de pujas (Clicktrans):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El vigía vigila el portal de Clicktrans y <strong>te avisa de oportunidades de carga de vuelta</strong> (portes que encajan con nuestras rutas) en cuanto aparecen.</div></div>
+      <div class='ayuda-tip'>Las tareas automáticas son ideales para repasos diarios: llamadas del día, correos nuevos, trabajos del portal de autónomos que ya vencieron, etc.</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN: DIRECTORIOS / ALTAS -->
+  <div class='ayuda-section' id='sec-directorios'>
+    <h3 onclick='ayudaToggle(this)'>DIRECTORIOS / CENTRAL DE ALTAS (SEO LOCAL)</h3>
+    <div class='ayuda-content'>
+      <p>La <strong>Central de Altas</strong> es la página con la ficha oficial de Azkar (con botones para copiar cada dato) y la lista de directorios de empresas con el estado de cada uno. Sirve para dar de alta a Azkar en directorios y mejorar el posicionamiento local.</p>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Abrir la Central de Altas:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Pídele a Azkarin: <strong>"dame el enlace de alta de los directorios"</strong>. Te da el enlace a la Central de Altas.</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Antes de dar de alta en uno:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Comprueba si ya estamos: <strong>"mira si ya estamos en Páginas Amarillas"</strong>. Así no duplicamos la ficha.</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Marcar uno como hecho:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando completes un alta, díselo: <strong>"marca QDQ como hecho"</strong>. Se actualiza el estado en la lista.</div></div>
+      <div class='ayuda-warn'>El enlace de la Central de Altas lleva una clave: <strong>no lo compartas</strong> fuera de la empresa.</div>
+      <div class='ayuda-tip'>En la ficha oficial cada dato (nombre, dirección, teléfono, descripción...) tiene su botón de <strong>copiar</strong>, para pegarlo igual en todos los directorios.</div>
     </div>
   </div>
 
@@ -2590,7 +2718,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v331';</script>
+<script>document.getElementById('version-tag').textContent='v332';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2702,7 +2830,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v331';
+var APP_VERSION = 'v332';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
