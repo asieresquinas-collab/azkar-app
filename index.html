@@ -2357,7 +2357,7 @@ function AR(c,z,u,p,d,tm,tam){
   div.className='cr'; div.id='r'+id;
   var tamOpts='<option'+(tam==='Estándar'?' selected':'')+'>Estándar</option><option'+(tam==='Pequeño'?' selected':'')+'>Pequeño</option><option'+(tam==='Grande'?' selected':'')+'>Grande</option><option'+(tam==='Muy grande'?' selected':'')+'>Muy grande</option>';
   div.innerHTML='<div class="move-btns"><button title="Subir" data-dir="up">▲</button><button title="Bajar" data-dir="down">▼</button></div>'
-    +'<div style="display:flex;align-items:center;gap:2px"><input list="dl" placeholder="Concepto..." value="'+c+'" oninput="PL_LOOKUP(this);CA()" style="flex:1;min-width:0"><span class="tamano-badge" onclick="cycleTam(this)" title="Click para cambiar tamaño" data-tam="'+tam+'" style="font-size:7px;padding:2px 4px;border-radius:3px;cursor:pointer;font-weight:700;letter-spacing:.3px;white-space:nowrap;flex-shrink:0;user-select:none;'+tamBadgeStyle(tam)+'">'+tamLabel(tam)+'</span></div>'
+    +'<div style="display:flex;align-items:center;gap:2px"><input list="dl" placeholder="Concepto..." value="'+c+'" oninput="PL_LOOKUP(this);CA()" onchange="PL_LOOKUP(this);CA()" style="flex:1;min-width:0"><span class="tamano-badge" onclick="cycleTam(this)" title="Click para cambiar tamaño" data-tam="'+tam+'" style="font-size:7px;padding:2px 4px;border-radius:3px;cursor:pointer;font-weight:700;letter-spacing:.3px;white-space:nowrap;flex-shrink:0;user-select:none;'+tamBadgeStyle(tam)+'">'+tamLabel(tam)+'</span></div>'
     +'<input type="number" min="0" step="0.1" placeholder="0" value="'+u+'" oninput="CA()">'
     +'<input type="number" min="0" step="0.01" placeholder="0,00" value="'+p+'" oninput="CA()">'
     +'<input type="number" min="0" max="100" step="1" placeholder="0" value="'+d+'" oninput="CA()">'
@@ -2718,7 +2718,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v334';</script>
+<script>document.getElementById('version-tag').textContent='v335';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2830,7 +2830,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v334';
+var APP_VERSION = 'v335';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
