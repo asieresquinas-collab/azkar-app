@@ -2718,7 +2718,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v338';</script>
+<script>document.getElementById('version-tag').textContent='v339';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2830,7 +2830,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v338';
+var APP_VERSION = 'v339';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12550,7 +12550,7 @@ async function doResetWithCode() {
   </div>
   <div id="chatbot-foto-ind" style="display:none"></div>
   <div id="chatbot-input-area">
-    <input type="file" id="chatbot-foto-input" accept="image/*,application/pdf" multiple style="display:none">
+    <input type="file" id="chatbot-foto-input" accept="image/*,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple style="display:none">
     <button id="chatbot-foto-btn" onclick="document.getElementById('chatbot-foto-input').click()" title="Adjuntar foto">&#128206;</button>
     <input type="file" id="chatbot-video-input" accept="video/*" style="display:none">
     <button id="chatbot-video-btn" onclick="document.getElementById('chatbot-video-input').click()" title="Adjuntar vídeo (borrador de presupuesto)">&#127909;</button>
@@ -13122,7 +13122,7 @@ async function doResetWithCode() {
     if (_fInd) { _fInd.style.display = 'none'; _fInd.innerHTML = ''; }
     inputEl.value = '';
     inputEl.style.height = 'auto';
-    var msgEnviar = msg || ((framesEnviar && framesEnviar.length) ? (framesTipo === 'fotos' ? ('Te he enviado ' + framesEnviar.length + ' fotos. Hazme el borrador del presupuesto con lo que veas.') : ('Te he enviado un vídeo (' + framesEnviar.length + ' fotogramas). Házme el borrador del presupuesto con lo que veas.')) : ((pdfsEnviar && pdfsEnviar.length) ? 'Te he enviado un PDF. Léelo y dime qué pone.' : 'Te he enviado una foto.'));
+    var msgEnviar = msg || ((framesEnviar && framesEnviar.length) ? (framesTipo === 'fotos' ? ('Te he enviado ' + framesEnviar.length + ' fotos. Hazme el borrador del presupuesto con lo que veas.') : ('Te he enviado un vídeo (' + framesEnviar.length + ' fotogramas). Házme el borrador del presupuesto con lo que veas.')) : ((pdfsEnviar && pdfsEnviar.length) ? 'Te he enviado un documento (PDF/Word). Léelo y dime qué pone.' : 'Te he enviado una foto.'));
     addMsg('user', (framesEnviar && framesEnviar.length) ? ((msg ? msg + ' ' : '') + (framesTipo === 'fotos' ? ('📷×' + framesEnviar.length) : '🎥')) : (fotoEnviar ? ((msg ? msg + ' ' : '') + '📷') : ((pdfsEnviar && pdfsEnviar.length) ? ((msg ? msg + ' ' : '') + '📄') : msg)));
     chatHistorial.push({ role: 'user', content: msgEnviar });
     sendBtn.disabled = true;
@@ -13853,13 +13853,13 @@ async function doResetWithCode() {
       this.value = '';
       if (!files.length) return;
       // v267: PDFs → se mandan aparte para que Azkarin los lea (máx 3, 15MB cada uno)
-      var _esPdf = function(f) { return f.type === 'application/pdf' || /\.pdf$/i.test(f.name || ''); };
+      var _esPdf = function(f) { return f.type === 'application/pdf' || /\.(pdf|docx?)$/i.test(f.name || '') || /word|officedocument\.wordprocessing|msword/i.test(f.type || ''); };
       var pdfs = files.filter(_esPdf).slice(0, 3);
       files = files.filter(function(f) { return !_esPdf(f); });
       if (pdfs.length) {
         var lotePdf = [];
         for (var pi = 0; pi < pdfs.length; pi++) {
-          if (pdfs[pi].size > 15 * 1024 * 1024) { addMsg('bot', '❌ El PDF "' + pdfs[pi].name + '" pesa más de 15MB, no puedo con él.'); continue; }
+          if (pdfs[pi].size > 15 * 1024 * 1024) { addMsg('bot', '❌ El archivo "' + pdfs[pi].name + '" pesa más de 15MB, no puedo con él.'); continue; }
           try {
             var leido = await new Promise(function(res, rej) {
               var rr = new FileReader();
@@ -13868,7 +13868,7 @@ async function doResetWithCode() {
               rr.readAsDataURL(pdfs[pi]);
             });
             if (leido) lotePdf.push({ b64: leido, nombre: pdfs[pi].name });
-          } catch (ep) { addMsg('bot', '❌ No pude leer el PDF "' + pdfs[pi].name + '".'); }
+          } catch (ep) { addMsg('bot', '❌ No pude leer el archivo "' + pdfs[pi].name + '".'); }
         }
         if (lotePdf.length) {
           window._pendingPdfs = lotePdf;
