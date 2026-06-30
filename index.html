@@ -2429,6 +2429,69 @@ document.addEventListener('click', function(e){
   moverFila(btn, dir);
 });
 
+// ══════════════════════════════════════════════════════════════
+//  ARRASTRAR FILAS — mantener pulsado el grip ▲▼ y deslizar (móvil + ratón)
+//  Los toques sueltos en ▲ / ▼ siguen moviendo de uno en uno (arriba).
+// ══════════════════════════════════════════════════════════════
+(function(){
+  try{
+    var st=document.createElement('style');
+    st.textContent='.move-btns{touch-action:none;cursor:grab}.cr.cr-dragging{opacity:.65;background:#d6e6f7!important;box-shadow:0 4px 14px rgba(0,0,0,.18)}';
+    document.head.appendChild(st);
+  }catch(e){}
+  var dragRow=null, startY=0, started=false, tb=null;
+  function esSalida(r){ return r && r.getAttribute && r.getAttribute('data-fijo')==='salida'; }
+  function onDown(e){
+    var handle=e.target.closest('.move-btns');
+    if(!handle) return;
+    var row=handle.closest('.cr');
+    if(!row || esSalida(row)) return;
+    dragRow=row; startY=(e.clientY!=null?e.clientY:0); started=false; tb=row.parentNode;
+  }
+  function onMove(e){
+    if(!dragRow) return;
+    var y=(e.clientY!=null?e.clientY:0);
+    if(!started){
+      if(Math.abs(y-startY)<8) return;   // umbral: distinguir toque de arrastre
+      started=true;
+      dragRow.classList.add('cr-dragging');
+      document.body.style.userSelect='none';
+    }
+    if(e.cancelable) e.preventDefault();
+    var rows=Array.prototype.slice.call(document.querySelectorAll('#tb .cr'));
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i];
+      if(r===dragRow || esSalida(r)) continue;
+      var rect=r.getBoundingClientRect();
+      if(y < rect.top+rect.height/2){
+        if(r.previousElementSibling!==dragRow) tb.insertBefore(dragRow, r);
+        return;
+      }
+    }
+    if(tb.lastElementChild!==dragRow) tb.appendChild(dragRow); // por debajo de todas
+  }
+  function onUp(){
+    if(!dragRow) return;
+    var was=started, r=dragRow;
+    dragRow=null; started=false; document.body.style.userSelect='';
+    r.classList.remove('cr-dragging');
+    if(was){
+      r.style.transition='background .4s'; r.style.background='#eaf3ff';
+      setTimeout(function(){ r.style.background=''; r.style.transition=''; },450);
+      if(typeof CA==='function') CA();
+      if(typeof CT==='function') CT();
+      // suprimir el click que sigue al soltar, para que NO mueva un paso de más
+      var sup=function(ev){ ev.stopPropagation(); ev.preventDefault(); document.removeEventListener('click',sup,true); };
+      document.addEventListener('click',sup,true);
+      setTimeout(function(){ document.removeEventListener('click',sup,true); },80);
+    }
+  }
+  document.addEventListener('pointerdown',onDown);
+  document.addEventListener('pointermove',onMove,{passive:false});
+  document.addEventListener('pointerup',onUp);
+  document.addEventListener('pointercancel',onUp);
+})();
+
 // ── Añadir línea FIJA de Salida (no borrable, siempre presente) ──
 function AR_SALIDA(){
   // No duplicar si ya existe
@@ -2738,7 +2801,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v343';</script>
+<script>document.getElementById('version-tag').textContent='v344';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2850,7 +2913,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v343';
+var APP_VERSION = 'v344';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
