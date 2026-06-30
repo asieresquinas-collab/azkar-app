@@ -200,6 +200,18 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 <div id='pt_rows'></div>
 </div>
 </div>
+<div class='sec' id='pt-horas-sec' style='display:none'>
+<div class='sbar'>Horas / trabajos adicionales</div>
+<div>
+<div style='display:grid;grid-template-columns:3fr 70px 80px 90px;gap:5px;padding:8px 10px;background:var(--az);border-radius:4px 4px 0 0'>
+<span style='font-size:10px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.9)'>Concepto</span>
+<span style='font-size:10px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.9);text-align:center'>Horas</span>
+<span style='font-size:10px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.9);text-align:right'>&euro;/h</span>
+<span style='font-size:10px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.9);text-align:right'>Total</span>
+</div>
+<div id='pt_horas'></div>
+</div>
+</div>
 <div class='sec' style='padding-top:10px'>
 <div class='sbar'>Firmas en recogida</div>
 <div class='cfirmas' style='margin:8px 0'>
@@ -280,9 +292,19 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 <div style='padding:10px 0 0;display:flex;gap:8px'>
 <button onclick='parteEditAddItem()' style='background:#1B4F8A;color:#fff;border:none;padding:7px 14px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer'>+ A&ntilde;adir ensere</button>
 </div>
+<div style='margin-top:14px;border:1.5px solid #f0d6bf;border-radius:6px;overflow:hidden'>
+<div style='display:grid;grid-template-columns:2.5fr 70px 90px 80px 36px;gap:5px;padding:8px 10px;background:#fff3e8;font-weight:700;font-size:10px;text-transform:uppercase;color:#7a3d05'>
+<span>Horas / trabajo adicional</span><span style='text-align:center'>Horas</span><span style='text-align:center'>&euro;/hora</span><span style='text-align:right'>Total</span><span></span>
+</div>
+<div id='pe-horas'></div>
+</div>
+<div style='padding:10px 0 0;display:flex;gap:8px'>
+<button onclick='parteEditAddHora()' style='background:#E85C0D;color:#fff;border:none;padding:7px 14px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer'>+ A&ntilde;adir horas / gr&uacute;a</button>
+</div>
 <div id='pe-pricing' style='margin-top:16px;background:#f8f9fb;border-radius:8px;padding:14px;border:1px solid #e0e4ea'>
 <div style='display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px'><span style='color:#666'>Precio original presupuesto (base)</span><span id='pe-precio-original' style='font-weight:700'>0,00 &euro;</span></div>
 <div style='display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px'><span style='color:#666'>Precio cat&aacute;logo actual (base)</span><span id='pe-precio-catalogo' style='font-weight:700'>0,00 &euro;</span></div>
+<div style='display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px'><span style='color:#666'>Horas / trabajo adicional</span><span id='pe-precio-horas' style='font-weight:700'>0,00 &euro;</span></div>
 <div style='border-top:2px solid #E85C0D;margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:14px'><span style='font-weight:800;color:#E85C0D'>PRECIO FINAL (base)</span><span id='pe-precio-final' style='font-weight:800;color:#E85C0D'>0,00 &euro;</span></div>
 <div style='display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:#888'><span>IVA 21%</span><span id='pe-iva'>0,00 &euro;</span></div>
 <div style='display:flex;justify-content:space-between;margin-top:2px;font-size:13px;font-weight:700'><span>TOTAL CON IVA</span><span id='pe-total-iva'>0,00 &euro;</span></div>
@@ -2718,7 +2740,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v339';</script>
+<script>document.getElementById('version-tag').textContent='v340';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2830,7 +2852,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v339';
+var APP_VERSION = 'v340';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -7487,6 +7509,8 @@ async function IMPRIMIR_PARTE() {
   document.getElementById('pt_obs').textContent = obs ? obs.value || '—' : '—';
   document.getElementById('pt_ref').textContent = ref ? ref.value || '—' : '—';
 
+  // Ocultar seccion de horas adicionales (solo se rellena desde el modal de parte)
+  var _phs0 = document.getElementById('pt-horas-sec'); if (_phs0) _phs0.style.display = 'none';
   // Collect table rows (concepto, zona, unidades - NO prices)
   var rowsDiv = document.getElementById('pt_rows');
   rowsDiv.innerHTML = '';
@@ -7535,6 +7559,8 @@ async function PRINT_PARTE() {
   document.getElementById('pt_obs').textContent = obs ? obs.value || '—' : '—';
   document.getElementById('pt_ref').textContent = ref ? ref.value || '—' : '—';
 
+  // Ocultar seccion de horas adicionales (solo se rellena desde el modal de parte)
+  var _phs0 = document.getElementById('pt-horas-sec'); if (_phs0) _phs0.style.display = 'none';
   // Collect table rows (concepto, zona, unidades - NO prices)
   var rowsDiv = document.getElementById('pt_rows');
   rowsDiv.innerHTML = '';
@@ -7637,6 +7663,9 @@ function openParteEditModal() {
   var itemsDiv = document.getElementById('pe-items');
   itemsDiv.innerHTML = '';
   _peItemId = 0;
+  var horasDiv = document.getElementById('pe-horas');
+  if (horasDiv) horasDiv.innerHTML = '';
+  _phItemId = 0;
   var crs = document.querySelectorAll('#tb .cr');
   crs.forEach(function(cr) {
     var inputs = cr.querySelectorAll('input');
@@ -7694,6 +7723,29 @@ function peRemoveItem(btn) {
   calcParteEditPricing();
 }
 
+var _phItemId = 0;
+function parteEditAddHora(c, h, p) {
+  c = c || ''; h = h || ''; p = p || '';
+  _phItemId++;
+  var id = _phItemId;
+  var div = document.createElement('div');
+  div.id = 'ph-r' + id;
+  div.style.cssText = 'display:grid;grid-template-columns:2.5fr 70px 90px 80px 36px;gap:5px;padding:6px 10px;align-items:center;border-bottom:1px solid #f0f0f0';
+  div.innerHTML = '<input type="text" value="' + String(c).replace(/"/g, '&quot;') + '" placeholder="Ej: Horas de gr\u00faa, mano de obra extra..." style="border:1px solid #ddd;padding:5px 8px;border-radius:4px;font-size:12px">'
+    + '<input type="number" value="' + h + '" min="0" step="0.5" placeholder="0" oninput="calcParteEditPricing()" style="border:1px solid #ddd;padding:5px;border-radius:4px;font-size:12px;text-align:center">'
+    + '<input type="number" value="' + p + '" min="0" step="1" placeholder="\u20ac/h" oninput="calcParteEditPricing()" style="border:1px solid #ddd;padding:5px;border-radius:4px;font-size:12px;text-align:center">'
+    + '<div class="ph-total" style="text-align:right;font-size:12px;font-weight:700">0.00</div>'
+    + '<button onclick="peRemoveHora(this)" style="background:#fee;border:1px solid #fcc;color:#c0392b;border-radius:4px;cursor:pointer;font-size:11px;padding:4px">&#10005;</button>';
+  document.getElementById('pe-horas').appendChild(div);
+  var t0 = div.querySelector('input[type=text]'); if (t0) t0.focus();
+  calcParteEditPricing();
+}
+function peRemoveHora(btn) {
+  var row = btn.closest('[id^="ph-r"]');
+  if (row) row.remove();
+  calcParteEditPricing();
+}
+
 function calcParteEditPricing() {
   var catalogBase = 0;
   var items = document.querySelectorAll('#pe-items [id^="pe-r"]');
@@ -7714,13 +7766,27 @@ function calcParteEditPricing() {
     catalogBase += total;
   });
 
-  // Precio final: máximo entre original y catálogo
-  var finalBase = Math.max(_peOriginalBase, catalogBase);
+  // Horas / trabajos adicionales (suman SIEMPRE al total)
+  var horasBase = 0;
+  var horasRows = document.querySelectorAll('#pe-horas [id^="ph-r"]');
+  horasRows.forEach(function(row){
+    var inp = row.querySelectorAll('input');
+    var h = inp[1] ? (parseFloat(inp[1].value) || 0) : 0;
+    var p = inp[2] ? (parseFloat(inp[2].value) || 0) : 0;
+    var t = h * p;
+    var td = row.querySelector('.ph-total');
+    if (td) td.textContent = t.toFixed(2);
+    horasBase += t;
+  });
+
+  // Precio final: máximo entre original y catálogo, MÁS las horas adicionales
+  var finalBase = Math.max(_peOriginalBase, catalogBase) + horasBase;
   var iva = finalBase * 0.21;
   var totalIva = finalBase + iva;
 
   document.getElementById('pe-precio-original').textContent = FM(_peOriginalBase);
   document.getElementById('pe-precio-catalogo').textContent = FM(catalogBase);
+  var _phEl = document.getElementById('pe-precio-horas'); if (_phEl) _phEl.textContent = FM(horasBase);
   document.getElementById('pe-precio-final').textContent = FM(finalBase);
   document.getElementById('pe-iva').textContent = FM(iva);
   document.getElementById('pe-total-iva').textContent = FM(totalIva);
@@ -7774,6 +7840,38 @@ async function confirmarParteEdit() {
     row.innerHTML = '<span>' + item.c + '</span><span style="text-align:center">' + item.u + '</span>';
     rowsDiv.appendChild(row);
   });
+
+  // 2b. Horas / trabajos adicionales -> tabla del parte
+  var horasData = [];
+  document.querySelectorAll('#pe-horas [id^="ph-r"]').forEach(function(row){
+    var inp = row.querySelectorAll('input');
+    var c = inp[0] ? inp[0].value.trim() : '';
+    var h = inp[1] ? (parseFloat(inp[1].value) || 0) : 0;
+    var p = inp[2] ? (parseFloat(inp[2].value) || 0) : 0;
+    if (c && h > 0) horasData.push({ c: c, h: h, p: p, t: h * p });
+  });
+  var ptHorasSec = document.getElementById('pt-horas-sec');
+  var ptHoras = document.getElementById('pt_horas');
+  if (ptHoras) ptHoras.innerHTML = '';
+  if (horasData.length > 0 && ptHoras) {
+    var totH = 0;
+    horasData.forEach(function(it){
+      totH += it.t;
+      var r = document.createElement('div');
+      r.style.cssText = 'display:grid;grid-template-columns:3fr 70px 80px 90px;gap:5px;padding:6px 10px;align-items:center;border-bottom:1px solid var(--gb);font-size:12px';
+      r.innerHTML = '<span>' + it.c + '</span><span style="text-align:center">' + it.h + '</span><span style="text-align:right">' + (it.p ? it.p.toFixed(2) + ' \u20ac' : '\u2014') + '</span><span style="text-align:right;font-weight:700">' + (it.t ? it.t.toFixed(2) + ' \u20ac' : '\u2014') + '</span>';
+      ptHoras.appendChild(r);
+    });
+    if (totH > 0) {
+      var rt = document.createElement('div');
+      rt.style.cssText = 'display:grid;grid-template-columns:3fr 70px 80px 90px;gap:5px;padding:8px 10px;font-size:12px;font-weight:800;border-top:2px solid var(--na)';
+      rt.innerHTML = '<span>TOTAL HORAS / TRABAJOS</span><span></span><span></span><span style="text-align:right">' + totH.toFixed(2) + ' \u20ac</span>';
+      ptHoras.appendChild(rt);
+    }
+    if (ptHorasSec) ptHorasSec.style.display = '';
+  } else if (ptHorasSec) {
+    ptHorasSec.style.display = 'none';
+  }
 
   // 3. Cerrar modal
   closeParteEditModal();
