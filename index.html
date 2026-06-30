@@ -216,14 +216,14 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 <div class='sbar'>Firmas en recogida</div>
 <div class='cfirmas' style='margin:8px 0'>
 <div class='cfb'><div class='cft' style='background:var(--az)'>Encargado Azkar</div><div class='cfn' style='min-height:auto;padding:4px 10px;font-size:11px'>Nombre:</div><div class='cfa' style='height:55px;border-bottom:1px solid var(--gb)'></div><div class='cfs'>Firma</div></div>
-<div class='cfb'><div class='cft' style='background:var(--az)'>Cliente</div><div class='cfn' style='min-height:auto;padding:4px 10px;font-size:11px'>Nombre:</div><div class='cfa' style='height:55px;border-bottom:1px solid var(--gb)'></div><div class='cfs'>Firma</div></div>
+<div class='cfb'><div class='cft' style='background:var(--az)'>Cliente</div><div class='cfn' style='min-height:auto;padding:4px 10px;font-size:11px'>Nombre:</div><div class='cfa' style='height:55px;border-bottom:1px solid var(--gb)'><!--FIRMA_CLIENTE_PARTE--></div><div class='cfs'>Firma</div></div>
 </div>
 </div>
 <div class='sec' style='padding-top:0'>
 <div class='sbar'>Firmas en entrega</div>
 <div class='cfirmas' style='margin:8px 0'>
 <div class='cfb'><div class='cft' style='background:var(--az)'>Encargado Azkar</div><div class='cfn' style='min-height:auto;padding:4px 10px;font-size:11px'>Nombre:</div><div class='cfa' style='height:55px;border-bottom:1px solid var(--gb)'></div><div class='cfs'>Firma</div></div>
-<div class='cfb'><div class='cft' style='background:var(--az)'>Cliente</div><div class='cfn' style='min-height:auto;padding:4px 10px;font-size:11px'>Nombre:</div><div class='cfa' style='height:55px;border-bottom:1px solid var(--gb)'></div><div class='cfs'>Firma</div></div>
+<div class='cfb'><div class='cft' style='background:var(--az)'>Cliente</div><div class='cfn' style='min-height:auto;padding:4px 10px;font-size:11px'>Nombre:</div><div class='cfa' style='height:55px;border-bottom:1px solid var(--gb)'><!--FIRMA_CLIENTE_PARTE--></div><div class='cfs'>Firma</div></div>
 </div>
 </div>
 <div class='sfoot'>AZKAR MUDANZAS DE BIZKAIA SL &middot; CIF B05308838 &middot; Pol. Martiartu, Arrigorriaga &middot; 946 959 400</div>
@@ -309,7 +309,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 </div>
 <div style='margin-top:16px;padding-top:14px;border-top:1px solid #eee;display:flex;gap:10px;flex-wrap:wrap'>
 <button onclick='closeParteEditModal()' style='background:#eee;color:#333;border:none;padding:10px 18px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;flex:1'>Cancelar</button>
-<button onclick='closeParteEditModal();IMPRIMIR_PARTE()' style='padding:10px 18px;background:#555;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer'>🖨️ Imprimir ahora</button><button onclick='confirmarParteEdit()' style='background:#E85C0D;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;flex:2'>Generar Parte PDF</button>
+<button onclick='closeParteEditModal();IMPRIMIR_PARTE()' style='padding:10px 18px;background:#555;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer'>🖨️ Imprimir ahora</button><button onclick='confirmarParteEdit()' style='background:#E85C0D;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;flex:2'>Generar Parte PDF</button><button onclick='firmarParteCliente()' style='background:#1a7a3f;color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;flex:2'>&#9997;&#65039; Firmar parte</button>
 </div>
 </div>
 </div>
@@ -2738,7 +2738,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v342';</script>
+<script>document.getElementById('version-tag').textContent='v343';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2850,7 +2850,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v342';
+var APP_VERSION = 'v343';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -7756,6 +7756,66 @@ function peRemoveHora(btn) {
   var row = btn.closest('[id^="ph-r"]');
   if (row) row.remove();
   calcParteEditPricing();
+}
+
+// Firmar el PARTE en la app (mismo mecanismo que el presupuesto: enlace de firma -> PDF firmado a Drive)
+async function firmarParteCliente() {
+  var ref = document.getElementById('f_ref');
+  var number = ref ? ref.value : '';
+  var clientName = (document.getElementById('f_nom') || {}).value || '';
+  if (!number || parseInt(number, 10) < 1000) { showSyncStatus('Sin número de cliente. Pulsa "+ Nuevo" primero', 4000); return; }
+
+  // 1) Recoger enseres editados del modal
+  var editedRows = [];
+  document.querySelectorAll('#pe-items [id^="pe-r"]').forEach(function(row){
+    var inputs = row.querySelectorAll('input');
+    var concepto = inputs[0] ? inputs[0].value.trim() : '';
+    var uds = inputs[1] ? (parseFloat(inputs[1].value) || 0) : 0;
+    if (concepto && uds > 0) editedRows.push({ c: concepto, u: uds });
+  });
+  if (editedRows.length === 0) { alert('No hay enseres en el parte. Añade al menos uno.'); return; }
+
+  // 2) Rellenar la plantilla del parte (campos + enseres + horas) — igual que Generar Parte PDF
+  var fserv = document.getElementById('f_fserv'), rec = document.getElementById('f_rec'), ent = document.getElementById('f_ent'), obs = document.getElementById('f_obs');
+  document.getElementById('pt_nom').textContent = clientName || '—';
+  document.getElementById('pt_fecha').textContent = fserv ? fserv.value || '—' : '—';
+  document.getElementById('pt_rec').textContent = rec ? rec.value || '—' : '—';
+  document.getElementById('pt_ent').textContent = ent ? ent.value || '—' : '—';
+  document.getElementById('pt_obs').textContent = obs ? obs.value || '—' : '—';
+  document.getElementById('pt_ref').textContent = number;
+  var rowsDiv = document.getElementById('pt_rows'); rowsDiv.innerHTML = '';
+  editedRows.forEach(function(item){ var row = document.createElement('div'); row.className = 'pt-row'; row.innerHTML = '<span>' + item.c + '</span><span style="text-align:center">' + item.u + '</span>'; rowsDiv.appendChild(row); });
+  var horasData = [];
+  document.querySelectorAll('#pe-horas [id^="ph-r"]').forEach(function(row){ var inp = row.querySelectorAll('input'); var c = inp[0] ? inp[0].value.trim() : ''; var h = inp[1] ? (parseFloat(inp[1].value) || 0) : 0; var p = inp[2] ? (parseFloat(inp[2].value) || 0) : 0; if (c && h > 0) horasData.push({ c: c, h: h, p: p, t: h * p }); });
+  var ptHorasSec = document.getElementById('pt-horas-sec'), ptHoras = document.getElementById('pt_horas');
+  if (ptHoras) ptHoras.innerHTML = '';
+  if (horasData.length > 0 && ptHoras) {
+    var totH = 0;
+    horasData.forEach(function(it){ totH += it.t; var r = document.createElement('div'); r.style.cssText = 'display:grid;grid-template-columns:3fr 70px 80px 90px;gap:5px;padding:6px 10px;align-items:center;border-bottom:1px solid var(--gb);font-size:12px'; r.innerHTML = '<span>' + it.c + '</span><span style="text-align:center">' + it.h + '</span><span style="text-align:right">' + (it.p ? it.p.toFixed(2) + ' \u20ac' : '\u2014') + '</span><span style="text-align:right;font-weight:700">' + (it.t ? it.t.toFixed(2) + ' \u20ac' : '\u2014') + '</span>'; ptHoras.appendChild(r); });
+    if (totH > 0) { var rt = document.createElement('div'); rt.style.cssText = 'display:grid;grid-template-columns:3fr 70px 80px 90px;gap:5px;padding:8px 10px;font-size:12px;font-weight:800;border-top:2px solid var(--na)'; rt.innerHTML = '<span>TOTAL HORAS / TRABAJOS</span><span></span><span></span><span style="text-align:right">' + totH.toFixed(2) + ' \u20ac</span>'; ptHoras.appendChild(rt); }
+    if (ptHorasSec) ptHorasSec.style.display = '';
+  } else if (ptHorasSec) { ptHorasSec.style.display = 'none'; }
+
+  closeParteEditModal();
+  showSyncStatus('Creando enlace de firma del parte…');
+
+  // 3) Construir HTML del parte y crear la sesión de firma (tipo parte)
+  try {
+    var clientTel = (document.getElementById('f_tel') || {}).value || '';
+    var clientEmail = (document.getElementById('f_email') || {}).value || '';
+    var parteHTML = buildCompleteHTML(['page-parte']);
+    var r = await fetch(RAILWAY_API + '/api/firma/crear', {
+      method: 'POST', headers: apiHeaders(),
+      body: JSON.stringify({ numero: number, nombre: clientName, email: clientEmail, telefono: clientTel, tipo: 'parte', fechaServicio: (fserv ? fserv.value : ''), presupuestoHtml: parteHTML })
+    });
+    var d = await r.json();
+    if (d && d.ok && d.url) {
+      try { window.open(d.url, '_blank'); } catch(e) {}
+      showSyncStatus('✅ Parte listo para firmar — pásale el móvil al cliente o envíale el enlace. Al firmar se guarda en su carpeta.', 8000);
+    } else {
+      showSyncStatus('❌ No se pudo crear la firma del parte: ' + (d ? (d.error || 'sin respuesta') : 'sin conexión'), 6000);
+    }
+  } catch(e) { console.error('[Firma Parte] Error:', e); showSyncStatus('❌ Error: ' + e.message, 6000); }
 }
 
 function calcParteEditPricing() {
