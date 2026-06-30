@@ -293,9 +293,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 <button onclick='parteEditAddItem()' style='background:#1B4F8A;color:#fff;border:none;padding:7px 14px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer'>+ A&ntilde;adir ensere</button>
 </div>
 <div style='margin-top:14px;border:1.5px solid #f0d6bf;border-radius:6px;overflow:hidden'>
-<div style='display:grid;grid-template-columns:2.5fr 70px 90px 80px 36px;gap:5px;padding:8px 10px;background:#fff3e8;font-weight:700;font-size:10px;text-transform:uppercase;color:#7a3d05'>
-<span>Horas / trabajo adicional</span><span style='text-align:center'>Horas</span><span style='text-align:center'>&euro;/hora</span><span style='text-align:right'>Total</span><span></span>
-</div>
+<div style='padding:8px 10px;background:#fff3e8;font-weight:700;font-size:11px;text-transform:uppercase;color:#7a3d05'>Horas / trabajo adicional (gr&uacute;a, mano de obra extra)</div>
 <div id='pe-horas'></div>
 </div>
 <div style='padding:10px 0 0;display:flex;gap:8px'>
@@ -2740,7 +2738,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v340';</script>
+<script>document.getElementById('version-tag').textContent='v341';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2852,7 +2850,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v340';
+var APP_VERSION = 'v341';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -7730,12 +7728,17 @@ function parteEditAddHora(c, h, p) {
   var id = _phItemId;
   var div = document.createElement('div');
   div.id = 'ph-r' + id;
-  div.style.cssText = 'display:grid;grid-template-columns:2.5fr 70px 90px 80px 36px;gap:5px;padding:6px 10px;align-items:center;border-bottom:1px solid #f0f0f0';
-  div.innerHTML = '<input type="text" value="' + String(c).replace(/"/g, '&quot;') + '" placeholder="Ej: Horas de gr\u00faa, mano de obra extra..." style="border:1px solid #ddd;padding:5px 8px;border-radius:4px;font-size:12px">'
-    + '<input type="number" value="' + h + '" min="0" step="0.5" placeholder="0" oninput="calcParteEditPricing()" style="border:1px solid #ddd;padding:5px;border-radius:4px;font-size:12px;text-align:center">'
-    + '<input type="number" value="' + p + '" min="0" step="1" placeholder="\u20ac/h" oninput="calcParteEditPricing()" style="border:1px solid #ddd;padding:5px;border-radius:4px;font-size:12px;text-align:center">'
-    + '<div class="ph-total" style="text-align:right;font-size:12px;font-weight:700">0.00</div>'
-    + '<button onclick="peRemoveHora(this)" style="background:#fee;border:1px solid #fcc;color:#c0392b;border-radius:4px;cursor:pointer;font-size:11px;padding:4px">&#10005;</button>';
+  div.style.cssText = 'padding:10px;border-bottom:1px solid #f0e0d0';
+  div.innerHTML =
+      '<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">'
+    +   '<input type="text" value="' + String(c).replace(/"/g, '&quot;') + '" placeholder="Concepto (ej: Horas de gr\u00faa)" style="flex:1;min-width:0;border:1px solid #ddd;padding:8px;border-radius:4px;font-size:13px">'
+    +   '<button onclick="peRemoveHora(this)" style="flex:none;background:#fee;border:1px solid #fcc;color:#c0392b;border-radius:4px;cursor:pointer;font-size:14px;padding:7px 10px">&#10005;</button>'
+    + '</div>'
+    + '<div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">'
+    +   '<label style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">N\u00ba de horas<br><input type="number" value="' + h + '" min="0" step="0.5" placeholder="0" inputmode="decimal" oninput="calcParteEditPricing()" style="width:95px;border:1px solid #ddd;padding:8px;border-radius:4px;font-size:15px;text-align:center;margin-top:3px"></label>'
+    +   '<label style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">\u20ac por hora<br><input type="number" value="' + p + '" min="0" step="1" placeholder="0" inputmode="decimal" oninput="calcParteEditPricing()" style="width:95px;border:1px solid #ddd;padding:8px;border-radius:4px;font-size:15px;text-align:center;margin-top:3px"></label>'
+    +   '<div style="margin-left:auto;text-align:right"><div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Total</div><div class="ph-total" style="font-size:16px;font-weight:800;color:#E85C0D">0.00</div></div>'
+    + '</div>';
   document.getElementById('pe-horas').appendChild(div);
   var t0 = div.querySelector('input[type=text]'); if (t0) t0.focus();
   calcParteEditPricing();
