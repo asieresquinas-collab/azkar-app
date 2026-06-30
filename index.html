@@ -2738,7 +2738,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v341';</script>
+<script>document.getElementById('version-tag').textContent='v342';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2850,7 +2850,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v341';
+var APP_VERSION = 'v342';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -4033,6 +4033,11 @@ function restoreFormData(data) {
   if (!data) return;
   // v126: diagnóstico (direcciones limpiadas por RGPD)
   console.log('[restoreFormData] campos=' + Object.keys(data).length);
+  // FIX anti-acumulación: limpiar SIEMPRE las filas antes de restaurar, para que los enseres
+  // no se acumulen/dupliquen si la ruta que llama no las limpió (auto-restore al abrir, PDF larga distancia).
+  // Las otras rutas (cargar, sync, recargar) ya limpiaban; esto las hace todas consistentes.
+  document.querySelectorAll('#tb .cr').forEach(function(cr){ cr.remove(); });
+  rid = 0;
   const fields = ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'];
   // v123f: SIEMPRE limpiar todos los campos primero para evitar datos fantasma del cliente anterior
   fields.forEach(id => {
@@ -5989,6 +5994,10 @@ async function newPresupuesto() {
   window._currentGuardamuebles = false;
   window._currentArchivado2026 = false;
   updateGuardamueblesUI(false);
+  // FIX promo: resetear PROMO 20% al crear nuevo presupuesto (antes solo lo hacía "Limpiar"/RF;
+  // sin esto, el descuento del cliente anterior se quedaba activado en el nuevo sin avisar)
+  window._promoManual = false;
+  if (typeof actualizarBannerPromo === 'function') actualizarBannerPromo();
   // v130: Reset tracking y permitir auto-save
   window._currentPresupuestoRef = null;
   window._lastSavedTimestamp = 0;
