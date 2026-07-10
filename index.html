@@ -2831,7 +2831,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v348';</script>
+<script>document.getElementById('version-tag').textContent='v349';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2943,7 +2943,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v348';
+var APP_VERSION = 'v349';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -13515,17 +13515,19 @@ async function doResetWithCode() {
     var fotoEnviar = pendingFoto;
     var framesEnviar = window._pendingFrames;
     var framesTipo = window._pendingFramesTipo || 'video';
+    var audioEnviar = window._pendingAudio; // v349: audio del vídeo (lo que dice el cliente)
     var pdfsEnviar = window._pendingPdfs;
     if (!msg && !fotoEnviar && !(framesEnviar && framesEnviar.length) && !(pdfsEnviar && pdfsEnviar.length)) return;
     pendingFoto = null;
     window._pendingFrames = null;
     window._pendingFramesTipo = null;
+    window._pendingAudio = null;
     window._pendingPdfs = null;
     var _fInd = document.getElementById('chatbot-foto-ind');
     if (_fInd) { _fInd.style.display = 'none'; _fInd.innerHTML = ''; }
     inputEl.value = '';
     inputEl.style.height = 'auto';
-    var msgEnviar = msg || ((framesEnviar && framesEnviar.length) ? (framesTipo === 'fotos' ? ('Te he enviado ' + framesEnviar.length + ' fotos. Hazme el borrador del presupuesto con lo que veas.') : ('Te he enviado un vídeo (' + framesEnviar.length + ' fotogramas). Házme el borrador del presupuesto con lo que veas.')) : ((pdfsEnviar && pdfsEnviar.length) ? 'Te he enviado un documento (PDF/Word). Léelo y dime qué pone.' : 'Te he enviado una foto.'));
+    var msgEnviar = msg || ((framesEnviar && framesEnviar.length) ? (framesTipo === 'fotos' ? ('Te he enviado ' + framesEnviar.length + ' fotos. Hazme el borrador del presupuesto con lo que veas.') : ('Te he enviado un vídeo (' + framesEnviar.length + ' fotogramas' + (audioEnviar ? ' y el audio de lo que voy diciendo' : '') + '). Házme el borrador del presupuesto con lo que veas' + (audioEnviar ? ', haciendo caso al audio para lo que va y lo que no va' : '') + '.')) : ((pdfsEnviar && pdfsEnviar.length) ? 'Te he enviado un documento (PDF/Word). Léelo y dime qué pone.' : 'Te he enviado una foto.'));
     addMsg('user', (framesEnviar && framesEnviar.length) ? ((msg ? msg + ' ' : '') + (framesTipo === 'fotos' ? ('📷×' + framesEnviar.length) : '🎥')) : (fotoEnviar ? ((msg ? msg + ' ' : '') + '📷') : ((pdfsEnviar && pdfsEnviar.length) ? ((msg ? msg + ' ' : '') + '📄') : msg)));
     chatHistorial.push({ role: 'user', content: msgEnviar });
     sendBtn.disabled = true;
@@ -13556,6 +13558,7 @@ async function doResetWithCode() {
               ? { mensaje: msgEnviar, historial: chatHistorial, imagen: fotoEnviar.base64, imagenMime: fotoEnviar.mime }
               : { mensaje: msgEnviar, historial: chatHistorial };
           if (pdfsEnviar && pdfsEnviar.length) _b.pdfs = pdfsEnviar;
+          if (audioEnviar && audioEnviar.b64 && framesEnviar && framesEnviar.length) _b.audio = audioEnviar; // v349
           _b.turno_id = _turnoId;
           return _b;
         })())
@@ -14356,6 +14359,54 @@ async function doResetWithCode() {
       video.onerror = function() { cleanup(); reject(new Error('no se pudo cargar el vídeo')); };
     });
   }
+  // v349: AUDIO DEL VÍDEO → WAV 16 kHz mono en base64. El cliente va DICIENDO qué se lleva y
+  // qué NO mientras graba; antes el audio se tiraba (video.muted) y el inventario contaba de más.
+  function _extraerAudioVideo(file, opts) {
+    opts = opts || {};
+    var rate = opts.rate || 16000, maxSec = opts.maxSec || 480; // tope 8 min (~15 MB de WAV)
+    return new Promise(function(resolve, reject) {
+      var fr = new FileReader();
+      fr.onerror = function() { reject(new Error('no pude leer el archivo')); };
+      fr.onload = function() {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return reject(new Error('sin AudioContext'));
+        var ac;
+        try { ac = new AC(); } catch (e) { return reject(e); }
+        var _done1 = false;
+        var done = function(err, decoded) {
+          if (_done1) return; _done1 = true;
+          try { ac.close(); } catch (e2) {}
+          if (err || !decoded || !decoded.duration) return reject(err || new Error('el vídeo no trae pista de audio'));
+          var dur = Math.min(decoded.duration, maxSec);
+          var oac;
+          try { oac = new OfflineAudioContext(1, Math.max(1, Math.ceil(dur * rate)), rate); } catch (e3) { return reject(e3); }
+          var src = oac.createBufferSource();
+          src.buffer = decoded; src.connect(oac.destination); src.start(0);
+          oac.startRendering().then(function(rendered) {
+            var pcm = rendered.getChannelData(0);
+            var maxAbs = 0; for (var i = 0; i < pcm.length; i += 50) { var a = Math.abs(pcm[i]); if (a > maxAbs) maxAbs = a; }
+            if (maxAbs < 0.004) return reject(new Error('el audio está en silencio'));
+            var dv = new DataView(new ArrayBuffer(44 + pcm.length * 2));
+            var ws = function(off, str) { for (var j = 0; j < str.length; j++) dv.setUint8(off + j, str.charCodeAt(j)); };
+            ws(0, 'RIFF'); dv.setUint32(4, 36 + pcm.length * 2, true); ws(8, 'WAVE'); ws(12, 'fmt ');
+            dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+            dv.setUint32(24, rate, true); dv.setUint32(28, rate * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+            ws(36, 'data'); dv.setUint32(40, pcm.length * 2, true);
+            for (var k = 0; k < pcm.length; k++) { var v = Math.max(-1, Math.min(1, pcm[k])); dv.setInt16(44 + k * 2, v < 0 ? v * 0x8000 : v * 0x7FFF, true); }
+            var fr2 = new FileReader();
+            fr2.onerror = function() { reject(new Error('no pude codificar el audio')); };
+            fr2.onload = function() { resolve({ b64: String(fr2.result).split(',')[1] || '', mime: 'audio/wav', duracion: Math.round(decoded.duration), recortado: decoded.duration > maxSec + 1 }); };
+            fr2.readAsDataURL(new Blob([dv], { type: 'audio/wav' }));
+          }).catch(function(eR) { reject(eR || new Error('no pude remuestrear el audio')); });
+        };
+        try {
+          var p = ac.decodeAudioData(fr.result, function(d) { done(null, d); }, function(e) { done(e || new Error('audio no descodificable')); });
+          if (p && p.catch) p.catch(function() {});
+        } catch (e4) { done(e4); }
+      };
+      fr.readAsArrayBuffer(file);
+    });
+  }
   var _videoInput = document.getElementById('chatbot-video-input');
   if (_videoInput) {
     _videoInput.addEventListener('change', async function() {
@@ -14369,15 +14420,23 @@ async function doResetWithCode() {
         if (!frames.length) throw new Error('no se extrajeron fotogramas');
         window._pendingFrames = frames;
         window._pendingFramesTipo = 'video';
+        // v349: sacar también el AUDIO (lo que va diciendo el cliente). Si falla, no pasa nada:
+        // el vídeo sigue valiendo solo con las imágenes, como hasta ahora.
+        window._pendingAudio = null;
+        try {
+          if (ind) { ind.innerHTML = ''; ind.appendChild(document.createTextNode('🎙️ Extrayendo el audio…')); }
+          window._pendingAudio = await _extraerAudioVideo(file, { rate: 16000, maxSec: 480 });
+        } catch (eAu) { window._pendingAudio = null; }
         if (ind) {
           ind.innerHTML = '';
-          ind.appendChild(document.createTextNode('🎥 Vídeo listo (' + frames.length + ' fotogramas)'));
+          ind.appendChild(document.createTextNode('🎥 Vídeo listo (' + frames.length + ' fotogramas' + (window._pendingAudio ? ' + 🎙️ audio' : '') + ')'));
           var x = document.createElement('span'); x.textContent = ' ✕'; x.title = 'Quitar vídeo'; x.style.cursor = 'pointer'; x.style.marginLeft = '8px';
-          x.onclick = function() { window._pendingFrames = null; ind.style.display = 'none'; ind.innerHTML = ''; };
+          x.onclick = function() { window._pendingFrames = null; window._pendingAudio = null; ind.style.display = 'none'; ind.innerHTML = ''; };
           ind.appendChild(x);
         }
       } catch (e) {
         window._pendingFrames = null;
+        window._pendingAudio = null;
         if (ind) { ind.style.display = 'none'; ind.innerHTML = ''; }
         addMsg('bot', '❌ No pude procesar el vídeo (' + (e.message || '') + '). Prueba con uno más corto o de menor calidad.');
       }
