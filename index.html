@@ -2832,7 +2832,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v350';</script>
+<script>document.getElementById('version-tag').textContent='v351';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2944,7 +2944,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v350';
+var APP_VERSION = 'v351';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12573,6 +12573,42 @@ function hideLoginScreen() {
   if (chatBubble) chatBubble.style.display = 'flex';
   ST('dossier');
 }
+
+// v351: Red de seguridad de la burbuja de Azkarin.
+// Hasta ahora la burbuja solo se encendía en hideLoginScreen(), tras la verificación
+// de sesión del arranque. Si ese único paso no corría limpio (backend despertando,
+// o Android matando/reabriendo la PWA y solapando el arranque), el usuario se quedaba
+// CON sesión válida pero SIN botón hasta recargar a mano. Esta función lo cura sola,
+// sin recargar: si hay sesión y no estamos en el login, se asegura de que la burbuja
+// esté visible. Es puramente ADITIVA — nunca oculta nada ni toca la lógica de login.
+function ensureAzkarinBubble() {
+  try {
+    var tok = null;
+    try { tok = localStorage.getItem('azkar_token'); } catch (e) {}
+    if (!tok) return; // sin sesión: no forzar (respeta la pantalla de login)
+    var login = document.getElementById('login-screen');
+    if (login && login.style.display !== 'none') return; // login a la vista: respetar
+    var bubble = document.getElementById('chatbot-bubble');
+    if (!bubble) return;
+    if (bubble.style.display !== 'flex') {
+      bubble.style.display = 'flex';
+      console.log('[Azkarin] Burbuja re-mostrada por red de seguridad (v351)');
+    }
+  } catch (e) {}
+}
+window.ensureAzkarinBubble = ensureAzkarinBubble;
+
+// Disparadores: al volver a la app (clave en Android), al enfocar, al restaurar de
+// bfcache, y dos repasos cortos tras el arranque por si la verificación tardó.
+try {
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') ensureAzkarinBubble();
+  });
+  window.addEventListener('focus', ensureAzkarinBubble);
+  window.addEventListener('pageshow', ensureAzkarinBubble);
+  setTimeout(ensureAzkarinBubble, 1500);
+  setTimeout(ensureAzkarinBubble, 4000);
+} catch (e) {}
 
 // ── Llave de Firebase (aditivo): inicia sesión en Firebase Auth tras el login.
 //    No bloquea: si falla, la app sigue funcionando igual que siempre. ──
