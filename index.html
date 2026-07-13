@@ -2725,8 +2725,8 @@ window.addEventListener('DOMContentLoaded',function(){
   LD();
   var fd=document.getElementById('f_fecha');
   if(fd&&!fd.value) fd.value=new Date().toISOString().slice(0,10);
-  // v226 FASE 3: cargar alertas proactivas de Azkarin al abrir la app
-  setTimeout(function(){ azkarinLoadAlerts(); }, 4000);
+  // v355: al abrir, Azkarin PREGUNTA si repasar lo de hoy (nada de banners/alertas automáticas)
+  setTimeout(function(){ azkarinPreguntarRepaso(); }, 3000);
 });
 
 // ── v259: alertas proactivas al cargar → sistema buzón ──
@@ -2773,6 +2773,51 @@ async function azkarinLoadAlerts() {
     console.warn('[Azkarin] Error cargando alertas:', e.message);
   }
 }
+
+// v355: al abrir la app, Azkarin PREGUNTA (no bombardea). Si dices que sí, arranca el repaso "de 2 en 2".
+function azkarinPreguntarRepaso() {
+  try {
+    var token = localStorage.getItem('azkar_token');
+    if (!token) return;                                    // sin sesión: nada
+    var login = document.getElementById('login-screen');
+    if (login && login.style.display !== 'none') return;   // en el login: nada
+    if (document.getElementById('azkarin-repaso-ask')) return; // ya está puesta
+    var h = new Date().getHours();
+    var saludo = h < 12 ? 'Buenos días' : (h < 21 ? 'Buenas tardes' : 'Buenas noches');
+    var div = document.createElement('div');
+    div.id = 'azkarin-repaso-ask';
+    div.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:10001;width:calc(100vw - 28px);max-width:360px;background:linear-gradient(135deg,#1B4F8A,#2376C5);color:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 10px 30px rgba(27,79,138,.45);font-family:Barlow,sans-serif;animation:azToastIn .3s ease';
+    div.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+      + '<img src="./icons/azkarin-64.png" style="width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.35)" onerror="this.style.display=\'none\'">'
+      + '<div style="font-size:14px;line-height:1.25"><b>' + saludo + ', Asier</b> 👋<br>¿Repasamos lo que tienes hoy?</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px">'
+      + '<button id="rep-si" style="flex:1;background:#fff;color:#1B4F8A;border:none;border-radius:10px;padding:10px;font-weight:800;font-size:13px;font-family:Barlow,sans-serif;cursor:pointer">Sí, dime</button>'
+      + '<button id="rep-no" style="background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px;font-family:Barlow,sans-serif;cursor:pointer">Ahora no</button>'
+      + '</div>';
+    document.body.appendChild(div);
+    document.getElementById('rep-si').onclick = function() { div.remove(); azkarinArrancarRepaso(); };
+    document.getElementById('rep-no').onclick = function() { div.remove(); };
+    setTimeout(function() { if (div.parentNode) div.remove(); }, 45000); // si lo ignoras, se quita solo
+  } catch (e) { console.warn('[Azkarin] repaso ask:', e.message); }
+}
+window.azkarinPreguntarRepaso = azkarinPreguntarRepaso;
+
+function azkarinArrancarRepaso() {
+  try {
+    var bubble = document.getElementById('chatbot-bubble');
+    if (bubble) bubble.style.display = 'flex';
+    var panel = document.getElementById('chatbot-panel');
+    if (panel && !panel.classList.contains('open')) { panel.classList.add('open'); window._chatbotActivo = true; }
+    setTimeout(function() {
+      var inp = document.getElementById('chatbot-input');
+      if (inp) inp.value = 'repásame lo de hoy';
+      if (typeof window.chatbotSend === 'function') window.chatbotSend();
+    }, 350);
+  } catch (e) { console.warn('[Azkarin] arrancar repaso:', e.message); }
+}
+window.azkarinArrancarRepaso = azkarinArrancarRepaso;
 
 function mostrarBannerAzkarin(data) {
   try {
@@ -2832,7 +2877,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v354';</script>
+<script>document.getElementById('version-tag').textContent='v355';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2944,7 +2989,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v354';
+var APP_VERSION = 'v355';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
