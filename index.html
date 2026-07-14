@@ -2877,7 +2877,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v355';</script>
+<script>document.getElementById('version-tag').textContent='v356';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2989,7 +2989,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v355';
+var APP_VERSION = 'v356';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -12639,6 +12639,21 @@ function ensureAzkarinBubble() {
       bubble.style.display = 'flex';
       console.log('[Azkarin] Burbuja re-mostrada por red de seguridad (v351)');
     }
+    // v356: la red también vigila la POSICIÓN. La burbuja se arrastra con el dedo; el tope del
+    // arrastre usa el tamaño de pantalla del momento, así que si luego cambia el viewport (girar
+    // el móvil, abrirse el teclado al escribir en un presupuesto) puede quedar FUERA de la vista.
+    // La red antes solo arreglaba display y seguía sin verse (había que recargar). Ahora: si está
+    // fuera de pantalla (o casi), se limpia el posicionado inline del arrastre y vuelve sola a su
+    // esquina segura por defecto (abajo-derecha, con safe-area del CSS). Solo actúa si está FUERA;
+    // si la moviste a un sitio visible a propósito, se respeta.
+    try {
+      var r = bubble.getBoundingClientRect();
+      var W = window.innerWidth || 360, H = window.innerHeight || 640;
+      if (r.right <= 8 || r.bottom <= 8 || r.left >= W - 8 || r.top >= H - 8 || r.width === 0) {
+        bubble.style.left = ''; bubble.style.top = ''; bubble.style.right = ''; bubble.style.bottom = '';
+        console.log('[Azkarin] Burbuja fuera de pantalla -> devuelta a su esquina (v356)');
+      }
+    } catch (e) {}
   } catch (e) {}
 }
 window.ensureAzkarinBubble = ensureAzkarinBubble;
@@ -12651,6 +12666,11 @@ try {
   });
   window.addEventListener('focus', ensureAzkarinBubble);
   window.addEventListener('pageshow', ensureAzkarinBubble);
+  // v356: al girar o al abrirse/cerrarse el teclado (resize) es cuando la burbuja se puede quedar
+  // fuera de sitio -> re-comprobar (resize con debounce para no dispararlo en cada píxel).
+  var _bubbleRz = null;
+  window.addEventListener('resize', function() { clearTimeout(_bubbleRz); _bubbleRz = setTimeout(ensureAzkarinBubble, 250); });
+  window.addEventListener('orientationchange', function() { setTimeout(ensureAzkarinBubble, 350); });
   setTimeout(ensureAzkarinBubble, 1500);
   setTimeout(ensureAzkarinBubble, 4000);
 } catch (e) {}
