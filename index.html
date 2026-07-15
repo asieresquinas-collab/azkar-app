@@ -2877,7 +2877,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v357';</script>
+<script>document.getElementById('version-tag').textContent='v358';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2989,7 +2989,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v357';
+var APP_VERSION = 'v358';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -14036,10 +14036,42 @@ async function doResetWithCode() {
     try { inputEl.value = _convBuffer; } catch(e){}                 // feedback: va viendo lo que lleva dicho
     _convArmarEnvio();                                             // (re)arma el temporizador de envío
   }
+  // ── v358 INTERRUMPIR A AZKARIN mientras habla (barge-in por voz + toque en la pantalla) ──
+  function _bargeinActivo() { try { return localStorage.getItem('azkar_bargein') !== '0'; } catch(e){ return true; } } // apagar: localStorage.azkar_bargein='0'
+  function _convHablando() { try { return !!(window._hablandoNativo || _ttsSpeaking || (_ttsQueue && _ttsQueue.length)); } catch(e){ return false; } }
+  // ¿lo que ha oído el micro es el ECO de lo que Azkarin dice por el altavoz? (para NO cortarse solo)
+  function _esEcoDeAzkarin(txt) {
+    try {
+      var t = (txt||'').toLowerCase().trim(); if (!t) return true;
+      var ref = (window._ultimoHabla||'').toLowerCase(); if (!ref) return false;
+      if (ref.indexOf(t) >= 0) return true;                                   // fragmento literal de lo que dice
+      var pal = t.split(/\s+/).filter(function(w){ return w.length > 2; });
+      if (!pal.length) return true;
+      var n = 0; for (var i = 0; i < pal.length; i++) if (ref.indexOf(pal[i]) >= 0) n++;
+      return (n / pal.length) >= 0.55;                                        // mayoría de palabras = lo que él dice → eco
+    } catch(e){ return false; }
+  }
+  // Cortar a Azkarin (parar su voz) y ponerse a escuchar YA. Vale para el TOQUE en la pantalla.
+  function _convInterrumpir(e) {
+    try {
+      if (!_convHablando()) return;                                           // solo si está hablando
+      if (e && e.target && e.target.closest && e.target.closest('a,button,input,textarea,select,label')) return; // no robar toques a botones/enlaces
+      if (typeof chatSpeakStop === 'function') chatSpeakStop();
+      _convLimpiarBuffer();
+      if (window._azkarinConv) setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 120);
+    } catch(err){}
+  }
+  window._convInterrumpir = _convInterrumpir;
+  try { var _msgsEl = document.getElementById('chatbot-msgs'); if (_msgsEl) _msgsEl.addEventListener('click', _convInterrumpir); } catch(e){}
   window._convEscuchar = function() {
     if (!window._azkarinConv) return;
     if (_convSesion) return;                                   // ya hay micro abierto
-    if (_ttsSpeaking || _ttsQueue.length > 0 || window._hablandoNativo) return;          // Azkarin está hablando → esperar (el hook del TTS nos llama al acabar)
+    // v358 BARGE-IN: si Azkarin está hablando, antes SIEMPRE esperábamos. Ahora, con barge-in
+    // activo y micro nativo, escuchamos MIENTRAS habla para poder cortarle hablándole. En web (o
+    // con barge-in apagado) seguimos esperando a que termine (el hook del TTS reengancha el micro).
+    var _hablandoAhora = _convHablando();
+    var _puedoBarge = _bargeinActivo() && _esAppNativa() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition;
+    if (_hablandoAhora && !_puedoBarge) return;
     if (sendBtn && sendBtn.disabled) return;                   // está pensando una respuesta
     if (!panel.classList.contains('open')) { window.chatbotConvToggle(false); return; }
     if (_esAppNativa() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
@@ -14047,13 +14079,19 @@ async function doResetWithCode() {
       _micNativo().then(function(txt){
         _convSesion = false;
         if (!window._azkarinConv) return;
-        if (window._hablandoNativo) { setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 400); return; }
         var _t = (txt||'').toLowerCase().trim();
-        if (_t && window._ultimoHabla && _t.length > 3 && window._ultimoHabla.indexOf(_t) >= 0) { setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 500); return; }
-        // v357: acumular y seguir escuchando. NO enviar aquí — el temporizador de pausa (_convArmarEnvio)
-        // envía tras ~4s de silencio real, así Asier puede hablar despacio y con pausas sin que le corte.
+        var _hab = _convHablando();
+        // Filtro de eco: DURO mientras habla (evita que se corte solo al oírse), suave cuando calla.
+        if (_t) {
+          var _eco = _hab ? _esEcoDeAzkarin(_t) : (window._ultimoHabla && _t.length > 3 && window._ultimoHabla.indexOf(_t) >= 0);
+          if (_eco) { setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, _hab ? 250 : 500); return; }
+        }
+        // Voz REAL del usuario mientras Azkarin habla → cortarle la voz al vuelo (barge-in)
+        if (txt && txt.trim() && _hab) { try { if (typeof chatSpeakStop === 'function') chatSpeakStop(); } catch(e){} }
+        if (!txt || !txt.trim()) { setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, _hab ? 350 : 600); return; }
+        // v357: acumular; el temporizador de pausa (~4s) envía cuando de verdad termina de hablar.
         _convRecibirHabla(txt);
-        setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, (txt && txt.trim()) ? 150 : 500);
+        setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 150);
       });
       return;
     }
