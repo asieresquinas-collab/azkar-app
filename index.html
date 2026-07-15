@@ -2877,7 +2877,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v356';</script>
+<script>document.getElementById('version-tag').textContent='v357';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2989,7 +2989,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v356';
+var APP_VERSION = 'v357';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -14013,6 +14013,29 @@ async function doResetWithCode() {
   var _convSesion = false;       // v282b: solo UNA sesión de micro a la vez
   var _convUltimoToggle = 0;     // v282b: anti rebote del botón
   window._azkarinConv = false;
+  // v357: PAUSA TOLERADA — Asier habla despacio y el micro le cortaba al primer silencio.
+  // Ahora los trozos de habla se ACUMULAN y solo se envían tras una pausa larga de verdad.
+  var _convBuffer = '';
+  var _convSendTimer = null;
+  var _CONV_PAUSA_MS = 4000; // cuánto silencio hay que dejar tras la última palabra para enviar (tuneable)
+  function _convLimpiarBuffer() { _convBuffer = ''; if (_convSendTimer) { clearTimeout(_convSendTimer); _convSendTimer = null; } }
+  function _convArmarEnvio() {
+    if (_convSendTimer) clearTimeout(_convSendTimer);
+    _convSendTimer = setTimeout(function() {
+      _convSendTimer = null;
+      var txt = (_convBuffer || '').trim();
+      _convBuffer = '';
+      if (!window._azkarinConv) return;
+      if (txt) { try { inputEl.value = txt; } catch(e){} window.chatbotSend(); }
+    }, _CONV_PAUSA_MS);
+  }
+  function _convRecibirHabla(txt) {
+    txt = (txt || '').trim();
+    if (!txt) return;
+    _convBuffer = _convBuffer ? (_convBuffer + ' ' + txt) : txt;   // une lo dicho antes y después de la pausa
+    try { inputEl.value = _convBuffer; } catch(e){}                 // feedback: va viendo lo que lleva dicho
+    _convArmarEnvio();                                             // (re)arma el temporizador de envío
+  }
   window._convEscuchar = function() {
     if (!window._azkarinConv) return;
     if (_convSesion) return;                                   // ya hay micro abierto
@@ -14027,8 +14050,10 @@ async function doResetWithCode() {
         if (window._hablandoNativo) { setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 400); return; }
         var _t = (txt||'').toLowerCase().trim();
         if (_t && window._ultimoHabla && _t.length > 3 && window._ultimoHabla.indexOf(_t) >= 0) { setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 500); return; }
-        if (txt) { inputEl.value = txt; chatbotSend(); }
-        else { setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 800); }
+        // v357: acumular y seguir escuchando. NO enviar aquí — el temporizador de pausa (_convArmarEnvio)
+        // envía tras ~4s de silencio real, así Asier puede hablar despacio y con pausas sin que le corte.
+        _convRecibirHabla(txt);
+        setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, (txt && txt.trim()) ? 150 : 500);
       });
       return;
     }
@@ -14046,9 +14071,8 @@ async function doResetWithCode() {
       t = t.trim();
       if (t) {
         _resultado = true; _convSilencios = 0;
-        inputEl.value = t;
+        _convRecibirHabla(t); // v357: acumular y enviar tras la pausa larga (no cortar a Asier)
         try { rec.stop(); } catch (ex) {}
-        setTimeout(function() { window.chatbotSend(); }, 150);
       }
     };
     rec.onend = function() {
@@ -14092,11 +14116,12 @@ async function doResetWithCode() {
       _convPedirWake();
       // El saludo se lee por TTS; el micro arranca SOLO cuando la voz termina
       // (lo reengancha el hook del TTS o el vigilante). Nunca a la vez.
-      addMsg('bot', '🎧 Modo conversación activo: mantengo la pantalla encendida y, cuando termine de hablar, te escucho. Toca el auricular para parar. (Si bloqueas el móvil o sales de la app, Android corta el micro y se para — es un límite del sistema.)');
+      addMsg('bot', '🎧 Modo conversación activo: habla tranquilo, puedes hacer pausas — espero a que termines del todo (unos segundos de silencio) antes de contestar. Toca el auricular para parar. (Si bloqueas el móvil o sales de la app, Android corta el micro y se para — es un límite del sistema.)');
     } else {
       _convLiberarWake();
       try { if (window._convRec) window._convRec.stop(); } catch (e) {}
       _convSesion = false;
+      _convLimpiarBuffer(); // v357: descartar lo acumulado al apagar
       addMsg('bot', '🎧 Modo conversación apagado.');
     }
   };
