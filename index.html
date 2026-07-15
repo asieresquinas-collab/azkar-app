@@ -2877,7 +2877,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v359';</script>
+<script>document.getElementById('version-tag').textContent='v360';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2989,7 +2989,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v359';
+var APP_VERSION = 'v360';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -13205,6 +13205,7 @@ async function doResetWithCode() {
     } catch (e) { console.warn('[TTSNativo]', e && e.message); }
   }
   function chatSpeak(text) {
+    try { if (window._registrarDicho) window._registrarDicho(text); } catch(e){} // v360: recuerda lo dicho para no tragarse su eco
     // v315: en la app habla SIEMPRE (asistente de voz), aunque el TTS web esté apagado
     if (_esAppNativa() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech) { _hablarNativo(text); return; }
     if (!chatTTSEnabled) return;
@@ -14037,22 +14038,39 @@ async function doResetWithCode() {
     _convArmarEnvio();                                             // (re)arma el temporizador de envío
   }
   // ── v358 INTERRUMPIR A AZKARIN mientras habla (barge-in por voz + toque en la pantalla) ──
-  // v359: barge-in por VOZ APAGADO por defecto — abría el micro mientras Azkarin hablaba y el
-  // micro captaba su propia voz por el altavoz (transcrita con fallos que el filtro no pillaba),
-  // así que Azkarin se contestaba a sí mismo (caso grúa Gernika 15:20). El TOQUE en pantalla sigue
-  // activo (fiable, sin eco). Para reactivar el barge-in por voz: localStorage.azkar_bargein='1'.
-  function _bargeinActivo() { try { return localStorage.getItem('azkar_bargein') === '1'; } catch(e){ return false; } }
+  // v360: barge-in por voz RE-ACTIVADO, ahora con GUARDIA ANTI-BUCLE robusta para que Azkarin
+  // NUNCA se conteste a sí mismo (el fallo de la grúa Gernika). Apagar del todo: localStorage.azkar_bargein='0'.
+  function _bargeinActivo() { try { return localStorage.getItem('azkar_bargein') !== '0'; } catch(e){ return true; } }
   function _convHablando() { try { return !!(window._hablandoNativo || _ttsSpeaking || (_ttsQueue && _ttsQueue.length)); } catch(e){ return false; } }
-  // ¿lo que ha oído el micro es el ECO de lo que Azkarin dice por el altavoz? (para NO cortarse solo)
+  // v360: memoria de lo ÚLTIMO que dijo Azkarin (varias frases, 12s) — para reconocer su eco AUNQUE
+  // la transcripción llegue tarde (cuando ya ha dejado de hablar) y con fallos.
+  function _registrarDicho(text) {
+    try {
+      var clean = String(text||'').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+      if (!clean) return;
+      window._ultimosDichos = (window._ultimosDichos || []).filter(function(d){ return (Date.now() - d.ts) < 12000; });
+      window._ultimosDichos.push({ t: clean, ts: Date.now() });
+      if (window._ultimosDichos.length > 6) window._ultimosDichos = window._ultimosDichos.slice(-6);
+      window._ultimoHabla = clean; // compat
+    } catch(e){}
+  }
+  window._registrarDicho = _registrarDicho;
+  // ¿lo oído es el ECO de algo que Azkarin acaba de decir? SOLO frases LARGAS con MUCHA coincidencia
+  // (una confirmación corta como "sí, el martes" NUNCA se trata como eco, para no tragársela).
   function _esEcoDeAzkarin(txt) {
     try {
       var t = (txt||'').toLowerCase().trim(); if (!t) return true;
-      var ref = (window._ultimoHabla||'').toLowerCase(); if (!ref) return false;
-      if (ref.indexOf(t) >= 0) return true;                                   // fragmento literal de lo que dice
+      var dichos = (window._ultimosDichos || []).filter(function(d){ return (Date.now() - d.ts) < 12000; });
+      if (!dichos.length) { var r0 = (window._ultimoHabla||'').toLowerCase(); return !!(r0 && r0.indexOf(t) >= 0); }
       var pal = t.split(/\s+/).filter(function(w){ return w.length > 2; });
       if (!pal.length) return true;
-      var n = 0; for (var i = 0; i < pal.length; i++) if (ref.indexOf(pal[i]) >= 0) n++;
-      return (n / pal.length) >= 0.55;                                        // mayoría de palabras = lo que él dice → eco
+      for (var d = 0; d < dichos.length; d++) {
+        var ref = dichos[d].t;
+        if (ref.length > 6 && ref.indexOf(t) >= 0) return true;               // fragmento literal de lo que dijo
+        var n = 0; for (var i = 0; i < pal.length; i++) if (ref.indexOf(pal[i]) >= 0) n++;
+        if (pal.length >= 5 && (n / pal.length) >= 0.6) return true;          // frase larga que coincide mucho → eco
+      }
+      return false;
     } catch(e){ return false; }
   }
   // Cortar a Azkarin (parar su voz) y ponerse a escuchar YA. Vale para el TOQUE en la pantalla.
@@ -14085,11 +14103,10 @@ async function doResetWithCode() {
         if (!window._azkarinConv) return;
         var _t = (txt||'').toLowerCase().trim();
         var _hab = _convHablando();
-        // Filtro de eco: DURO mientras habla (evita que se corte solo al oírse), suave cuando calla.
-        if (_t) {
-          var _eco = _hab ? _esEcoDeAzkarin(_t) : (window._ultimoHabla && _t.length > 3 && window._ultimoHabla.indexOf(_t) >= 0);
-          if (_eco) { setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, _hab ? 250 : 500); return; }
-        }
+        // Filtro de eco (v360): comprueba SIEMPRE contra lo que Azkarin dijo en los últimos 12s,
+        // aunque ya haya dejado de hablar (la transcripción del eco suele llegar tarde). Así NO se
+        // contesta a sí mismo. Las frases cortas del usuario pasan; solo se filtran ecos largos.
+        if (_t && _esEcoDeAzkarin(_t)) { setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, _hab ? 250 : 500); return; }
         // Voz REAL del usuario mientras Azkarin habla → cortarle la voz al vuelo (barge-in)
         if (txt && txt.trim() && _hab) { try { if (typeof chatSpeakStop === 'function') chatSpeakStop(); } catch(e){} }
         if (!txt || !txt.trim()) { setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, _hab ? 350 : 600); return; }
