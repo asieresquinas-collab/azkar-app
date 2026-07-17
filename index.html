@@ -2877,7 +2877,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v363';</script>
+<script>document.getElementById('version-tag').textContent='v364';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2989,7 +2989,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v363';
+var APP_VERSION = 'v364';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -3007,6 +3007,10 @@ function ejecutarUpdateSiNoChat() {
       .then(function(data) {
         if (!data || !data.version) return;
         if (data.version !== APP_VERSION) {
+          // v364: candado anti-bucle. Si YA intentamos actualizar a ESTA versión y seguimos con la
+          // vieja (el CDN de GitHub Pages aún sirve el index.html anterior), NO repetimos el
+          // borrado+recarga en bucle: esperamos a que el CDN sincronice.
+          try { if (localStorage.getItem('azkar_update_try') === data.version) { console.log('[Azkar] Update a ' + data.version + ' ya intentado; espero al CDN'); return; } localStorage.setItem('azkar_update_try', data.version); } catch(e){}
           console.log('[Azkar] Version servidor=' + data.version + ' local=' + APP_VERSION + ' → actualizando');
           caches.keys().then(function(names) {
             return Promise.all(names.map(function(n) { return caches.delete(n); }));
@@ -3019,7 +3023,7 @@ function ejecutarUpdateSiNoChat() {
           }).then(function() {
             ejecutarUpdateSiNoChat();
           });
-        }
+        } else { try { localStorage.removeItem('azkar_update_try'); } catch(e){} }
       })
       .catch(function(e) { console.log('[Azkar] Version check offline, skip'); });
   } catch(e) {}
@@ -7296,14 +7300,17 @@ window.saveAllToDrive = async function() {
   if (btn) btn.innerHTML = '⏳ Guardando...';
 
   // ── PASO 1: SIEMPRE guardar datos en IndexedDB + Firebase (reservar el número) ──
+  var _saveLocalOk = false, _saveNubeOk = false;
   try {
     const formData = collectFormData();
     formData.id = number;
     await savePresupuesto(formData);
+    _saveLocalOk = true;
     if (firebaseConfigured && window._fb) {
       await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', number), formData, { merge: true });
-    }
-    console.log('[SaveAllToDrive] Datos guardados en IndexedDB + Firebase');
+      _saveNubeOk = true;
+    } else { _saveNubeOk = true; } // sin Firebase configurado, no aplica la subida
+    console.log('[SaveAllToDrive] Datos guardados en IndexedDB' + (_saveNubeOk ? ' + Firebase' : ''));
   } catch(e) { console.warn('[SaveAllToDrive] Error guardando datos:', e); }
 
   // Verificar si hay datos reales en el presupuesto (dirección, concepto, teléfono...)
@@ -7336,7 +7343,7 @@ window.saveAllToDrive = async function() {
   scheduleBackup();
 
   if (btn) {
-    btn.innerHTML = '✓ ¡Guardado!';
+    btn.innerHTML = _saveLocalOk ? '✓ ¡Guardado!' : '⚠️ No se pudo';
     btn.style.opacity = '0.7';
     setTimeout(() => {
       btn.innerHTML = '💾 GUARDAR EN DRIVE';
@@ -7344,7 +7351,10 @@ window.saveAllToDrive = async function() {
     }, 2000);
   }
 
-  showSyncStatus('✅ Datos guardados' + (hayDatos ? ' — usa "Crear PDF" para generar el presupuesto' : ' — nº ' + number + ' reservado'));
+  // v364: mensaje HONESTO — antes decía "Guardado" aunque fallara Firebase o IndexedDB.
+  if (_saveLocalOk && _saveNubeOk) showSyncStatus('✅ Datos guardados' + (hayDatos ? ' — usa "Crear PDF" para generar el presupuesto' : ' — nº ' + number + ' reservado'));
+  else if (_saveLocalOk && !_saveNubeOk) showSyncStatus('⚠️ Guardado en este móvil, pero NO subió a la nube (sin conexión). Vuelve a darle cuando tengas cobertura para que llegue a la oficina.');
+  else showSyncStatus('❌ NO se pudo guardar. Revisa la conexión e inténtalo otra vez.');
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -7418,7 +7428,7 @@ window.addEventListener('DOMContentLoaded', function() {
         fetch(RAILWAY_API + '/api/equipo-admin/enlace', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: clave }) })
           .then(function(r){ return r.json(); })
           .then(function(d){
-            if (d && d.url) { try { localStorage.setItem('azkar_equipo_admin_url', d.url); } catch(e){} window.open(d.url, '_blank'); }
+            if (d && d.url) { try { localStorage.setItem('azkar_equipo_admin_url', d.url); } catch(e){} var _w = window.open(d.url, '_blank'); if (!_w) window.location.href = d.url; } /* v364: si el móvil bloquea la ventana tras la clave, abre en la misma pestaña */
             else alert((d && d.error) || 'Clave incorrecta.');
           })
           .catch(function(){ alert('Sin conexión con el servidor. Prueba en un momento.'); });
@@ -13200,6 +13210,7 @@ async function doResetWithCode() {
     window._hablandoNativo = false;
     _ttsQueue = [];
     _ttsSpeaking = false;
+    window._ttsSpeaking = false; // v364: espejo para que el botón ⏹ (parar voz) sepa el estado real
   }
 
   // v314: voz NATIVA en la app (el TTS web no suena en el WebView de Android)
@@ -13351,6 +13362,7 @@ async function doResetWithCode() {
   function _ttsPlayNext() {
     if (_ttsQueue.length === 0) {
       _ttsSpeaking = false;
+      window._ttsSpeaking = false; // v364: espejo para el botón ⏹ (parar voz)
       window._ttsModo = null;        // reset: nueva respuesta elegira voz de nuevo
       window._ttsReintento = {};
       // v282 MODO CONVERSACION: termino de hablar, volver a escuchar
@@ -13358,6 +13370,7 @@ async function doResetWithCode() {
       return;
     }
     _ttsSpeaking = true;
+    window._ttsSpeaking = true; // v364: espejo para el botón ⏹ (parar voz)
     var chunk = _ttsQueue.shift();
     // COHERENCIA v310: una sola voz por respuesta. Si ya se fijo navegador, todo navegador.
     if (window._ttsModo === 'navegador' || !_vozNeuronalActiva()) {
