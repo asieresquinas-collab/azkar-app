@@ -2911,7 +2911,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v366';</script>
+<script>document.getElementById('version-tag').textContent='v367';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3023,7 +3023,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v366';
+var APP_VERSION = 'v367';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -3041,10 +3041,15 @@ function ejecutarUpdateSiNoChat() {
       .then(function(data) {
         if (!data || !data.version) return;
         if (data.version !== APP_VERSION) {
-          // v364: candado anti-bucle. Si YA intentamos actualizar a ESTA versión y seguimos con la
-          // vieja (el CDN de GitHub Pages aún sirve el index.html anterior), NO repetimos el
-          // borrado+recarga en bucle: esperamos a que el CDN sincronice.
-          try { if (localStorage.getItem('azkar_update_try') === data.version) { console.log('[Azkar] Update a ' + data.version + ' ya intentado; espero al CDN'); return; } localStorage.setItem('azkar_update_try', data.version); } catch(e){}
+          // v367: candado anti-bucle BIEN HECHO. El de v364 bloqueaba los reintentos PARA SIEMPRE
+          // (si el 1er intento pillaba el CDN a medias, la app se quedaba clavada en la versión
+          // vieja — caso real: Asier sin Azkarin por el 401 de la API). Ahora: como mucho un
+          // intento cada 3 minutos — sin bucle rápido, pero SIEMPRE acaba actualizando.
+          try {
+            var _try = String(localStorage.getItem('azkar_update_try') || '').split('|');
+            if (_try[0] === data.version && (Date.now() - (parseInt(_try[1], 10) || 0)) < 180000) { console.log('[Azkar] Update a ' + data.version + ' intentado hace <3 min; espero'); return; }
+            localStorage.setItem('azkar_update_try', data.version + '|' + Date.now());
+          } catch(e){}
           console.log('[Azkar] Version servidor=' + data.version + ' local=' + APP_VERSION + ' → actualizando');
           caches.keys().then(function(names) {
             return Promise.all(names.map(function(n) { return caches.delete(n); }));
