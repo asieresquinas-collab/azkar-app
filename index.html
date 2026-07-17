@@ -2877,7 +2877,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v360';</script>
+<script>document.getElementById('version-tag').textContent='v361';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2989,7 +2989,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v360';
+var APP_VERSION = 'v361';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -14044,13 +14044,38 @@ async function doResetWithCode() {
   function _convHablando() { try { return !!(window._hablandoNativo || _ttsSpeaking || (_ttsQueue && _ttsQueue.length)); } catch(e){ return false; } }
   // v360: memoria de lo ÚLTIMO que dijo Azkarin (varias frases, 12s) — para reconocer su eco AUNQUE
   // la transcripción llegue tarde (cuando ya ha dejado de hablar) y con fallos.
+  // v361: normaliza quitando signos — el eco transcrito no trae comas ni interrogaciones.
+  function _normEco(x) {
+    return String(x||'').replace(/<[^>]*>/g,' ').toLowerCase()
+      .replace(/[^a-z0-9\u00e1\u00e9\u00ed\u00f3\u00fa\u00fc\u00f1\s]/g,' ').replace(/\s+/g,' ').trim();
+  }
+  // v361: un dicho VALE mientras Azkarin siga hablando y hasta 45s despues de CALLARSE.
+  // (v360 usaba 12s desde que EMPEZABA a hablar: un mensaje largo tarda >1 min en leerse
+  // y el eco llegaba con la memoria ya vacia — caso real 17-jul: se contesto a si mismo.)
+  function _dichoVigente(d) {
+    try {
+      if (typeof _convHablando === 'function' && _convHablando()) return (Date.now() - d.ts) < 300000;
+      var fin = window._ttsFinTs || 0;
+      return (Date.now() - Math.max(d.ts, fin)) < 45000;
+    } catch(e){ return (Date.now() - d.ts) < 45000; }
+  }
+  // vigia: apunta CUANDO se calla la voz (cualquiera de los 3 motores de TTS)
+  if (!window._vigiaTTSFin) {
+    window._vigiaTTSFin = setInterval(function(){
+      try {
+        var h = (typeof _convHablando === 'function') && _convHablando();
+        if (window._convHabAnt && !h) window._ttsFinTs = Date.now();
+        window._convHabAnt = h;
+      } catch(e){}
+    }, 400);
+  }
   function _registrarDicho(text) {
     try {
-      var clean = String(text||'').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+      var clean = _normEco(text);
       if (!clean) return;
-      window._ultimosDichos = (window._ultimosDichos || []).filter(function(d){ return (Date.now() - d.ts) < 12000; });
+      window._ultimosDichos = (window._ultimosDichos || []).filter(_dichoVigente);
       window._ultimosDichos.push({ t: clean, ts: Date.now() });
-      if (window._ultimosDichos.length > 6) window._ultimosDichos = window._ultimosDichos.slice(-6);
+      if (window._ultimosDichos.length > 10) window._ultimosDichos = window._ultimosDichos.slice(-10);
       window._ultimoHabla = clean; // compat
     } catch(e){}
   }
@@ -14059,16 +14084,18 @@ async function doResetWithCode() {
   // (una confirmación corta como "sí, el martes" NUNCA se trata como eco, para no tragársela).
   function _esEcoDeAzkarin(txt) {
     try {
-      var t = (txt||'').toLowerCase().trim(); if (!t) return true;
-      var dichos = (window._ultimosDichos || []).filter(function(d){ return (Date.now() - d.ts) < 12000; });
-      if (!dichos.length) { var r0 = (window._ultimoHabla||'').toLowerCase(); return !!(r0 && r0.indexOf(t) >= 0); }
+      var t = _normEco(txt); if (!t) return true;
+      var dichos = (window._ultimosDichos || []).filter(_dichoVigente);
+      if (!dichos.length) { var r0 = _normEco(window._ultimoHabla||''); return !!(r0 && r0.indexOf(t) >= 0); }
       var pal = t.split(/\s+/).filter(function(w){ return w.length > 2; });
       if (!pal.length) return true;
+      var hablando = false; try { hablando = (typeof _convHablando === 'function') && _convHablando(); } catch(e2){}
       for (var d = 0; d < dichos.length; d++) {
         var ref = dichos[d].t;
-        if (ref.length > 6 && ref.indexOf(t) >= 0) return true;               // fragmento literal de lo que dijo
+        if (ref.length > 6 && t.length >= 10 && ref.indexOf(t) >= 0) return true;  // fragmento literal de lo que dijo
         var n = 0; for (var i = 0; i < pal.length; i++) if (ref.indexOf(pal[i]) >= 0) n++;
-        if (pal.length >= 5 && (n / pal.length) >= 0.6) return true;          // frase larga que coincide mucho → eco
+        if (pal.length >= 5 && (n / pal.length) >= 0.6) return true;          // frase larga que coincide mucho -> eco
+        if (hablando && pal.length >= 3 && (n / pal.length) >= 0.5) return true; // mientras HABLA, mas estricto: casi todo lo que coincide es su propia voz
       }
       return false;
     } catch(e){ return false; }
