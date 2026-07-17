@@ -2877,7 +2877,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v362';</script>
+<script>document.getElementById('version-tag').textContent='v363';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2989,7 +2989,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v362';
+var APP_VERSION = 'v363';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -7404,6 +7404,33 @@ window.addEventListener('DOMContentLoaded', function() {
     callBtn.innerHTML = '📞 NUEVA LLAMADA';
     callBtn.onclick = openTranscriptionModal;
     acts.insertBefore(callBtn, acts.firstChild);
+
+    // v363: Botón "👷 EQUIPO" — portal de operarios en MODO OFICINA (edición para Asier).
+    // Abre el MISMO tablero que ven los chicos pero con cajitas para corregir lo que la IA
+    // enseñe mal (hora, nota de oficina, ocultar servicio). El enlace de los chicos NO cambia.
+    // La 1ª vez pide la clave de administración (la de siempre) y guarda el enlace en el móvil.
+    function abrirPortalEquipoOficina() {
+      try {
+        var u = localStorage.getItem('azkar_equipo_admin_url');
+        if (u) { window.open(u, '_blank'); return; }
+        var clave = prompt('Clave de administración (solo hace falta la primera vez):');
+        if (!clave) return;
+        fetch(RAILWAY_API + '/api/equipo-admin/enlace', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: clave }) })
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            if (d && d.url) { try { localStorage.setItem('azkar_equipo_admin_url', d.url); } catch(e){} window.open(d.url, '_blank'); }
+            else alert((d && d.error) || 'Clave incorrecta.');
+          })
+          .catch(function(){ alert('Sin conexión con el servidor. Prueba en un momento.'); });
+      } catch (e) { alert('No se pudo abrir: ' + e.message); }
+    }
+    const equipoBtn = document.createElement('button');
+    equipoBtn.className = 'nbtn';
+    equipoBtn.style.cssText = 'background:#1a7a3f;color:#fff;margin-right:4px;';
+    equipoBtn.innerHTML = '👷 EQUIPO';
+    equipoBtn.title = 'Portal del equipo en MODO OFICINA: ver lo que ven los chicos y corregirlo (hora, notas, ocultar)';
+    equipoBtn.onclick = abrirPortalEquipoOficina;
+    acts.insertBefore(equipoBtn, acts.firstChild);
 
     // v230: Botón "Buzón Azkarin" — conversaciones del chatbot del sitio WP
     const buzonBtn = document.createElement('button');
