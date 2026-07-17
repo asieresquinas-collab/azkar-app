@@ -2877,7 +2877,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v361';</script>
+<script>document.getElementById('version-tag').textContent='v362';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2989,7 +2989,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v361';
+var APP_VERSION = 'v362';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -14115,12 +14115,18 @@ async function doResetWithCode() {
   window._convEscuchar = function() {
     if (!window._azkarinConv) return;
     if (_convSesion) return;                                   // ya hay micro abierto
-    // v358 BARGE-IN: si Azkarin está hablando, antes SIEMPRE esperábamos. Ahora, con barge-in
-    // activo y micro nativo, escuchamos MIENTRAS habla para poder cortarle hablándole. En web (o
-    // con barge-in apagado) seguimos esperando a que termine (el hook del TTS reengancha el micro).
+    // v362 MEDIA-DUPLEX: el micro NO se abre mientras Azkarin habla, ni en el medio segundo
+    // siguiente a que se calle. Así es IMPOSIBLE que oiga su PROPIA voz y se conteste a sí mismo
+    // (el eco recurrente del 17-jul: v361 intentó DETECTAR el eco y aun así se coló). Se pierde el
+    // "cortarle hablándole" por voz, PERO tocar la pantalla lo sigue cortando al instante
+    // (_convInterrumpir). Los hooks del TTS + el vigilante reenganchan el micro al terminar de hablar.
     var _hablandoAhora = _convHablando();
-    var _puedoBarge = _bargeinActivo() && _esAppNativa() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition;
-    if (_hablandoAhora && !_puedoBarge) return;
+    if (_hablandoAhora) return;
+    var _finTTS = window._ttsFinTs || 0;
+    if (_finTTS && (Date.now() - _finTTS) < 500) {
+      setTimeout(function(){ if (window._azkarinConv && !_convHablando()) window._convEscuchar(); }, 300);
+      return;
+    }
     if (sendBtn && sendBtn.disabled) return;                   // está pensando una respuesta
     if (!panel.classList.contains('open')) { window.chatbotConvToggle(false); return; }
     if (_esAppNativa() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
