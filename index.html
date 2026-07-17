@@ -897,6 +897,10 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 
   <!-- ÍNDICE VISUAL -->
   <div class='ayuda-index'>
+    <div class='ayuda-index-item' onclick='ayudaIr("sec-lo-nuevo")'>
+      <span class='idx-icon'>🆕</span>
+      <span class='idx-title'>Lo nuevo (jul 2026)</span>
+    </div>
     <div class='ayuda-index-item' onclick='ayudaIr("sec-presupuesto")'>
       <span class='idx-icon'>📋</span>
       <span class='idx-title'>Crear presupuesto</span>
@@ -972,6 +976,36 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     <div class='ayuda-index-item' onclick='ayudaIr("sec-problemas")'>
       <span class='idx-icon'>🔧</span>
       <span class='idx-title'>Problemas comunes</span>
+    </div>
+  </div>
+
+  <!-- SECCIÓN: LO NUEVO (v366, julio 2026) — qué hemos construido y qué falta -->
+  <div class='ayuda-section' id='sec-lo-nuevo'>
+    <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (JULIO 2026): QUÉ HAY Y CÓMO SE USA</h3>
+    <div class='ayuda-content'>
+      <p>Resumen de todo lo construido en las últimas sesiones, en cristiano. Cada cosa está probada y en marcha.</p>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>👷 Portal de los operarios ("los chicos"):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Un enlace para el equipo</strong> (pídeselo a Azkarin: "dame el enlace del portal de los chicos"). Ahí ven los trabajos de HOY y de la semana por días: horas, direcciones con mapa, señalizaciones e inventario. Se actualiza solo con el calendario. Sin precios ni notas comerciales: eso no les sale.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>🚐 Ruta del día (estimación):</strong> para hoy y mañana, el portal calcula la ruta saliendo a las <strong>8:00 de Arrigorriaga</strong>: minutos de furgoneta a cada parada y hora de llegada. Si con una hora comprometida no se llega saliendo a las 8, avisa en rojo a qué hora hay que salir. Es estimación de conducción (sin tráfico ni carga).</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>🔔 Aviso de la víspera:</strong> cada tarde a las <strong>20:00</strong> te llega a ti un push con el plan de mañana (y si un cliente de mañana ha llamado hoy, te lo marca: "📞 OJO, repasa el parte"). Los chicos que pulsen el botón <strong>ACTIVAR AVISOS</strong> del portal (una vez, cada uno en su móvil) también reciben el plan de mañana.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>📄 Parte de trabajo interactivo:</strong> desde cada trabajo del portal. Tick verde ✓ para ir marcando la carga con el cliente, unidades editables (60→75 cajas), quitar con ✕, añadir extras, observaciones del equipo, y firmas de RECOGIDA y ENTREGA separadas (para guardamuebles). Al firmar la entrega: PDF oficial a la carpeta del cliente + copia por email al cliente + el presupuesto se actualiza solo (quitado fuera, extras con precio de catálogo). No se puede firmar dos veces (candado).</div></div>
+      <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'><strong>🔴 Señalización:</strong> desde la tarjeta roja del portal se abre la CÁMARA: fotos de las placas y de las matrículas de los coches aparcados (se archivan PARA SIEMPRE en la carpeta del cliente), lectura de matrículas con repaso a mano, y el comunicado a la Policía de Bilbao se prepara como BORRADOR que te llega a ti — tú dices "envíalo" o "descártalo". Nada sale sin tu OK.</div></div>
+      <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'><strong>✏️ Modo oficina (botón 👷 EQUIPO, arriba en esta app):</strong> el mismo tablero que ven los chicos pero pudiendo corregir: la HORA, una NOTA de oficina ("📌 OFICINA: …") u OCULTAR un servicio. La primera vez pide la clave de administración; después abre directo. Los cambios salen al momento en el enlace de los chicos y en el mensaje del plan.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🤖 Azkarin, más de fiar (candados en código):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Precios:</strong> el catálogo manda. Si el modelo se inventa un precio y tú no lo has dicho, se corrige solo al del catálogo. Y con nombres ambiguos ("armario" a secas) NO adivina: lo deja "sin tarifa" para que lo revises.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Sin dobles:</strong> no crea dos fichas del mismo cliente en minutos (candado anti-duplicados), ni contesta dos veces al mismo mensaje, y el <strong>eco de voz</strong> está atajado de raíz: el micro se cierra mientras Azkarin habla (para cortarle, toca la pantalla).</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Sin mentiras:</strong> si dice "enviado" sin herramienta ejecutada, salta el aviso; los enlaces (portal de los chicos, portal de CADA autónomo) salen del dato real, nunca de memoria. Pídele: "el enlace de [autónomo]".</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Enviar a clientes:</strong> todo lo que sale fuera (correos, PDFs, policía) pasa SIEMPRE por tu tarjeta de confirmación, que enseña el email de destino o las matrículas antes de mandar.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🔒 Seguridad (julio):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Las rutas del servidor (Drive, PDFs, permisos, autónomos) van con <strong>llave</strong>: la app la manda sola, un desconocido con la URL recibe "no autorizado". La firma del cliente se verifica antes de generar el PDF (no puede salir un "FIRMADO" sin firma), y los documentos van a la carpeta del cliente por número EXACTO (no a la de otro).</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🧭 Lo que FALTA (dicho honestamente):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>La <strong>ruta</strong> no cuenta tráfico ni tiempo de carga/descarga (es estimación de conducción). Los <strong>avisos de los chicos</strong> solo llegan a los móviles donde ellos pulsen 🔔 (el navegador exige ese gesto). En trabajos de varios días, la hora corregida en modo oficina sale igual todos los días.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Que Azkarin <strong>proponga cambios al parte desde las llamadas</strong> está en su versión prudente (te avisa de que el cliente llamó; no propone el cambio concreto todavía). Y el aviso "el cliente de mañana llamó hoy" depende de que la centralita responda.</div></div>
+      <div class='ayuda-tip'>Todo el detalle técnico de cada cambio está en el registro CAMBIOS (Azkarin lo lee — pregúntale "¿qué cambió el 17 de julio?") y en la nota de Obsidian "AZKAR — Manual de lo construido".</div>
     </div>
   </div>
 
@@ -2877,7 +2911,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v365';</script>
+<script>document.getElementById('version-tag').textContent='v366';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2989,7 +3023,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v365';
+var APP_VERSION = 'v366';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
