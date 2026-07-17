@@ -2877,7 +2877,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v364';</script>
+<script>document.getElementById('version-tag').textContent='v365';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -2989,7 +2989,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v364';
+var APP_VERSION = 'v365';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -6481,6 +6481,32 @@ async function saveFirebaseConfig() {
 //  BACKUP AUTOMÁTICO A GOOGLE DRIVE (blindado anti-pérdida)
 // ══════════════════════════════════════════════════════════════
 const RAILWAY_API = 'https://azkar-presupuestos-production.up.railway.app';
+// v365: LLAVE DE LA API (candado backend 2.7.133 — antes esas rutas estaban abiertas a cualquiera).
+// Se añade sola a TODAS las llamadas al backend: envoltorio de fetch (cubre cada fetch de la app
+// sin tocar los 100+ sitios que llaman) + se guarda en azkar_api_key para el XHR de vídeos que ya
+// leía de ahí. Si el backend no la pide (versión vieja), sobra y no molesta: no rompe nada.
+const AZKAR_API_KEY = 'azk_08103a9ae1a401abed02dd73db68ab89d28d421d3dbc3c710f29e456b4bec5cc';
+try { localStorage.setItem('azkar_api_key', AZKAR_API_KEY); } catch (e) {}
+(function () {
+  var _fetchOriginal = window.fetch;
+  window.fetch = function (input, init) {
+    try {
+      var u = (typeof input === 'string') ? input : ((input && input.url) || '');
+      if (u.indexOf(RAILWAY_API) === 0) {
+        if (typeof input !== 'string') {
+          // Request ya construida: clonarla añadiendo la cabecera
+          var h0 = new Headers(input.headers || {}); if (!h0.has('x-api-key')) h0.set('x-api-key', AZKAR_API_KEY);
+          input = new Request(input, { headers: h0 });
+        } else {
+          init = init || {};
+          if (init.headers instanceof Headers) { if (!init.headers.has('x-api-key')) init.headers.set('x-api-key', AZKAR_API_KEY); }
+          else { var h1 = Object.assign({}, init.headers || {}); if (!h1['x-api-key'] && !h1['X-Api-Key']) h1['x-api-key'] = AZKAR_API_KEY; init.headers = h1; }
+        }
+      }
+    } catch (e) { /* ante cualquier duda, llamada tal cual */ }
+    return _fetchOriginal.call(this, input, init);
+  };
+})();
 
 // ── Helper: cabeceras comunes para TODAS las llamadas al backend ──
 function apiHeaders(extra) {
