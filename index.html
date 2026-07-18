@@ -2911,7 +2911,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v368';</script>
+<script>document.getElementById('version-tag').textContent='v369';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3023,7 +3023,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v368';
+var APP_VERSION = 'v369';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -14205,6 +14205,17 @@ async function doResetWithCode() {
       return false;
     } catch(e){ return false; }
   }
+  // v369 MENOS PITIDOS: Android suena su "pi" del sistema CADA vez que se abre el micro, y el
+  // bucle del modo conversación lo abría cada 1-2s también en SILENCIO → "pim pim bum bum" sin
+  // parar (queja de Asier 18-jul). No se puede silenciar el sonido del sistema desde la web (eso
+  // exigiría recompilar el APK). Lo que SÍ: RETARDO CRECIENTE tras sesiones VACÍAS — con charla
+  // activa el micro reabre rápido (como siempre); con silencio, cada vez más despacio (hasta 6s).
+  // Se resetea en cuanto hay voz real, al callarse Azkarin o al tocar la pantalla.
+  var _convBackoffMs = 0;
+  window._convProximoMicTs = 0;
+  function _convMicVacio() { _convBackoffMs = Math.min((_convBackoffMs || 0) + 1500, 6000); window._convProximoMicTs = Date.now() + _convBackoffMs; }
+  function _convResetBackoff() { _convBackoffMs = 0; window._convProximoMicTs = 0; }
+  window._convResetBackoff = _convResetBackoff;
   // Cortar a Azkarin (parar su voz) y ponerse a escuchar YA. Vale para el TOQUE en la pantalla.
   function _convInterrumpir(e) {
     try {
@@ -14212,6 +14223,7 @@ async function doResetWithCode() {
       if (e && e.target && e.target.closest && e.target.closest('a,button,input,textarea,select,label')) return; // no robar toques a botones/enlaces
       if (typeof chatSpeakStop === 'function') chatSpeakStop();
       _convLimpiarBuffer();
+      _convResetBackoff();
       if (window._azkarinConv) setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 120);
     } catch(err){}
   }
@@ -14232,6 +14244,9 @@ async function doResetWithCode() {
       setTimeout(function(){ if (window._azkarinConv && !_convHablando()) window._convEscuchar(); }, 300);
       return;
     }
+    // v369: acaba de callarse Azkarin (<3s) → turno de Asier: micro rápido, backoff a cero
+    if (_finTTS && (Date.now() - _finTTS) < 3000) _convResetBackoff();
+    if (Date.now() < (window._convProximoMicTs || 0)) return; // v369: en silencio, esperar el retardo (el vigilante reintenta) — menos pitidos
     if (sendBtn && sendBtn.disabled) return;                   // está pensando una respuesta
     if (!panel.classList.contains('open')) { window.chatbotConvToggle(false); return; }
     if (_esAppNativa() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
@@ -14247,8 +14262,9 @@ async function doResetWithCode() {
         if (_t && _esEcoDeAzkarin(_t)) { setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, _hab ? 250 : 500); return; }
         // Voz REAL del usuario mientras Azkarin habla → cortarle la voz al vuelo (barge-in)
         if (txt && txt.trim() && _hab) { try { if (typeof chatSpeakStop === 'function') chatSpeakStop(); } catch(e){} }
-        if (!txt || !txt.trim()) { setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, _hab ? 350 : 600); return; }
+        if (!txt || !txt.trim()) { _convMicVacio(); setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, _hab ? 350 : 600); return; } // v369: sesión VACÍA → retardo creciente (menos pitidos en silencio)
         // v357: acumular; el temporizador de pausa (~4s) envía cuando de verdad termina de hablar.
+        _convResetBackoff(); // v369: hay VOZ REAL → micro rápido otra vez
         _convRecibirHabla(txt);
         setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 150);
       });
@@ -14310,6 +14326,7 @@ async function doResetWithCode() {
     if (btn) { btn.classList.toggle('activo', nuevo); btn.title = nuevo ? 'Conversación activa — toca para parar' : 'Modo conversación (manos libres)'; }
     if (nuevo) {
       chatTTSEnabled = true; try { localStorage.setItem('chatTTS', 'on'); } catch (e) {}
+      try { _convResetBackoff(); } catch (e) {} // v369: al encender, micro sin retardo
       _convPedirWake();
       // El saludo se lee por TTS; el micro arranca SOLO cuando la voz termina
       // (lo reengancha el hook del TTS o el vigilante). Nunca a la vez.
