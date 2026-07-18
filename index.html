@@ -901,6 +901,10 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <span class='idx-icon'>🆕</span>
       <span class='idx-title'>Lo nuevo (jul 2026)</span>
     </div>
+    <div class='ayuda-index-item' onclick='ayudaIr("sec-parte-guardamuebles")'>
+      <span class='idx-icon'>📦</span>
+      <span class='idx-title'>Parte y guardamuebles</span>
+    </div>
     <div class='ayuda-index-item' onclick='ayudaIr("sec-presupuesto")'>
       <span class='idx-icon'>📋</span>
       <span class='idx-title'>Crear presupuesto</span>
@@ -1006,6 +1010,30 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>La <strong>ruta</strong> no cuenta tráfico ni tiempo de carga/descarga (es estimación de conducción). Los <strong>avisos de los chicos</strong> solo llegan a los móviles donde ellos pulsen 🔔 (el navegador exige ese gesto). En trabajos de varios días, la hora corregida en modo oficina sale igual todos los días.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Que Azkarin <strong>proponga cambios al parte desde las llamadas</strong> está en su versión prudente (te avisa de que el cliente llamó; no propone el cambio concreto todavía). Y el aviso "el cliente de mañana llamó hoy" depende de que la centralita responda.</div></div>
       <div class='ayuda-tip'>Todo el detalle técnico de cada cambio está en el registro CAMBIOS (Azkarin lo lee — pregúntale "¿qué cambió el 17 de julio?") y en la nota de Obsidian "AZKAR — Manual de lo construido".</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN: PARTE DE TRABAJO Y GUARDAMUEBLES (v370, 18-jul-2026) -->
+  <div class='ayuda-section' id='sec-parte-guardamuebles'>
+    <h3 onclick='ayudaToggle(this)'>📦 EL PARTE DE LOS CHICOS: A PRUEBA DE BOLSILLO Y GUARDAMUEBLES</h3>
+    <div class='ayuda-content'>
+      <p>Cómo se comporta el parte de trabajo de los operarios cuando el móvil se cierra, y cómo se hace un guardamuebles (la ida y la vuelta). Todo probado con un navegador de verdad.</p>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🔒 Que el móvil se cierre en el bolsillo YA NO es un problema:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>La firma de RECOGIDA se guarda en Azkar (servidor), no en el móvil.</strong> Cuando le dan a "✓ Confirmar RECOGIDA firmada", esa firma queda a salvo. Aunque se cierre Chrome, se apague el móvil, o pasen días o meses (guardamuebles), al reabrir el enlace sale "✓ Recogida ya firmada" y pueden firmar la entrega — <strong>incluso desde el móvil de otro compañero</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Lo que apuntan antes de firmar tampoco se pierde:</strong> las unidades que cambian, los ✓ de cargado, lo que quitan con la ✕, los extras, las observaciones… se guardan solos <strong>en el móvil Y en Azkar (servidor)</strong> cada pocos segundos. Al reabrir el parte, vuelve todo con el aviso azul "↩️ Recuperado lo que teníais apuntado". Si un móvil muere del todo (batería, rotura), otro móvil abre el mismo enlace y lo recupera igual.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>La firma dibujada sin confirmar es lo único que no se puede recuperar</strong> (es un dibujo en vivo). Por eso, mientras haya una firma dibujada sin guardar, <strong>el botón parpadea en naranja</strong> — para que no metan el móvil al bolsillo sin darle. Y si aun así se pierde, al reabrir sale un aviso naranja: "había una firma sin confirmar, volved a firmarla".</div></div>
+      <div class='ayuda-warn'>El único límite honesto: si están sin cobertura (garaje, sótano), la página no abre. El guardado protege lo apuntado, pero para abrir el enlace hace falta internet.</div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📦 Guardamuebles — cuando las cosas se quedan en depósito:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>El día de la recogida</strong>, en el parte hay una casilla naranja: <strong>"📦 La ENTREGA es en el GUARDAMUEBLES de Azkar"</strong>. Se marca, y el cliente firma <strong>recogida Y entrega a la vez</strong> ese mismo día. El parte se cierra: el PDF sale con la entrega en "GUARDAMUEBLES AZKAR — Pol. Martiartu" y la nota de que la mercancía queda en depósito, con copia por email al cliente. Ya tienes el papel firmado para <strong>cobrar la ida entera</strong> como una mudanza. La ficha queda marcada como "en guardamuebles".</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Cuando el cliente quiera sus cosas de vuelta</strong>, dile a Azkarin: <strong>"crea la vuelta del [número]"</strong> (el número de la ida). Te monta un presupuesto NUEVO con su propio número: recogida en el guardamuebles, solo lo que de verdad entró (lo de 0 unidades fuera, los extras dentro), precios intactos y el <strong>20% de descuento</strong> ya puesto en cada línea. Si quieres otro porcentaje, se lo dices ("con el 15%"). Ese presupuesto nuevo tiene su propio parte para firmar la vuelta.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Si NO marcas la casilla</strong>, funciona como siempre: un solo parte donde la firma de recogida espera guardada los meses que haga falta, y el cliente firma la entrega el día que se le lleve todo. Tú eliges según el caso.</div></div>
+      <div class='ayuda-tip'>La entrega de la vuelta la revisas tú: Azkarin pone la dirección de la ida y te avisa de cambiarla si el cliente va a otra casa. Ponle fecha cuando la sepas y al calendario.</div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🚫 Lo que NO va a los chicos (por unidades):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando el cliente dice que algo <strong>no se lo lleva</strong>, tú le pones <strong>0 unidades</strong> en el presupuesto (y dejas su precio). Eso hace que ese artículo <strong>no le salga a los chicos</strong> en el parte, pero <strong>se queda en el presupuesto con su precio intacto</strong> por si el cliente cambia de idea. Lo que manda son las UNIDADES, no el precio: las cosas gratis (0€) pero con unidades (cajas de préstamo) SÍ les salen.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Desde el <strong>modo oficina (botón 👷 EQUIPO)</strong> puedes corregir en los dos sentidos: los de 0 unidades salen ya premarcados como "no va"; desmarcas uno ("al final sí se lo lleva") o marcas uno con unidades ("esto no va"). Los chicos solo ven lo que de verdad va.</div></div>
     </div>
   </div>
 
@@ -2911,7 +2939,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v369';</script>
+<script>document.getElementById('version-tag').textContent='v370';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3023,7 +3051,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v369';
+var APP_VERSION = 'v370';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
