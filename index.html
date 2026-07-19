@@ -2939,7 +2939,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v370';</script>
+<script>document.getElementById('version-tag').textContent='v371';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3051,7 +3051,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v370';
+var APP_VERSION = 'v371';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -13730,6 +13730,41 @@ async function doResetWithCode() {
       }
     } catch(e){}
   };
+  // ── v371: DEEP LINK del WIDGET Android — ?azkarin=voz abre el chat y arranca la
+  // conversación por voz (mismo camino probado del wake word); ?azkarin=chat solo abre
+  // el chat. Espera a que haya sesión (azkar_token) y a que el chat esté listo (hasta
+  // ~40s por si el backend despierta). Aditivo: sin parámetro no hace NADA.
+  (function(){
+    try {
+      var _m = (location.search || '').match(/[?&]azkarin=(voz|chat|1)\b/);
+      if (!_m) return;
+      var _modo = _m[1] === 'chat' ? 'chat' : 'voz';
+      var _intentos = 0;
+      var _t = setInterval(function(){
+        _intentos++;
+        try {
+          var _hayToken = false;
+          try { _hayToken = !!localStorage.getItem('azkar_token'); } catch(eT) {}
+          var _login = document.getElementById('login-screen');
+          var _enLogin = _login && _login.style.display !== 'none' && getComputedStyle(_login).display !== 'none';
+          if (_hayToken && !_enLogin && typeof window.__azkarinWakeFromNative === 'function') {
+            clearInterval(_t);
+            if (_modo === 'voz') { window.__azkarinWakeFromNative(); }
+            else {
+              var p = document.getElementById('chatbot-panel');
+              var b = document.getElementById('chatbot-bubble');
+              if (p) p.classList.add('open');
+              if (b) b.style.display = 'flex';
+              window._chatbotActivo = true;
+            }
+            // limpiar el parámetro para que recargar la app no re-dispare el chat
+            try { var u = location.pathname + (location.search || '').replace(/[?&]azkarin=(voz|chat|1)\b/, '').replace(/^&/, '?') + location.hash; history.replaceState(null, '', u); } catch(eH) {}
+          }
+        } catch(e) {}
+        if (_intentos > 80) clearInterval(_t); // ~40s y paramos (p.ej. sin sesión)
+      }, 500);
+    } catch(e) {}
+  })();
   window.azkarinEscuchaSet = function(on){
     var p = _azkWakePlugin();
     if (!_azkEsApp() || !p){
