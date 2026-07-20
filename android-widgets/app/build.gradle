@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'es.azkarmudanzas.widgets'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'es.azkarmudanzas.widgets'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        release {
+            // Firma propia de los widgets (solo sirve para poder ACTUALIZAR esta misma app
+            // sin desinstalar; no da acceso a nada). Guardada junto al proyecto a propósito.
+            storeFile file('../firma.jks')
+            storePassword 'azkar2026widgets'
+            keyAlias 'azkar'
+            keyPassword 'azkar2026widgets'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// Sin dependencias externas: Java puro de Android → APK pequeñita y sin sorpresas.
+dependencies {
+}

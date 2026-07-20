@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="es.azkarmudanzas.widgets"
+    android:versionCode="1"
+    android:versionName="1.0">
+
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Para poder encontrar la app de Azkar instalada y abrirla desde los widgets -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
+    <application
+        android:label="Azkar Widgets"
+        android:icon="@drawable/azkarin"
+        android:allowBackup="true"
+        android:theme="@android:style/Theme.Material.Light">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="Azkar Widgets">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Widget 1: la burbuja de Azkarin (tócala y habla) -->
+        <receiver
+            android:name=".WidgetAzkarin"
+            android:exported="true"
+            android:label="Azkarin — háblale">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_azkarin" />
+        </receiver>
+
+        <!-- Widget 2: lo importante de Azkar EN GRANDE -->
+        <receiver
+            android:name=".WidgetResumen"
+            android:exported="true"
+            android:label="Azkar — lo de hoy">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="es.azkarmudanzas.widgets.REFRESCAR" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_resumen" />
+        </receiver>
+
+    </application>
+</manifest>

@@ -1,0 +1,4 @@
+// Proyecto de los WIDGETS de Azkar para Android (APK aparte — la app de siempre NI SE TOCA)
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+}
