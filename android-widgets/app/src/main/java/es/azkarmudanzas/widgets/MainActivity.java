@@ -177,36 +177,16 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    // v1.7: A PRUEBA DE BALAS. El instalador automático de Android (DownloadManager + content://)
+    // fallaba mudo en algunos móviles (Samsung). Ahora el botón abre la descarga directa en el
+    // navegador —el mismo camino del enlace, que SÍ funciona— y solo hay que darle a Instalar.
     void descargaEInstala(String url, String vn) {
         try {
-            estado.setText("Descargando la v" + vn + "…");
-            final android.app.DownloadManager dm = (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-            android.app.DownloadManager.Request req = new android.app.DownloadManager.Request(android.net.Uri.parse(url));
-            req.setTitle("Azkar Widgets v" + vn);
-            req.setMimeType("application/vnd.android.package-archive");
-            req.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            req.setDestinationInExternalFilesDir(this, android.os.Environment.DIRECTORY_DOWNLOADS, "azkar-widgets-v" + vn + ".apk");
-            if (descargaLista == null) {
-                descargaLista = new android.content.BroadcastReceiver() {
-                    @Override
-                    public void onReceive(android.content.Context c, Intent i) {
-                        long id = i.getLongExtra(android.app.DownloadManager.EXTRA_DOWNLOAD_ID, -1);
-                        if (id != descargaId) return;
-                        try {
-                            android.net.Uri u = dm.getUriForDownloadedFile(id);
-                            if (u == null) { estado.setText("La descarga no terminó bien. Prueba otra vez."); return; }
-                            Intent inst = new Intent(Intent.ACTION_VIEW)
-                                    .setDataAndType(u, "application/vnd.android.package-archive")
-                                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-                            startActivity(inst);
-                            estado.setText("Dale a INSTALAR cuando te lo pida (si Android pregunta por 'apps desconocidas', permítelo — solo la primera vez).");
-                        } catch (Exception e) { estado.setText("No pude abrir el instalador: " + e.getMessage()); }
-                    }
-                };
-                registerReceiver(descargaLista, new android.content.IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE));
-            }
-            descargaId = dm.enqueue(req);
-        } catch (Exception e) { estado.setText("No pude descargar: " + e.getMessage()); }
+            estado.setText("⬇️ Bajando la v" + vn + "…\nCuando termine, ábrela desde la barra de notificaciones (o en Descargas) y dale a INSTALAR. Si pregunta por 'apps desconocidas', permítelo (solo la 1ª vez).");
+            startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (Exception e) {
+            estado.setText("No pude abrir la descarga. Copia este enlace en el navegador:\n" + url);
+        }
     }
 
     @Override
