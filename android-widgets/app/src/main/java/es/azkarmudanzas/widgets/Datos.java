@@ -29,6 +29,7 @@ public class Datos {
     }
 
     static String leerTodo(InputStream in) throws Exception {
+        if (in == null) return "";
         BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
         StringBuilder sb = new StringBuilder();
         String l;
@@ -40,12 +41,27 @@ public class Datos {
     static HttpURLConnection conecta(String url, String metodo, String jwt) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setRequestMethod(metodo);
-        c.setConnectTimeout(8000);
-        c.setReadTimeout(8000);
+        c.setConnectTimeout(15000);
+        c.setReadTimeout(15000);
         c.setRequestProperty("x-api-key", API_KEY);
         c.setRequestProperty("Content-Type", "application/json");
         if (jwt != null && !jwt.isEmpty()) c.setRequestProperty("Authorization", "Bearer " + jwt);
         return c;
+    }
+
+    /** v1.1: prueba de conexión SIN clave — separa "no llego al servidor" de "clave mal". */
+    static String probarConexion() {
+        try {
+            HttpURLConnection c = conecta(BASE + "/api/health", "GET", null);
+            int code = c.getResponseCode();
+            String resp = leerTodo(code < 400 ? c.getInputStream() : c.getErrorStream());
+            if (code == 200) {
+                try { return "✅ Llego al servidor de Azkar (versión " + new JSONObject(resp).optString("version", "?") + ")"; } catch (Exception e) { return "✅ Llego al servidor de Azkar"; }
+            }
+            return "⚠️ El servidor responde raro: HTTP " + code;
+        } catch (Exception e) {
+            return "🚫 NO llego al servidor: " + e.getClass().getSimpleName() + (e.getMessage() != null ? " — " + e.getMessage() : "");
+        }
     }
 
     /** Entra con usuario+contraseña y guarda el token (30 días). Devuelve null si OK, o el error. */
@@ -62,11 +78,14 @@ public class Datos {
             int code = c.getResponseCode();
             String resp = leerTodo(code < 400 ? c.getInputStream() : c.getErrorStream());
             if (code >= 400) {
-                try { return new JSONObject(resp).optString("error", "Error " + code); } catch (Exception e) { return "Error " + code; }
+                String detalle;
+                try { detalle = new JSONObject(resp).optString("error", ""); } catch (Exception e) { detalle = ""; }
+                if (detalle.isEmpty()) detalle = String.valueOf(resp).length() > 0 ? String.valueOf(resp).substring(0, Math.min(160, resp.length())) : "(sin detalle)";
+                return "HTTP " + code + ": " + detalle;
             }
             JSONObject j = new JSONObject(resp);
             String token = j.optString("token", "");
-            if (token.isEmpty()) return "El servidor no devolvió el pase de entrada";
+            if (token.isEmpty()) return "El servidor respondió (HTTP " + code + ") pero sin pase de entrada. Respuesta: " + String.valueOf(resp).substring(0, Math.min(160, resp.length()));
             prefs(ctx).edit()
                     .putString("usuario", usuario)
                     .putString("pass", pass)
@@ -74,7 +93,7 @@ public class Datos {
                     .apply();
             return null;
         } catch (Exception e) {
-            return "Sin conexión: " + e.getMessage();
+            return "Fallo de conexión [" + e.getClass().getSimpleName() + "]" + (e.getMessage() != null ? ": " + e.getMessage() : "") + " — dale a 🩺 PROBAR CONEXIÓN para ver si llego al servidor";
         }
     }
 
@@ -94,14 +113,23 @@ public class Datos {
         return null;
     }
 
+    static String ultimoErrorResumen = "";
+
     private static JSONObject pedirResumen(String jwt) {
         try {
             HttpURLConnection c = conecta(BASE + "/api/widget/resumen", "GET", jwt);
             int code = c.getResponseCode();
-            if (code != 200) return null;
+            if (code != 200) {
+                String resp = leerTodo(c.getErrorStream());
+                ultimoErrorResumen = "HTTP " + code + (resp.isEmpty() ? "" : ": " + resp.substring(0, Math.min(160, resp.length())));
+                return null;
+            }
             JSONObject j = new JSONObject(leerTodo(c.getInputStream()));
-            return j.optBoolean("ok", false) ? j : null;
+            if (!j.optBoolean("ok", false)) { ultimoErrorResumen = "Respuesta sin ok"; return null; }
+            ultimoErrorResumen = "";
+            return j;
         } catch (Exception e) {
+            ultimoErrorResumen = "[" + e.getClass().getSimpleName() + "]" + (e.getMessage() != null ? " " + e.getMessage() : "");
             return null;
         }
     }

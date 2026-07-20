@@ -57,6 +57,9 @@ public class MainActivity extends Activity {
 
         usuario = new EditText(this);
         usuario.setHint("Usuario (el de la app)");
+        // v1.1: SIN autocorrector ni sugerencias del teclado — los teclados (Samsung sobre todo)
+        // "arreglan" el usuario por su cuenta y la clave sale mal sin que se vea.
+        usuario.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS | InputType.TYPE_TEXT_VARIATION_FILTER);
         usuario.setText(Datos.prefs(this).getString("usuario", ""));
         raiz.addView(usuario);
 
@@ -76,6 +79,10 @@ public class MainActivity extends Activity {
         estado.setPadding(0, pad, 0, pad);
         estado.setText(Datos.hayLogin(this) ? "✅ Ya estás dentro. Los widgets funcionan." : "Aún sin entrar.");
         raiz.addView(estado);
+
+        Button probar = new Button(this);
+        probar.setText("🩺 PROBAR CONEXIÓN");
+        raiz.addView(probar);
 
         Button abrirApp = new Button(this);
         abrirApp.setText("ABRIR LA APP DE AZKAR");
@@ -100,9 +107,9 @@ public class MainActivity extends Activity {
                     @Override
                     public void run() {
                         final String err = Datos.login(MainActivity.this, u, p);
-                        if (err != null) { pinta("❌ " + err); return; }
+                        if (err != null) { pinta("❌ No pude entrar.\n\n" + err + "\n\n(Usuario probado: \"" + u + "\")"); return; }
                         final JSONObject r = Datos.resumen(MainActivity.this);
-                        if (r == null) { pinta("✅ Dentro, pero no pude traer el resumen (reintenta en un rato)."); refrescaWidgets(); return; }
+                        if (r == null) { pinta("✅ DENTRO (la clave es buena), pero el resumen falló:\n" + (Datos.ultimoErrorResumen.isEmpty() ? "(sin detalle)" : Datos.ultimoErrorResumen) + "\n\nReintenta en un momento."); refrescaWidgets(); return; }
                         Datos.guardaCache(MainActivity.this, r);
                         StringBuilder sb = new StringBuilder("✅ Dentro. Esto verás en el widget:\n\n");
                         JSONArray a = r.optJSONArray("lineas");
@@ -111,6 +118,14 @@ public class MainActivity extends Activity {
                         refrescaWidgets();
                     }
                 }).start();
+            }
+        });
+
+        probar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                estado.setText("Probando conexión…");
+                new Thread(new Runnable() { @Override public void run() { pinta(Datos.probarConexion()); } }).start();
             }
         });
 
