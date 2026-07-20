@@ -17,6 +17,7 @@ import android.speech.tts.UtteranceProgressListener;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -52,6 +53,13 @@ public class VozActivity extends Activity implements RecognitionListener {
     long ultimaVozReal = 0;
     int retardoRearme = 0; // ms extra entre escuchas vacías (0 → 1500 → 3000 → 4500 → 6000 tope)
     static final long SILENCIO_MAX_MS = 180000; // 3 min callado → me retiro
+    // v1.6: reproductor de grabaciones de llamada dentro de la propia conversación del widget
+    LinearLayout filaLl;
+    Button btnLl, btnVelLl;
+    android.media.MediaPlayer mpLl = null;
+    String cidLl = null;
+    final float[] velsLl = { 1f, 1.5f, 2f };
+    int velIdxLl = 0;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -106,6 +114,29 @@ public class VozActivity extends Activity implements RecognitionListener {
         respuesta.setTextColor(Color.parseColor("#111111"));
         respuesta.setPadding(0, pad / 2, 0, 0);
         card.addView(respuesta);
+
+        // v1.6: fila del reproductor de la grabación (oculta hasta que Azkarin manda una llamada)
+        filaLl = new LinearLayout(this);
+        filaLl.setOrientation(LinearLayout.HORIZONTAL);
+        filaLl.setPadding(0, pad / 2, 0, 0);
+        filaLl.setVisibility(View.GONE);
+        btnLl = new Button(this);
+        btnLl.setText("▶️ ESCUCHAR LA LLAMADA");
+        btnLl.setBackgroundColor(Color.parseColor("#1a7a3f"));
+        btnLl.setTextColor(Color.WHITE);
+        filaLl.addView(btnLl, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        btnVelLl = new Button(this);
+        btnVelLl.setText("1×");
+        filaLl.addView(btnVelLl, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        card.addView(filaLl);
+        btnLl.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { onPlayPauseLlamada(); } });
+        btnVelLl.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                velIdxLl = (velIdxLl + 1) % velsLl.length;
+                btnVelLl.setText((velsLl[velIdxLl] == 1f ? "1" : velsLl[velIdxLl] == 1.5f ? "1,5" : "2") + "×");
+                aplicaVelLlamada();
+            }
+        });
 
         ScrollView sc = new ScrollView(this);
         sc.addView(card, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -266,6 +297,13 @@ public class VozActivity extends Activity implements RecognitionListener {
                         if (cerrando) return;
                         if (r == null) { di("No llego al cerebro de Azkarin. " + (Datos.ultimoErrorChat.isEmpty() ? "" : "Detalle: " + Datos.ultimoErrorChat)); return; }
                         String msg = r.optString("mensaje", "");
+                        // v1.6: ¿Azkarin manda una GRABACIÓN de llamada? → reproductor en el widget
+                        JSONObject datos = r.optJSONObject("datos");
+                        if (datos != null && "reproducir_llamada".equals(datos.optString("accion")) && !datos.optString("call_id").isEmpty()) {
+                            meteHistorial("assistant", msg.isEmpty() ? "Grabación de la llamada" : msg);
+                            prepararLlamada(datos.optString("call_id"), msg);
+                            return;
+                        }
                         if ("confirmacion".equals(r.optString("tipo"))) {
                             accionPendiente = r.optJSONObject("accion");
                             String desc = accionPendiente != null ? accionPendiente.optString("descripcion", "") : "";
@@ -293,8 +331,85 @@ public class VozActivity extends Activity implements RecognitionListener {
         } catch (Exception e) { /* nada */ }
     }
 
+    // ── v1.6: GRABACIÓN DE LLAMADA en la propia conversación del widget ──────────
+    void prepararLlamada(String cid, String msg) {
+        limpiaLlamada();
+        cidLl = cid; velIdxLl = 0;
+        try { if (tts != null) tts.stop(); } catch (Exception e) { /* nada */ }
+        respuesta.setText("Azkarin: " + (msg == null || msg.isEmpty() ? "Aquí tienes la grabación — dale al play." : msg.replaceAll("\\s+", " ").trim()));
+        estado.setText("  🎧 Grabación de la llamada");
+        btnLl.setText("▶️ ESCUCHAR LA LLAMADA");
+        btnLl.setEnabled(true);
+        btnVelLl.setText("1×");
+        filaLl.setVisibility(View.VISIBLE);
+        // Mientras escucha la grabación el walkie queda EN PAUSA (no re-armamos el micro para
+        // que no se pisen). Cuando acaba la grabación, vuelve a escuchar solo.
+    }
+
+    void onPlayPauseLlamada() {
+        if (mpLl != null) {
+            try {
+                if (mpLl.isPlaying()) { mpLl.pause(); btnLl.setText("▶️ SEGUIR"); estado.setText("  ⏸️ En pausa"); }
+                else { aplicaVelLlamada(); mpLl.start(); btnLl.setText("⏸️ PAUSA"); estado.setText("  ▶️ Sonando"); }
+            } catch (Exception e) { /* nada */ }
+            return;
+        }
+        if (cidLl == null) return;
+        estado.setText("  Bajando el audio…");
+        btnLl.setEnabled(false);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final java.io.File f = Datos.descargarGrabacion(VozActivity.this, cidLl);
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (cerrando) return;
+                        btnLl.setEnabled(true);
+                        if (f == null) {
+                            estado.setText("  No pude bajar la grabación");
+                            respuesta.setText("Azkarin: No pude bajar el audio" + (Datos.ultimoErrorChat.isEmpty() ? " — reinténtalo." : " (" + Datos.ultimoErrorChat + ")."));
+                            return;
+                        }
+                        try {
+                            mpLl = new android.media.MediaPlayer();
+                            mpLl.setAudioStreamType(android.media.AudioManager.STREAM_MUSIC);
+                            mpLl.setDataSource(f.getAbsolutePath());
+                            mpLl.setOnPreparedListener(new android.media.MediaPlayer.OnPreparedListener() {
+                                @Override public void onPrepared(android.media.MediaPlayer mp) { aplicaVelLlamada(); mp.start(); btnLl.setText("⏸️ PAUSA"); estado.setText("  ▶️ Sonando"); }
+                            });
+                            mpLl.setOnCompletionListener(new android.media.MediaPlayer.OnCompletionListener() {
+                                @Override public void onCompletion(android.media.MediaPlayer mp) {
+                                    try { mp.seekTo(0); } catch (Exception e) { /* nada */ }
+                                    btnLl.setText("🔁 REPETIR"); estado.setText("  🎧 Fin de la grabación");
+                                    if (!cerrando) escuchar(); // vuelve a escuchar por si Asier quiere otra cosa
+                                }
+                            });
+                            mpLl.setOnErrorListener(new android.media.MediaPlayer.OnErrorListener() {
+                                @Override public boolean onError(android.media.MediaPlayer mp, int w, int e) { estado.setText("  Fallo al reproducir el audio"); return true; }
+                            });
+                            mpLl.prepareAsync();
+                            estado.setText("  Preparando el audio…");
+                        } catch (Exception e) { estado.setText("  No pude reproducir: " + e.getMessage()); }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    void aplicaVelLlamada() {
+        try { if (mpLl != null) mpLl.setPlaybackParams(mpLl.getPlaybackParams().setSpeed(velsLl[velIdxLl])); } catch (Exception e) { /* API vieja: sin cambio de velocidad */ }
+    }
+
+    void limpiaLlamada() {
+        try { if (mpLl != null) { mpLl.release(); mpLl = null; } } catch (Exception e) { /* nada */ }
+        cidLl = null;
+        if (filaLl != null) filaLl.setVisibility(View.GONE);
+    }
+
     /** Enseña y LEE la respuesta (limpia markdown/enlaces para que la voz no lea garabatos). */
     void di(String texto) {
+        limpiaLlamada(); // una respuesta de texto cierra el reproductor de la llamada anterior
         // tras cada respuesta de Azkarin, cuenta de silencio a cero y micro ágil (modo coche)
         ultimaVozReal = android.os.SystemClock.elapsedRealtime();
         retardoRearme = 0;
@@ -318,6 +433,7 @@ public class VozActivity extends Activity implements RecognitionListener {
 
     void cierraYa() {
         cerrando = true;
+        try { if (mpLl != null) { mpLl.release(); mpLl = null; } } catch (Exception e) { /* nada */ }
         try { if (rec != null) { rec.destroy(); rec = null; } } catch (Exception e) { /* nada */ }
         try { if (tts != null) { tts.stop(); tts.shutdown(); } } catch (Exception e) { /* nada */ }
         finish();

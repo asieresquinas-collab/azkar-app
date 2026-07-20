@@ -188,6 +188,47 @@ public class Datos {
         } catch (Exception e) { return null; }
     }
 
+    /** v1.6: baja el MP3 de una grabación de llamada (misma auth: api key + JWT del login) a un
+     *  fichero temporal para reproducirlo en el widget. Devuelve el File o null (detalle en
+     *  ultimoErrorChat). Reintenta una vez re-entrando si el pase caducó (401). */
+    static java.io.File descargarGrabacion(Context ctx, String callId) {
+        java.io.File f = _bajarGrab(ctx, callId);
+        if (f != null) return f;
+        if (ultimoErrorChat.startsWith("audio HTTP 401")) {
+            SharedPreferences p = prefs(ctx);
+            String u = p.getString("usuario", ""), pw = p.getString("pass", "");
+            if (!u.isEmpty() && !pw.isEmpty() && login(ctx, u, pw) == null) return _bajarGrab(ctx, callId);
+        }
+        return null;
+    }
+
+    private static java.io.File _bajarGrab(Context ctx, String callId) {
+        try {
+            String jwt = prefs(ctx).getString("jwt", "");
+            if (jwt.isEmpty()) { ultimoErrorChat = "sin sesión"; return null; }
+            HttpURLConnection c = conecta(BASE + "/api/gesditel/calls/" + java.net.URLEncoder.encode(callId, "UTF-8") + "/recording", "GET", jwt);
+            c.setReadTimeout(90000); // grabaciones largas
+            int code = c.getResponseCode();
+            if (code != 200) {
+                String resp = leerTodo(c.getErrorStream());
+                ultimoErrorChat = "audio HTTP " + code + (resp.isEmpty() ? "" : ": " + resp.substring(0, Math.min(120, resp.length())));
+                return null;
+            }
+            java.io.File f = new java.io.File(ctx.getCacheDir(), "llamada_azkar.mp3");
+            java.io.InputStream in = c.getInputStream();
+            java.io.FileOutputStream out = new java.io.FileOutputStream(f);
+            byte[] buf = new byte[8192]; int n; long total = 0;
+            while ((n = in.read(buf)) > 0) { out.write(buf, 0, n); total += n; }
+            out.close(); in.close();
+            if (total <= 0) { ultimoErrorChat = "audio vacío"; return null; }
+            ultimoErrorChat = "";
+            return f;
+        } catch (Exception e) {
+            ultimoErrorChat = "audio [" + e.getClass().getSimpleName() + "]" + (e.getMessage() != null ? " " + e.getMessage() : "");
+            return null;
+        }
+    }
+
     /** Cache de las líneas del widget (para pintar al instante y aguantar sin red). */
     static void guardaCache(Context ctx, JSONObject r) {
         try {
