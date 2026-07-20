@@ -133,7 +133,7 @@ public class MainActivity extends Activity {
             @Override public void onClick(View v) { try { startActivity(AbrirAzkar.laApp(MainActivity.this)); } catch (Exception e) { estado.setText("No pude abrir la app: " + e.getMessage()); } }
         });
         hablar.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { try { startActivity(AbrirAzkar.hablarConAzkarin(MainActivity.this)); } catch (Exception e) { estado.setText("No pude abrir el chat: " + e.getMessage()); } }
+            @Override public void onClick(View v) { try { startActivity(new Intent(MainActivity.this, VozActivity.class)); } catch (Exception e) { estado.setText("No pude abrir la voz: " + e.getMessage()); } }
         });
     }
 

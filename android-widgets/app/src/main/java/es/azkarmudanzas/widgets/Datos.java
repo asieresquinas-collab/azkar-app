@@ -134,6 +134,47 @@ public class Datos {
         }
     }
 
+    /** v1.2: hablar con el CEREBRO de Azkarin (el mismo canal que la app). Devuelve el JSON
+     *  de respuesta ({tipo, mensaje, accion...}) o null; el detalle del fallo queda en ultimoErrorChat. */
+    static String ultimoErrorChat = "";
+
+    static JSONObject chat(Context ctx, String mensaje, org.json.JSONArray historial, JSONObject confirmarAccion) {
+        JSONObject r = chatUna(ctx, mensaje, historial, confirmarAccion);
+        if (r != null) return r;
+        // pase caducado → re-entrar con lo guardado y reintentar una vez
+        if (ultimoErrorChat.startsWith("HTTP 401")) {
+            SharedPreferences p = prefs(ctx);
+            String u = p.getString("usuario", ""), pw = p.getString("pass", "");
+            if (!u.isEmpty() && !pw.isEmpty() && login(ctx, u, pw) == null) return chatUna(ctx, mensaje, historial, confirmarAccion);
+        }
+        return null;
+    }
+
+    private static JSONObject chatUna(Context ctx, String mensaje, org.json.JSONArray historial, JSONObject confirmarAccion) {
+        try {
+            String jwt = prefs(ctx).getString("jwt", "");
+            if (jwt.isEmpty()) { ultimoErrorChat = "sin sesión"; return null; }
+            HttpURLConnection c = conecta(BASE + "/api/chatbot/message", "POST", jwt);
+            c.setReadTimeout(120000); // Azkarin puede tardar (consulta calendario, crea eventos…)
+            c.setDoOutput(true);
+            JSONObject body = new JSONObject();
+            body.put("mensaje", mensaje);
+            body.put("historial", historial == null ? new org.json.JSONArray() : historial);
+            if (confirmarAccion != null) body.put("confirmar_accion", confirmarAccion);
+            OutputStream os = c.getOutputStream();
+            os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+            os.close();
+            int code = c.getResponseCode();
+            String resp = leerTodo(code < 400 ? c.getInputStream() : c.getErrorStream());
+            if (code >= 400) { ultimoErrorChat = "HTTP " + code + ": " + resp.substring(0, Math.min(160, resp.length())); return null; }
+            ultimoErrorChat = "";
+            return new JSONObject(resp);
+        } catch (Exception e) {
+            ultimoErrorChat = "[" + e.getClass().getSimpleName() + "]" + (e.getMessage() != null ? " " + e.getMessage() : "");
+            return null;
+        }
+    }
+
     /** Cache de las líneas del widget (para pintar al instante y aguantar sin red). */
     static void guardaCache(Context ctx, JSONObject r) {
         try {
