@@ -29,7 +29,10 @@ public class MainActivity extends Activity {
 
     EditText usuario, clave;
     TextView estado;
+    Button actualizar;
     Handler ui = new Handler(Looper.getMainLooper());
+    long descargaId = -1;
+    android.content.BroadcastReceiver descargaLista = null;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -54,6 +57,14 @@ public class MainActivity extends Activity {
         explica.setTextSize(16);
         explica.setPadding(0, pad / 2, 0, pad);
         raiz.addView(explica);
+
+        // v1.4: actualización a UN toque — sale solo cuando hay versión nueva publicada
+        actualizar = new Button(this);
+        actualizar.setText("🔄 ACTUALIZAR");
+        actualizar.setBackgroundColor(Color.parseColor("#E85C0D"));
+        actualizar.setTextColor(Color.WHITE);
+        actualizar.setVisibility(View.GONE);
+        raiz.addView(actualizar);
 
         usuario = new EditText(this);
         usuario.setHint("Usuario (el de la app)");
@@ -139,6 +150,69 @@ public class MainActivity extends Activity {
 
     void pinta(final String txt) {
         ui.post(new Runnable() { @Override public void run() { estado.setText(txt); } });
+    }
+
+    // ── v1.4: AUTOACTUALIZACIÓN a un toque ─────────────────────────────────────
+    @Override
+    protected void onResume() {
+        super.onResume();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final JSONObject act = Datos.hayActualizacion(MainActivity.this);
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (act == null) { actualizar.setVisibility(View.GONE); return; }
+                        final String vn = act.optString("versionName", "?");
+                        final String url = act.optString("url", "");
+                        actualizar.setText("🔄 HAY VERSIÓN NUEVA — ACTUALIZAR A v" + vn);
+                        actualizar.setVisibility(View.VISIBLE);
+                        actualizar.setOnClickListener(new View.OnClickListener() {
+                            @Override public void onClick(View v) { descargaEInstala(url, vn); }
+                        });
+                    }
+                });
+            }
+        }).start();
+    }
+
+    void descargaEInstala(String url, String vn) {
+        try {
+            estado.setText("Descargando la v" + vn + "…");
+            final android.app.DownloadManager dm = (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            android.app.DownloadManager.Request req = new android.app.DownloadManager.Request(android.net.Uri.parse(url));
+            req.setTitle("Azkar Widgets v" + vn);
+            req.setMimeType("application/vnd.android.package-archive");
+            req.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            req.setDestinationInExternalFilesDir(this, android.os.Environment.DIRECTORY_DOWNLOADS, "azkar-widgets-v" + vn + ".apk");
+            if (descargaLista == null) {
+                descargaLista = new android.content.BroadcastReceiver() {
+                    @Override
+                    public void onReceive(android.content.Context c, Intent i) {
+                        long id = i.getLongExtra(android.app.DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                        if (id != descargaId) return;
+                        try {
+                            android.net.Uri u = dm.getUriForDownloadedFile(id);
+                            if (u == null) { estado.setText("La descarga no terminó bien. Prueba otra vez."); return; }
+                            Intent inst = new Intent(Intent.ACTION_VIEW)
+                                    .setDataAndType(u, "application/vnd.android.package-archive")
+                                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(inst);
+                            estado.setText("Dale a INSTALAR cuando te lo pida (si Android pregunta por 'apps desconocidas', permítelo — solo la primera vez).");
+                        } catch (Exception e) { estado.setText("No pude abrir el instalador: " + e.getMessage()); }
+                    }
+                };
+                registerReceiver(descargaLista, new android.content.IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+            }
+            descargaId = dm.enqueue(req);
+        } catch (Exception e) { estado.setText("No pude descargar: " + e.getMessage()); }
+    }
+
+    @Override
+    protected void onDestroy() {
+        try { if (descargaLista != null) unregisterReceiver(descargaLista); } catch (Exception e) { /* nada */ }
+        super.onDestroy();
     }
 
     void refrescaWidgets() {

@@ -23,3 +23,12 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
 - OJO al editar los res/xml: el android.jar es API 25 → nada de atributos modernos
   (targetCellWidth etc.). El manifest lleva package= y uses-sdk DENTRO (estilo clásico).
 - La APK publicada se sirve en: https://asieresquinas-collab.github.io/azkar-app/apk/azkar-widgets.apk
+
+## Publicar una versión nueva (v1.4+, con AUTOACTUALIZACIÓN a un toque)
+1. Subir versionCode/versionName en app/build.gradle Y en el AndroidManifest.xml (van a la par).
+2. Compilar y firmar (receta de arriba, SIEMPRE con firma.jks).
+3. Copiar la APK a apk/azkar-widgets-vNN.apk (nombre propio por versión, SIN ?v= en enlaces:
+   algunos móviles guardan el archivo con el query pegado y el instalador no lo reconoce).
+4. Actualizar apk/widgets-version.json → {"versionCode":N,"versionName":"X.Y","url":".../apk/azkar-widgets-vNN.apk"}.
+5. git push. La app instalada lo ve sola (al abrirla, botón 🔄 ACTUALIZAR; el widget avisa en el panel)
+   → Asier descarga e instala CON UN TOQUE, sin enlaces.

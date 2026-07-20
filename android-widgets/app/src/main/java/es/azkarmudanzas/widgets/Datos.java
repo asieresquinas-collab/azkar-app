@@ -175,6 +175,19 @@ public class Datos {
         }
     }
 
+    /** v1.4: ¿hay versión nueva del widget publicada? Lee widgets-version.json de la web de la
+     *  app y compara con la versión instalada. Devuelve {versionCode, versionName, url} o null. */
+    static JSONObject hayActualizacion(Context ctx) {
+        try {
+            HttpURLConnection c = conecta("https://asieresquinas-collab.github.io/azkar-app/apk/widgets-version.json?t=" + System.currentTimeMillis(), "GET", null);
+            if (c.getResponseCode() != 200) return null;
+            JSONObject j = new JSONObject(leerTodo(c.getInputStream()));
+            int mio = ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0).versionCode;
+            if (j.optInt("versionCode", 0) > mio && !j.optString("url", "").isEmpty()) return j;
+            return null;
+        } catch (Exception e) { return null; }
+    }
+
     /** Cache de las líneas del widget (para pintar al instante y aguantar sin red). */
     static void guardaCache(Context ctx, JSONObject r) {
         try {

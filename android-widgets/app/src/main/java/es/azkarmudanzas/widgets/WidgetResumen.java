@@ -45,6 +45,15 @@ public class WidgetResumen extends AppWidgetProvider {
                     if (r != null) {
                         Datos.guardaCache(ctx, r);
                         String[] lineas = Datos.cacheLineas(ctx);
+                        // v1.4: si hay versión nueva del widget, avisar en el propio panel
+                        try {
+                            if (Datos.hayActualizacion(ctx) != null) {
+                                String[] con = new String[Math.min(lineas.length + 1, 7)];
+                                con[0] = "🔄 Versión nueva — abre Azkar Widgets y toca ACTUALIZAR";
+                                for (int i = 1; i < con.length; i++) con[i] = lineas[i - 1];
+                                lineas = con;
+                            }
+                        } catch (Exception eA) { /* nada */ }
                         for (int id : ids) pinta(ctx, mgr, id, lineas, r.optString("hora", ""), false);
                     }
                 } catch (Exception e) { /* se queda la cache */ } finally {
