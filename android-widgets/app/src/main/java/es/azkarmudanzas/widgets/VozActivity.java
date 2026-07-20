@@ -122,7 +122,10 @@ public class VozActivity extends Activity implements RecognitionListener {
             @Override
             public void onInit(int st) {
                 ttsListo = (st == TextToSpeech.SUCCESS);
-                if (ttsListo) { try { tts.setLanguage(new Locale("es", "ES")); } catch (Exception e) { /* nada */ } }
+                if (ttsListo) {
+                    try { tts.setLanguage(new Locale("es", "ES")); } catch (Exception e) { /* nada */ }
+                    try { tts.setSpeechRate(1.5f); } catch (Exception e) { /* nada */ } // v1.5: Asier lo quiere a 1,5
+                }
             }
         });
         if (tts != null) tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
