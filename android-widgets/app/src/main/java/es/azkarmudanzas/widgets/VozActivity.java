@@ -57,6 +57,7 @@ public class VozActivity extends Activity implements RecognitionListener {
     LinearLayout filaLl;
     Button btnLl, btnVelLl;
     android.media.MediaPlayer mpLl = null;
+    boolean sonandoLl = false;
     String cidLl = null;
     final float[] velsLl = { 1f, 1.5f, 2f };
     int velIdxLl = 0;
@@ -228,6 +229,9 @@ public class VozActivity extends Activity implements RecognitionListener {
     public void onError(int e) {
         if (cerrando) return;
         if (e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
+            // v1.8: si hay una grabación cargada, NUNCA cerramos por silencio (puede estar
+            // escuchándola callado) — solo re-escuchamos por si dice "a dos", "pausa", etc.
+            if (mpLl != null) { ui.postDelayed(new Runnable() { @Override public void run() { if (!cerrando) escuchar(); } }, 1600); return; }
             // v1.3 MODO COCHE: el silencio NO cierra — sigo a la escucha con retardo creciente
             // (para no ametrallar a pitidos). Solo tras 3 min sin voz real me despido.
             if (android.os.SystemClock.elapsedRealtime() - ultimaVozReal > SILENCIO_MAX_MS) {
@@ -254,6 +258,15 @@ public class VozActivity extends Activity implements RecognitionListener {
         retardoRearme = 0; // voz de verdad → micro ágil otra vez
         final String texto = l.get(0).trim();
         dicho.setText("Tú: " + texto);
+        // v1.8: si hay una grabación en marcha, el micro solo hace caso a ÓRDENES DEL REPRODUCTOR
+        // (velocidad/pausa/sigue/repite/cierra) — así la propia llamada no dispara nada.
+        if (mpLl != null) {
+            int cmd = comandoReproductor(texto);
+            if (cmd == 1) { escuchar(); return; }                         // velocidad/pausa/sigue/repite hecho
+            if (cmd == 2) { limpiaLlamada(); di("Vale, cerrado."); return; } // cerrar el reproductor
+            if (sonandoLl) { escuchar(); return; }                        // suena y no es orden → ignora (eco)
+            limpiaLlamada();                                              // parada + orden normal → sal del reproductor y sigue
+        }
         if (accionPendiente != null) { resolverConfirmacion(texto); return; }
         if (esDespedida(texto)) { di("Vale. Aquí estoy."); ui.postDelayed(new Runnable() { @Override public void run() { cierraYa(); } }, 1600); return; }
         estado.setText("  Pensando…");
@@ -331,36 +344,35 @@ public class VozActivity extends Activity implements RecognitionListener {
         } catch (Exception e) { /* nada */ }
     }
 
-    // ── v1.6: GRABACIÓN DE LLAMADA en la propia conversación del widget ──────────
+    // ── v1.6/1.8: GRABACIÓN DE LLAMADA en la conversación del widget — se pone SOLA (autoplay)
+    //   y se controla POR VOZ ("a 1,5", "a dos", "más rápido", "pausa", "sigue", "repite", "cierra").
     void prepararLlamada(String cid, String msg) {
         limpiaLlamada();
         cidLl = cid; velIdxLl = 0;
         try { if (tts != null) tts.stop(); } catch (Exception e) { /* nada */ }
-        respuesta.setText("Azkarin: " + (msg == null || msg.isEmpty() ? "Aquí tienes la grabación — dale al play." : msg.replaceAll("\\s+", " ").trim()));
-        estado.setText("  🎧 Grabación de la llamada");
-        btnLl.setText("▶️ ESCUCHAR LA LLAMADA");
-        btnLl.setEnabled(true);
+        respuesta.setText("Azkarin: " + (msg == null || msg.isEmpty() ? "Aquí tienes la grabación." : msg.replaceAll("\\s+", " ").trim()));
+        estado.setText("  Bajando el audio…");
+        btnLl.setText("⏸️ PAUSA"); btnLl.setEnabled(true);
         btnVelLl.setText("1×");
         filaLl.setVisibility(View.VISIBLE);
-        // Mientras escucha la grabación el walkie queda EN PAUSA (no re-armamos el micro para
-        // que no se pisen). Cuando acaba la grabación, vuelve a escuchar solo.
+        descargaYReproduce(); // AUTOPLAY: se pone sola, sin tocar el play
     }
 
+    // El botón: si ya está cargada, play/pausa a mano; si no, la baja y la pone.
     void onPlayPauseLlamada() {
-        if (mpLl != null) {
-            try {
-                if (mpLl.isPlaying()) { mpLl.pause(); btnLl.setText("▶️ SEGUIR"); estado.setText("  ⏸️ En pausa"); }
-                else { aplicaVelLlamada(); mpLl.start(); btnLl.setText("⏸️ PAUSA"); estado.setText("  ▶️ Sonando"); }
-            } catch (Exception e) { /* nada */ }
-            return;
-        }
+        if (mpLl != null) { if (sonandoLl) pausaLl(); else reanudaLl(); return; }
+        if (cidLl != null) descargaYReproduce();
+    }
+
+    void descargaYReproduce() {
         if (cidLl == null) return;
         estado.setText("  Bajando el audio…");
         btnLl.setEnabled(false);
+        final String cid = cidLl;
         new Thread(new Runnable() {
             @Override
             public void run() {
-                final java.io.File f = Datos.descargarGrabacion(VozActivity.this, cidLl);
+                final java.io.File f = Datos.descargarGrabacion(VozActivity.this, cid);
                 ui.post(new Runnable() {
                     @Override
                     public void run() {
@@ -369,6 +381,7 @@ public class VozActivity extends Activity implements RecognitionListener {
                         if (f == null) {
                             estado.setText("  No pude bajar la grabación");
                             respuesta.setText("Azkarin: No pude bajar el audio" + (Datos.ultimoErrorChat.isEmpty() ? " — reinténtalo." : " (" + Datos.ultimoErrorChat + ")."));
+                            if (!cerrando) escuchar();
                             return;
                         }
                         try {
@@ -376,34 +389,77 @@ public class VozActivity extends Activity implements RecognitionListener {
                             mpLl.setAudioStreamType(android.media.AudioManager.STREAM_MUSIC);
                             mpLl.setDataSource(f.getAbsolutePath());
                             mpLl.setOnPreparedListener(new android.media.MediaPlayer.OnPreparedListener() {
-                                @Override public void onPrepared(android.media.MediaPlayer mp) { aplicaVelLlamada(); mp.start(); btnLl.setText("⏸️ PAUSA"); estado.setText("  ▶️ Sonando"); }
+                                @Override public void onPrepared(android.media.MediaPlayer mp) {
+                                    aplicaVelLlamada(); mp.start(); sonandoLl = true;
+                                    btnLl.setText("⏸️ PAUSA"); estado.setText("  ▶️ Sonando — di 'a 1,5', 'a dos', 'pausa'…");
+                                    if (!cerrando) escuchar(); // micro a la escucha de órdenes del reproductor
+                                }
                             });
                             mpLl.setOnCompletionListener(new android.media.MediaPlayer.OnCompletionListener() {
                                 @Override public void onCompletion(android.media.MediaPlayer mp) {
+                                    sonandoLl = false;
                                     try { mp.seekTo(0); } catch (Exception e) { /* nada */ }
-                                    btnLl.setText("🔁 REPETIR"); estado.setText("  🎧 Fin de la grabación");
-                                    if (!cerrando) escuchar(); // vuelve a escuchar por si Asier quiere otra cosa
+                                    btnLl.setText("🔁 REPETIR"); estado.setText("  🎧 Fin — di 'repite' o dime otra cosa");
+                                    if (!cerrando) escuchar();
                                 }
                             });
                             mpLl.setOnErrorListener(new android.media.MediaPlayer.OnErrorListener() {
                                 @Override public boolean onError(android.media.MediaPlayer mp, int w, int e) { estado.setText("  Fallo al reproducir el audio"); return true; }
                             });
-                            mpLl.prepareAsync();
                             estado.setText("  Preparando el audio…");
-                        } catch (Exception e) { estado.setText("  No pude reproducir: " + e.getMessage()); }
+                            mpLl.prepareAsync();
+                        } catch (Exception e) { estado.setText("  No pude reproducir: " + e.getMessage()); if (!cerrando) escuchar(); }
                     }
                 });
             }
         }).start();
     }
 
+    void pausaLl() { try { if (mpLl != null && mpLl.isPlaying()) mpLl.pause(); } catch (Exception e) {} sonandoLl = false; btnLl.setText("▶️ SEGUIR"); estado.setText("  ⏸️ En pausa"); }
+    void reanudaLl() { try { if (mpLl != null) { aplicaVelLlamada(); mpLl.start(); sonandoLl = true; } } catch (Exception e) {} btnLl.setText("⏸️ PAUSA"); estado.setText("  ▶️ Sonando"); }
+    void repiteLl() { try { if (mpLl != null) { mpLl.seekTo(0); aplicaVelLlamada(); mpLl.start(); sonandoLl = true; } } catch (Exception e) {} btnLl.setText("⏸️ PAUSA"); estado.setText("  🔁 Desde el principio"); }
+
     void aplicaVelLlamada() {
         try { if (mpLl != null) mpLl.setPlaybackParams(mpLl.getPlaybackParams().setSpeed(velsLl[velIdxLl])); } catch (Exception e) { /* API vieja: sin cambio de velocidad */ }
+    }
+    void ponVel(float v) {
+        int idx = 0; for (int i = 0; i < velsLl.length; i++) if (Math.abs(velsLl[i] - v) < 0.05f) idx = i;
+        velIdxLl = idx;
+        btnVelLl.setText((v == 1f ? "1" : v == 1.5f ? "1,5" : "2") + "×");
+        if (mpLl != null && sonandoLl) aplicaVelLlamada();
+        estado.setText("  ▶️ a " + (v == 1f ? "1" : v == 1.5f ? "1,5" : "2") + "×");
+    }
+
+    // Interpreta una orden del reproductor. Devuelve 1 (hecha), 2 (cerrar) o 0 (no es orden).
+    int comandoReproductor(String texto) {
+        String t = _sinAcentos(String.valueOf(texto).toLowerCase(Locale.ROOT)).trim();
+        if (t.split("\\s+").length > 5) return 0; // frases largas = seguramente la propia grabación (eco)
+        if (t.matches(".*\\b(cierra|cierralo|quita|quitalo|cerrar|ya vale|ya esta|ya esta bien|corta)\\b.*")) return 2;
+        if (t.matches(".*\\b(pausa|pausalo|para|paralo|stop|quieto|espera)\\b.*")) { pausaLl(); return 1; }
+        if (t.matches(".*\\b(sigue|continua|reanuda|dale|play|ponla|arranca)\\b.*")) { reanudaLl(); return 1; }
+        if (t.matches(".*\\b(repite|repitela|repitelo|otra vez|desde el principio|empieza|vuelve a empezar)\\b.*")) { repiteLl(); return 1; }
+        if (t.matches(".*\\b(mas rapido|acelera|rapido|deprisa)\\b.*")) { velIdxLl = Math.min(velIdxLl + 1, velsLl.length - 1); ponVel(velsLl[velIdxLl]); return 1; }
+        if (t.matches(".*\\b(mas lento|despacio|lento|ralentiza)\\b.*")) { velIdxLl = Math.max(velIdxLl - 1, 0); ponVel(velsLl[velIdxLl]); return 1; }
+        Float v = _velDeTexto(t);
+        if (v != null) { ponVel(v); return 1; }
+        if (t.matches(".*\\b(velocidad normal|normal)\\b.*")) { ponVel(1f); return 1; }
+        return 0;
+    }
+    // Saca la velocidad (1 / 1,5 / 2) de frases tipo "a dos", "ponlo a 1,5", "a uno con cinco", "por dos".
+    Float _velDeTexto(String t) {
+        if (t.matches(".*\\b(dos|x ?2|por dos|doble|al doble)\\b.*")) return 2f;
+        if (t.matches(".*\\b(uno (con |coma )?cinco|1[.,]5|una y media|uno y medio)\\b.*")) return 1.5f;
+        if (t.matches(".*\\b(a|de|por|ponlo a|ponmelo a|velocidad)\\s+(uno|1)\\b.*")) return 1f;
+        return null;
+    }
+    String _sinAcentos(String s) {
+        try { return java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", ""); }
+        catch (Exception e) { return s; }
     }
 
     void limpiaLlamada() {
         try { if (mpLl != null) { mpLl.release(); mpLl = null; } } catch (Exception e) { /* nada */ }
-        cidLl = null;
+        sonandoLl = false; cidLl = null;
         if (filaLl != null) filaLl.setVisibility(View.GONE);
     }
 

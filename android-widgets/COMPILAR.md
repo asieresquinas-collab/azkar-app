@@ -32,3 +32,18 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
 4. Actualizar apk/widgets-version.json → {"versionCode":N,"versionName":"X.Y","url":".../apk/azkar-widgets-vNN.apk"}.
 5. git push. La app instalada lo ve sola (al abrirla, botón 🔄 ACTUALIZAR; el widget avisa en el panel)
    → Asier descarga e instala CON UN TOQUE, sin enlaces.
+
+## Historial de versiones
+- v1.0–v1.1 — Primeros widgets (burbuja de Azkarin + panel del día). v1.1: login sin
+  autocorrector del teclado (arreglaba el usuario a escondidas) + botón PROBAR CONEXIÓN.
+- v1.2 — Burbuja = walkie-talkie: tocas y hablas directo, sin abrir navegador ni app.
+- v1.3 — Modo coche: la charla se queda abierta (tocas una vez, hablas y escuchas en bucle),
+  el silencio NO cierra al momento (solo tras 3 min), pantalla siempre encendida.
+- v1.5 — Voz de Azkarin a 1,5×.
+- v1.6 — Reproductor de la grabación de la llamada DENTRO de la conversación del widget.
+- v1.7 — Botón ACTUALIZAR a prueba de balas: abre la descarga en el navegador (el
+  instalador automático fallaba mudo en algunos Samsung).
+- v1.8 — La grabación de la llamada se pone SOLA (autoplay, sin darle al play) y se maneja
+  POR VOZ mientras suena: "a 1,5", "a dos", "más rápido", "más lento", "pausa", "sigue",
+  "repite", "cierra". Mientras suena, el micro solo hace caso a esas órdenes (la propia
+  llamada no dispara nada) y el silencio nunca cierra la tarjeta.
