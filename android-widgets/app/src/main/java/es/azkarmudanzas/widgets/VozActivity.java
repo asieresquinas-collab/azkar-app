@@ -46,11 +46,20 @@ public class VozActivity extends Activity implements RecognitionListener {
     Handler ui = new Handler(Looper.getMainLooper());
     JSONArray historial = new JSONArray();
     JSONObject accionPendiente = null; // {herramienta, argumentos} esperando "sí"/"no"
-    int escuchasVacias = 0;
+    // v1.3 MODO COCHE: la conversación se queda ABIERTA — el silencio NO la cierra al momento.
+    // Se re-escucha con retardo creciente en vacío (lección v369 de la app: sin ametralladora
+    // de pitidos) y solo se despide tras 3 MINUTOS seguidos sin voz de verdad.
+    long ultimaVozReal = 0;
+    int retardoRearme = 0; // ms extra entre escuchas vacías (0 → 1500 → 3000 → 4500 → 6000 tope)
+    static final long SILENCIO_MAX_MS = 180000; // 3 min callado → me retiro
 
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        // v1.3: en el coche la pantalla NO se apaga mientras la conversación está abierta
+        // (si se apagara, Android pausa la tarjeta y se cortaría la charla).
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        ultimaVozReal = android.os.SystemClock.elapsedRealtime();
         int pad = (int) (18 * getResources().getDisplayMetrics().density);
 
         LinearLayout card = new LinearLayout(this);
@@ -156,6 +165,9 @@ public class VozActivity extends Activity implements RecognitionListener {
             i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
             i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES");
             i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+            // v1.3: aguanta pausas al hablar (frases largas dictando en el coche)
+            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L);
+            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L);
             rec.startListening(i);
             estado.setText(accionPendiente != null ? "  ¿Sí o no?" : "  🎤 Te escucho…");
         } catch (Exception e) {
@@ -182,21 +194,30 @@ public class VozActivity extends Activity implements RecognitionListener {
     public void onError(int e) {
         if (cerrando) return;
         if (e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
-            escuchasVacias++;
-            if (escuchasVacias >= 2 || (historial.length() > 0 && escuchasVacias >= 1)) { cierraYa(); return; } // silencio → me quito de en medio
-            escuchar();
+            // v1.3 MODO COCHE: el silencio NO cierra — sigo a la escucha con retardo creciente
+            // (para no ametrallar a pitidos). Solo tras 3 min sin voz real me despido.
+            if (android.os.SystemClock.elapsedRealtime() - ultimaVozReal > SILENCIO_MAX_MS) {
+                cerrando = true; // que el fin de la despedida no re-abra el micro
+                di("Me retiro. Toca la burbuja cuando me necesites.");
+                ui.postDelayed(new Runnable() { @Override public void run() { cierraYa(); } }, 2800);
+                return;
+            }
+            retardoRearme = Math.min(retardoRearme + 1500, 6000);
+            estado.setText("  🎤 Sigo aquí — háblame");
+            ui.postDelayed(new Runnable() { @Override public void run() { if (!cerrando) escuchar(); } }, retardoRearme);
             return;
         }
         if (e == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) { estado.setText("  Sin permiso de micro"); return; }
         estado.setText("  Fallo del micro (" + e + ")");
-        ui.postDelayed(new Runnable() { @Override public void run() { if (!cerrando) escuchar(); } }, 800);
+        ui.postDelayed(new Runnable() { @Override public void run() { if (!cerrando) escuchar(); } }, 1000);
     }
 
     @Override
     public void onResults(Bundle p) {
         ArrayList<String> l = p.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
         if (l == null || l.isEmpty()) { escuchar(); return; }
-        escuchasVacias = 0;
+        ultimaVozReal = android.os.SystemClock.elapsedRealtime();
+        retardoRearme = 0; // voz de verdad → micro ágil otra vez
         final String texto = l.get(0).trim();
         dicho.setText("Tú: " + texto);
         if (accionPendiente != null) { resolverConfirmacion(texto); return; }
@@ -271,6 +292,9 @@ public class VozActivity extends Activity implements RecognitionListener {
 
     /** Enseña y LEE la respuesta (limpia markdown/enlaces para que la voz no lea garabatos). */
     void di(String texto) {
+        // tras cada respuesta de Azkarin, cuenta de silencio a cero y micro ágil (modo coche)
+        ultimaVozReal = android.os.SystemClock.elapsedRealtime();
+        retardoRearme = 0;
         String limpio = String.valueOf(texto == null ? "" : texto)
                 .replaceAll("\\*\\*|__|`|#+", "")
                 .replaceAll("\\[([^\\]]*)\\]\\([^)]*\\)", "$1")
