@@ -827,7 +827,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 <input type='file' id='video-autonomos-input' accept='video/*' style='display:none' onchange='prepararVideo(this)'>
 </label>
 </div>
-<span style='font-size:10px;color:#888'>Fotos: máx 10 (se comprimen). Vídeos: máx 500 MB (suben directo a Drive)</span>
+<span style='font-size:10px;color:#888'>Fotos: máx 40 (se comprimen). Vídeos: máx 500 MB (suben directo a Drive)</span>
 <div id='fotos-preview' style='display:flex;flex-wrap:wrap;gap:6px;margin-top:8px'></div>
 <div id='video-preview' style='margin-top:8px'></div>
 <div id='video-progress' style='display:none;margin-top:8px'>
@@ -3051,7 +3051,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v372';
+var APP_VERSION = 'v373';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -11604,8 +11604,8 @@ var _fotosAutonomos = []; // Array de base64 comprimidos
 
 function previsualizarFotos(input) {
   var files = Array.from(input.files);
-  if (files.length + _fotosAutonomos.length > 10) {
-    alert('Máximo 10 fotos en total. Ya tienes ' + _fotosAutonomos.length);
+  if (files.length + _fotosAutonomos.length > 40) {
+    alert('Máximo 40 fotos en total. Ya tienes ' + _fotosAutonomos.length);
     input.value = '';
     return;
   }
