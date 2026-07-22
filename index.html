@@ -2939,7 +2939,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v372';</script>
+<script>document.getElementById('version-tag').textContent='v374';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3051,7 +3051,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v373';
+var APP_VERSION = 'v374';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -7519,6 +7519,10 @@ window.addEventListener('DOMContentLoaded', function() {
         // v372 (Asier: "dos claves no hacen falta"): con la SESIÓN de la app se entra directo
         // al modo oficina — sin clave de administración. El backend valida el pase del login.
         var _hdrs = (typeof apiHeaders === 'function') ? apiHeaders() : { 'Content-Type': 'application/json' };
+        // v374: apiHeaders() NO incluye el pase del login; hay que añadirlo a mano (como _buzonAzkHeaders).
+        // Sin él, el backend no ve la sesión y responde "sesión no vale" aunque estés logueado — le pasaba a
+        // Antonio en la oficina (su equipo no tenía el enlace de oficina cacheado como sí lo tenía el de Asier).
+        try { var _tok = localStorage.getItem('azkar_token'); if (_tok) _hdrs['Authorization'] = 'Bearer ' + _tok; } catch(e){}
         fetch(RAILWAY_API + '/api/equipo-admin/enlace', { method: 'POST', headers: _hdrs, body: JSON.stringify({}) })
           .then(function(r){ return r.json(); })
           .then(function(d){
