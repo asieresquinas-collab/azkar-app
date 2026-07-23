@@ -162,8 +162,8 @@ public class VozActivity extends Activity implements RecognitionListener {
         });
         if (tts != null) tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
             @Override public void onStart(String id) { }
-            @Override public void onError(String id) { ui.post(new Runnable() { @Override public void run() { escuchar(); } }); }
-            @Override public void onDone(String id) { ui.post(new Runnable() { @Override public void run() { escuchar(); } }); }
+            @Override public void onError(String id) { if ("azk_mid".equals(id)) return; ui.post(new Runnable() { @Override public void run() { escuchar(); } }); }
+            @Override public void onDone(String id) { if ("azk_mid".equals(id)) return; ui.post(new Runnable() { @Override public void run() { escuchar(); } }); }
         });
 
         if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -476,15 +476,38 @@ public class VozActivity extends Activity implements RecognitionListener {
                 .replaceAll("\\s+", " ").trim();
         respuesta.setText("Azkarin: " + limpio);
         estado.setText("  Azkarin");
-        String paraVoz = limpio.length() > 700 ? limpio.substring(0, 700) + ". Te he resumido, el resto en la app." : limpio;
+        String paraVoz = limpio; // v1.9 (Asier): la voz lee la respuesta ENTERA, seguida, sin cortar ni mandar a la app
         if (ttsListo && tts != null) {
             try {
                 Bundle bp = new Bundle();
-                tts.speak(paraVoz, TextToSpeech.QUEUE_FLUSH, bp, "azk");
+                java.util.ArrayList<String> _tr = _trozosVoz(paraVoz);
+                for (int _i = 0; _i < _tr.size(); _i++) {
+                    tts.speak(_tr.get(_i), _i == 0 ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD, bp, _i == _tr.size() - 1 ? "azk" : "azk_mid");
+                }
                 return;
             } catch (Exception e) { /* sin voz, al menos se lee */ }
         }
         ui.postDelayed(new Runnable() { @Override public void run() { escuchar(); } }, 1200);
+    }
+
+    // v1.9 (Asier): parte la respuesta en trozos que quepan en el motor de voz (~4000 car.)
+    // para leerla ENTERA y seguida, sin cortar a la mitad ni mandar a la app.
+    java.util.ArrayList<String> _trozosVoz(String t) {
+        java.util.ArrayList<String> out = new java.util.ArrayList<>();
+        String resto = String.valueOf(t == null ? "" : t).trim();
+        int maxLen = 3500;
+        try { maxLen = Math.min(maxLen, TextToSpeech.getMaxSpeechInputLength() - 50); } catch (Exception e) { /* API vieja */ }
+        if (maxLen < 200) maxLen = 200;
+        while (resto.length() > maxLen) {
+            int corte = resto.lastIndexOf(". ", maxLen);
+            if (corte < maxLen / 2) corte = resto.lastIndexOf(' ', maxLen);
+            if (corte <= 0) corte = maxLen - 1;
+            out.add(resto.substring(0, corte + 1).trim());
+            resto = resto.substring(corte + 1).trim();
+        }
+        if (!resto.isEmpty()) out.add(resto);
+        if (out.isEmpty()) out.add("");
+        return out;
     }
 
     void cierraYa() {

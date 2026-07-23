@@ -47,3 +47,8 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
   POR VOZ mientras suena: "a 1,5", "a dos", "más rápido", "más lento", "pausa", "sigue",
   "repite", "cierra". Mientras suena, el micro solo hace caso a esas órdenes (la propia
   llamada no dispara nada) y el silencio nunca cierra la tarjeta.
+- v1.9 — La voz de Azkarin lee la respuesta ENTERA y seguida en el widget: se quitó el
+  corte a 700 caracteres y el "Te he resumido, el resto en la app". Para textos que superan
+  el tope del motor TTS (~4000 car.) se trocea por frases y se encola (QUEUE_ADD): suena de
+  corrido y el micro se re-arma solo al terminar el ÚLTIMO trozo (los intermedios llevan
+  utteranceId "azk_mid", que el listener ignora). Petición de Asier.
