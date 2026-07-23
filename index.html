@@ -1734,6 +1734,20 @@ function SY(){
   updateFechaModificacion();
 }
 
+// v377: nombre del comercial = quien ha iniciado sesión en la app (Asier / Toni).
+// Antes el campo se quedaba con el del presupuesto anterior (p.ej. 'Azkarin' de una ficha
+// que hizo el bot) o en blanco. Ahora, al crear ficha nueva, se pone solo el del usuario.
+// Si la ficha la hace Azkarin (backend) ya pone 'Azkarin' — esto es SOLO para creación manual.
+function _comercialActual(){
+  try{
+    var u = (typeof _authUser !== 'undefined' && _authUser) ? _authUser : null;
+    if(!u){ try{ u = JSON.parse(localStorage.getItem('azkar_user')||'null'); }catch(e){ u=null; } }
+    var n = (u && u.nombre) ? String(u.nombre).trim() : '';
+    if(/^anton/i.test(n)) return 'Toni';   // Antonio -> Toni (como en el resto del sistema)
+    return n;
+  }catch(e){ return ''; }
+}
+
 function RF(){
   if(!confirm('¿Limpiar todos los datos del presupuesto?')) return;
   var inputs=document.querySelectorAll('#page-presupuesto input,#page-presupuesto textarea');
@@ -1761,6 +1775,8 @@ function RF(){
   var clGuarda = document.getElementById('clausula-guardamuebles');
   if (clGuarda) clGuarda.classList.add('guardamuebles-hidden');
   var fd=document.getElementById('f_fecha'); if(fd) fd.value=new Date().toISOString().slice(0,10);
+  // v377: el comercial de una ficha nueva = quien está usando la app (Asier/Toni)
+  var _fcR=document.getElementById('f_com'); if(_fcR) _fcR.value=_comercialActual();
   // v140: Reset toggle guardamuebles UI
   updateGuardamueblesUI(false);
   // v376: Reset toggle plataforma elevadora
@@ -2969,7 +2985,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v376';</script>
+<script>document.getElementById('version-tag').textContent='v377';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3081,7 +3097,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v376';
+var APP_VERSION = 'v377';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -6235,6 +6251,10 @@ async function newPresupuesto() {
   // Reset form
   const fields = ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs'];
   fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  // v377: el comercial = quien está usando la app (Asier/Toni). Antes se quedaba PEGADO el
+  // del presupuesto anterior (f_com no estaba en la lista de reset) — p.ej. 'Azkarin' de una
+  // ficha que hizo el bot. Ahora se pone solo el del usuario logueado.
+  var _fcN=document.getElementById('f_com'); if(_fcN) _fcN.value=_comercialActual();
   document.querySelectorAll('#tbl .tr').forEach(tr => tr.remove());
   // Limpiar tabla de conceptos
   var tbReset = document.getElementById('tb');
