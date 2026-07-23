@@ -52,3 +52,8 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
   el tope del motor TTS (~4000 car.) se trocea por frases y se encola (QUEUE_ADD): suena de
   corrido y el micro se re-arma solo al terminar el ÚLTIMO trozo (los intermedios llevan
   utteranceId "azk_mid", que el listener ignora). Petición de Asier.
+- v1.10 — El micro DEJA HABLAR con calma: la tolerancia al silencio antes de dar la frase por
+  terminada sube de 1,8s a 4s (COMPLETE y POSSIBLY_COMPLETE) + MINIMUM_LENGTH 8s, para que a
+  Asier (que habla pausado) no le corte a mitad cuando hace una pausa. OJO: el reconocedor de
+  Google puede no respetar estos tiempos en algunos móviles; si sigue cortando, plan B =
+  pulsar para terminar en vez de detectar el silencio. Petición de Asier.

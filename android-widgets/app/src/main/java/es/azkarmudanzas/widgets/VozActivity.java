@@ -200,9 +200,11 @@ public class VozActivity extends Activity implements RecognitionListener {
             i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
             i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES");
             i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
-            // v1.3: aguanta pausas al hablar (frases largas dictando en el coche)
-            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L);
-            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L);
+            // v1.3/v1.10: aguanta pausas al hablar. Asier habla pausado → 4s de silencio antes de
+            // dar la frase por terminada, para no cortarle cuando piensa (Android puede no respetarlo del todo).
+            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 4000L);
+            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 4000L);
+            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 4000L);
             rec.startListening(i);
             estado.setText(accionPendiente != null ? "  ¿Sí o no?" : "  🎤 Te escucho…");
         } catch (Exception e) {
