@@ -65,6 +65,13 @@ public class VozActivity extends Activity implements RecognitionListener {
     LinearLayout filaNav;
     Button btnNavMaps, btnNavSygic;
     String navMapsUrl = "", navSygicUrl = "";
+    // v1.13 (Asier): cuando Azkarin genera un ARCHIVO (PDF del borrador/informe, DOCX…) se
+    // DESCARGA SOLO al móvil y aparece un botón para ABRIRLO. Sin pedir permisos ni salir del widget.
+    LinearLayout filaArch;
+    Button btnArch;
+    android.net.Uri archUri = null;
+    String archMime = "application/pdf";
+    static String ultimoErrorArch = "";
 
     @Override
     protected void onCreate(Bundle b) {
@@ -72,6 +79,9 @@ public class VozActivity extends Activity implements RecognitionListener {
         // v1.3: en el coche la pantalla NO se apaga mientras la conversación está abierta
         // (si se apagara, Android pausa la tarjeta y se cortaría la charla).
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // v1.13: permitir abrir un archivo recién descargado con un Uri de fichero como plan B
+        // (sin esto Android mata la app al compartir file:// en apps que apuntan a Android 7+).
+        try { android.os.StrictMode.setVmPolicy(new android.os.StrictMode.VmPolicy.Builder().build()); } catch (Exception e) { /* nada */ }
         ultimaVozReal = android.os.SystemClock.elapsedRealtime();
         int pad = (int) (18 * getResources().getDisplayMetrics().density);
 
@@ -163,6 +173,19 @@ public class VozActivity extends Activity implements RecognitionListener {
         card.addView(filaNav);
         btnNavMaps.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { abrirUrlNav(navMapsUrl); } });
         btnNavSygic.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { abrirUrlNav(navSygicUrl); } });
+
+        // v1.13: botón para ABRIR el archivo que Azkarin acaba de descargar (oculto hasta que haya uno)
+        filaArch = new LinearLayout(this);
+        filaArch.setOrientation(LinearLayout.VERTICAL);
+        filaArch.setPadding(0, pad / 2, 0, 0);
+        filaArch.setVisibility(View.GONE);
+        btnArch = new Button(this);
+        btnArch.setText("📄 ABRIR EL ARCHIVO");
+        btnArch.setBackgroundColor(Color.parseColor("#E85C0D"));
+        btnArch.setTextColor(Color.WHITE);
+        filaArch.addView(btnArch, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        card.addView(filaArch);
+        btnArch.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { abrirArchivo(); } });
 
         ScrollView sc = new ScrollView(this);
         sc.addView(card, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -351,6 +374,29 @@ public class VozActivity extends Activity implements RecognitionListener {
                             mostrarNavegacion(_dstNav, datos.optString("maps_url", ""), datos.optString("sygic_url", ""), msg);
                             return;
                         }
+                        // v1.13: ¿Azkarin ha generado un ARCHIVO (PDF de borrador/informe, DOCX…)? → se
+                        // DESCARGA SOLO al móvil. Va en 'datos' como pdf_base64 / docx_base64 / pdf_url.
+                        if (datos != null) {
+                            String _b64 = datos.optString("pdf_base64", "");
+                            boolean _docx = false;
+                            if (_b64.isEmpty()) { _b64 = datos.optString("docx_base64", ""); _docx = !_b64.isEmpty(); }
+                            if (!_b64.isEmpty()) {
+                                String _nom = _nombreArchivo(datos, _docx ? "docx" : "pdf");
+                                meteHistorial("assistant", msg.isEmpty() ? ("Archivo generado: " + _nom) : msg);
+                                guardarArchivoBase64(_b64, _nom,
+                                        _docx ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "application/pdf",
+                                        msg);
+                                return;
+                            }
+                            String _url = datos.optString("pdf_url", "");
+                            if (_url.isEmpty()) _url = datos.optString("archivo_url", "");
+                            if (!_url.isEmpty()) {
+                                String _nom = _nombreArchivo(datos, _extDeUrl(_url));
+                                meteHistorial("assistant", msg.isEmpty() ? ("Archivo: " + _nom) : msg);
+                                descargarArchivo(_url, _nom, msg);
+                                return;
+                            }
+                        }
                         if ("confirmacion".equals(r.optString("tipo"))) {
                             accionPendiente = r.optJSONObject("accion");
                             String desc = accionPendiente != null ? accionPendiente.optString("descripcion", "") : "";
@@ -499,9 +545,14 @@ public class VozActivity extends Activity implements RecognitionListener {
     }
 
     /** Enseña y LEE la respuesta (limpia markdown/enlaces para que la voz no lea garabatos). */
-    void di(String texto) {
+    void di(String texto) { di(texto, null); }
+
+    /** v1.13: igual que di(), pero puede leer por voz un texto DISTINTO del que se ve (vozAlt).
+     *  Sirve para archivos: en pantalla se ve el nombre del fichero, pero la voz dice algo natural. */
+    void di(String texto, String vozAlt) {
         limpiaLlamada(); // una respuesta de texto cierra el reproductor de la llamada anterior
         if (filaNav != null) filaNav.setVisibility(View.GONE); // y quita el botón de ruta anterior
+        if (filaArch != null) filaArch.setVisibility(View.GONE); // y el botón de archivo anterior
         // tras cada respuesta de Azkarin, cuenta de silencio a cero y micro ágil (modo coche)
         ultimaVozReal = android.os.SystemClock.elapsedRealtime();
         retardoRearme = 0;
@@ -523,7 +574,10 @@ public class VozActivity extends Activity implements RecognitionListener {
         estado.setText("  Azkarin");
         // v1.12: la voz lee la respuesta ENTERA (en trozos con _trozosVoz, sin cortar ni mandar "a la app"),
         // pero SIN leer los enlaces — los cambia por "el enlace"; en pantalla sí se ven y se tocan.
-        String paraVoz = paraVer.replaceAll("https?://\\S+", "el enlace").replaceAll("\\s+", " ").trim();
+        // v1.13: si hay vozAlt, la voz lee ESO (limpio de enlaces) en vez del texto de pantalla.
+        String paraVoz = String.valueOf(vozAlt != null ? vozAlt : paraVer)
+                .replaceAll("\\*\\*|__|`|#+", "")
+                .replaceAll("https?://\\S+", "el enlace").replaceAll("\\s+", " ").trim();
         if (ttsListo && tts != null) {
             try {
                 Bundle bp = new Bundle();
@@ -588,6 +642,130 @@ public class VozActivity extends Activity implements RecognitionListener {
         } catch (Exception e) {
             estado.setText("  No pude abrir el mapa (¿tienes la app?)");
         }
+    }
+
+    // ─────────────── v1.13: ARCHIVOS (PDF/DOCX) que se descargan solos ───────────────
+
+    /** Descarga automática de un archivo por URL (borradores de permiso/policía → /api/pdf/borrador/…).
+     *  Va a la carpeta propia de la app (sin pedir permisos) y saca aviso tocable de "descarga lista". */
+    void descargarArchivo(String url, String nombre, String msg) {
+        try {
+            android.app.DownloadManager dm = (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            android.app.DownloadManager.Request req = new android.app.DownloadManager.Request(android.net.Uri.parse(url));
+            req.setTitle(nombre);
+            req.setDescription("Azkar Mudanzas");
+            req.setMimeType("pdf".equalsIgnoreCase(_extDeUrl(url)) ? "application/pdf" : "*/*");
+            req.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            req.setAllowedOverMetered(true);
+            req.setAllowedOverRoaming(true);
+            // si es NUESTRO servidor, mete la misma llave + pase del login (inofensivo en rutas públicas)
+            if (url.startsWith(Datos.BASE)) {
+                req.addRequestHeader("x-api-key", Datos.API_KEY);
+                String jwt = Datos.prefs(this).getString("jwt", "");
+                if (!jwt.isEmpty()) req.addRequestHeader("Authorization", "Bearer " + jwt);
+            }
+            req.setDestinationInExternalFilesDir(this, android.os.Environment.DIRECTORY_DOWNLOADS, nombre);
+            dm.enqueue(req);
+            String vis = (msg == null || msg.trim().isEmpty() ? "" : msg + "\n\n") + "📥 Descargando «" + nombre + "». En cuanto acabe, te sale el aviso arriba para abrirlo.";
+            String voz = (msg == null || msg.trim().isEmpty() ? "" : msg + ". ") + "Te lo estoy descargando al móvil, en cuanto acabe te aviso.";
+            di(vis, voz);
+            mostrarBotonArchivo(android.net.Uri.parse(url), "application/pdf");
+        } catch (Exception e) {
+            estado.setText("  Abriendo el archivo…");
+            abrirUrlNav(url); // plan B: el navegador también lo descarga/enseña
+        }
+    }
+
+    /** Guarda en el móvil un archivo que viene EMBEBIDO en base64 (informes PDF, DOCX oficiales) y
+     *  saca el botón para abrirlo. Trabaja en segundo plano para no congelar la tarjeta. */
+    void guardarArchivoBase64(final String b64, final String nombre, final String mime, final String msg) {
+        estado.setText("  📥 Guardando " + nombre + "…");
+        new Thread(new Runnable() { @Override public void run() {
+            final android.net.Uri uri = _escribeBase64Archivo(b64, nombre, mime);
+            ui.post(new Runnable() { @Override public void run() {
+                if (cerrando) return;
+                if (uri != null) {
+                    String vis = (msg == null || msg.trim().isEmpty() ? "" : msg + "\n\n") + "✅ Guardado en el móvil: «" + nombre + "». Toca ABRIR EL ARCHIVO para verlo.";
+                    String voz = (msg == null || msg.trim().isEmpty() ? "" : msg + ". ") + "Listo, ya lo tienes guardado en el móvil. Toca abrir para verlo.";
+                    di(vis, voz);
+                    mostrarBotonArchivo(uri, mime);
+                } else {
+                    di("He generado el archivo pero no he podido guardarlo en el móvil (" + ultimoErrorArch + "). Vuelve a pedírmelo, por favor.");
+                }
+            }});
+        }}).start();
+    }
+
+    /** Decodifica el base64 a un fichero de la app y lo REGISTRA en Descargas (aviso + poder abrirlo).
+     *  Devuelve un Uri que se puede abrir, o null (detalle en ultimoErrorArch). Compila con API 25. */
+    android.net.Uri _escribeBase64Archivo(String b64, String nombre, String mime) {
+        try {
+            byte[] bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+            if (bytes == null || bytes.length == 0) { ultimoErrorArch = "el archivo venía vacío"; return null; }
+            java.io.File dir = getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS);
+            if (dir == null) dir = getCacheDir();
+            if (!dir.exists()) dir.mkdirs();
+            java.io.File f = new java.io.File(dir, nombre);
+            java.io.FileOutputStream out = new java.io.FileOutputStream(f);
+            out.write(bytes); out.flush(); out.close();
+            // registrarlo en el gestor de Descargas → aviso tocable + Uri que abre cualquier visor
+            try {
+                android.app.DownloadManager dm = (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                long id = dm.addCompletedDownload(nombre, "Azkar Mudanzas", true, mime, f.getAbsolutePath(), f.length(), true);
+                android.net.Uri u = dm.getUriForDownloadedFile(id);
+                if (u != null) { ultimoErrorArch = ""; return u; }
+            } catch (Exception e2) { /* Android muy nuevo puede no dejar registrarlo: seguimos con el fichero */ }
+            ultimoErrorArch = "";
+            return android.net.Uri.fromFile(f); // plan B (funciona porque relajamos StrictMode en onCreate)
+        } catch (Exception e) {
+            ultimoErrorArch = "[" + e.getClass().getSimpleName() + "] " + (e.getMessage() == null ? "" : e.getMessage());
+            return null;
+        }
+    }
+
+    void mostrarBotonArchivo(android.net.Uri uri, String mime) {
+        archUri = uri;
+        archMime = (mime == null || mime.isEmpty()) ? "application/pdf" : mime;
+        if (filaArch == null || btnArch == null) return;
+        boolean hay = (uri != null);
+        btnArch.setVisibility(hay ? View.VISIBLE : View.GONE);
+        filaArch.setVisibility(hay ? View.VISIBLE : View.GONE);
+    }
+
+    void abrirArchivo() {
+        if (archUri == null) return;
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW);
+            String esq = archUri.getScheme();
+            if ("http".equals(esq) || "https".equals(esq)) i.setData(archUri);
+            else i.setDataAndType(archUri, archMime);
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Exception e) {
+            estado.setText("  No encuentro app para abrir ese archivo");
+        }
+    }
+
+    /** Elige un nombre de fichero decente con los campos que manda el backend. */
+    String _nombreArchivo(JSONObject datos, String ext) {
+        String n = "";
+        String[] claves = { "pdf_filename", "pdf_nombre", "docx_filename", "filename", "nombre_archivo", "nombre" };
+        for (String k : claves) { n = datos.optString(k, ""); if (!n.isEmpty()) break; }
+        if (n.isEmpty()) n = "azkar_" + System.currentTimeMillis();
+        n = n.replaceAll("[\\\\/:*?\"<>|\\s]+", "_").replaceAll("_+", "_");
+        if (ext != null && !ext.isEmpty() && !n.toLowerCase().endsWith("." + ext.toLowerCase())) n = n + "." + ext;
+        return n;
+    }
+
+    String _extDeUrl(String url) {
+        try {
+            String p = android.net.Uri.parse(url).getLastPathSegment();
+            if (p != null && p.contains(".")) {
+                String e = p.substring(p.lastIndexOf('.') + 1);
+                if (e.length() >= 2 && e.length() <= 5 && e.matches("[A-Za-z0-9]+")) return e.toLowerCase();
+            }
+        } catch (Exception e) { /* nada */ }
+        return "pdf"; // los enlaces que manda Azkarin son PDF salvo que digan otra cosa
     }
 
     void cierraYa() {
