@@ -505,14 +505,25 @@ public class VozActivity extends Activity implements RecognitionListener {
         // tras cada respuesta de Azkarin, cuenta de silencio a cero y micro ágil (modo coche)
         ultimaVozReal = android.os.SystemClock.elapsedRealtime();
         retardoRearme = 0;
-        String limpio = String.valueOf(texto == null ? "" : texto)
+        String base = String.valueOf(texto == null ? "" : texto);
+        // v1.9: para MOSTRAR conservamos los ENLACES (para poder TOCARLOS); solo quitamos el markdown feo.
+        String paraVer = base
                 .replaceAll("\\*\\*|__|`|#+", "")
-                .replaceAll("\\[([^\\]]*)\\]\\([^)]*\\)", "$1")
-                .replaceAll("https?://\\S+", "el enlace")
-                .replaceAll("\\s+", " ").trim();
-        respuesta.setText("Azkarin: " + limpio);
+                .replaceAll("\\[([^\\]]*)\\]\\((https?://[^)]*)\\)", "$1: $2") // [texto](http…) -> texto: http… (tocable)
+                .replaceAll("\\[([^\\]]*)\\]\\([^)]*\\)", "$1")                // enlaces raros (sygic…) -> solo el texto
+                .replaceAll("[ \\t]+", " ")
+                .replaceAll(" *\\n *", "\n")
+                .replaceAll("\\n{3,}", "\n\n").trim();
+        respuesta.setText("Azkarin: " + paraVer);
+        try { // v1.9: hace TOCABLES los enlaces (Google Maps, PDF del presupuesto, Drive…)
+            android.text.util.Linkify.addLinks(respuesta, android.text.util.Linkify.WEB_URLS);
+            respuesta.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+            respuesta.setLinkTextColor(Color.parseColor("#1B4F8A"));
+        } catch (Exception e) { /* si falla el Linkify, al menos se ve el texto con la URL */ }
         estado.setText("  Azkarin");
-        String paraVoz = limpio; // v1.9 (Asier): la voz lee la respuesta ENTERA, seguida, sin cortar ni mandar a la app
+        // v1.12: la voz lee la respuesta ENTERA (en trozos con _trozosVoz, sin cortar ni mandar "a la app"),
+        // pero SIN leer los enlaces — los cambia por "el enlace"; en pantalla sí se ven y se tocan.
+        String paraVoz = paraVer.replaceAll("https?://\\S+", "el enlace").replaceAll("\\s+", " ").trim();
         if (ttsListo && tts != null) {
             try {
                 Bundle bp = new Bundle();
