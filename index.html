@@ -14003,6 +14003,14 @@ async function doResetWithCode() {
             }
           })();
         }
+        // v375: Botón de NAVEGACIÓN (planificar_ruta) — abre Google Maps / Sygic con un toque
+        if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'navegar') {
+          var _dst = String(data.datos.destino || 'el destino').replace(/</g, '&lt;');
+          var _nav = '🧭 <b>Ruta a ' + _dst + '</b><br>';
+          if (data.datos.sygic_url) _nav += '<a href="' + data.datos.sygic_url + '" style="display:inline-block;margin:6px 6px 0 0;padding:9px 15px;background:#1a7a3f;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">🚚 Ir con Sygic (camión)</a>';
+          if (data.datos.maps_url) _nav += '<a href="' + data.datos.maps_url + '" target="_blank" rel="noopener" style="display:inline-block;margin:6px 0 0 0;padding:9px 15px;background:#2376C5;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">🗺️ Ir con Google Maps</a>';
+          addMsg('bot', _nav);
+        }
         // v209: Preview PDF del presupuesto en el chat
         if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'preview_presupuesto_pdf') {
           var refPrev = data.datos.ref;

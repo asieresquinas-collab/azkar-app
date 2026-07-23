@@ -57,3 +57,7 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
   Asier (que habla pausado) no le corte a mitad cuando hace una pausa. OJO: el reconocedor de
   Google puede no respetar estos tiempos en algunos móviles; si sigue cortando, plan B =
   pulsar para terminar en vez de detectar el silencio. Petición de Asier.
+- v1.11 — BOTÓN DE NAVEGACIÓN en el widget: al pedir "llévame a la mudanza de hoy" / "ruta al
+  cliente X", Azkarin manda un dato estructurado (accion:'navegar' con maps_url/sygic_url) y el
+  widget pinta botón(es) 🗺️ Google Maps / 🚚 Sygic que abren la app de mapas con un toque (antes
+  eran enlaces que el widget borraba al limpiar URLs para la voz). Requiere backend 2.7.189.

@@ -61,6 +61,10 @@ public class VozActivity extends Activity implements RecognitionListener {
     String cidLl = null;
     final float[] velsLl = { 1f, 1.5f, 2f };
     int velIdxLl = 0;
+    // v1.11: botón(es) de NAVEGACIÓN (planificar_ruta) en la propia tarjeta
+    LinearLayout filaNav;
+    Button btnNavMaps, btnNavSygic;
+    String navMapsUrl = "", navSygicUrl = "";
 
     @Override
     protected void onCreate(Bundle b) {
@@ -138,6 +142,27 @@ public class VozActivity extends Activity implements RecognitionListener {
                 aplicaVelLlamada();
             }
         });
+
+        // v1.11: fila de botones de NAVEGACIÓN (oculta hasta que Azkarin manda una ruta)
+        filaNav = new LinearLayout(this);
+        filaNav.setOrientation(LinearLayout.VERTICAL);
+        filaNav.setPadding(0, pad / 2, 0, 0);
+        filaNav.setVisibility(View.GONE);
+        btnNavMaps = new Button(this);
+        btnNavMaps.setText("🗺️ IR CON GOOGLE MAPS");
+        btnNavMaps.setBackgroundColor(Color.parseColor("#2376C5"));
+        btnNavMaps.setTextColor(Color.WHITE);
+        filaNav.addView(btnNavMaps, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        btnNavSygic = new Button(this);
+        btnNavSygic.setText("🚚 IR CON SYGIC (CAMIÓN)");
+        btnNavSygic.setBackgroundColor(Color.parseColor("#1a7a3f"));
+        btnNavSygic.setTextColor(Color.WHITE);
+        LinearLayout.LayoutParams lpNS = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lpNS.topMargin = (int) (6 * getResources().getDisplayMetrics().density);
+        filaNav.addView(btnNavSygic, lpNS);
+        card.addView(filaNav);
+        btnNavMaps.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { abrirUrlNav(navMapsUrl); } });
+        btnNavSygic.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { abrirUrlNav(navSygicUrl); } });
 
         ScrollView sc = new ScrollView(this);
         sc.addView(card, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -319,6 +344,13 @@ public class VozActivity extends Activity implements RecognitionListener {
                             prepararLlamada(datos.optString("call_id"), msg);
                             return;
                         }
+                        // v1.11: Azkarin manda una RUTA → botón(es) de navegación en la tarjeta
+                        if (datos != null && "navegar".equals(datos.optString("accion"))) {
+                            String _dstNav = datos.optString("destino", "el destino");
+                            meteHistorial("assistant", msg.isEmpty() ? ("Ruta a " + _dstNav) : msg);
+                            mostrarNavegacion(_dstNav, datos.optString("maps_url", ""), datos.optString("sygic_url", ""), msg);
+                            return;
+                        }
                         if ("confirmacion".equals(r.optString("tipo"))) {
                             accionPendiente = r.optJSONObject("accion");
                             String desc = accionPendiente != null ? accionPendiente.optString("descripcion", "") : "";
@@ -350,6 +382,7 @@ public class VozActivity extends Activity implements RecognitionListener {
     //   y se controla POR VOZ ("a 1,5", "a dos", "más rápido", "pausa", "sigue", "repite", "cierra").
     void prepararLlamada(String cid, String msg) {
         limpiaLlamada();
+        if (filaNav != null) filaNav.setVisibility(View.GONE);
         cidLl = cid; velIdxLl = 0;
         try { if (tts != null) tts.stop(); } catch (Exception e) { /* nada */ }
         respuesta.setText("Azkarin: " + (msg == null || msg.isEmpty() ? "Aquí tienes la grabación." : msg.replaceAll("\\s+", " ").trim()));
@@ -468,6 +501,7 @@ public class VozActivity extends Activity implements RecognitionListener {
     /** Enseña y LEE la respuesta (limpia markdown/enlaces para que la voz no lea garabatos). */
     void di(String texto) {
         limpiaLlamada(); // una respuesta de texto cierra el reproductor de la llamada anterior
+        if (filaNav != null) filaNav.setVisibility(View.GONE); // y quita el botón de ruta anterior
         // tras cada respuesta de Azkarin, cuenta de silencio a cero y micro ágil (modo coche)
         ultimaVozReal = android.os.SystemClock.elapsedRealtime();
         retardoRearme = 0;
@@ -510,6 +544,39 @@ public class VozActivity extends Activity implements RecognitionListener {
         if (!resto.isEmpty()) out.add(resto);
         if (out.isEmpty()) out.add("");
         return out;
+    }
+
+    // v1.11: enseña el/los botón(es) de navegación y deja el micro escuchando por si sigues hablando
+    void mostrarNavegacion(String destino, String mapsUrl, String sygicUrl, String msg) {
+        limpiaLlamada();
+        navMapsUrl = (mapsUrl == null ? "" : mapsUrl.trim());
+        navSygicUrl = (sygicUrl == null ? "" : sygicUrl.trim());
+        String limpio = String.valueOf(msg == null ? "" : msg)
+                .replaceAll("\\*\\*|__|`|#+", "")
+                .replaceAll("\\[([^\\]]*)\\]\\([^)]*\\)", "$1")
+                .replaceAll("https?://\\S+", "")
+                .replaceAll("\\s+", " ").trim();
+        if (limpio.isEmpty()) limpio = "Aquí tienes la ruta a " + destino + ". Toca el botón para ir.";
+        respuesta.setText("Azkarin: " + limpio);
+        estado.setText("  🧭 Ruta a " + destino);
+        btnNavMaps.setVisibility(navMapsUrl.isEmpty() ? View.GONE : View.VISIBLE);
+        btnNavSygic.setVisibility(navSygicUrl.isEmpty() ? View.GONE : View.VISIBLE);
+        filaNav.setVisibility((navMapsUrl.isEmpty() && navSygicUrl.isEmpty()) ? View.GONE : View.VISIBLE);
+        if (ttsListo && tts != null) {
+            try { Bundle bp = new Bundle(); tts.speak(limpio, TextToSpeech.QUEUE_FLUSH, bp, "azk"); return; } catch (Exception e) { /* sin voz */ }
+        }
+        ui.postDelayed(new Runnable() { @Override public void run() { escuchar(); } }, 1200);
+    }
+
+    void abrirUrlNav(String url) {
+        if (url == null || url.trim().isEmpty()) return;
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url.trim()));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Exception e) {
+            estado.setText("  No pude abrir el mapa (¿tienes la app?)");
+        }
     }
 
     void cierraYa() {
