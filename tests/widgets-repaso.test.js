@@ -603,6 +603,34 @@ t('C6 · la app se abre desde el navegador con el enlace dentro (azkarwidget://e
   assert(/REQUEST_INSTALL_PACKAGES/.test(manifest), 'sin ese permiso no se puede instalar la actualización');
 });
 
+// C7 (v1.16) — EL PASO QUE VA A DAR ASIER DE VERDAD. Toca el botón naranja del portal y
+// espera que el panel APAREZCA. Si esto falla, todo lo demás da igual: se queda con una app
+// instalada, el enlace guardado… y ningún panel en la pantalla, sin saber qué más hacer.
+t('C7 · tras guardar el enlace, el panel se ofrece SOLO — y si el móvil no puede, se explica a mano', () => {
+  const pon = (jMain.match(/void ponEnLaPantalla\(boolean aviso\)[\s\S]*?\n    \}\n/) || [])[0];
+  assert(pon, 'no existe ponEnLaPantalla(): el botón del portal dejaría la app abierta y ya');
+  // se pide DESPUÉS de guardar el enlace, no antes: un panel puesto sin enlace saldría vacío
+  assert(/if \(ofrecerPonerlo\) ponEnLaPantalla\(false\);/.test(jMain),
+    'no se ofrece poner el panel al llegar por el botón del portal');
+  assert(/if \(!Datos\.hayEquipo\(this\)\)[\s\S]{0,120}?return;/.test(pon),
+    'se ofrecería poner el panel sin enlace guardado: saldría en blanco');
+  // por reflexión A PROPÓSITO: la APK se compila contra Android 25 y esto es de Android 26.
+  // Llamarlo directo no compilaría; y hacerlo sin comprobar antes reventaría en móviles viejos.
+  assert(/getMethod\("isRequestPinAppWidgetSupported"\)/.test(pon),
+    'no se comprueba si el lanzador sabe poner paneles solo');
+  assert(/getMethod\("requestPinAppWidget"/.test(pon), 'no se le pide a Android que ponga el panel');
+  assert(/new ComponentName\(this, WidgetEquipo\.class\)/.test(pon),
+    'se pondría OTRO panel, no el del equipo');
+  assert(/catch \(Exception e\) \{ pedido = false; \}/.test(pon),
+    'si Android contesta raro, la app reventaría en la cara del chico');
+  // y JAMÁS un botón muerto: si no se puede poner solo, se dice CÓMO se pone a mano
+  const rendicion = (pon.match(/\} else \{([\s\S]*?)\n        \}/) || [])[1] || '';
+  assert(/Widgets/.test(rendicion) && /Mant[eé]n pulsado/i.test(rendicion),
+    'si el móvil no lo pone solo, se queda callado en vez de explicar cómo hacerlo a mano');
+  assert(/trabajo de hoy/.test(rendicion),
+    'las instrucciones a mano no dicen QUÉ panel hay que arrastrar de la lista');
+});
+
 console.log('\n══ D) Lo que pide al servidor ══');
 
 // D1 (v1.15) — ya no pide 12 a pelo: pide LAS QUE CABEN, y siempre dentro del tope del servidor.
