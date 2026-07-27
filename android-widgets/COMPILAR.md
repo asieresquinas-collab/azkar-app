@@ -99,3 +99,21 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
   ⚠️ se mete con un mapa que mueve texto Y botón a la vez, para que un botón no pueda quedarse
   nunca con la persona equivocada. Códigos de PendingIntent 100..111 (repaso) y 200..215
   (resumen), cada raya con su propia dirección `azkarwidget://<panel>/<widget>/<raya>`.
+- v1.16 — **CUARTO WIDGET: "👷 Azkar — trabajo de hoy (equipo)"**, el panel GRANDE de la tablet
+  de los chicos. Lo pidió Asier así: *«que tenga un widget grande, por lo menos que ocupe toda
+  la pantalla, para que lo vean bien claro DÓNDE ESTÁ»*. Nace a 320x460dp (≈13 rayas) y admite
+  hasta **20**; las rayas van clavadas a 30dp y la cabecera a 54dp para que la cuenta de
+  "cuántas caben" sea EXACTA y el *"… y N más"* no se salga nunca de la pantalla. Las
+  **direcciones salen a 20sp, en negrita y en azul oscuro** (el resto, 16sp): es lo que un chico
+  busca de un vistazo desde la furgoneta. Cada raya lleva su botón: 📍 mapa, 📄 el parte de
+  trabajo, 📋 el plan entero. Cómo se pinta cada raya (`estilo`: dia | direccion | titulo |
+  aviso | normal) viaja **DENTRO de la misma casilla que el botón**, no en una lista aparte, para
+  que el texto de una raya no pueda quedarse nunca con el botón ni con el tamaño de otra — que
+  es justo el fallo que mandaría a un chico a la dirección de otro cliente.
+  **La tablet NUNCA lleva el usuario y la clave de Asier**: se instala desde el botón de la
+  página de operarios y el enlace del portal viaja dentro de la propia dirección de instalación
+  (`intent://equipo?u=…#Intent;scheme=azkarwidget;…;S.browser_fallback_url=<APK>;end`), así que
+  nadie tiene que teclear un token de 40 letras. Si un botón fallara, la vuelta atrás es **el
+  plan de trabajo de ellos**, jamás la pantalla de Asier (`AccionActivity.deReserva`). Cache
+  propia (`cache_eq_*`), acción `REFRESCAR_EQUIPO`, códigos de PendingIntent 6/7 + 300..319, y
+  se refresca solo cada media hora. Requiere backend 2.7.248 (`/api/equipo/<token>/hoy.json`).

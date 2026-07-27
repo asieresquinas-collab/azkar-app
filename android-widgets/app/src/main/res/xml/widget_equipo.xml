@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EL PANEL GRANDE DE LA TABLET (v1.16). Asier: «que tenga un widget grande, POR LO MENOS
+     QUE OCUPE TODA LA PANTALLA, para que lo vean bien claro donde esta».
+     Por eso nace ya enorme: 320dp de ancho x 460dp de alto ≈ 13 rayas de salida, y se puede
+     estirar hasta llenar la tablet entera (hasta 20 rayas). Se puede encoger si hiciera falta,
+     pero el sitio natural de este es OCUPANDO LA PANTALLA. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="320dp"
+    android:minHeight="460dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="120dp"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/w_equipo"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen" />

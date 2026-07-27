@@ -21,10 +21,10 @@ const path = require('path');
 
 // La versión que se está publicando AHORA y la anterior (para comparar la firma).
 // Subir estos cuatro valores es lo único que hay que tocar aquí al sacar una APK nueva.
-const VC = 16;                              // versionCode
-const VN = '1.15';                          // versionName
-const APK = 'azkar-widgets-v115.apk';       // la que se publica
-const APK_ANT = 'azkar-widgets-v114.apk';   // la anterior: la firma tiene que ser LA MISMA
+const VC = 17;                              // versionCode
+const VN = '1.16';                          // versionName
+const APK = 'azkar-widgets-v116.apk';       // la que se publica
+const APK_ANT = 'azkar-widgets-v115.apk';   // la anterior: la firma tiene que ser LA MISMA
 
 // Las rutas salen de DÓNDE ESTÁ este fichero, no de una ruta clavada: así vale en
 // cualquier ordenador y no se rompe al mover la carpeta.
@@ -53,12 +53,15 @@ function assert(cond, msg) { if (!cond) throw new Error(msg || 'no se cumple'); 
 function leer(p) { return fs.readFileSync(p, 'utf8'); }
 const layout = leer(path.join(SRC, 'res/layout/w_repaso.xml'));
 const layoutRes = leer(path.join(SRC, 'res/layout/w_resumen.xml'));
+const layoutEq = leer(path.join(SRC, 'res/layout/w_equipo.xml'));          // v1.16
 const provider = leer(path.join(SRC, 'res/xml/widget_repaso.xml'));
 const providerRes = leer(path.join(SRC, 'res/xml/widget_resumen.xml'));
+const providerEq = leer(path.join(SRC, 'res/xml/widget_equipo.xml'));      // v1.16
 const manifest = leer(path.join(SRC, 'AndroidManifest.xml'));
 const gradle = leer(path.join(AW, 'app/build.gradle'));
 const jRepaso = leer(path.join(JAVA, 'WidgetRepaso.java'));
 const jResumen = leer(path.join(JAVA, 'WidgetResumen.java'));
+const jEquipo = leer(path.join(JAVA, 'WidgetEquipo.java'));                // v1.16
 const jAzkarin = leer(path.join(JAVA, 'WidgetAzkarin.java'));
 const jRayas = leer(path.join(JAVA, 'Rayas.java'));
 const jAccion = leer(path.join(JAVA, 'Accion.java'));
@@ -112,8 +115,28 @@ function codigosDe(nombre, j) {
   return out;
 }
 
+/** LOS PANELES DE RAYAS, en un solo sitio (v1.16: ya son TRES).
+ *  Antes cada guarda llevaba su propia listita de dos, y al añadir el panel del equipo
+ *  media docena de guardas habrían seguido mirando solo a los de antes — pasando en verde
+ *  sin haber comprobado el panel nuevo. Eso es peor que no tener guarda: da tranquilidad
+ *  falsa. Añadir un panel aquí lo mete de golpe en TODAS las guardas de pareja. */
+const PANELES = [
+  { n: 'repaso', j: jRepaso, x: layout, prov: provider, pre: 'azkarwidget://repaso/',
+    cuerpo: 'cuerpo_rep', minRayas: 12,
+    reT: /android:id="@\+id\/(rep\d+)"/g, reF: /android:id="@\+id\/(fila\d+)"/g,
+    reB: /android:id="@\+id\/(bot\d+)"/g, reBotXml: /<TextView[\s\S]{0,600}?@\+id\/bot\d+"[\s\S]*?\/>/g },
+  { n: 'resumen', j: jResumen, x: layoutRes, prov: providerRes, pre: 'azkarwidget://resumen/',
+    cuerpo: 'cuerpo', minRayas: 16,
+    reT: /android:id="@\+id\/(linea\d+)"/g, reF: /android:id="@\+id\/(fila_r\d+)"/g,
+    reB: /android:id="@\+id\/(bot_r\d+)"/g, reBotXml: /<TextView[\s\S]{0,600}?@\+id\/bot_r\d+"[\s\S]*?\/>/g },
+  { n: 'equipo', j: jEquipo, x: layoutEq, prov: providerEq, pre: 'azkarwidget://equipo/',
+    cuerpo: 'cuerpo_eq', minRayas: 20,
+    reT: /android:id="@\+id\/(eq\d+)"/g, reF: /android:id="@\+id\/(fila_eq\d+)"/g,
+    reB: /android:id="@\+id\/(bot_eq\d+)"/g, reBotXml: /<TextView[\s\S]{0,600}?@\+id\/bot_eq\d+"[\s\S]*?\/>/g }
+];
+
 console.log('\n╔══════════════════════════════════════════════════════════════════╗');
-console.log('║  GUARDAS DE LA APK v' + VN + ' (tres widgets) Y DE LA APP v383       ║');
+console.log('║  GUARDAS DE LA APK v' + VN + ' (cuatro widgets) Y DE LA APP v383     ║');
 console.log('╚══════════════════════════════════════════════════════════════════╝');
 
 console.log('\n══ A) Los widgets por dentro: layout ↔ Java ══');
@@ -131,12 +154,8 @@ t('A1 · las 12 rayas del layout del repaso son las 12 de IDS_LINEAS, en el mism
 
 // A1b (v1.15) — TEXTO, FILA y BOTÓN van de tres en tres: si se descolocan, el botón de
 // una raya acabaría llamando a otra persona. Esto se comprueba en LOS DOS paneles.
-t('A1b · en los dos paneles: texto, fila y botón van de tres en tres (layout ↔ Java)', () => {
-  const paneles = [
-    { n: 'repaso', j: jRepaso, x: layout, reT: /android:id="@\+id\/(rep\d+)"/g, reF: /android:id="@\+id\/(fila\d+)"/g, reB: /android:id="@\+id\/(bot\d+)"/g },
-    { n: 'resumen', j: jResumen, x: layoutRes, reT: /android:id="@\+id\/(linea\d+)"/g, reF: /android:id="@\+id\/(fila_r\d+)"/g, reB: /android:id="@\+id\/(bot_r\d+)"/g }
-  ];
-  paneles.forEach(p => {
+t('A1b · en los tres paneles: texto, fila y botón van de tres en tres (layout ↔ Java)', () => {
+  PANELES.forEach(p => {
     const jT = idsDe(p.j, 'IDS_LINEAS'), jF = idsDe(p.j, 'IDS_FILAS'), jB = idsDe(p.j, 'IDS_BOTONES');
     assert(jT && jF && jB, p.n + ': falta alguno de los tres arrays (IDS_LINEAS/IDS_FILAS/IDS_BOTONES)');
     assert(jT.length === jF.length && jT.length === jB.length,
@@ -159,10 +178,9 @@ t('A1b · en los dos paneles: texto, fila y botón van de tres en tres (layout �
 
 // A1c (v1.15) — el botón nace ESCONDIDO y es lo bastante gordo para acertarle con el dedo.
 t('A1c · los botones nacen escondidos y son lo bastante grandes para tocarlos', () => {
-  [{ n: 'repaso', x: layout, re: /<TextView[\s\S]{0,600}?@\+id\/bot\d+"[\s\S]*?\/>/g },
-   { n: 'resumen', x: layoutRes, re: /<TextView[\s\S]{0,600}?@\+id\/bot_r\d+"[\s\S]*?\/>/g }].forEach(p => {
-    const bloques = p.x.match(p.re) || [];
-    assert(bloques.length >= 12, p.n + ': solo se encuentran ' + bloques.length + ' botones en el dibujo');
+  PANELES.forEach(p => {
+    const bloques = p.x.match(p.reBotXml) || [];
+    assert(bloques.length >= p.minRayas, p.n + ': solo se encuentran ' + bloques.length + ' botones en el dibujo');
     bloques.forEach((b, i) => {
       assert(/android:visibility="gone"/.test(b), p.n + ': el botón ' + (i + 1) + ' no nace escondido (saldría un botón fantasma)');
       const min = Number((b.match(/android:minWidth="(\d+)dp"/) || [])[1] || 0);
@@ -194,8 +212,8 @@ t('A3 · widget_repaso.xml: layout bueno, se puede estirar a lo alto y se refres
 // A4 (v1.15) — las rayas que sobran se esconden ENTERAS: texto, fila y botón. Si se
 // escondiera solo el texto, quedaría un botón suelto colgando... que además llamaría
 // a quien fuera. Se comprueba en LOS DOS paneles.
-t('A4 · las rayas que sobran se esconden ENTERAS (texto + fila + botón), en los dos paneles', () => {
-  [{ n: 'repaso', j: jRepaso }, { n: 'resumen', j: jResumen }].forEach(p => {
+t('A4 · las rayas que sobran se esconden ENTERAS (texto + fila + botón), en los tres paneles', () => {
+  PANELES.forEach(p => {
     assert(/setViewVisibility\(IDS_LINEAS\[i\], android\.view\.View\.GONE\)/.test(p.j),
       p.n + ': no hay ningún GONE para los textos sobrantes: quedaría texto de la vez anterior');
     assert(/setViewVisibility\(IDS_FILAS\[i\], android\.view\.View\.GONE\)/.test(p.j),
@@ -243,6 +261,88 @@ t('A5b · el panel del resumen puede llenar la pantalla entera de Asier (16 raya
   // con un móvil normal en vertical (unos 500dp de alto útiles) tienen que caber muchas
   assert(cab + rayas * raya >= 400, 'con ' + rayas + ' rayas de ' + raya + 'dp no se llena una pantalla');
   assert(/Datos\.resumen\(ctx, filas\)/.test(jResumen), 'el resumen no le pide al servidor las rayas que caben');
+});
+
+// A5c (v1.16) — EL PANEL GRANDE DE LA TABLET. Asier, con la tablet en la mano: «que tenga
+// un widget grande, POR LO MENOS QUE OCUPE TODA LA PANTALLA, para que lo vean bien claro
+// dónde está». Aquí la cuenta de "cuántas caben" tiene que ser EXACTA, no aproximada: si
+// se pasara, el "… y N más" del final caería fuera de la pantalla y los chicos verían
+// media lista creyendo que es toda. En un parte de trabajo eso manda a alguien a una casa
+// equivocada, así que las rayas van de ALTURA FIJA y el Java usa ESA misma medida.
+t('A5c · el panel del equipo nace enorme y su cuenta de rayas es exacta (altura fija)', () => {
+  const cab = Number((jEquipo.match(/ALTO_CABECERA_DP\s*=\s*(\d+)/) || [])[1]);
+  const raya = Number((jEquipo.match(/ALTO_RAYA_DP\s*=\s*(\d+)/) || [])[1]);
+  assert(cab && raya, 'WidgetEquipo no dice cuánto miden su cabecera y sus rayas');
+  // el alto de cada fila está CLAVADO en el dibujo, y es el que dice el Java
+  const altos = [...layoutEq.matchAll(/@\+id\/fila_eq\d+"[\s\S]{0,200}?android:layout_height="(\w+)"/g)].map(m => m[1]);
+  assert(altos.length >= 20, 'el dibujo del equipo tiene ' + altos.length + ' filas, no 20');
+  altos.forEach((h, i) => assert(h === raya + 'dp',
+    'la fila ' + (i + 1) + ' mide ' + h + ' y el Java cuenta ' + raya + 'dp: la cuenta dejaría de ser exacta'));
+  // la cabecera del Java = borde de arriba + alto del título + borde de abajo
+  const pad = Number((layoutEq.match(/@\+id\/cuerpo_eq"[\s\S]*?android:padding="(\d+)dp"/) || [])[1]);
+  const titulo = Number((layoutEq.match(/@\+id\/cuerpo_eq"[\s\S]*?<LinearLayout[\s\S]{0,200}?android:layout_height="(\d+)dp"/) || [])[1]);
+  assert(pad && titulo, 'no se leen el borde y el alto del título en w_equipo.xml');
+  assert(cab === pad * 2 + titulo,
+    'el Java cuenta ' + cab + 'dp de cabecera y el dibujo son ' + (pad * 2 + titulo) + 'dp: pediría rayas de más o de menos');
+  // y NACE GRANDE de verdad: llenando la tablet, no un cuadradito
+  const dp = Number((providerEq.match(/android:minHeight="(\d+)dp"/) || [])[1]);
+  const anchoDp = Number((providerEq.match(/android:minWidth="(\d+)dp"/) || [])[1]);
+  assert(dp >= 400, 'nace con ' + dp + 'dp de alto: eso no es "toda la pantalla"');
+  assert(anchoDp >= 300, 'nace con ' + anchoDp + 'dp de ancho: una dirección larga no cabría');
+  const caben = Math.floor((dp - cab) / raya);
+  assert(caben >= 12, 'de salida solo caben ' + caben + ' rayas en el panel de la tablet');
+  const rayas = (idsDe(jEquipo, 'IDS_LINEAS') || []).length;
+  assert(rayas >= caben, 'el dibujo tiene ' + rayas + ' rayas y de salida caben ' + caben);
+  assert(rayas <= 20, 'pide ' + rayas + ' rayas y el servidor solo sirve hasta 20');
+  // se puede estirar y encoger (Asier lo va a estirar hasta llenar la tablet)
+  assert(/resizeMode="[^"]*vertical/.test(providerEq), 'no se puede estirar a lo alto');
+  const min = Number((providerEq.match(/android:minResizeHeight="(\d+)dp"/) || [])[1]);
+  assert(min && min < dp, 'no se puede encoger (minResizeHeight=' + min + ')');
+  assert(/widgetCategory="home_screen"/.test(providerEq), 'no se puede poner en la pantalla de inicio');
+  assert(/initialLayout="@layout\/w_equipo"/.test(providerEq), 'initialLayout no apunta a @layout/w_equipo');
+  // y le pide al servidor ESAS rayas, con SUS medidas (no las del panel pequeño)
+  assert(/Rayas\.caben\(mgr, ids, IDS_LINEAS\.length, ALTO_CABECERA_DP, ALTO_RAYA_DP\)/.test(jEquipo),
+    'el panel del equipo no usa sus propias medidas al contar las rayas que caben');
+  assert(/Datos\.hoyEquipo\(ctx, filas\)/.test(jEquipo), 'no le pide al servidor las rayas que caben');
+});
+
+// A5d (v1.16) — LAS DIRECCIONES, EN GRANDE. Es literalmente lo que pidió: «para que lo
+// vean bien claro DÓNDE ESTÁ». Si una dirección se pintara del mismo tamaño que el resto,
+// el panel dejaría de servir para lo que se hizo.
+t('A5d · las direcciones salen EN GRANDE y en negrita, y el tamaño se repinta siempre', () => {
+  const tam = (jAccion.match(/float tamano\(\)[\s\S]*?\n    \}/) || [])[0];
+  assert(tam, 'no existe Accion.tamano()');
+  const sp = Number((tam.match(/"direccion"\.equals\(estilo\)\) return (\d+)f/) || [])[1]);
+  assert(sp >= 20, 'las direcciones se pintan a ' + sp + 'sp: desde la furgoneta no se leen');
+  // El tamaño de una raya normal es el ÚLTIMO return de la función (el «si no es nada de lo
+  // de arriba»). Lleva un comentario detrás, así que hay que contar con él: sin esto la
+  // cuenta salía NaN y la guarda pasaba en verde sin haber comprobado nada.
+  const normal = Number((tam.match(/return (\d+)f;[ \t]*(?:\/\/[^\n]*)?\s*\n\s*\}/) || [])[1]);
+  assert(normal && sp >= normal + 3, 'la dirección (' + sp + 'sp) no destaca sobre una raya normal (' + normal + 'sp)');
+  // Y ese "normal" tiene que ser EL MISMO que el del dibujo. Si el layout pintara 14sp y el
+  // código repintara a 16f, cada raya normal daría un saltito al refrescarse el panel; y con
+  // las rayas clavadas a 30dp, un texto más grande de la cuenta se cortaría por abajo.
+  const delDibujo = [...layoutEq.matchAll(/android:id="@\+id\/eq\d+"[\s\S]*?android:textSize="(\d+)sp"/g)]
+    .map(m => Number(m[1]));
+  assert(delDibujo.length >= 12, 'no se leen los tamaños de las rayas en w_equipo.xml');
+  assert(delDibujo.every(v => v === normal),
+    'el dibujo pinta las rayas a ' + [...new Set(delDibujo)].join('/') + 'sp y el código a ' +
+    normal + 'sp: darían un saltito cada vez que se refresca el panel');
+  const neg = (jAccion.match(/boolean negrita\(\)[\s\S]*?\n    \}/) || [])[0];
+  assert(/"direccion"\.equals\(estilo\)/.test(neg), 'las direcciones no van en negrita');
+  const col = (jAccion.match(/int color\(\)[\s\S]*?\n    \}/) || [])[0];
+  assert(/"direccion"\.equals\(estilo\)/.test(col), 'las direcciones no tienen color propio');
+  // y en el panel: el tamaño/color/negrita se ponen SIEMPRE, en todas las rayas visibles.
+  // Si solo se pusieran "cuando toca", al reciclarse el panel una raya normal se quedaría
+  // pintada como dirección (o al revés) — y eso sí que despista de verdad.
+  const pinta = (jEquipo.match(/private void pinta\([\s\S]*?\n    \}\n/) || [])[0];
+  assert(pinta, 'no se encuentra pinta() en el panel del equipo');
+  assert(/escribe\(rv, IDS_LINEAS\[i\], lineas\[i\],\s*\n\s*a == null \? 16f : a\.tamano\(\),/.test(pinta),
+    'el tamaño no se repinta en todas las rayas: al reciclarse quedarían tamaños de la vez anterior');
+  assert(/setTextViewTextSize\(idTexto, TypedValue\.COMPLEX_UNIT_SP, sp\)/.test(jEquipo),
+    'no se cambia el tamaño de verdad (setTextViewTextSize)');
+  assert(/new StyleSpan\(Typeface\.BOLD\)/.test(jEquipo),
+    'la negrita no se manda dentro del texto: un widget no puede llamar a setTypeface');
 });
 
 console.log('\n══ B) La versión: todo dice lo mismo ══');
@@ -306,13 +406,30 @@ t('B5 · azkar-widgets.apk y ' + APK + ' son el mismo fichero (byte a byte)', ()
 });
 
 // B6 — lo nuevo va DENTRO de la APK, no solo en el fuente.
-t('B6 · los tres widgets y la pantalla de los botones están DENTRO de la APK publicada', () => {
+t('B6 · los cuatro widgets y la pantalla de los botones están DENTRO de la APK publicada', () => {
   const out = cp.execSync('aapt dump xmltree ' + path.join(APP, 'apk', APK) + ' AndroidManifest.xml',
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   assert(/WidgetRepaso/.test(out), 'la APK no lleva el receiver WidgetRepaso');
   assert(/REFRESCAR_REPASO/.test(out), 'la APK no lleva la orden REFRESCAR_REPASO');
   assert(/WidgetResumen/.test(out) && /WidgetAzkarin/.test(out), 'se perdió alguno de los widgets de antes');
+  assert(/WidgetEquipo/.test(out), 'la APK no lleva el receiver WidgetEquipo: el panel de la tablet no existiría');
+  assert(/REFRESCAR_EQUIPO/.test(out), 'la APK no lleva la orden REFRESCAR_EQUIPO: la ↻ del panel no haría nada');
   assert(/AccionActivity/.test(out), 'la APK no lleva AccionActivity: los botones no harían nada');
+});
+
+// B6b (v1.16) — el botón del plan de trabajo abre la app con el enlace ya dentro. Eso solo
+// funciona si la APK PUBLICADA lleva el filtro azkarwidget://equipo. Si se quedara solo en
+// el fuente, el botón naranja de la tablet no abriría nada y habría que teclear el código
+// a mano — que es justo lo que este trabajo venía a evitar.
+t('B6b · la APK publicada acepta de verdad el enlace azkarwidget://equipo (no solo el fuente)', () => {
+  const out = cp.execSync('aapt dump xmltree ' + path.join(APP, 'apk', APK) + ' AndroidManifest.xml',
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  assert(/"azkarwidget"/.test(out), 'la APK no lleva el esquema azkarwidget: el botón de la tablet no abriría la app');
+  assert(/"equipo"/.test(out), 'la APK no lleva el host equipo');
+  assert(/android\.intent\.category\.BROWSABLE/.test(out),
+    'la APK no lleva BROWSABLE: un enlace pulsado en el NAVEGADOR no abriría la app');
+  assert(/REQUEST_INSTALL_PACKAGES/.test(out),
+    'la APK no puede lanzar la instalación de la siguiente versión');
 });
 
 // B7 — la APK que se publica lleva DENTRO el tamaño de salida nuevo (250dp), no el viejo.
@@ -327,14 +444,15 @@ t('B7 · las dos APK-provider nacen con el alto nuevo (lo de dentro, no solo el 
     assert(((v >> 4) & 0x03) === 0, attr + ' viene con decimales: no se puede comparar a ojo');
     return v >> 8;
   };
-  [{ n: 'repaso', f: 'res/xml/widget_repaso.xml', src: provider },
-   { n: 'resumen', f: 'res/xml/widget_resumen.xml', src: providerRes }].forEach(p => {
+  [{ n: 'repaso', f: 'res/xml/widget_repaso.xml', src: provider, alto: 250 },
+   { n: 'resumen', f: 'res/xml/widget_resumen.xml', src: providerRes, alto: 250 },
+   { n: 'equipo', f: 'res/xml/widget_equipo.xml', src: providerEq, alto: 400 }].forEach(p => {
     const out = cp.execSync('aapt dump xmltree ' + path.join(APP, 'apk', APK) + ' ' + p.f,
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     const fuente = a => Number((p.src.match(new RegExp('android:' + a + '="(\\d+)dp"')) || [])[1]);
     ['minHeight', 'minResizeHeight'].forEach(a => assert(dpDe(out, a) === fuente(a),
       p.n + ': la APK lleva ' + a + '=' + dpDe(out, a) + 'dp y el fuente dice ' + fuente(a) + 'dp: es una APK vieja'));
-    assert(dpDe(out, 'minHeight') >= 250,
+    assert(dpDe(out, 'minHeight') >= p.alto,
       p.n + ': la APK nace con ' + dpDe(out, 'minHeight') + 'dp: volvería a quedar medio panel en blanco');
   });
 });
@@ -352,58 +470,83 @@ t('C1 · el receiver .WidgetRepaso está declarado con su meta-data de proveedor
   assert(/android:label="[^"]*repaso[^"]*"/i.test(bloque), 'sin nombre reconocible en la lista de widgets');
 });
 
-// C2 — la orden de refrescar: la misma en manifest y Java, y DISTINTA de la del resumen.
-t('C2 · la orden de refrescar es la misma en el manifest y en el Java, y distinta de la del resumen', () => {
-  const jRep = (jRepaso.match(/ACCION_REFRESCAR\s*=\s*"([^"]+)"/) || [])[1];
-  const jRes = (jResumen.match(/ACCION_REFRESCAR\s*=\s*"([^"]+)"/) || [])[1];
-  assert(jRep, 'WidgetRepaso no define ACCION_REFRESCAR');
-  assert(jRes, 'WidgetResumen no define ACCION_REFRESCAR');
-  assert(jRep !== jRes, 'las dos órdenes son iguales (' + jRep + '): al refrescar uno se refrescaría el otro');
-  const bloqueRep = (manifest.match(/<receiver[^>]*\.WidgetRepaso[\s\S]*?<\/receiver>/) || [])[0] || '';
-  assert(bloqueRep.includes('android:name="' + jRep + '"'),
-    'el manifest del repaso no escucha ' + jRep + ' (la ↻ no haría nada)');
-  const bloqueRes = (manifest.match(/<receiver[^>]*\.WidgetResumen[\s\S]*?<\/receiver>/) || [])[0] || '';
-  assert(bloqueRes.includes('android:name="' + jRes + '"'), 'el manifest del resumen perdió su acción');
+// C1b (v1.16) — el receiver del panel de la tablet. Si faltara, Android ni siquiera lo
+// ofrecería en la lista de widgets: Asier lo buscaría en la tablet y no estaría.
+t('C1b · el receiver .WidgetEquipo está declarado, con su proveedor y con nombre reconocible', () => {
+  const bloque = (manifest.match(/<receiver[^>]*\.WidgetEquipo[\s\S]*?<\/receiver>/) || [])[0];
+  assert(bloque, 'no hay receiver .WidgetEquipo en el manifest: no saldría en la lista de widgets');
+  assert(/android:exported="true"/.test(bloque), 'el receiver no es exported (Android no lo ofrecería)');
+  assert(/android\.appwidget\.action\.APPWIDGET_UPDATE/.test(bloque), 'falta la acción APPWIDGET_UPDATE');
+  assert(/android:name="android\.appwidget\.provider"/.test(bloque), 'falta la meta-data del proveedor');
+  assert(/android:resource="@xml\/widget_equipo"/.test(bloque), 'la meta-data no apunta a @xml/widget_equipo');
+  assert(/android:label="[^"]*(equipo|trabajo)[^"]*"/i.test(bloque),
+    'sin nombre reconocible: en la lista de widgets no se sabría cuál es el de la tablet');
+});
+
+// C2 — la orden de refrescar: la misma en manifest y Java, y DISTINTA en cada panel.
+t('C2 · la orden de refrescar es la misma en el manifest y en el Java, y distinta en cada panel', () => {
+  const clases = { repaso: 'WidgetRepaso', resumen: 'WidgetResumen', equipo: 'WidgetEquipo' };
+  const vistas = new Map();
+  PANELES.forEach(p => {
+    const acc = (p.j.match(/ACCION_REFRESCAR\s*=\s*"([^"]+)"/) || [])[1];
+    assert(acc, clases[p.n] + ' no define ACCION_REFRESCAR');
+    const antes = vistas.get(acc);
+    assert(!antes, 'la orden ' + acc + ' la usan ' + antes + ' y ' + p.n + ': al refrescar uno se refrescaría el otro');
+    vistas.set(acc, p.n);
+    const bloque = (manifest.match(new RegExp('<receiver[^>]*\\.' + clases[p.n] + '[\\s\\S]*?</receiver>')) || [])[0] || '';
+    assert(bloque.includes('android:name="' + acc + '"'),
+      p.n + ': el manifest no escucha ' + acc + ' (la ↻ no haría nada)');
+  });
 });
 
 // C3 (v1.15) — NINGÚN código de toque repetido en toda la APK. Este es EL fallo gordo de
 // esta versión: Android NO mira los "extras" para distinguir un toque de otro, solo el
 // código y la dirección. Dos botones con el mismo código = los dos hacen lo mismo, o sea,
 // tocar "llamar a Marta" llamaría a Ricardo.
-t('C3 · ningún código de toque repetido entre los tres widgets (ni dentro de uno)', () => {
-  const todos = [].concat(codigosDe('azkarin', jAzkarin), codigosDe('resumen', jResumen), codigosDe('repaso', jRepaso));
-  assert(todos.length >= 5, 'se esperaban al menos 5 sitios con PendingIntent, hay ' + todos.length);
+t('C3 · ningún código de toque repetido entre los cuatro widgets (ni dentro de uno)', () => {
+  const todos = [].concat(codigosDe('azkarin', jAzkarin), ...PANELES.map(p => codigosDe(p.n, p.j)));
+  assert(todos.length >= 7, 'se esperaban al menos 7 sitios con PendingIntent, hay ' + todos.length);
   const deQuien = new Map();
   todos.forEach(g => g.cods.forEach(c => {
     const antes = deQuien.get(c);
     assert(!antes, 'el código ' + c + ' lo usan DOS toques distintos (' + antes + ' y ' + g.quien + ' · ' + g.expr + '): uno pisaría al otro');
     deQuien.set(c, g.quien + ' · ' + g.expr);
   }));
-  // y que los rangos de botones son los que se esperan (100.. repaso, 200.. resumen)
-  const rep = codigosDe('repaso', jRepaso).find(g => /COD_BOTON/.test(g.expr));
-  const res = codigosDe('resumen', jResumen).find(g => /COD_BOTON/.test(g.expr));
-  assert(rep && res, 'alguno de los dos paneles no pinta botones por raya');
-  assert(rep.cods.length === (idsDe(jRepaso, 'IDS_BOTONES') || []).length, 'el repaso no reserva un código por botón');
-  assert(res.cods.length === (idsDe(jResumen, 'IDS_BOTONES') || []).length, 'el resumen no reserva un código por botón');
-  const solapan = rep.cods.filter(c => res.cods.includes(c));
-  assert(solapan.length === 0, 'los códigos de los dos paneles se solapan: ' + solapan.join(','));
-  assert(Math.abs(rep.cods[0] - res.cods[0]) >= 50,
-    'los dos rangos empiezan demasiado cerca (' + rep.cods[0] + ' y ' + res.cods[0] + '): al añadir rayas chocarían');
+  // y que cada panel reserva SU propio rango de botones (100.. repaso, 200.. resumen,
+  // 300.. equipo), con sitio de sobra por si un día se añaden rayas
+  const rangos = PANELES.map(p => {
+    const g = codigosDe(p.n, p.j).find(x => /COD_BOTON/.test(x.expr));
+    assert(g, p.n + ': no pinta botones por raya');
+    assert(g.cods.length === (idsDe(p.j, 'IDS_BOTONES') || []).length, p.n + ': no reserva un código por botón');
+    return { n: p.n, cods: g.cods };
+  });
+  for (let i = 0; i < rangos.length; i++) {
+    for (let k = i + 1; k < rangos.length; k++) {
+      const solapan = rangos[i].cods.filter(c => rangos[k].cods.includes(c));
+      assert(solapan.length === 0,
+        'los códigos de ' + rangos[i].n + ' y ' + rangos[k].n + ' se solapan: ' + solapan.join(','));
+      assert(Math.abs(rangos[i].cods[0] - rangos[k].cods[0]) >= 50,
+        'los rangos de ' + rangos[i].n + ' (' + rangos[i].cods[0] + ') y ' + rangos[k].n + ' (' + rangos[k].cods[0] +
+        ') empiezan demasiado cerca: al añadir rayas chocarían');
+    }
+  }
 });
 
 // C3b (v1.15) — además del código, cada raya lleva su PROPIA dirección interna. Es el
 // segundo cinturón: si un día dos códigos coincidieran, la dirección los sigue separando.
 t('C3b · cada raya lleva además su propia dirección interna (azkarwidget://…/<widget>/<raya>)', () => {
-  [{ n: 'repaso', j: jRepaso, pre: 'azkarwidget://repaso/' }, { n: 'resumen', j: jResumen, pre: 'azkarwidget://resumen/' }].forEach(p => {
+  const bases = new Map();
+  PANELES.forEach(p => {
     const pon = (p.j.match(/private void ponBoton\([\s\S]*?\n    \}/) || [])[0];
     assert(pon, p.n + ': no existe ponBoton');
     assert(pon.includes('"' + p.pre + '" + idWidget + "/" + i'),
       p.n + ': la dirección de la raya no lleva el widget y la raya: los toques se pisarían');
     assert(/setData\(Uri\.parse/.test(pon), p.n + ': la dirección no se pone como setData (Android no la miraría)');
+    const base = (pon.match(/"azkarwidget:\/\/(\w+)\//) || [])[1];
+    const antes = bases.get(base);
+    assert(!antes, 'los paneles ' + antes + ' y ' + p.n + ' usan la misma dirección base (' + base + '): se pisarían');
+    bases.set(base, p.n);
   });
-  const a = (jRepaso.match(/"azkarwidget:\/\/(\w+)\//) || [])[1];
-  const b = (jResumen.match(/"azkarwidget:\/\/(\w+)\//) || [])[1];
-  assert(a && b && a !== b, 'los dos paneles usan la misma dirección base (' + a + '): se pisarían entre ellos');
 });
 
 // C4 (v1.15) — la pantalla invisible de los botones, bien declarada y sin permisos de más.
@@ -433,6 +576,33 @@ t('C5 · el manifest deja ver Zoiper, el marcador y el correo (si no, el botón 
   assert(sdk >= 24, 'targetSdkVersion muy antiguo: ' + sdk);
 });
 
+// C6 (v1.16) — EL BOTÓN NARANJA DE LA TABLET. En el plan de trabajo de los chicos hay un
+// botón "PONER EL PANEL EN LA TABLET" que abre esta app CON EL ENLACE YA DENTRO. Eso es
+// todo el invento: nadie teclea un código de 40 letras. Un código mal tecleado deja el
+// panel mudo o —peor— enseñando el trabajo de otro. Para que funcione hacen falta las
+// tres cosas de aquí abajo; si falta una, el botón no hace nada y vuelta a teclear.
+t('C6 · la app se abre desde el navegador con el enlace dentro (azkarwidget://equipo?u=…)', () => {
+  const act = (manifest.match(/<activity[^>]*\.MainActivity[\s\S]*?<\/activity>/) || [])[0];
+  assert(act, 'no se encuentra MainActivity en el manifest');
+  const filtro = (act.match(/<intent-filter>(?:(?!<\/intent-filter>)[\s\S])*azkarwidget[\s\S]*?<\/intent-filter>/) || [])[0];
+  assert(filtro, 'MainActivity no acepta azkarwidget://: el botón del plan de trabajo no abriría nada');
+  assert(/android:scheme="azkarwidget"/.test(filtro), 'falta el esquema azkarwidget');
+  assert(/android:host="equipo"/.test(filtro), 'falta el host equipo: cualquier azkarwidget:// abriría la app');
+  assert(/android\.intent\.category\.BROWSABLE/.test(filtro),
+    'falta BROWSABLE: pulsado DESDE EL NAVEGADOR (que es de donde viene) no abriría la app');
+  assert(/android\.intent\.category\.DEFAULT/.test(filtro), 'falta DEFAULT');
+  assert(/android\.intent\.action\.VIEW/.test(filtro), 'el filtro no responde a VIEW');
+  // singleTop: si ya estaba abierta, el enlace entra por onNewIntent en LA MISMA pantalla,
+  // no abre una segunda encima (Asier vería dos apps apiladas y se perdería)
+  assert(/android:launchMode="singleTop"/.test(act), 'sin singleTop se apilarían pantallas al pulsar el botón otra vez');
+  assert(/onNewIntent/.test(jMain), 'la app no recoge el enlace cuando ya estaba abierta');
+  // y de verdad lee el enlace que viene dentro y lo guarda
+  assert(/getQueryParameter\("u"\)/.test(jMain), 'la app no lee el enlace que trae el botón (?u=…)');
+  assert(/guardaEnlaceEquipo/.test(jMain), 'la app no guarda el enlace que le llega');
+  // poder instalar la siguiente versión desde la propia app
+  assert(/REQUEST_INSTALL_PACKAGES/.test(manifest), 'sin ese permiso no se puede instalar la actualización');
+});
+
 console.log('\n══ D) Lo que pide al servidor ══');
 
 // D1 (v1.15) — ya no pide 12 a pelo: pide LAS QUE CABEN, y siempre dentro del tope del servidor.
@@ -455,8 +625,18 @@ t('D1 · pide al servidor las rayas que CABEN, recortadas al tope 3..20', () => 
 // Rayas.java: si cada panel se la hiciera por su cuenta, el día que se tocara uno el otro
 // se quedaría atrás y el botón de una raya podría acabar llamando a otra persona.
 t('D1b · la cuenta de "cuántas rayas caben" está UNA VEZ (Rayas) y mira el alto real', () => {
-  const f = (jRayas.match(/static int caben\([\s\S]*?\n    \}/) || [])[0];
-  assert(f, 'no existe Rayas.caben');
+  // OJO (v1.16): hay DOS «caben». El atajo de tres parámetros (que solo delega) y la cuenta
+  // de verdad, de cinco. Hay que agarrar la de VERDAD por su firma entera: cogiendo la
+  // primera que aparezca, esta guarda se quedaba mirando la línea que delega — verde sin
+  // haber comprobado nada de la aritmética.
+  const f = (jRayas.match(/static int caben\(AppWidgetManager mgr, int\[\] ids, int maxRayas, int altoCabecera, int altoRaya\)[\s\S]*?\n    \}/) || [])[0];
+  assert(f, 'no existe la cuenta de verdad Rayas.caben(…, altoCabecera, altoRaya)');
+  // y el atajo tiene que seguir siendo eso: un atajo. En cuanto se ponga a contar por su
+  // cuenta habría DOS aritméticas y los paneles se separarían sin que nadie se entere.
+  const corta = (jRayas.match(/static int caben\(AppWidgetManager mgr, int\[\] ids, int maxRayas\)\s*\{([\s\S]*?)\n    \}/) || [])[1];
+  assert(corta, 'ha desaparecido el atajo Rayas.caben(mgr, ids, maxRayas)');
+  assert(/^return caben\(mgr, ids, maxRayas, ALTO_CABECERA_DP, ALTO_RAYA_DP\);$/.test(corta.trim()),
+    'el atajo de Rayas.caben ya no se limita a delegar: habría dos cuentas distintas');
   assert(/OPTION_APPWIDGET_MIN_HEIGHT/.test(f),
     'no usa la altura MÍNIMA garantizada: en apaisado pediría más rayas de las que se ven');
   assert(/getAppWidgetOptions/.test(f), 'no pregunta el tamaño a Android');
@@ -468,33 +648,43 @@ t('D1b · la cuenta de "cuántas rayas caben" está UNA VEZ (Rayas) y mira el al
     assert(!/static int filasQueCaben|ALTO_CABECERA_DP\s*=|ALTO_RAYA_DP\s*=|FILAS_SI_NO_SE_SABE\s*=/.test(p.j),
       p.n + ': tiene su PROPIA copia de la cuenta — el día que se toque una, la otra se queda atrás');
   });
+  // El panel de la tablet SÍ tiene medidas propias (sus rayas son más altas, para que se lean
+  // desde lejos), y por eso llama al «caben» de cinco parámetros. Medidas propias, sí;
+  // aritmética propia, jamás: no puede preguntarle el tamaño a Android por su cuenta.
+  assert(!/static int filasQueCaben|getAppWidgetOptions|OPTION_APPWIDGET_MIN_HEIGHT/.test(jEquipo),
+    'equipo: se ha hecho su propia cuenta de filas en vez de usar la de Rayas');
 
-  // la misma cuenta, simulada, para todos los altos que Asier puede dejar, en los dos paneles
+  // La misma cuenta, simulada, para TODOS los altos que Asier puede dejar y en LOS TRES
+  // paneles — cada uno con las medidas que de verdad le pasa a Rayas.caben.
   const cab = Number((jRayas.match(/ALTO_CABECERA_DP\s*=\s*(\d+)/) || [])[1]);
   const raya = Number((jRayas.match(/ALTO_RAYA_DP\s*=\s*(\d+)/) || [])[1]);
   const sup = Number((jRayas.match(/FILAS_SI_NO_SE_SABE\s*=\s*(\d+)/) || [])[1]);
-  [12, 16].forEach(RAYAS => {
-    const sim = dp => {
-      let filas = dp > 0 ? Math.floor((dp - cab) / raya) : sup;
-      if (filas < 3) filas = 3;
-      if (filas > RAYAS) filas = RAYAS;
-      return filas;
-    };
-    for (let dp = 60; dp <= 900; dp += 5) {
-      const pedidas = sim(dp);
-      const deVerdad = Math.max(0, Math.floor((dp - cab) / raya));
-      assert(pedidas >= 3 && pedidas <= RAYAS, 'con ' + dp + 'dp pide ' + pedidas);
-      // solo puede pedir más de las que caben en widgets minúsculos, donde el suelo son 3
-      assert(pedidas <= Math.max(3, deVerdad),
-        'con ' + dp + 'dp caben ' + deVerdad + ' rayas y pide ' + pedidas + ': el "… y N más" se saldría');
-    }
-    assert(sim(0) === sup, 'sin saber el tamaño no supone ' + sup + ' rayas');
-  });
+  const cabEq = Number((jEquipo.match(/ALTO_CABECERA_DP\s*=\s*(\d+)/) || [])[1]);
+  const rayaEq = Number((jEquipo.match(/ALTO_RAYA_DP\s*=\s*(\d+)/) || [])[1]);
+  assert(cab && raya && sup && cabEq && rayaEq, 'no se leen las medidas de las rayas');
+  [{ RAYAS: 12, cab, raya }, { RAYAS: 16, cab, raya }, { RAYAS: 20, cab: cabEq, raya: rayaEq }]
+    .forEach(({ RAYAS, cab: c, raya: r }) => {
+      const sim = dp => {
+        let filas = dp > 0 ? Math.floor((dp - c) / r) : sup;
+        if (filas < 3) filas = 3;
+        if (filas > RAYAS) filas = RAYAS;
+        return filas;
+      };
+      for (let dp = 60; dp <= 900; dp += 5) {
+        const pedidas = sim(dp);
+        const deVerdad = Math.max(0, Math.floor((dp - c) / r));
+        assert(pedidas >= 3 && pedidas <= RAYAS, 'con ' + dp + 'dp pide ' + pedidas);
+        // solo puede pedir más de las que caben en widgets minúsculos, donde el suelo son 3
+        assert(pedidas <= Math.max(3, deVerdad),
+          'con ' + dp + 'dp caben ' + deVerdad + ' rayas y pide ' + pedidas + ': el "… y N más" se saldría');
+      }
+      assert(sim(0) === sup, 'sin saber el tamaño no supone ' + sup + ' rayas');
+    });
 });
 
 // D1c (v1.15) — al estirarlo o encogerlo hay que volver a pedir. En LOS DOS paneles.
-t('D1c · si Asier lo estira o lo encoge, se vuelve a pedir con la medida nueva (los dos)', () => {
-  [{ n: 'repaso', j: jRepaso }, { n: 'resumen', j: jResumen }].forEach(p => {
+t('D1c · si Asier lo estira o lo encoge, se vuelve a pedir con la medida nueva (los tres)', () => {
+  PANELES.forEach(p => {
     const m = (p.j.match(/public void onAppWidgetOptionsChanged[\s\S]*?\n    \}/) || [])[0];
     assert(m, p.n + ': no existe onAppWidgetOptionsChanged: al estirarlo seguiría enseñando las rayas de antes');
     assert(/onUpdate\(ctx, mgr, new int\[\]\{id\}\)/.test(m), p.n + ': no repinta el widget que ha cambiado');
@@ -555,14 +745,17 @@ console.log('\n══ E) Honestidad: nunca hacer pasar por de ahora lo de antes 
 
 // E1 — si no se puede actualizar, lo DICE. En LOS DOS paneles (v1.15: el del resumen era
 // justo el de la foto de Asier — ponía "AZKAR · 07:49" a las 13:01 y se quedaba tan ancho).
-t('E1 · si no puede actualizar, lo DICE y enseña la hora de lo que hay puesto (los dos)', () => {
-  [{ n: 'repaso', j: jRepaso, sinNada: 'No he podido traer el repaso', err: 'ultimoErrorRepaso' },
-   { n: 'resumen', j: jResumen, sinNada: 'No he podido traer lo de hoy', err: 'ultimoErrorResumen' }].forEach(p => {
+t('E1 · si no puede actualizar, lo DICE y enseña la hora de lo que hay puesto (los tres)', () => {
+  [{ n: 'repaso', j: jRepaso, sinNada: 'No he podido traer el repaso', err: 'ultimoErrorRepaso', hay: 'hayLogin' },
+   { n: 'resumen', j: jResumen, sinNada: 'No he podido traer lo de hoy', err: 'ultimoErrorResumen', hay: 'hayLogin' },
+   // el del equipo NO va con usuario y clave: va con el enlace de los chicos, así que lo
+   // que tiene que distinguir es "aún no me han pegado el enlace"
+   { n: 'equipo', j: jEquipo, sinNada: 'No he podido traer el trabajo de hoy', err: 'ultimoErrorEquipo', hay: 'hayEquipo' }].forEach(p => {
     assert(/No he podido actualizar/.test(p.j), p.n + ': no avisa cuando no puede actualizar');
     assert(/esto es de las/.test(p.j), p.n + ': no dice de cuándo es lo que está enseñando');
     assert(p.j.includes(p.sinNada), p.n + ': no avisa cuando no hay nada que enseñar');
     assert(p.j.includes(p.err), p.n + ': no cuenta el motivo del fallo');
-    assert(/hayLogin/.test(p.j), p.n + ': no distingue el caso de no haber entrado nunca');
+    assert(p.j.includes(p.hay), p.n + ': no distingue el caso de no poder entrar todavía');
   });
 });
 
@@ -616,13 +809,19 @@ t('E2 · el aviso se mete con un mapa que mueve texto Y botón a la vez (nunca s
 
 // E2b (v1.15) — MEJOR SIN BOTÓN QUE UN BOTÓN QUE LLAME A QUIEN NO ES.
 t('E2b · si textos y botones no cuadran uno a uno, NO se pinta ningún botón', () => {
-  [{ n: 'repaso', j: jRepaso }, { n: 'resumen', j: jResumen }].forEach(p => {
+  PANELES.forEach(p => {
     const pinta = (p.j.match(/private void pinta\([\s\S]*?\n    \}\n/) || [])[0];
     assert(pinta, p.n + ': no se encuentra pinta()');
     assert(/boolean fiables = lineas != null && acciones != null && acciones\.length == lineas\.length;/.test(pinta),
       p.n + ': no se comprueba que haya EXACTAMENTE un botón por raya');
-    assert(/ponBoton\(ctx, rv, id, i, fiables \? acciones\[i\] : null\)/.test(pinta),
-      p.n + ': se pintan botones aunque no cuadren con los textos');
+    // el botón que se pinta tiene que salir SIEMPRE del "fiables": o directamente en la
+    // llamada, o guardado un momento antes en una variable — pero de ahí, nunca de
+    // acciones[i] a pelo. Mejor una raya sin botón que un 📍 que mande a otra dirección.
+    const directo = /ponBoton\(ctx, rv, id, i, fiables \? acciones\[i\] : null\)/.test(pinta);
+    const porVariable = /Accion (\w+) = fiables \? acciones\[i\] : null;/.test(pinta) &&
+      new RegExp('ponBoton\\(ctx, rv, id, i, ' +
+        (pinta.match(/Accion (\w+) = fiables \? acciones\[i\] : null;/) || [])[1] + '\\)').test(pinta);
+    assert(directo || porVariable, p.n + ': se pintan botones aunque no cuadren con los textos');
   });
 });
 
@@ -727,11 +926,22 @@ t('F3b · la app decide actualizar por la VERSIÓN, nunca por la hora de version
 });
 
 // F4 — MainActivity: refresca también el nuevo y lo nombra en las instrucciones.
-t('F4 · la app de widgets refresca también el del repaso y lo nombra en las instrucciones', () => {
-  assert(/WidgetRepaso\.ACCION_REFRESCAR/.test(jMain), 'refrescaWidgets() no refresca el widget del repaso');
-  assert(/WidgetResumen\.ACCION_REFRESCAR/.test(jMain), 'se perdió el refresco del widget del resumen');
-  assert(/repaso/i.test(jMain), 'las instrucciones no nombran el widget del repaso: Asier no sabría que existe');
-  assert(/tres/i.test(jMain), 'las instrucciones siguen hablando de dos widgets');
+t('F4 · la app de widgets refresca los cuatro paneles y los nombra TODOS en las instrucciones', () => {
+  // refrescar: si un panel se queda fuera, el botón 🔄 ACTUALIZAR lo dejaría con lo de antes
+  ['WidgetResumen', 'WidgetRepaso', 'WidgetEquipo'].forEach(w =>
+    assert(new RegExp(w + '\\.ACCION_REFRESCAR').test(jMain), 'ACTUALIZAR no refresca ' + w));
+  // nombrarlos: un widget que no se nombra es un widget que Asier no sabe que existe.
+  // Se comprueba con la etiqueta EXACTA del manifest, que es la que él ve en la lista de
+  // Android — así el día que se renombre uno, esta guarda lo canta.
+  const etiquetas = [...manifest.matchAll(/<receiver[\s\S]*?android:label="([^"]+)"/g)].map(m => m[1]);
+  assert(etiquetas.length === 4, 'en el manifest hay ' + etiquetas.length + ' widgets con nombre, no 4');
+  etiquetas.forEach(e => {
+    // basta con la parte característica del nombre ("repaso", "trabajo de hoy"…)
+    const clave = e.replace(/^[^—]*—\s*/, '').replace(/\s*\(.*$/, '').trim();
+    assert(clave.length >= 4, 'etiqueta rara en el manifest: ' + e);
+    assert(jMain.toLowerCase().includes(clave.toLowerCase()),
+      'las instrucciones no nombran «' + clave + '»: Asier no sabría que ese panel existe');
+  });
 });
 
 // F5 — el aviso de versión nueva compara contra la APK publicada.
@@ -759,8 +969,8 @@ t('G1 · un botón solo se pinta si de verdad lleva a algún sitio (teléfono, c
     'un "correo" sin dirección pintaría botón');
   assert(/uri\.startsWith\("https:\/\/"\)/.test(tb), 'una "ficha" que no sea https pintaría botón');
   assert(/return false;/.test(tb), 'los tipos que no llevan a ningún sitio propio (app, repaso) pintarían botón');
-  // y el que pinta hace caso a esa regla, en los dos paneles
-  [{ n: 'repaso', j: jRepaso }, { n: 'resumen', j: jResumen }].forEach(p => {
+  // y el que pinta hace caso a esa regla, en los tres paneles
+  PANELES.forEach(p => {
     const pon = (p.j.match(/private void ponBoton\([\s\S]*?\n    \}/) || [])[0];
     assert(/if \(a == null \|\| !a\.tieneBoton\(\)\)/.test(pon), p.n + ': ponBoton no comprueba tieneBoton()');
     assert(/setViewVisibility\(IDS_BOTONES\[i\], android\.view\.View\.GONE\);\s*\n\s*return;/.test(pon),
@@ -818,9 +1028,9 @@ t('G4 · las extensiones de la centralita (6412, 6461…) también se pueden lla
 
 // G5 — tocar el TEXTO de una raya (o el cuerpo) nunca llama a nadie: abre la app.
 t('G5 · un roce en el texto abre la app; llamar exige tocar el botón a propósito', () => {
-  assert(/setOnClickPendingIntent\(R\.id\.cuerpo_rep, abrir\)/.test(jRepaso), 'el cuerpo del repaso no abre la app');
-  assert(/setOnClickPendingIntent\(R\.id\.cuerpo, abrir\)/.test(jResumen), 'el cuerpo del resumen no abre la app');
-  [{ n: 'repaso', j: jRepaso }, { n: 'resumen', j: jResumen }].forEach(p => {
+  PANELES.forEach(p => {
+    assert(new RegExp('setOnClickPendingIntent\\(R\\.id\\.' + p.cuerpo + ', abrir\\)').test(p.j),
+      'el cuerpo del ' + p.n + ' no abre nada al tocarlo');
     const t = idsDe(p.j, 'IDS_LINEAS') || [];
     t.forEach(id => assert(!new RegExp('setOnClickPendingIntent\\(R\\.id\\.' + id + '\\b').test(p.j),
       p.n + ': el texto ' + id + ' tiene su propio toque: un roce podría llamar a alguien'));
@@ -935,6 +1145,102 @@ t('G10 · el botón de WhatsApp lleva al número BUENO, y solo si de verdad hay 
   const iNorm = itemCod.indexOf("indexOf('34')");
   const iWa = itemCod.indexOf('wa.me');
   assert(iNorm > -1 && iWa > iNorm, 'el enlace de WhatsApp se arma ANTES de limpiar el número');
+});
+
+console.log('\n══ H) EL PANEL DE LA TABLET ↔ EL SERVIDOR (v1.16) ══');
+
+// H1 — LA TABLET NO LLEVA LA CLAVE DE ASIER. Va con el enlace de los chicos, que es lo que
+// ya tienen abierto. Si este panel usara el login de la app, cualquiera con la tablet en la
+// mano entraría en TODO Azkar: presupuestos, clientes, precios. En una tablet que va y viene
+// en la furgoneta, eso no puede pasar.
+t('H1 · el panel del equipo va con EL ENLACE de los chicos, nunca con el usuario y la clave', () => {
+  assert(/Datos\.hayEquipo\(ctx\)/.test(jEquipo), 'no comprueba si hay enlace guardado');
+  assert(!/hayLogin\(|Datos\.usuario|Datos\.pass|"pass"|login\(/.test(jEquipo),
+    'el panel del equipo toca el login de Asier: en la tablet no hay clave y NO DEBE HABERLA');
+  const eq = (jDatos.match(/static JSONObject hoyEquipo\(Context ctx, int filas\)[\s\S]*?\n    \}/) || [])[0];
+  assert(eq, 'no existe Datos.hoyEquipo');
+  assert(/equipo_token/.test(eq), 'no usa el código del enlace de los chicos');
+  assert(!/getString\("pass"|login\(/.test(eq), 'hoyEquipo pasa por el login: no debe');
+  assert(/"GET"/.test(eq) && !/"POST"|"PUT"|"DELETE"|"PATCH"/.test(eq),
+    'el panel del equipo escribe en el servidor: aquí SOLO se lee');
+  assert(!/getOutputStream/.test(eq), 'hoyEquipo manda cuerpo (estaría escribiendo)');
+  // y el enlace que se pega tiene que ser el de los chicos, no otro cualquiera
+  const g = (jDatos.match(/static String guardaEnlaceEquipo\([\s\S]*?\n    \}/) || [])[0];
+  assert(g, 'no existe Datos.guardaEnlaceEquipo');
+  assert(/indexOf\("\/api\/equipo\/"\)/.test(g), 'acepta cualquier enlace: hay que exigir /api/equipo/');
+  assert(/return "[^"]+/.test(g), 'si el enlace está mal se queda callado: hay que decirlo');
+});
+
+// H2 — la cache del panel del equipo es SUYA. Si compartiera claves con los otros, en el
+// móvil de Asier (que tiene los tres) el trabajo de los chicos y su repaso se pisarían.
+t('H2 · la cache del panel del equipo no pisa la de los otros paneles', () => {
+  ['cache_eq_lineas', 'cache_eq_titulo', 'cache_eq_hora', 'cache_eq_acciones'].forEach(k =>
+    assert(jDatos.includes(k), 'falta la clave ' + k));
+  const eq = (jDatos.match(/cache_eq_\w+/g) || []);
+  const otras = (jDatos.match(/"(cache_(?!eq_)\w+)"/g) || []).map(s => s.replace(/"/g, ''));
+  const setEq = new Set(eq);
+  otras.forEach(c => assert(!setEq.has(c), 'la clave ' + c + ' la usan dos paneles: se pisarían la cache'));
+});
+
+// H3 — CÓMO SE PINTA CADA RAYA. El servidor manda `estilo` DENTRO de la casilla del botón,
+// no en una lista aparte: una lista aparte se puede descolocar y entonces una raya normal
+// saldría pintada como dirección (o una dirección como una línea cualquiera). Los estilos
+// que manda el servidor tienen que ser EXACTAMENTE los que el móvil sabe pintar; uno que
+// no conozca se pintaría del tamaño de siempre y la dirección dejaría de verse en grande.
+t('H3 · los estilos que manda el servidor son los que el móvil sabe pintar (uno por uno)', () => {
+  if (!hayBack) throw new Error('no está el repo del servidor: no puedo comprobar los estilos');
+  const srv = leer(path.join(BACK, 'api/equipo.js'));
+  const hoy = (srv.match(/async function hoyEquipoJson[\s\S]*?\n\}/) || [])[0];
+  assert(hoy, 'no encuentro hoyEquipoJson en el servidor');
+  assert(/estilo: estilo \|\| 'normal'/.test(hoy),
+    'el servidor no mete el estilo DENTRO de la casilla del botón: se podrían descolocar');
+  assert(!/estilos:/.test(hoy), 'hay una lista de estilos aparte: es justo lo que se quería evitar');
+  const delServidor = [...new Set([...hoy.matchAll(/,\s*'(\w+)'\)\s*;/g)].map(m => m[1])
+    .concat([...hoy.matchAll(/estilo: '(\w+)'/g)].map(m => m[1])))];
+  const conocidos = ['dia', 'direccion', 'titulo', 'aviso', 'normal'];
+  delServidor.forEach(e => assert(conocidos.includes(e),
+    'el servidor manda el estilo "' + e + '" y el móvil no lo conoce: esa raya se pintaría como una cualquiera'));
+  // y el móvil los sabe TODOS (si el móvil se quedara corto, pasaría lo mismo al revés)
+  conocidos.forEach(e => assert(e === 'normal' ? true : jAccion.includes('"' + e + '"'),
+    'Accion.java no sabe pintar el estilo "' + e + '"'));
+  assert(/optString\("estilo", "normal"\)/.test(jAccion),
+    'el móvil no lee el estilo, o no se queda en "normal" cuando no viene');
+  // las DIRECCIONES tienen que llevar botón de mapa: es lo que pidió Asier («que lo vean
+  // bien claro DÓNDE ESTÁ»). Una dirección en grande sin su 📍 sería media cosa.
+  const conMapa = [...hoy.matchAll(/tipo: 'mapa'[\s\S]{0,200}?\}\s*,\s*'(\w+)'\)/g)].map(m => m[1]);
+  assert(conMapa.length >= 2, 'no encuentro rayas con botón de mapa en el servidor');
+  conMapa.forEach(e => assert(e === 'direccion',
+    'hay una raya con botón de mapa y estilo "' + e + '": la dirección no saldría en grande'));
+});
+
+// H4 — el botón de la raya tiene que llevar a donde dice. En el panel del equipo los tipos
+// son otros que en el repaso (mapa, parte, portal), y AccionActivity tiene que saberlos:
+// si no, el chico toca 📍 y no se abre nada — o peor, se le abre la pantalla de Asier.
+t('H4 · los botones del panel del equipo (mapa, parte, plan) llevan de verdad a su sitio', () => {
+  ['mapa', 'parte', 'portal'].forEach(ti =>
+    assert(jAccion.includes('"' + ti + '"'), 'el móvil no sabe qué hacer con un botón de tipo "' + ti + '"'));
+  assert(/esDelEquipo\(/.test(jAccActCodigo), 'AccionActivity no distingue los botones del panel del equipo');
+  // deReserva es de instancia y devuelve String (no es static): hay que agarrarla por el
+  // nombre y los parámetros, no por «static». Con el patrón de antes no la encontraba y
+  // esta guarda se caía sola sin llegar a comprobar la vuelta atrás, que es lo que importa.
+  const dr = (jAccAct.match(/[\w.]+ deReserva\(String tipo\)[\s\S]*?\n    \}/) || [])[0];
+  assert(dr, 'no existe deReserva(String tipo) en AccionActivity');
+  assert(/URL_APP_REPASO/.test(dr), 'la vuelta atrás del repaso se perdió');
+  assert(/esDelEquipo\(tipo\)/.test(dr),
+    'la vuelta atrás no mira de qué panel venía el toque: al chico se le abriría la pantalla de Asier');
+  assert(/Datos\.enlaceEquipo\(/.test(dr),
+    'si un botón del equipo falla, la vuelta atrás llevaría a la pantalla de Asier en vez de al plan de trabajo');
+  // y la vuelta atrás del equipo solo vale si HAY enlace puesto: si el plan no está
+  // configurado todavía, mejor no abrir nada raro que abrir una pantalla en blanco.
+  assert(/isEmpty\(\)\) return portal|!portal\.isEmpty\(\)/.test(dr),
+    'se abriría el plan de trabajo aunque no haya enlace guardado');
+  // el que decide si algo es del equipo es UNA función sola, y sabe los tres tipos
+  const ede = (jAccAct.match(/static boolean esDelEquipo\(String tipo\)[\s\S]*?\n    \}/) || [])[0];
+  assert(ede, 'no existe esDelEquipo(String tipo) en AccionActivity');
+  ['mapa', 'parte', 'portal'].forEach(ti => assert(ede.includes('"' + ti + '"'),
+    'esDelEquipo no cuenta "' + ti + '" como del panel del equipo: su vuelta atrás iría a la pantalla de Asier'));
+  // y nunca un toque muerto: si no puede abrir, lo DICE
+  assert(/Toast|estado|aviso/i.test(jAccActCodigo), 'AccionActivity se queda muda cuando no puede abrir algo');
 });
 
 console.log('\n══════════════════════════════════════════════════════════════════');

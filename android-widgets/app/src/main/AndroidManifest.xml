@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="es.azkarmudanzas.widgets"
-    android:versionCode="16"
-    android:versionName="1.15">
+    android:versionCode="17"
+    android:versionName="1.16">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
 
@@ -54,10 +54,23 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:label="Azkar Widgets">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- v1.16: el plan de trabajo (el portal de los chicos) tiene un botón
+                 "PONER EL PANEL EN LA TABLET". Ese botón abre ESTA pantalla con el enlace
+                 ya dentro (azkarwidget://equipo?u=…), para que nadie tenga que copiar a
+                 mano un código largo — que es justo donde se equivoca todo el mundo.
+                 Si la app no estuviera instalada, el navegador se baja la APK él solo
+                 (browser_fallback_url). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="azkarwidget" android:host="equipo" />
             </intent-filter>
         </activity>
 
@@ -122,6 +135,23 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_repaso" />
+        </receiver>
+
+        <!-- Widget 4 (v1.16): EL TRABAJO DE HOY DEL EQUIPO — EL PANEL GRANDE DE LA TABLET.
+             Asier: «que tenga un widget grande, por lo menos que ocupe toda la pantalla,
+             para que lo vean bien claro dónde está». Va con EL ENLACE de los chicos, NO
+             con el usuario y la clave de Asier: en esa tablet no los hay ni debe haberlos. -->
+        <receiver
+            android:name=".WidgetEquipo"
+            android:exported="true"
+            android:label="Azkar — trabajo de hoy (equipo)">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="es.azkarmudanzas.widgets.REFRESCAR_EQUIPO" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_equipo" />
         </receiver>
 
     </application>

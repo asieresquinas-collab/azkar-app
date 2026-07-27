@@ -25,6 +25,14 @@ public class Rayas {
      *  pedimos más sitio del que hay y el "… y N más" cae SIEMPRE dentro de la pantalla.
      *  Si hubiera varios puestos, manda el más pequeño: mejor enseñar menos que mentir. */
     static int caben(AppWidgetManager mgr, int[] ids, int maxRayas) {
+        return caben(mgr, ids, maxRayas, ALTO_CABECERA_DP, ALTO_RAYA_DP);
+    }
+
+    /** v1.16 · lo mismo, pero diciendo cuánto miden la cabecera y la raya en ESE panel.
+     *  El panel grande de la tablet tiene las rayas de ALTURA FIJA (30dp) justamente para
+     *  que esta cuenta sea EXACTA aunque unas rayas vayan en grande y otras normales. */
+    static int caben(AppWidgetManager mgr, int[] ids, int maxRayas, int altoCabecera, int altoRaya) {
+        if (altoRaya < 1) altoRaya = ALTO_RAYA_DP;
         int min = 0;
         if (ids != null && mgr != null) {
             for (int id : ids) {
@@ -33,7 +41,7 @@ public class Rayas {
                     android.os.Bundle o = mgr.getAppWidgetOptions(id);
                     if (o != null) dp = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
                 } catch (Exception e) { /* nada */ }
-                int filas = dp > 0 ? (dp - ALTO_CABECERA_DP) / ALTO_RAYA_DP : FILAS_SI_NO_SE_SABE;
+                int filas = dp > 0 ? (dp - altoCabecera) / altoRaya : FILAS_SI_NO_SE_SABE;
                 if (filas < 3) filas = 3;
                 if (filas > maxRayas) filas = maxRayas;
                 if (min == 0 || filas < min) min = filas;

@@ -49,11 +49,11 @@ public class AccionActivity extends Activity {
         if (que == null) que = "";
         try {
             if (uri == null || uri.isEmpty()) {
-                abrirSinMas(Datos.URL_APP_REPASO, "");
+                abrirSinMas(deReserva(tipo), "", tipo);
             } else if ("llamar".equals(tipo)) {
                 llamar(soloNumero(uri), que);
             } else {
-                abrirSinMas(uri, que);
+                abrirSinMas(uri, que, tipo);
             }
         } catch (Exception e) {
             aviso("No he podido abrirlo: " + e.getMessage());
@@ -99,8 +99,9 @@ public class AccionActivity extends Activity {
         aviso("No he podido abrir ningún marcador. Te he copiado el número: " + num);
     }
 
-    // ── CORREO / FICHA / REPASO / APP: cada uno a su sitio ───────────────────────
-    private void abrirSinMas(String uri, String que) {
+    // ── CORREO / FICHA / MAPA / PARTE / PORTAL / APP: cada uno a su sitio ────────
+    private void abrirSinMas(String uri, String que, String tipo) {
+        if (uri == null || uri.isEmpty()) { aviso("Eso no lleva a ningún sitio"); return; }
         Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(uri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         if (arranca(i)) return;
         if (uri.startsWith("mailto:")) {
@@ -111,9 +112,32 @@ public class AccionActivity extends Activity {
             aviso("No tienes app de correo. Te he copiado la dirección: " + correo);
             return;
         }
-        // Lo último que nunca falla: la app de Azkar
-        if (arranca(AbrirAzkar.elRepaso(this))) { aviso("No he podido abrir eso — te abro el repaso"); return; }
-        aviso("No he podido abrir " + (que.isEmpty() ? uri : que));
+        // Lo último que nunca falla. OJO (v1.16): el de reserva DEPENDE DE QUIÉN TOCA.
+        // En la tablet de los chicos no existe la app de Asier y no debe abrirse nunca:
+        // ahí lo de reserva es el plan de trabajo de ellos.
+        String reserva = deReserva(tipo);
+        if (!reserva.equals(uri)) {
+            Intent r = new Intent(Intent.ACTION_VIEW, Uri.parse(reserva)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (arranca(r)) { aviso("No he podido abrir eso — te abro " + (esDelEquipo(tipo) ? "el plan de trabajo" : "el repaso")); return; }
+        }
+        if (!esDelEquipo(tipo) && arranca(AbrirAzkar.elRepaso(this))) { aviso("No he podido abrir eso — te abro el repaso"); return; }
+        copia(uri);
+        aviso("No he podido abrir " + (que.isEmpty() ? uri : que) + ". Te he copiado el enlace.");
+    }
+
+    /** v1.16 · ¿esto es del panel de los chicos? (mapa, parte del día, plan entero) */
+    static boolean esDelEquipo(String tipo) {
+        return "mapa".equals(tipo) || "parte".equals(tipo) || "portal".equals(tipo);
+    }
+
+    /** v1.16 · a dónde ir cuando lo de arriba no se puede abrir: el plan de trabajo si el
+     *  toque venía del panel del equipo (y hay enlace puesto), y el repaso de Asier si no. */
+    private String deReserva(String tipo) {
+        if (esDelEquipo(tipo)) {
+            String portal = Datos.enlaceEquipo(this);
+            if (!portal.isEmpty()) return portal;
+        }
+        return Datos.URL_APP_REPASO;
     }
 
     // ── Herramientas ────────────────────────────────────────────────────────────

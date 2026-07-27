@@ -358,4 +358,112 @@ public class Datos {
     static boolean hayLogin(Context ctx) {
         return !prefs(ctx).getString("jwt", "").isEmpty();
     }
+
+    // ══ v1.16 · EL PANEL GRANDE DE LA TABLET (el trabajo de hoy del equipo) ══════════
+    // Asier: «que tenga un widget grande, por lo menos que ocupe toda la pantalla, para que
+    // lo vean bien claro dónde está».
+    //
+    // OJO — ESTE NO VA CON EL LOGIN DE ASIER. Va con EL ENLACE DE LOS CHICOS (el mismo que
+    // ya tienen abierto en la tablet). En la tablet no hay usuario ni contraseña de Asier, y
+    // no debe haberlos: si este panel pidiera su clave, o habría que metérsela a los chicos
+    // —que es justo lo que no puede pasar— o el panel no funcionaría nunca ahí.
+
+    static String ultimoErrorEquipo = "";
+
+    /** Guarda el enlace de los chicos. Acepta el enlace ENTERO (pegado del navegador, con o
+     *  sin /parte/123 detrás) y se queda solo con la parte buena. Devuelve null si valía, o
+     *  el motivo en cristiano si no. NUNCA guarda un enlace a medias: o vale, o se dice. */
+    static String guardaEnlaceEquipo(Context ctx, String pegado) {
+        String s = String.valueOf(pegado == null ? "" : pegado).trim();
+        if (s.isEmpty()) return "No has pegado nada.";
+        int i = s.indexOf("/api/equipo/");
+        if (i < 0) return "Ese enlace no es el de los chicos. Tiene que llevar /api/equipo/ dentro. Ábrelo en la tablet y copia la dirección de arriba del navegador.";
+        String resto = s.substring(i + "/api/equipo/".length());
+        // el token es lo primero hasta la siguiente barra, ? o #
+        int corte = resto.length();
+        for (int k = 0; k < resto.length(); k++) {
+            char c = resto.charAt(k);
+            if (c == '/' || c == '?' || c == '#' || c == ' ') { corte = k; break; }
+        }
+        String token = resto.substring(0, corte);
+        if (token.length() < 8) return "El enlace está cortado: le falta el código del final. Cópialo entero.";
+        prefs(ctx).edit().putString("equipo_token", token).apply();
+        return null;
+    }
+
+    /** El enlace entero de los chicos, o "" si aún no se ha puesto. */
+    static String enlaceEquipo(Context ctx) {
+        String t = prefs(ctx).getString("equipo_token", "");
+        return t.isEmpty() ? "" : BASE + "/api/equipo/" + t;
+    }
+
+    static boolean hayEquipo(Context ctx) {
+        return !prefs(ctx).getString("equipo_token", "").isEmpty();
+    }
+
+    /** El trabajo de hoy tal y como lo ve el portal, en rayas ya escritas. SOLO LECTURA. */
+    static JSONObject hoyEquipo(Context ctx, int filas) {
+        String t = prefs(ctx).getString("equipo_token", "");
+        if (t.isEmpty()) { ultimoErrorEquipo = "sin enlace"; return null; }
+        try {
+            int f = filas < 4 ? 4 : (filas > 30 ? 30 : filas);
+            HttpURLConnection c = conecta(BASE + "/api/equipo/" + t + "/hoy.json?lineas=" + f, "GET", null);
+            int code = c.getResponseCode();
+            if (code != 200) {
+                String resp = leerTodo(c.getErrorStream());
+                String detalle = "";
+                try { detalle = new JSONObject(resp).optString("error", ""); } catch (Exception e) { /* nada */ }
+                // 404 = enlace caducado o cambiado. Se DICE con esas palabras: es lo único que
+                // Asier puede arreglar, y callarlo dejaría el panel "raro" para siempre.
+                ultimoErrorEquipo = code == 404
+                        ? "el enlace ya no vale — pídele el nuevo a Asier"
+                        : "HTTP " + code + (detalle.isEmpty() ? "" : ": " + detalle);
+                return null;
+            }
+            JSONObject j = new JSONObject(leerTodo(c.getInputStream()));
+            if (!j.optBoolean("ok", false)) { ultimoErrorEquipo = "respuesta sin ok"; return null; }
+            ultimoErrorEquipo = "";
+            return j;
+        } catch (Exception e) {
+            ultimoErrorEquipo = "[" + e.getClass().getSimpleName() + "]" + (e.getMessage() != null ? " " + e.getMessage() : "");
+            return null;
+        }
+    }
+
+    /** Guarda lo último que trajo. Rayas, botones Y estilos se guardan A LA VEZ: si se
+     *  guardara una cosa sin la otra, el botón 📍 de una raya podría acabar mandando a un
+     *  chico a la dirección de otro cliente. */
+    static void guardaCacheEquipo(Context ctx, JSONObject r) {
+        try {
+            prefs(ctx).edit()
+                    .putString("cache_eq_lineas", r.optJSONArray("lineas") == null ? "[]" : r.optJSONArray("lineas").toString())
+                    .putString("cache_eq_acciones", r.optJSONArray("acciones") == null ? "[]" : r.optJSONArray("acciones").toString())
+                    .putString("cache_eq_titulo", r.optString("titulo", "AZKAR"))
+                    .putString("cache_eq_hora", r.optString("hora", ""))
+                    .apply();
+        } catch (Exception e) { /* nada */ }
+    }
+
+    static Accion[] cacheAccionesEquipo(Context ctx) {
+        return Accion.deTexto(prefs(ctx).getString("cache_eq_acciones", "[]"));
+    }
+
+    static String[] cacheLineasEquipo(Context ctx) {
+        try {
+            org.json.JSONArray a = new org.json.JSONArray(prefs(ctx).getString("cache_eq_lineas", "[]"));
+            String[] out = new String[a.length()];
+            for (int i = 0; i < a.length(); i++) out[i] = a.optString(i, "");
+            return out;
+        } catch (Exception e) {
+            return new String[0];
+        }
+    }
+
+    static String cacheTituloEquipo(Context ctx) {
+        return prefs(ctx).getString("cache_eq_titulo", "AZKAR");
+    }
+
+    static String cacheHoraEquipo(Context ctx) {
+        return prefs(ctx).getString("cache_eq_hora", "");
+    }
 }
