@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Se puede estirar a lo alto para que quepan más cosas del repaso. -->
+<!-- Se puede estirar a lo alto para que quepan más cosas del repaso.
+     v1.15: se pone de salida ALTO (250dp ≈ 8 rayas). Antes nacía con 180dp y solo se
+     veían unas 5 cosas de 38: el "… y N más" de abajo se lo comía la pantalla y parecía
+     que no había nada más. Se puede encoger (minResizeHeight) si Asier quiere. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
-    android:minHeight="180dp"
+    android:minHeight="250dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="110dp"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/w_repaso"
     android:resizeMode="horizontal|vertical"

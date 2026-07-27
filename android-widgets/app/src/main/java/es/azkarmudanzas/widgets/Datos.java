@@ -100,26 +100,34 @@ public class Datos {
     }
 
     /** Trae el resumen del widget. Si el pase caducó, re-entra solo con lo guardado. */
-    static JSONObject resumen(Context ctx) {
+    static JSONObject resumen(Context ctx) { return resumen(ctx, 7); }
+
+    /** v1.15: `filas` = las rayas que caben DE VERDAD en el widget tal y como está puesto.
+     *  Con eso el servidor rellena el hueco de abajo con cosas del repaso (y sus botones)
+     *  en vez de dejar medio widget en blanco, que es lo que le pasaba a Asier. */
+    static JSONObject resumen(Context ctx, int filas) {
         SharedPreferences p = prefs(ctx);
         String jwt = p.getString("jwt", "");
         if (jwt.isEmpty()) return null;
-        JSONObject r = pedirResumen(jwt);
+        JSONObject r = pedirResumen(jwt, filas);
         if (r != null) return r;
         // puede haber caducado el pase (30 días) → re-login con lo guardado y reintento
         String u = p.getString("usuario", ""), pw = p.getString("pass", "");
         if (u.isEmpty() || pw.isEmpty()) return null;
         if (login(ctx, u, pw) == null) {
-            return pedirResumen(p.getString("jwt", ""));
+            return pedirResumen(p.getString("jwt", ""), filas);
         }
         return null;
     }
 
     static String ultimoErrorResumen = "";
 
-    private static JSONObject pedirResumen(String jwt) {
+    private static JSONObject pedirResumen(String jwt, int filas) {
         try {
-            HttpURLConnection c = conecta(BASE + "/api/widget/resumen", "GET", jwt);
+            // lineas=N = las rayas que caben ahora mismo. El tope del servidor es 3..20;
+            // aquí se recorta igual por si acaso.
+            int f = filas < 3 ? 3 : (filas > 20 ? 20 : filas);
+            HttpURLConnection c = conecta(BASE + "/api/widget/resumen?lineas=" + f, "GET", jwt);
             int code = c.getResponseCode();
             if (code != 200) {
                 String resp = leerTodo(c.getErrorStream());
@@ -139,27 +147,32 @@ public class Datos {
     /** v1.14: EL REPASO — lo que quedó colgado (formularios, llamadas sin devolver, correos sin
      *  contestar, promesas y borradores). SOLO LECTURA: lo que Asier tacha en la app deja de
      *  salir aquí. Mismo pase que el resumen; si caducó, re-entra solo y reintenta una vez. */
-    static JSONObject repaso(Context ctx) {
+    static JSONObject repaso(Context ctx) { return repaso(ctx, 12); }
+
+    /** v1.15: `filas` = las rayas que caben DE VERDAD en el widget tal y como está puesto. */
+    static JSONObject repaso(Context ctx, int filas) {
         SharedPreferences p = prefs(ctx);
         String jwt = p.getString("jwt", "");
         if (jwt.isEmpty()) return null;
-        JSONObject r = pedirRepaso(jwt);
+        JSONObject r = pedirRepaso(jwt, filas);
         if (r != null) return r;
         String u = p.getString("usuario", ""), pw = p.getString("pass", "");
         if (u.isEmpty() || pw.isEmpty()) return null;
         if (login(ctx, u, pw) == null) {
-            return pedirRepaso(p.getString("jwt", ""));
+            return pedirRepaso(p.getString("jwt", ""), filas);
         }
         return null;
     }
 
     static String ultimoErrorRepaso = "";
 
-    private static JSONObject pedirRepaso(String jwt) {
+    private static JSONObject pedirRepaso(String jwt, int filas) {
         try {
-            // lineas=12 = las rayas que pinta este widget: así el servidor NUNCA manda más
-            // de las que caben y el "… y N más" no se queda fuera de la pantalla.
-            HttpURLConnection c = conecta(BASE + "/api/widget/repaso?max=12&lineas=12", "GET", jwt);
+            // lineas=N = las rayas que caben en el widget ahora mismo: así el servidor NUNCA
+            // manda más de las que se ven y el "… y N más" no se queda fuera de la pantalla.
+            // El tope del servidor es 3..20; aquí se recorta igual por si acaso.
+            int f = filas < 3 ? 3 : (filas > 20 ? 20 : filas);
+            HttpURLConnection c = conecta(BASE + "/api/widget/repaso?max=12&lineas=" + f, "GET", jwt);
             int code = c.getResponseCode();
             if (code != 200) {
                 String resp = leerTodo(c.getErrorStream());
@@ -271,14 +284,23 @@ public class Datos {
         }
     }
 
-    /** Cache de las líneas del widget (para pintar al instante y aguantar sin red). */
+    /** Cache de las líneas del widget (para pintar al instante y aguantar sin red).
+     *  v1.15: se guardan TAMBIÉN los botones, en el mismo momento y con el mismo largo
+     *  que las rayas. Si se guardara una cosa sin la otra, el botón de una raya podría
+     *  acabar llamando a otra persona. */
     static void guardaCache(Context ctx, JSONObject r) {
         try {
             prefs(ctx).edit()
                     .putString("cache_lineas", r.optJSONArray("lineas") == null ? "[]" : r.optJSONArray("lineas").toString())
+                    .putString("cache_acciones", r.optJSONArray("acciones") == null ? "[]" : r.optJSONArray("acciones").toString())
                     .putString("cache_hora", r.optString("hora", ""))
                     .apply();
         } catch (Exception e) { /* nada */ }
+    }
+
+    /** v1.15: a dónde lleva el botón de cada raya del resumen (mismo orden que cacheLineas). */
+    static Accion[] cacheAcciones(Context ctx) {
+        return Accion.deTexto(prefs(ctx).getString("cache_acciones", "[]"));
     }
 
     static String[] cacheLineas(Context ctx) {
@@ -302,10 +324,16 @@ public class Datos {
         try {
             prefs(ctx).edit()
                     .putString("cache_rep_lineas", r.optJSONArray("lineas") == null ? "[]" : r.optJSONArray("lineas").toString())
+                    .putString("cache_rep_acciones", r.optJSONArray("acciones") == null ? "[]" : r.optJSONArray("acciones").toString())
                     .putString("cache_rep_titulo", r.optString("titulo", "REPASO"))
                     .putString("cache_rep_hora", r.optString("hora", ""))
                     .apply();
         } catch (Exception e) { /* nada */ }
+    }
+
+    /** v1.15: a dónde lleva el botón de cada raya del repaso (mismo orden que las rayas). */
+    static Accion[] cacheAccionesRepaso(Context ctx) {
+        return Accion.deTexto(prefs(ctx).getString("cache_rep_acciones", "[]"));
     }
 
     static String[] cacheLineasRepaso(Context ctx) {

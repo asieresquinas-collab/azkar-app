@@ -84,3 +84,18 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
   `?lineas=12` al servidor para que el *"… y N más"* nunca se caiga fuera de la pantalla
   (requiere backend 2.7.235). Cache propia (`cache_rep_*`), acción `REFRESCAR_REPASO` y códigos
   de PendingIntent 4/5 — nada de lo del widget del resumen se toca.
+- v1.15 — **UN BOTÓN POR COSA, Y CADA UNO A SU SITIO.** Cada raya de los dos paneles (repaso y
+  resumen) lleva a su derecha un botón que hace lo suyo: 📞 llama **con Zoiper** (la centralita
+  de Asier, `com.zoiper.android.app`), ✉️ abre el correo ya escrito a esa persona, 📄 abre su
+  ficha. El botón solo se pinta si de verdad lleva a algún sitio (`Accion.tieneBoton()`); si no,
+  no hay botón — nunca un toque muerto. A dónde va cada uno lo decide el CÓDIGO del servidor
+  (`_accionDe` en `api/repaso-lunes.js`, backend 2.7.237), jamás el modelo. Si Zoiper no coge la
+  llamada se prueban cuatro formas más, luego Zoiper a secas con el número copiado, y por último
+  el marcador normal — y en cada caso lo DICE con un aviso. No se pide el permiso CALL_PHONE.
+  Un roce en el texto sigue abriendo la app: llamar exige tocar el botón a propósito. Además el
+  panel del resumen **nace alto (250dp ≈ 8 rayas) y admite hasta 16**: antes nacía con 140dp y
+  Asier lo tenía estirado a pantalla completa con medio panel en blanco por debajo. La cuenta de
+  cuántas rayas caben vive **una sola vez** en `Rayas.java` (la usan los dos paneles) y el aviso
+  ⚠️ se mete con un mapa que mueve texto Y botón a la vez, para que un botón no pueda quedarse
+  nunca con la persona equivocada. Códigos de PendingIntent 100..111 (repaso) y 200..215
+  (resumen), cada raya con su propia dirección `azkarwidget://<panel>/<widget>/<raya>`.

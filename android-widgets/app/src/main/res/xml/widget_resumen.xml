@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Se puede estirar a lo alto para que quepan más cosas.
+     v1.15: nace ALTO (250dp ≈ 8 rayas) y admite hasta 16. Antes nacía con 140dp y solo
+     enseñaba 6 cosas: Asier lo tenía estirado casi a pantalla completa y por debajo se
+     quedaba medio panel en blanco. Se puede encoger (minResizeHeight) si él quiere. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
-    android:minHeight="140dp"
+    android:minHeight="250dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="110dp"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/w_resumen"
     android:resizeMode="horizontal|vertical"

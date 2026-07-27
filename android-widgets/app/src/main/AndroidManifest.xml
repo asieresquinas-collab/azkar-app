@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="es.azkarmudanzas.widgets"
-    android:versionCode="15"
-    android:versionName="1.14">
+    android:versionCode="16"
+    android:versionName="1.15">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
 
@@ -10,7 +10,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
-    <!-- Para poder encontrar la app de Azkar instalada y abrirla desde los widgets -->
+    <!-- Para poder encontrar la app de Azkar instalada y abrirla desde los widgets.
+         v1.15: y para poder LLAMAR con Zoiper (o con el marcador de siempre si no está)
+         y escribir correos desde el botón de cada raya del repaso. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -20,6 +22,27 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="tel" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="sip" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="mailto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+        <package android:name="com.zoiper.android.app" />
     </queries>
 
     <application
@@ -47,6 +70,18 @@
             android:excludeFromRecents="true"
             android:noHistory="true"
             android:label="Azkarin" />
+
+        <!-- v1.15: EL BOTÓN DE CADA COSA. Pantalla que no se ve: recibe el toque del
+             botoncito de una raya, abre lo que toca (Zoiper para llamar, el correo, la
+             ficha…) y se cierra sola. Si no puede, lo DICE y copia el número: nunca un
+             toque muerto. -->
+        <activity
+            android:name=".AccionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:label="Azkar" />
 
         <!-- Widget 1: la burbuja de Azkarin (tócala y habla) -->
         <receiver
