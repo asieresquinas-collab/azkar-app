@@ -1586,15 +1586,88 @@ function rpPintar() {
   cont.innerHTML = h;
 }
 
+// v383: un texto metido dentro de un onclick='...' — comillas y barras fuera.
+function _rpJs(t) {
+  return String(t === undefined || t === null ? '' : t)
+    .replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/</g, '\\x3c');
+}
+
+// v383: LLAMAR ES POR ZOIPER, la centralita de Asier — igual que en los widgets.
+// Se intenta abrir Zoiper con el número; si en un segundo y pico seguimos aquí, es que
+// Zoiper no ha cogido, y entonces SE DICE y se abre el marcador de siempre.
+// Nunca un toque muerto y nunca se marca a escondidas.
+function _rpLlamar(tel) {
+  var n = String(tel || '').replace(/\D/g, '');
+  if (n.length > 9 && n.indexOf('34') === 0) n = n.slice(2);
+  if (n.length < 3) { _rpEstado('&#9888;&#65039; Esa cosa no tiene un tel\u00e9fono al que llamar.', '#FDECEC', '#c0392b'); return; }
+  var marcador = 'tel:' + (n.length === 9 ? '+34' + n : n);
+  if (!/Android/i.test(navigator.userAgent || '')) { location.href = marcador; return; }
+  var fuera = false;
+  var _seFue = function () { fuera = true; };
+  try {
+    document.addEventListener('visibilitychange', _seFue);
+    window.addEventListener('pagehide', _seFue);
+    window.addEventListener('blur', _seFue);
+  } catch (e) {}
+  setTimeout(function () {
+    try {
+      document.removeEventListener('visibilitychange', _seFue);
+      window.removeEventListener('pagehide', _seFue);
+      window.removeEventListener('blur', _seFue);
+    } catch (e) {}
+    if (fuera || document.visibilityState === 'hidden') return;   // Zoiper se abri\u00f3: nada que decir
+    _rpEstado('&#9888;&#65039; No he podido abrir Zoiper. Te abro el marcador del m\u00f3vil con el ' + _rpEsc(n) + '.', '#FFF8E6', '#E8A317');
+    location.href = marcador;
+  }, 1500);
+  try { location.href = 'intent://' + n + '#Intent;scheme=tel;package=com.zoiper.android.app;end'; }
+  catch (e) { location.href = marcador; }
+}
+
+// v383: abrir la ficha de esa persona SIN salir de la app (ya estamos dentro).
+// Si no se puede, lo dice: nunca deja el bot\u00f3n en el aire.
+function _rpFicha(ref) {
+  ref = String(ref || '').trim();
+  if (!ref) return;
+  if (typeof loadPresupuesto !== 'function') {
+    _rpEstado('&#9888;&#65039; Todav\u00eda no puedo abrir fichas: la app no ha terminado de arrancar. Prueba otra vez en un momento.', '#FFF8E6', '#E8A317');
+    return;
+  }
+  Promise.resolve(loadPresupuesto(ref)).then(function () {
+    try { ST('dossier'); } catch (e) {}
+    try { window.scrollTo(0, 0); } catch (e) {}
+    var f = document.getElementById('f_ref');
+    if (!f || String(f.value || '').trim() === '') {
+      alert('No he podido abrir la ficha ' + ref + '. Puede que se haya borrado o que no est\u00e9 sincronizada todav\u00eda. B\u00fascala en la lista de presupuestos.');
+    }
+  }).catch(function (e) {
+    alert('No he podido abrir la ficha ' + ref + ' (' + (e && e.message ? e.message : e) + '). B\u00fascala en la lista de presupuestos.');
+  });
+}
+
 function _rpItem(i) {
+  // v383: el tel\u00e9fono llega del servidor como lo escribi\u00f3 el cliente ("+34 626 76 86 00",
+  // "0034...", "626768600"). Se deja en las 9 cifras de aqu\u00ed para que el enlace de WhatsApp
+  // no acabe siendo wa.me/3434626768600 (un enlace muerto: fallo real cazado el 27-jul).
   var tel = String(i.telefono || '').replace(/\D/g, '');
+  if (tel.length > 9 && tel.indexOf('00') === 0) tel = tel.slice(2);
+  if (tel.length > 9 && tel.indexOf('34') === 0) tel = tel.slice(2);
+  // v383: el mismo destino que manda el servidor a los widgets (repaso-lunes.js → _accionDe):
+  // el bot\u00f3n de la ficha abre EL DOCUMENTO, no un texto parecido.
+  var fich = String(i.ficha_id || i.ref || '').trim();
   var acc = '';
   if (tel) {
-    acc += "<a href='tel:+34" + tel + "' style='display:inline-block;text-decoration:none;background:#1a7a3f;color:#fff;font-weight:700;font-size:12px;border-radius:6px;padding:10px 14px'>&#128222; Llamar</a>";
-    acc += "<a href='https://wa.me/34" + tel + "' target='_blank' rel='noopener' style='display:inline-block;text-decoration:none;background:#25D366;color:#fff;font-weight:700;font-size:12px;border-radius:6px;padding:10px 14px'>&#128172; WhatsApp</a>";
+    acc += "<button onclick=\"_rpLlamar('" + _rpJs(tel) + "')\" style='font-family:inherit;border:none;cursor:pointer;background:#1a7a3f;color:#fff;font-weight:700;font-size:12px;border-radius:6px;padding:10px 14px'>&#128222; Llamar</button>";
+    // WhatsApp SOLO si es un tel\u00e9fono espa\u00f1ol de 9 cifras. A una extensi\u00f3n de la
+    // centralita (6412) WhatsApp no llega nunca: ese bot\u00f3n ser\u00eda un toque muerto.
+    if (/^[6-9]\d{8}$/.test(tel)) {
+      acc += "<a href='https://wa.me/34" + tel + "' target='_blank' rel='noopener' style='display:inline-block;text-decoration:none;background:#25D366;color:#fff;font-weight:700;font-size:12px;border-radius:6px;padding:10px 14px'>&#128172; WhatsApp</a>";
+    }
   }
   if (i.email) {
     acc += "<a href='mailto:" + _rpEsc(i.email) + "' style='display:inline-block;text-decoration:none;background:#2376C5;color:#fff;font-weight:700;font-size:12px;border-radius:6px;padding:10px 14px'>&#9993;&#65039; Correo</a>";
+  }
+  if (fich) {
+    acc += "<button onclick=\"_rpFicha('" + _rpJs(fich) + "')\" style='font-family:inherit;border:none;cursor:pointer;background:#5B6B7F;color:#fff;font-weight:700;font-size:12px;border-radius:6px;padding:10px 14px'>&#128196; Ficha " + _rpEsc(String(i.ref || fich)) + "</button>";
   }
   var op = i.hecho ? 'opacity:.45;' : '';
   var tach = i.hecho ? 'text-decoration:line-through;' : '';
@@ -3326,7 +3399,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v382';
+var APP_VERSION = 'v383';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -14131,6 +14204,64 @@ async function doResetWithCode() {
           }
         } catch(e) {}
         if (_n > 80) clearInterval(_tr); // ~40s y paramos (p.ej. sin sesión)
+      }, 500);
+    } catch(e) {}
+  })();
+  // ── v383: DEEP LINK de la FICHA (botón \ud83d\udcc4 de los widgets y del repaso) — ?ficha=REF
+  // abre ESA ficha, no la pantalla de siempre. Antes el botón abría la app y ahí te
+  // dejaba: un botón que no llega a donde dice es peor que no tener botón.
+  // Si no se puede (sin sesión, o esa ficha ya no existe) LO DICE. Nunca se queda callado.
+  (function(){
+    try {
+      var _mF = (location.search || '').match(/[?&]ficha=([^&]+)/);
+      if (!_mF) return;
+      var _ref = '';
+      try { _ref = decodeURIComponent(_mF[1]); } catch(eD) { _ref = _mF[1]; }
+      if (!_ref) return;
+      var _nf = 0, _yendo = false;
+      var _limpia = function(){
+        try { var u = location.pathname + (location.search || '').replace(/[?&]ficha=[^&]*/, '').replace(/^&/, '?') + location.hash; history.replaceState(null, '', u); } catch(eH) {}
+      };
+      var _tf = setInterval(function(){
+        _nf++;
+        // La rendici\u00f3n va PRIMERO. Si va al final, los "return" de aqu\u00ed abajo (sin sesi\u00f3n,
+        // app a medio arrancar) se la saltan y esto late para siempre y CALLADO: justo el
+        // caso para el que se escribi\u00f3. Lo caz\u00f3 la prueba del navegador de mentira (27-jul).
+        if (_nf > 600) {                                   // 5 min: tiempo de sobra para entrar
+          clearInterval(_tf);
+          if (!_yendo) {
+            var _sinEntrar = true;
+            try { _sinEntrar = !localStorage.getItem('azkar_token'); } catch(eT2) {}
+            try { alert(_sinEntrar
+              ? 'No he abierto la ficha ' + _ref + ' porque no has entrado en la app. Entra y vuelve a tocar el bot\u00f3n.'
+              : 'No he podido abrir la ficha ' + _ref + ': la app no ha llegado a arrancar del todo. Vuelve a intentarlo.'); } catch(eA) {}
+            _limpia();
+          }
+          return;
+        }
+        try {
+          if (_yendo) return;
+          var _hayToken = false;
+          try { _hayToken = !!localStorage.getItem('azkar_token'); } catch(eT) {}
+          var _login = document.getElementById('login-screen');
+          var _enLogin = _login && _login.style.display !== 'none' && getComputedStyle(_login).display !== 'none';
+          if (!(_hayToken && !_enLogin && typeof loadPresupuesto === 'function' && typeof ST === 'function')) return;
+          _yendo = true;
+          clearInterval(_tf);
+          Promise.resolve(loadPresupuesto(_ref)).then(function(){
+            try { ST('dossier'); } catch(eS) {}
+            try { window.scrollTo(0, 0); } catch(eS2) {}
+            var _f = document.getElementById('f_ref');
+            // Comprobación honrada: si la ficha NO se ha cargado, se dice; no se hace como si sí.
+            if (!_f || String(_f.value || '').trim() === '') {
+              alert('No he podido abrir la ficha ' + _ref + '. Puede que se haya borrado o que no est\u00e9 sincronizada todav\u00eda. B\u00fascala en la lista de presupuestos.');
+            }
+            _limpia();
+          }).catch(function(e){
+            alert('No he podido abrir la ficha ' + _ref + ' (' + (e && e.message ? e.message : e) + '). B\u00fascala en la lista de presupuestos.');
+            _limpia();
+          });
+        } catch(e) {}
       }, 500);
     } catch(e) {}
   })();
