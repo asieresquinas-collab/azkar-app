@@ -223,6 +223,58 @@ async function conTicks(e, veces){ for(let i=0;i<(veces||6);i++) await Promise.r
       t('un repaso de antes (solo ref, sin ficha_id) SÍ tiene botón de ficha', ()=>A.ok(/_rpFicha\('P-9'\)/.test(globalThis.__h)));
     }
 
+    // ══ LA COSTURA: del SERVIDOR al DEDO DE ASIER, sin cortar por la mitad ══════════════
+    // Aqui estaba el fallo de esta manana y nadie lo veia: las pruebas del servidor decian
+    // "la URL esta bien" y las de la app decian "el enlace ?ficha= funciona"... pero cada una
+    // con SU ejemplo escrito a mano. Nadie cogia la URL QUE FABRICA EL SERVIDOR y la metia
+    // por donde la mete el widget. Eso es lo que se hace aqui: se ejecuta el _accionDe DE
+    // VERDAD del backend, se coge su enlace tal cual, y se le da al bloque ?ficha= de la app.
+    console.log('\n══ Del servidor al dedo: la MISMA url, sin escribir nada a mano ══');
+    const BACK = process.env.AZKAR_BACKEND || path.resolve(__dirname, '..', '..', 'azkar-presupuestos');
+    const P_RL = path.join(BACK, 'api', 'repaso-lunes.js');
+    if (!fs.existsSync(P_RL)) {
+      mal++;
+      console.log('  ❌ SALTADA: no encuentro el backend en ' + BACK + ' (pon AZKAR_BACKEND=<ruta>) — NO se da por buena');
+    } else {
+      const src = fs.readFileSync(P_RL, 'utf8');
+      const trz = ['_n9','_recorta','_accionDe'].map(n=>{
+        const m = src.match(new RegExp('function '+n+'\\([\\s\\S]*?\\n\\}'));
+        if (!m) throw new Error('no encuentro '+n+' en el backend');
+        return m[0];
+      }).join('\n');
+      const APPW = (src.match(/_APP_WEB\s*=\s*['"]([^'"]+)['"]/)||[])[1];
+      const accionDe = new Function('_APP_WEB', trz + '; return _accionDe;')(APPW);
+      const todas = a => [a].concat((a && a.otras) || []);
+
+      // Un caso normal y uno con el id lleno de caracteres raros: si el servidor escapa
+      // distinto de como la app desescapa, la ficha que se abre NO es la que Asier tocó.
+      for (const caso of [
+        { id: 'abc123XYZ',   nota: 'un id normal' },
+        { id: 'P/2026 -1&x', nota: 'un id con barra, espacio y &' },
+        { id: 'a+b c',       nota: 'un id con + y espacio (el + es la trampa clásica)' }
+      ]) {
+        const fi = todas(accionDe('borradores', { ref:'P-1', ficha_id: caso.id, email:'ana@x.es', nombre:'Ana' }))
+                     .find(x=>x.tipo==='ficha');
+        t('el servidor da enlace de ficha con ' + caso.nota, ()=>A.ok(fi && fi.uri, 'no hay enlace'));
+        if (!fi || !fi.uri) continue;
+        // Lo que hace el widget: abrir esa URL tal cual. La app ve su parte de "?..."
+        const busca = fi.uri.indexOf('?') >= 0 ? fi.uri.slice(fi.uri.indexOf('?')) : '';
+        const e = navegador({ search: busca, token:true });
+        corre(bloqueDeep, e); e.reg.tick && e.reg.tick(); await conTicks(e);
+        t('…y la app abre EXACTAMENTE esa ficha (' + caso.nota + ')', ()=>{
+          A.deepEqual(e.reg.cargadas, [caso.id],
+            'el servidor mandó ' + fi.uri + ' y la app ha abierto ' + JSON.stringify(e.reg.cargadas));
+        });
+        t('…sin quejarse por el camino (' + caso.nota + ')', ()=>A.deepEqual(e.reg.alertas, []));
+      }
+
+      // Y al revés: si una cosa NO tiene ficha, el servidor no debe dar enlace y por tanto
+      // el widget no pinta boton. Un boton que abre la app y ahi te deja es justo lo de hoy.
+      const sinFicha = todas(accionDe('perdidas', { telefono:'626768600', ref:'', ficha_id:'', nombre:'Ana' }));
+      t('sin ficha, el servidor NO da enlace (y el widget no pinta botón)',
+        ()=>A.ok(!sinFicha.some(x=>x.tipo==='ficha'), 'da un botón de ficha que no lleva a ningún sitio'));
+    }
+
     console.log('\n' + (mal===0 ? '✅ TODO EN VERDE' : '❌ HAY FALLOS') + ' — ' + ok + ' bien, ' + mal + ' mal');
     process.exit(mal?1:0);
   })();
