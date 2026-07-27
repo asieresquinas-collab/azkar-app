@@ -53,7 +53,8 @@ public class MainActivity extends Activity {
         TextView explica = new TextView(this);
         explica.setText("Entra UNA vez con tu usuario y clave de la app de Azkar. " +
                 "Luego mantén pulsado el fondo de tu pantalla de inicio → Widgets → Azkar, " +
-                "y arrastra los dos:\n\n🔵 Azkarin — háblale (la burbuja)\n📋 Azkar — lo de hoy (el panel en grande)");
+                "y arrastra los tres:\n\n🔵 Azkarin — háblale (la burbuja)\n📋 Azkar — lo de hoy (el panel en grande)\n" +
+                "📋 Azkar — repaso (lo que quedó colgado: nombre y teléfono de cada cosa; se puede estirar hacia abajo)");
         explica.setTextSize(16);
         explica.setPadding(0, pad / 2, 0, pad);
         raiz.addView(explica);
@@ -199,6 +200,8 @@ public class MainActivity extends Activity {
         try {
             Intent i = new Intent(this, WidgetResumen.class).setAction(WidgetResumen.ACCION_REFRESCAR);
             sendBroadcast(i);
+            // v1.14: y el del repaso, que también se refresque al entrar
+            sendBroadcast(new Intent(this, WidgetRepaso.class).setAction(WidgetRepaso.ACCION_REFRESCAR));
             AppWidgetManager mgr = AppWidgetManager.getInstance(this);
             int[] ids = mgr.getAppWidgetIds(new ComponentName(this, WidgetAzkarin.class));
             if (ids != null && ids.length > 0) new WidgetAzkarin().onUpdate(this, mgr, ids);

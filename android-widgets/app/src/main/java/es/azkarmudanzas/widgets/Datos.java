@@ -23,6 +23,8 @@ public class Datos {
     static final String BASE = "https://azkar-presupuestos-production.up.railway.app";
     static final String API_KEY = "azk_08103a9ae1a401abed02dd73db68ab89d28d421d3dbc3c710f29e456b4bec5cc";
     static final String URL_APP_VOZ = "https://asieresquinas-collab.github.io/azkar-app/?azkarin=voz";
+    /** v1.14: abrir la app DIRECTA en la pestaña Repaso (la app lo entiende desde la v382). */
+    static final String URL_APP_REPASO = "https://asieresquinas-collab.github.io/azkar-app/?ir=repaso";
 
     static SharedPreferences prefs(Context c) {
         return c.getSharedPreferences("azkar_widgets", Context.MODE_PRIVATE);
@@ -130,6 +132,46 @@ public class Datos {
             return j;
         } catch (Exception e) {
             ultimoErrorResumen = "[" + e.getClass().getSimpleName() + "]" + (e.getMessage() != null ? " " + e.getMessage() : "");
+            return null;
+        }
+    }
+
+    /** v1.14: EL REPASO — lo que quedó colgado (formularios, llamadas sin devolver, correos sin
+     *  contestar, promesas y borradores). SOLO LECTURA: lo que Asier tacha en la app deja de
+     *  salir aquí. Mismo pase que el resumen; si caducó, re-entra solo y reintenta una vez. */
+    static JSONObject repaso(Context ctx) {
+        SharedPreferences p = prefs(ctx);
+        String jwt = p.getString("jwt", "");
+        if (jwt.isEmpty()) return null;
+        JSONObject r = pedirRepaso(jwt);
+        if (r != null) return r;
+        String u = p.getString("usuario", ""), pw = p.getString("pass", "");
+        if (u.isEmpty() || pw.isEmpty()) return null;
+        if (login(ctx, u, pw) == null) {
+            return pedirRepaso(p.getString("jwt", ""));
+        }
+        return null;
+    }
+
+    static String ultimoErrorRepaso = "";
+
+    private static JSONObject pedirRepaso(String jwt) {
+        try {
+            // lineas=12 = las rayas que pinta este widget: así el servidor NUNCA manda más
+            // de las que caben y el "… y N más" no se queda fuera de la pantalla.
+            HttpURLConnection c = conecta(BASE + "/api/widget/repaso?max=12&lineas=12", "GET", jwt);
+            int code = c.getResponseCode();
+            if (code != 200) {
+                String resp = leerTodo(c.getErrorStream());
+                ultimoErrorRepaso = "HTTP " + code + (resp.isEmpty() ? "" : ": " + resp.substring(0, Math.min(160, resp.length())));
+                return null;
+            }
+            JSONObject j = new JSONObject(leerTodo(c.getInputStream()));
+            if (!j.optBoolean("ok", false)) { ultimoErrorRepaso = "Respuesta sin ok"; return null; }
+            ultimoErrorRepaso = "";
+            return j;
+        } catch (Exception e) {
+            ultimoErrorRepaso = "[" + e.getClass().getSimpleName() + "]" + (e.getMessage() != null ? " " + e.getMessage() : "");
             return null;
         }
     }
@@ -252,6 +294,37 @@ public class Datos {
 
     static String cacheHora(Context ctx) {
         return prefs(ctx).getString("cache_hora", "");
+    }
+
+    /** v1.14: cache del repaso — para pintarlo al instante y que no se quede en blanco sin red.
+     *  Guarda también la hora en que se trajo, para no hacer pasar por fresco lo que es de antes. */
+    static void guardaCacheRepaso(Context ctx, JSONObject r) {
+        try {
+            prefs(ctx).edit()
+                    .putString("cache_rep_lineas", r.optJSONArray("lineas") == null ? "[]" : r.optJSONArray("lineas").toString())
+                    .putString("cache_rep_titulo", r.optString("titulo", "REPASO"))
+                    .putString("cache_rep_hora", r.optString("hora", ""))
+                    .apply();
+        } catch (Exception e) { /* nada */ }
+    }
+
+    static String[] cacheLineasRepaso(Context ctx) {
+        try {
+            org.json.JSONArray a = new org.json.JSONArray(prefs(ctx).getString("cache_rep_lineas", "[]"));
+            String[] out = new String[a.length()];
+            for (int i = 0; i < a.length(); i++) out[i] = a.optString(i, "");
+            return out;
+        } catch (Exception e) {
+            return new String[0];
+        }
+    }
+
+    static String cacheTituloRepaso(Context ctx) {
+        return prefs(ctx).getString("cache_rep_titulo", "REPASO");
+    }
+
+    static String cacheHoraRepaso(Context ctx) {
+        return prefs(ctx).getString("cache_rep_hora", "");
     }
 
     static boolean hayLogin(Context ctx) {

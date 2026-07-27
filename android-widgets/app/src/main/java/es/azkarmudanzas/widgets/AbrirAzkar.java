@@ -50,4 +50,12 @@ public class AbrirAzkar {
         return new Intent(Intent.ACTION_VIEW, Uri.parse(Datos.URL_APP_VOZ))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
     }
+
+    /** v1.14: el REPASO, abierto de una: la app con ?ir=repaso — cae directo en la pestaña
+     *  Repaso para poder ir tachando (la app lo entiende desde la v382; si fuera una app más
+     *  vieja, se abre igual por su pantalla de siempre, nunca se queda en nada). */
+    static Intent elRepaso(Context ctx) {
+        return new Intent(Intent.ACTION_VIEW, Uri.parse(Datos.URL_APP_REPASO))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    }
 }

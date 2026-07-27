@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="es.azkarmudanzas.widgets"
-    android:versionCode="14"
-    android:versionName="1.13">
+    android:versionCode="15"
+    android:versionName="1.14">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
 
@@ -73,6 +73,20 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_resumen" />
+        </receiver>
+
+        <!-- Widget 3 (v1.14): EL REPASO — lo que quedó colgado, con nombre y teléfono -->
+        <receiver
+            android:name=".WidgetRepaso"
+            android:exported="true"
+            android:label="Azkar — repaso (lo pendiente)">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="es.azkarmudanzas.widgets.REFRESCAR_REPASO" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_repaso" />
         </receiver>
 
     </application>

@@ -3326,7 +3326,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v381';
+var APP_VERSION = 'v382';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -14104,6 +14104,33 @@ async function doResetWithCode() {
           }
         } catch(e) {}
         if (_intentos > 80) clearInterval(_t); // ~40s y paramos (p.ej. sin sesión)
+      }, 500);
+    } catch(e) {}
+  })();
+  // ── v382: DEEP LINK del WIDGET del REPASO (widgets Android v1.14) — ?ir=repaso cae
+  // DIRECTO en la pestaña Repaso para ir tachando. Espera a que haya sesión y a que la
+  // pestaña exista (hasta ~40s por si el backend despierta). Aditivo: sin el parámetro
+  // no hace NADA. Si no llega a entrar, la app se queda como siempre (nunca en blanco).
+  (function(){
+    try {
+      if (!/[?&]ir=repaso\b/.test(location.search || '')) return;
+      var _n = 0;
+      var _tr = setInterval(function(){
+        _n++;
+        try {
+          var _hayToken = false;
+          try { _hayToken = !!localStorage.getItem('azkar_token'); } catch(eT) {}
+          var _login = document.getElementById('login-screen');
+          var _enLogin = _login && _login.style.display !== 'none' && getComputedStyle(_login).display !== 'none';
+          if (_hayToken && !_enLogin && typeof ST === 'function' && document.getElementById('page-repaso')) {
+            clearInterval(_tr);
+            ST('repaso');
+            try { window.scrollTo(0, 0); } catch(eS) {}
+            // limpiar el parámetro para que recargar no vuelva a saltar a Repaso
+            try { var u = location.pathname + (location.search || '').replace(/[?&]ir=repaso\b/, '').replace(/^&/, '?') + location.hash; history.replaceState(null, '', u); } catch(eH) {}
+          }
+        } catch(e) {}
+        if (_n > 80) clearInterval(_tr); // ~40s y paramos (p.ej. sin sesión)
       }, 500);
     } catch(e) {}
   })();
