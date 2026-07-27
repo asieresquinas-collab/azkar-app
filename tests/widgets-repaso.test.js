@@ -692,13 +692,38 @@ t('F2 · la url del widget casa exactamente con lo que busca la app', () => {
 });
 
 // F3 — las tres versiones de la app dicen lo mismo.
-t('F3 · APP_VERSION, version.json y sw.js dicen la misma versión (v383)', () => {
+// Nada de clavar aquí el número: eso se ponía en rojo solo con la siguiente entrega y había
+// que venir a editar la prueba. Lo que se comprueba es que la versión sea al menos la de este
+// trabajo Y que los TRES sitios digan exactamente lo mismo.
+t('F3 · APP_VERSION, version.json y sw.js dicen la MISMA versión (y no una anterior)', () => {
   const app = (indexHtml.match(/var APP_VERSION\s*=\s*'(v\d+)'/) || [])[1];
   const vj = JSON.parse(leer(path.join(APP, 'version.json'))).version;
   const sw = (leer(path.join(APP, 'sw.js')).match(/CACHE_NAME\s*=\s*'azkar-pwa-(v\d+)'/) || [])[1];
-  assert(app === 'v383', 'index.html dice ' + app);
+  assert(app, 'no encuentro APP_VERSION en index.html');
+  assert(parseInt(app.slice(1), 10) >= 383, 'versión sin subir: ' + app + ' (mínimo v383)');
   assert(vj === app, 'version.json dice ' + vj + ' y index.html ' + app);
   assert(sw === app, 'sw.js dice ' + sw + ' y index.html ' + app);
+});
+
+// F3b — el sello de hora de version.json y, sobre todo, CÓMO se decide actualizar.
+// Los `ts` han ido desordenados alguna vez (la v381 lleva un ts MAYOR que la v382 y la v383).
+// Hoy da igual porque la app compara la VERSIÓN, no la hora; pero si alguien escribiera algún
+// día `if (data.ts > ...)`, un ts viejo dejaría a Asier clavado en la versión anterior y en
+// silencio. Esta guarda es para que eso no pueda pasar sin enterarse.
+t('F3b · la app decide actualizar por la VERSIÓN, nunca por la hora de version.json', () => {
+  const vj = JSON.parse(leer(path.join(APP, 'version.json')));
+  assert(typeof vj.ts === 'number' && String(vj.ts).length === 10,
+    'el ts de version.json no es un sello en segundos: ' + vj.ts);
+  const ahora = Math.floor(Date.now() / 1000);
+  assert(vj.ts <= ahora + 86400, 'el ts de version.json está en el futuro: ' + vj.ts);
+  // El trozo que decide si hay versión nueva
+  const dec = (indexHtml.match(/fetch\('\.\/version\.json[\s\S]{0,1200}/) || [])[0];
+  assert(dec, 'no encuentro dónde se mira version.json');
+  const decCod = sinComentarios(dec);
+  assert(/data\.version\s*!==\s*APP_VERSION/.test(decCod),
+    'ya no se compara la versión: si se compara la hora, un ts desordenado deja la app vieja y callada');
+  assert(!/data\.ts\s*[<>]/.test(decCod),
+    'se está comparando la HORA para decidir la actualización: con los ts desordenados eso clava la app en la versión vieja');
 });
 
 // F4 — MainActivity: refresca también el nuevo y lo nombra en las instrucciones.
