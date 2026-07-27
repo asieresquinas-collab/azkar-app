@@ -1274,7 +1274,13 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cada respuesta de Azkarin lleva una etiqueta: <strong>⚡ = modelo gratis</strong> (Ollama/gemma4) y <strong>🧠 = Gemini</strong> (de pago). Así ves de un vistazo qué motor contestó.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Controlar el gasto — comando /gasto:</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Escribe <strong>/gasto</strong> para ver cuánto se lleva gastado en Gemini este mes. También puedes preguntárselo en lenguaje normal: "¿cuánto llevo de gasto en Gemini este mes?".</div></div>
-      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Hay un <strong>tope de 40 €/mes</strong>. Al llegar al tope, Azkarin <strong>deja de usar Gemini solo</strong> y sigue con el modelo gratis. Así no hay sustos en la factura.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Hay un <strong>tope al mes</strong> (ahora <strong>150 €</strong>). Al llegar al tope, Azkarin <strong>deja de usar Gemini solo</strong> y sigue con el modelo gratis. Así no hay sustos en la factura. Para cambiarlo sin salir del chat: <strong>/gasto tope 200</strong>. Y si miras la factura de verdad en Google, <strong>/gasto real 77,40</strong> pone el contador en ese número exacto.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Debajo del total, <strong>/gasto</strong> te dice <strong>en qué se va</strong> (tu chat, las rutinas automáticas, la web, los correos…), <strong>con qué modelo</strong> y <strong>por días</strong>.</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>El trabajo automático — comando /rutinas:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Lo que Azkarin hace <strong>solo</strong> (tareas programadas, repasar correos, sacar los compromisos de las llamadas, aprender de las conversaciones) va con el <strong>motor económico</strong>, que cuesta unas <strong>3 veces menos</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Esto <strong>no toca tu chat</strong>, ni a los clientes que escriben desde la web, ni los leads del correo. Y si en una rutina entra un <strong>presupuesto</strong> por medio, <strong>sube ella sola al motor bueno</strong>: donde hay dinero no se ahorra.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Si una rutina se queda <strong>a medias</strong> con el motor económico y <strong>no había tocado nada</strong>, la <strong>rehace entera con el bueno</strong> él solo. Si ya había tocado algo, no la repite (para no duplicarte nada) y <strong>te lo dice</strong> en el propio aviso.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Para volver atrás: <strong>/rutinas caro</strong> lo deja como estaba antes. <strong>/rutinas barato</strong> lo vuelve a poner económico. <strong>/rutinas</strong> a secas te dice cómo está ahora mismo.</div></div>
       <div class='ayuda-tip'>gemma4 es el mejor de los modelos gratuitos para esta app. Para el día a día, deja el <strong>modo AUTO</strong> activado y olvídate: él decide cuándo usar el gratis y cuándo Gemini.</div>
       <div class='ayuda-warn'>Azkarin NUNCA inventa datos (teléfonos, precios, direcciones, refs). Si no lo sabe, lo dice o lo busca con una herramienta.</div>
     </div>
@@ -3399,7 +3405,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v383';
+var APP_VERSION = 'v384';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
