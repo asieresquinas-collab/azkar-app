@@ -3405,7 +3405,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v385';
+var APP_VERSION = 'v386';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -14550,7 +14550,7 @@ async function doResetWithCode() {
         pendingAction = data.accion;
         addConfirmMsg(data.accion.descripcion);
       } else if (data.tipo === 'resultado') {
-        addMsg('bot', '✅ ' + data.mensaje);
+        addMsg('bot', (/^\s*[❌⚠️🛑🚫]/.test(data.mensaje || '') ? '' : '✅ ') + data.mensaje); // v386: un fallo no lleva ✅ delante
         chatHistorial.push({ role: 'assistant', content: data.mensaje });
       }
     } catch (err) {
@@ -14600,7 +14600,7 @@ async function doResetWithCode() {
       if (data.error) {
         addMsg('bot', '❌ Error: ' + data.error);
       } else {
-        addMsg('bot', '✅ ' + (data.mensaje || 'Hecho'));
+        addMsg('bot', (/^\s*[❌⚠️🛑🚫]/.test(data.mensaje || '') ? '' : '✅ ') + (data.mensaje || 'Hecho')); // v386: idem
         chatHistorial.push({ role: 'assistant', content: data.mensaje || 'Acción ejecutada' });
         if (accion.herramienta === 'agregar_articulos' || accion.herramienta === 'modificar_campo') {
           if (window._currentPresupuestoRef && accion.argumentos.ref === window._currentPresupuestoRef) {
