@@ -3405,7 +3405,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v384';
+var APP_VERSION = 'v385';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -14556,7 +14556,7 @@ async function doResetWithCode() {
     } catch (err) {
       removeTyping();
       if (err && err.name === 'AbortError') {
-        addMsg('bot', '⏱️ He cortado la espera: el servidor llevaba más de 2 minutos y medio sin responder. Reenvía el mensaje — lo normal es que a la segunda entre.');
+        addMsg('bot', '⏱️ He cortado la espera: el servidor llevaba más de 4 minutos sin responder. Si estaba con un trabajo largo, al terminar te llega el resultado por notificación (v2.7.261) y lo ya hecho no se pierde. Si no te llega nada en unos minutos, reenvía el mensaje.');
       } else {
         addMsg('bot', '❌ No pude conectar con el servidor: ' + (err.message || 'error desconocido'));
       }
