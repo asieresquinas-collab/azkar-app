@@ -3293,7 +3293,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v381';</script>
+<script>document.getElementById('version-tag').textContent='v388';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3405,7 +3405,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v387';
+var APP_VERSION = 'v388';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -4662,15 +4662,117 @@ let firebaseApp = null;
 let firestoreDB = null;
 let firebaseConfigured = false;
 
+// ══════════════════════════════════════════════════════════════
+// v388 · LLAVE DE FIREBASE (obligatoria)
+// Antes esto vivía más abajo y era "aditivo": si fallaba, la app seguía
+// escribiendo en la nube SIN identificarse, lo que obligaba a tener las reglas
+// de Firestore abiertas. Ahora es un candado: sin sesión no se toca la nube.
+// La app sigue funcionando en local (IndexedDB + cola offline) y sincroniza
+// en cuanto consigue identificarse.
+// ══════════════════════════════════════════════════════════════
+window._fbAuthOk = false;
+window._fbPendingConfig = null;
+
+async function _firebaseSignIn(customToken) {
+  try {
+    var base = window._authBaseUrl || 'https://azkar-presupuestos-production.up.railway.app';
+    var jwt = window._authToken || localStorage.getItem('azkar_token') || null;
+
+    // Los tokens personalizados de Firebase caducan a la hora. Por eso pedimos
+    // uno FRESCO al backend siempre que se pueda; el guardado es el último recurso.
+    var tok = customToken || null;
+    if (!tok && jwt) {
+      try {
+        var r = await fetch(base + '/api/usuarios/verify', { headers: { 'Authorization': 'Bearer ' + jwt } });
+        var d = await r.json();
+        if (d && d.ok && d.firebaseToken) tok = d.firebaseToken;
+      } catch (_) {}
+    }
+    if (tok) { try { localStorage.setItem('azkar_fb_token', tok); } catch (_) {} }
+    if (!tok) tok = localStorage.getItem('azkar_fb_token');
+    if (!tok) {
+      window._fbAuthOk = false;
+      console.warn('[Firebase Auth] sin token: la app trabaja solo en local');
+      return false;
+    }
+
+    var fbApp = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    if (!fbApp.getApps().length) { window._fbAuthOk = false; return false; }
+    var fbAuth = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    var auth = fbAuth.getAuth(fbApp.getApp());
+
+    if (!window._fbAuthWatch) {
+      window._fbAuthWatch = true;
+      fbAuth.onAuthStateChanged(auth, function (u) {
+        window._fbAuthOk = !!u;
+        console.log('[Firebase Auth] estado: ' + (u ? ('identificado uid=' + u.uid) : 'SIN SESION'));
+      });
+    }
+
+    if (auth.currentUser) { window._fbAuthOk = true; return true; }
+    try { await fbAuth.setPersistence(auth, fbAuth.browserLocalPersistence); } catch (_) {}
+    await fbAuth.signInWithCustomToken(auth, tok);
+    window._fbAuthOk = true;
+    console.log('[Firebase Auth] sesion iniciada, uid=' + (auth.currentUser && auth.currentUser.uid));
+    return true;
+  } catch (e) {
+    window._fbAuthOk = false;
+    console.warn('[Firebase Auth] NO se pudo iniciar sesion:', e && e.message);
+    return false;
+  }
+}
+window._firebaseSignIn = _firebaseSignIn;
+
+// Reintenta activar la nube si al arrancar no habia sesion (tras login o al volver internet)
+async function _reintentarNube() {
+  if (firebaseConfigured) return;
+  var cfg = window._fbPendingConfig;
+  if (!cfg) return;
+  try { await initFirebase(cfg); } catch (_) {}
+}
+window._reintentarNube = _reintentarNube;
+window.addEventListener('online', function () { setTimeout(_reintentarNube, 1500); });
+
+// Diagnostico: escribir estadoNube() en la consola de cualquier dispositivo
+window.estadoNube = function () {
+  var s = 'Sesion Firebase: ' + (window._fbAuthOk ? 'OK' : 'NO') +
+          ' | Nube activa: ' + (firebaseConfigured ? 'SI' : 'NO');
+  console.log('[Azkar] ' + s);
+  try { showSyncStatus(s, 6000); } catch (_) {}
+  return s;
+};
+
 async function initFirebase(config) {
   if (firebaseConfigured) return;
   try {
-    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const { initializeApp, getApps, getApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
     const { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot } =
       await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     
-    firebaseApp = initializeApp(config);
+    // getApps() evita el error "Firebase App already exists" en los reintentos
+    firebaseApp = getApps().length ? getApp() : initializeApp(config);
     firestoreDB = getFirestore(firebaseApp);
+
+    // v388 · CANDADO: identificarse ANTES de leer o escribir nada en la nube.
+    window._fbPendingConfig = config;
+    var _authOk = false;
+    try { _authOk = await _firebaseSignIn(); } catch (_) { _authOk = false; }
+    if (!_authOk) {
+      firebaseConfigured = false;
+      // Stub que falla A PROPOSITO: asi savePresupuestoFull mete el cambio en la
+      // cola offline en vez de dar por bueno un guardado en la nube que no existe.
+      var _sinSesion = function () { return Promise.reject(new Error('Sin sesion de Firebase')); };
+      window._fb = { collection: collection, doc: doc, setDoc: _sinSesion, getDoc: _sinSesion,
+                     getDocs: _sinSesion, deleteDoc: _sinSesion, onSnapshot: function () {},
+                     db: firestoreDB, _sinSesion: true };
+      console.warn('[Firebase] Sin sesion: trabajando en local. Se reintentara al identificarse.');
+      // Solo avisamos si HAY internet: sin cobertura es normal y no hay que asustar a nadie.
+      if (navigator.onLine) {
+        try { showSyncStatus('Sin sesion de nube - trabajando en local', 6000); } catch (_) {}
+      }
+      return;
+    }
+    window._fbPendingConfig = null;
     firebaseConfigured = true;
     
     // Store Firebase modules globally
@@ -13208,27 +13310,9 @@ try {
   } catch (e) {}
 })();
 
-// ── Llave de Firebase (aditivo): inicia sesión en Firebase Auth tras el login.
-//    No bloquea: si falla, la app sigue funcionando igual que siempre. ──
-async function _firebaseSignIn(customToken) {
-  try {
-    if (customToken) localStorage.setItem('azkar_fb_token', customToken);
-    const tok = customToken || localStorage.getItem('azkar_fb_token');
-    if (!tok) return;
-    const { getApps, getApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    if (!getApps().length) return; // Firebase aún no inicializado; se reintentará en el próximo login
-    const { getAuth, signInWithCustomToken, setPersistence, browserLocalPersistence } =
-      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
-    const auth = getAuth(getApp());
-    if (auth.currentUser) return; // ya autenticado (sesión persistida)
-    try { await setPersistence(auth, browserLocalPersistence); } catch (_) {}
-    await signInWithCustomToken(auth, tok);
-    console.log('[Firebase Auth] Sesión de Firebase iniciada');
-  } catch (e) {
-    console.warn('[Firebase Auth] opcional, no se pudo iniciar:', e && e.message);
-  }
-}
-window._firebaseSignIn = _firebaseSignIn;
+// ── v388: _firebaseSignIn se ha MOVIDO arriba, justo antes de initFirebase.
+//    Motivo: initFirebase se ejecuta en un bloque <script> anterior a este, así que
+//    aquí la definición llegaba tarde y además pisaba la nueva. Ya no se define aquí.
 
 async function doLogin() {
   var user = document.getElementById('login-user').value.trim();
@@ -13249,7 +13333,8 @@ async function doLogin() {
       localStorage.setItem('azkar_user', JSON.stringify(data.usuario));
       saveCredentialsIfRemember(user, pass);
       hideLoginScreen(); initAdminUI();
-      _firebaseSignIn(data.firebaseToken); // aditivo, no se espera: no bloquea el login
+      // v388: ahora SI se espera, y si la nube no estaba activa se reintenta al vuelo
+      try { await _firebaseSignIn(data.firebaseToken); await _reintentarNube(); } catch (_) {}
     } else {
       errDiv.textContent = data.error || 'Error al iniciar sesión'; errDiv.style.display = 'block';
     }
@@ -13267,7 +13352,8 @@ async function verificarSesion() {
     if (data.ok) {
       _authUser = data.usuario; localStorage.setItem('azkar_user', JSON.stringify(data.usuario));
       hideLoginScreen(); initAdminUI();
-      _firebaseSignIn(data.firebaseToken); // re-asegura sesión Firebase al reabrir la app
+      // v388: re-asegura sesión Firebase al reabrir la app y reactiva la nube si hiciera falta
+      try { await _firebaseSignIn(data.firebaseToken); await _reintentarNube(); } catch (_) {}
       // Re-suscribir push automáticamente (una actualización de la app invalida la suscripción anterior)
       if (localStorage.getItem('azkarin_push_activo') === '1' && typeof azkarinPushSubscribe === 'function') {
         setTimeout(function() { try { azkarinPushSubscribe(true); } catch(e) {} }, 2500);
