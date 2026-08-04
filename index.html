@@ -3293,7 +3293,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v388';</script>
+<script>document.getElementById('version-tag').textContent='v389';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3405,7 +3405,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v388';
+var APP_VERSION = 'v389';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -7987,7 +7987,56 @@ window.addEventListener('DOMContentLoaded', function() {
     // Abre el MISMO tablero que ven los chicos pero con cajitas para corregir lo que la IA
     // enseñe mal (hora, nota de oficina, ocultar servicio). El enlace de los chicos NO cambia.
     // La 1ª vez pide la clave de administración (la de siempre) y guarda el enlace en el móvil.
+    // v389 · LA CHAPITA ROJA DEL BOTÓN EQUIPO — «que Antonio sepa que ya está entregado y
+    // firmado y pueda revisar y mandar la factura» (Asier, 4-ago-2026).
+    // Cuando los chicos firman una entrega en su aplicación, el backend apunta el parte en la
+    // bandeja de la oficina (backend 2.7.293). Aquí sólo se pinta CUÁNTOS esperan, igual que
+    // la chapita del BUZÓN: número rojo pegado al botón verde 👷 EQUIPO. Al entrar en el
+    // portal, Antonio los ve arriba del todo y le da a "ya lo he revisado y facturado" — y
+    // entonces el número baja solo en el siguiente repaso.
+    // El número lo da el servidor con la SESIÓN del login (nada público, que ahí van nombres
+    // y direcciones de clientes). Si no hay sesión o no hay red, la chapita simplemente no
+    // sale: JAMÁS se inventa un número ni se deja uno viejo puesto.
+    var _equipoBadgeHandle = null;
+    function _equipoSetBadge(n) {
+      try {
+        var btn = document.getElementById('btn-equipo-oficina');
+        if (!btn) return;
+        var badge = document.getElementById('equipo-partes-badge');
+        if (n > 0) {
+          if (!badge) {
+            badge = document.createElement('span');
+            badge.id = 'equipo-partes-badge';
+            badge.style.cssText = 'background:#e52521;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:800;margin-left:4px;display:inline-block;min-width:18px;text-align:center;';
+            btn.appendChild(badge);
+          }
+          badge.textContent = String(n);
+          btn.title = n + ' parte(s) firmado(s) esperando a que los revises y factures. Toca EQUIPO para verlos.';
+        } else if (badge) {
+          badge.remove();
+        }
+      } catch (e) {}
+    }
+    function _equipoRefreshBadge() {
+      try {
+        var tok = null;
+        try { tok = localStorage.getItem('azkar_token'); } catch (e) {}
+        if (!tok) return;
+        fetch(RAILWAY_API + '/api/equipo-admin/avisos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok } })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) { if (d && d.ok) _equipoSetBadge(d.pendientes || 0); })
+          .catch(function () { /* sin red: se deja como está, no se inventa nada */ });
+      } catch (e) {}
+    }
+    function _equipoStartBadgePoll() {
+      if (_equipoBadgeHandle) return;
+      setTimeout(_equipoRefreshBadge, 6000);
+      _equipoBadgeHandle = setInterval(_equipoRefreshBadge, 60000);
+    }
+
     function abrirPortalEquipoOficina() {
+      // Al volver del portal (donde se marcan como revisados) se repasa el número enseguida.
+      setTimeout(_equipoRefreshBadge, 4000);
       try {
         var u = localStorage.getItem('azkar_equipo_admin_url');
         if (u) { window.open(u, '_blank'); return; }
@@ -8008,6 +8057,7 @@ window.addEventListener('DOMContentLoaded', function() {
       } catch (e) { alert('No se pudo abrir: ' + e.message); }
     }
     const equipoBtn = document.createElement('button');
+    equipoBtn.id = 'btn-equipo-oficina';   // v389: hace falta para colgarle la chapita roja
     equipoBtn.className = 'nbtn';
     equipoBtn.style.cssText = 'background:#1a7a3f;color:#fff;margin-right:4px;';
     equipoBtn.innerHTML = '👷 EQUIPO';
@@ -8026,6 +8076,8 @@ window.addEventListener('DOMContentLoaded', function() {
     acts.insertBefore(buzonBtn, acts.firstChild);
     // Arrancar polling de badge a los 5s del DOMContentLoaded
     if (typeof _buzonAzkStartBadgePoll === 'function') _buzonAzkStartBadgePoll();
+    // v389: y el de los partes firmados que esperan factura (chapita del botón 👷 EQUIPO)
+    if (typeof _equipoStartBadgePoll === 'function') _equipoStartBadgePoll();
     // v235: arrancar archivado a Firestore y hidratar deleted/notas locales
     if (typeof _buzonAzkStartArchiveSync === 'function') _buzonAzkStartArchiveSync();
     if (typeof _buzonAzkHydrateDeletedFromFB === 'function') setTimeout(_buzonAzkHydrateDeletedFromFB, 10000);
