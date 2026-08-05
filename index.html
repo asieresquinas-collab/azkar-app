@@ -3293,7 +3293,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v389';</script>
+<script>document.getElementById('version-tag').textContent='v390';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3405,7 +3405,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v389';
+var APP_VERSION = 'v390';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -13708,6 +13708,9 @@ async function doResetWithCode() {
 #chatbot-conv{width:38px;height:38px;border-radius:50%;border:none;background:#e0e0e0;color:#666;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 #chatbot-conv.activo{background:#1a7a3f;color:#fff}
 #chatbot-conv.escuchando{background:#c0392b;color:#fff;animation:pulse-mic 1s infinite}
+#chatbot-conv.hablando{background:#E85C0D;color:#fff}
+#chatbot-parar{display:none;margin:0 12px 6px;padding:9px 12px;border:none;border-radius:9px;background:#c0392b;color:#fff;font-size:13px;font-weight:700;font-family:Barlow,sans-serif;cursor:pointer;flex-shrink:0}
+#chatbot-parar.ver{display:block}
 #chatbot-mic{width:38px;height:38px;border-radius:50%;border:none;background:#e0e0e0;color:#666;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 #chatbot-mic.recording{background:#c0392b;color:#fff;animation:pulse-mic 1s infinite}
 #chatbot-send{width:38px;height:38px;border-radius:50%;border:none;background:#1B4F8A;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -13750,9 +13753,8 @@ async function doResetWithCode() {
       <button onclick="chatbotToggle()" title="Cerrar">&times;</button>
     </div>
   </div>
-  <div id="chatbot-msgs">
-    <div class="chat-msg bot">¡Hola! Soy el asistente de Azkar. Puedo buscar clientes, modificar presupuestos, enviar PDFs, solicitar permisos y m&aacute;s. &iquest;En qu&eacute; te ayudo?</div>
-  </div>
+  <div id="chatbot-msgs"></div>
+  <button id="chatbot-parar" type="button" onclick="window._convInterrumpir &amp;&amp; window._convInterrumpir()">&#9209; Parar de hablar</button>
   <div id="chatbot-foto-ind" style="display:none"></div>
   <div id="chatbot-input-area">
     <input type="file" id="chatbot-foto-input" accept="image/*,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple style="display:none">
@@ -14144,29 +14146,10 @@ async function doResetWithCode() {
       inputEl.focus();
       msgsDiv.scrollTop = msgsDiv.scrollHeight;
       try { if (typeof window.chatbotOscarSync === 'function') window.chatbotOscarSync(); } catch (e) {}
-      // Auto-saludo: la primera vez que se abre, pedir saludo al bot
-      if (!chatbotGreeted) {
-        chatbotGreeted = true;
-        (async function() {
-          addTyping();
-          try {
-            var resp = await fetch(RAILWAY_API + '/api/chatbot/message', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (_authToken || '') },
-              body: JSON.stringify({ mensaje: 'hola', historial: [] })
-            });
-            var data = await resp.json();
-            removeTyping();
-            if (data.mensaje) {
-              addMsg('bot', data.mensaje);
-              chatHistorial.push({ role: 'user', content: 'hola' });
-              chatHistorial.push({ role: 'assistant', content: data.mensaje });
-            }
-          } catch (err) {
-            removeTyping();
-          }
-        })();
-      }
+      // v390 SIN AUTO-SALUDO (Asier, 5-ago): abrir el chat lanzaba un "hola" al backend y habia
+      // que esperar a que el modelo contestara "Buenos dias Asier, en que te puedo ayudar" — cada
+      // vez, con su espera y su coste, y en modo voz encima te lo leia entero. Ahora se abre vacio.
+      chatbotGreeted = true;
     } else {
       // Al cerrar chatbot, ejecutar update pendiente si lo hay
       if (window._updatePendiente) {
@@ -14497,6 +14480,10 @@ async function doResetWithCode() {
           if (pdfsEnviar && pdfsEnviar.length) _b.pdfs = pdfsEnviar;
           if (audioEnviar && audioEnviar.b64 && framesEnviar && framesEnviar.length) _b.audio = audioEnviar; // v349
           _b.turno_id = _turnoId;
+          // v390: avisar al backend de que esto se va a ESCUCHAR, no a leer -> respuestas de 2-3
+          // frases, sin listas ni markdown. Antes mandaba lo mismo que por escrito y soltaba
+          // parrafos larguisimos ("no es una conversacion humana", Asier 5-ago).
+          if (window._azkarinConv) _b.modo_voz = true;
           return _b;
         })())
       });
@@ -14872,12 +14859,16 @@ async function doResetWithCode() {
   // v361: un dicho VALE mientras Azkarin siga hablando y hasta 45s despues de CALLARSE.
   // (v360 usaba 12s desde que EMPEZABA a hablar: un mensaje largo tarda >1 min en leerse
   // y el eco llegaba con la memoria ya vacia — caso real 17-jul: se contesto a si mismo.)
+  // v390: la ventana de eco era 45s tras callarse (y 5 min hablando) -> se tragaba las preguntas
+  // de SEGUIMIENTO de Asier (comparten vocabulario con la respuesta) y solo contestaba a la primera.
+  // El eco solo es fisicamente posible MIENTRAS habla o en la cola de la transcripcion (~4s).
+  var _ECO_COLA_MS = 4000;
   function _dichoVigente(d) {
     try {
-      if (typeof _convHablando === 'function' && _convHablando()) return (Date.now() - d.ts) < 300000;
+      if (typeof _convHablando === 'function' && _convHablando()) return true;   // sigue hablando: vale
       var fin = window._ttsFinTs || 0;
-      return (Date.now() - Math.max(d.ts, fin)) < 45000;
-    } catch(e){ return (Date.now() - d.ts) < 45000; }
+      return (Date.now() - Math.max(d.ts, fin)) < _ECO_COLA_MS;
+    } catch(e){ return (Date.now() - d.ts) < _ECO_COLA_MS; }
   }
   // vigia: apunta CUANDO se calla la voz (cualquiera de los 3 motores de TTS)
   if (!window._vigiaTTSFin) {
@@ -14886,6 +14877,11 @@ async function doResetWithCode() {
         var h = (typeof _convHablando === 'function') && _convHablando();
         if (window._convHabAnt && !h) window._ttsFinTs = Date.now();
         window._convHabAnt = h;
+        // v390: boton "Parar de hablar" visible solo mientras habla
+        var _pb = document.getElementById('chatbot-parar');
+        if (_pb) _pb.classList.toggle('ver', !!h);
+        var _cb = document.getElementById('chatbot-conv');
+        if (_cb) _cb.classList.toggle('hablando', !!h);
       } catch(e){}
     }, 400);
   }
@@ -14904,21 +14900,32 @@ async function doResetWithCode() {
   // (una confirmación corta como "sí, el martes" NUNCA se trata como eco, para no tragársela).
   function _esEcoDeAzkarin(txt) {
     try {
-      var t = _normEco(txt); if (!t) return true;
+      var t = _normEco(txt); if (!t) return false;                 // v390: vacio NO es eco (antes se tragaba)
       var dichos = (window._ultimosDichos || []).filter(_dichoVigente);
-      if (!dichos.length) { var r0 = _normEco(window._ultimoHabla||''); return !!(r0 && r0.indexOf(t) >= 0); }
+      if (!dichos.length) return false;                            // v390: sin memoria vigente, nunca es eco
       var pal = t.split(/\s+/).filter(function(w){ return w.length > 2; });
-      if (!pal.length) return true;
+      if (!pal.length) return false;                               // v390: "si", "no", "ya" SIEMPRE pasan
       var hablando = false; try { hablando = (typeof _convHablando === 'function') && _convHablando(); } catch(e2){}
       for (var d = 0; d < dichos.length; d++) {
         var ref = dichos[d].t;
-        if (ref.length > 6 && t.length >= 10 && ref.indexOf(t) >= 0) return true;  // fragmento literal de lo que dijo
+        // fragmento literal largo de lo que acaba de decir
+        if (ref.length > 20 && t.length >= 20 && ref.indexOf(t) >= 0) { _logEco(txt, 'literal'); return true; }
         var n = 0; for (var i = 0; i < pal.length; i++) if (ref.indexOf(pal[i]) >= 0) n++;
-        if (pal.length >= 5 && (n / pal.length) >= 0.6) return true;          // frase larga que coincide mucho -> eco
-        if (hablando && pal.length >= 3 && (n / pal.length) >= 0.5) return true; // mientras HABLA, mas estricto: casi todo lo que coincide es su propia voz
+        // v390: umbral MUCHO mas alto (antes 5 palabras / 60% -> se comia preguntas de seguimiento)
+        if (pal.length >= 7 && (n / pal.length) >= 0.85) { _logEco(txt, 'solape'); return true; }
+        if (hablando && pal.length >= 5 && (n / pal.length) >= 0.8) { _logEco(txt, 'solape-hablando'); return true; }
       }
       return false;
     } catch(e){ return false; }
+  }
+  // v390: deja rastro de lo que se descarta, para poder comprobarlo si vuelve a fallar
+  function _logEco(txt, motivo) {
+    try {
+      console.warn('[Conv] descartado como ECO (' + motivo + '):', txt);
+      window._ecosDescartados = (window._ecosDescartados || []);
+      window._ecosDescartados.push({ txt: txt, motivo: motivo, ts: Date.now() });
+      if (window._ecosDescartados.length > 30) window._ecosDescartados = window._ecosDescartados.slice(-30);
+    } catch(e){}
   }
   // v369 MENOS PITIDOS: Android suena su "pi" del sistema CADA vez que se abre el micro, y el
   // bucle del modo conversación lo abría cada 1-2s también en SILENCIO → "pim pim bum bum" sin
@@ -14928,15 +14935,33 @@ async function doResetWithCode() {
   // Se resetea en cuanto hay voz real, al callarse Azkarin o al tocar la pantalla.
   var _convBackoffMs = 0;
   window._convProximoMicTs = 0;
-  function _convMicVacio() { _convBackoffMs = Math.min((_convBackoffMs || 0) + 1500, 6000); window._convProximoMicTs = Date.now() + _convBackoffMs; }
+  function _convMicVacio() { _convBackoffMs = Math.min((_convBackoffMs || 0) + 1000, 3000); window._convProximoMicTs = Date.now() + _convBackoffMs; } // v390: tope 3s (antes 6s: se perdia el arranque de la frase)
   function _convResetBackoff() { _convBackoffMs = 0; window._convProximoMicTs = 0; }
   window._convResetBackoff = _convResetBackoff;
+  // v390 CORTARLE POR VOZ (Asier, 5-ago: "hasta que no acaba de hablar no puedo hablar yo").
+  // Media-duplex (v362) cerraba el micro mientras hablaba porque el barge-in TOTAL de v358/v360
+  // hizo que se contestara a si mismo. Termino medio: el micro SI se abre mientras habla, pero en
+  // MODO CORTE — solo se acepta una frase CORTA que sea EXACTAMENTE una palabra de parada. Su
+  // propio eco son fragmentos largos, asi que no puede dispararlo. Apagar: localStorage.azkar_corte_voz='0'.
+  var _CORTE_PALABRAS = ['para','para para','parad','pare','espera','espera espera','esperate','calla','callate','vale','vale vale','vale ya','ya esta','ya vale','basta','stop','corta','azkarin','oye azkarin','para azkarin','silencio','shh'];
+  function _corteVozActivo() { try { return localStorage.getItem('azkar_corte_voz') !== '0'; } catch(e){ return true; } }
+  function _esPalabraDeCorte(txt) {
+    try {
+      var t = _normEco(txt);
+      if (!t) return false;
+      if (t.split(/\s+/).length > 3) return false;          // frases largas NO cortan (serian eco)
+      return _CORTE_PALABRAS.indexOf(t) >= 0;
+    } catch(e){ return false; }
+  }
+  window._esPalabraDeCorte = _esPalabraDeCorte;
   // Cortar a Azkarin (parar su voz) y ponerse a escuchar YA. Vale para el TOQUE en la pantalla.
   function _convInterrumpir(e) {
     try {
       if (!_convHablando()) return;                                           // solo si está hablando
       if (e && e.target && e.target.closest && e.target.closest('a,button,input,textarea,select,label')) return; // no robar toques a botones/enlaces
       if (typeof chatSpeakStop === 'function') chatSpeakStop();
+      window._ttsFinTs = Date.now();
+      window._ultimosDichos = [];   // v390: no filtrar lo que diga Asier justo despues de cortarle
       _convLimpiarBuffer();
       _convResetBackoff();
       if (window._azkarinConv) setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 120);
@@ -14944,6 +14969,16 @@ async function doResetWithCode() {
   }
   window._convInterrumpir = _convInterrumpir;
   try { var _msgsEl = document.getElementById('chatbot-msgs'); if (_msgsEl) _msgsEl.addEventListener('click', _convInterrumpir); } catch(e){}
+  // v390: pinta/despinta el boton del auricular segun este escuchando (vale para APK y web)
+  function _convPintarEscucha(on) {
+    try {
+      var b = document.getElementById('chatbot-conv');
+      if (!b) return;
+      b.classList.toggle('escuchando', !!on);
+      b.title = on ? 'Te escucho \u2014 habla' : (window._azkarinConv ? 'Conversaci\u00f3n activa \u2014 toca para parar' : 'Modo conversaci\u00f3n (manos libres)');
+    } catch(e){}
+  }
+  window._convPintarEscucha = _convPintarEscucha;
   window._convEscuchar = function() {
     if (!window._azkarinConv) return;
     if (_convSesion) return;                                   // ya hay micro abierto
@@ -14953,24 +14988,47 @@ async function doResetWithCode() {
     // "cortarle hablándole" por voz, PERO tocar la pantalla lo sigue cortando al instante
     // (_convInterrumpir). Los hooks del TTS + el vigilante reenganchan el micro al terminar de hablar.
     var _hablandoAhora = _convHablando();
-    if (_hablandoAhora) return;
+    // v390: mientras habla, en el APK abrimos el micro en MODO CORTE (solo palabras de parada).
+    // En navegador se mantiene el media-duplex de v362 (alli el eco es mucho peor).
+    var _puedeCorte = _hablandoAhora && _corteVozActivo() && _esAppNativa()
+      && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition;
+    if (_hablandoAhora && !_puedeCorte) return;
     var _finTTS = window._ttsFinTs || 0;
-    if (_finTTS && (Date.now() - _finTTS) < 500) {
+    if (!_puedeCorte && _finTTS && (Date.now() - _finTTS) < 500) {
       setTimeout(function(){ if (window._azkarinConv && !_convHablando()) window._convEscuchar(); }, 300);
       return;
     }
     // v369: acaba de callarse Azkarin (<3s) → turno de Asier: micro rápido, backoff a cero
     if (_finTTS && (Date.now() - _finTTS) < 3000) _convResetBackoff();
-    if (Date.now() < (window._convProximoMicTs || 0)) return; // v369: en silencio, esperar el retardo (el vigilante reintenta) — menos pitidos
-    if (sendBtn && sendBtn.disabled) return;                   // está pensando una respuesta
+    if (!_puedeCorte && Date.now() < (window._convProximoMicTs || 0)) return; // v369: en silencio, esperar el retardo (el vigilante reintenta) — menos pitidos
+    if (!_puedeCorte && sendBtn && sendBtn.disabled) return;    // está pensando una respuesta
     if (!panel.classList.contains('open')) { window.chatbotConvToggle(false); return; }
     if (_esAppNativa() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
       _convSesion = true;
+      // v390: en el APK NO habia ningun aviso de cuando escuchaba (solo lo tenia la ruta web) —
+      // Asier hablaba a ciegas y no sabia cuando le tocaba. Ahora el auricular se pone rojo.
+      _convPintarEscucha(!_puedeCorte);
       _micNativo().then(function(txt){
         _convSesion = false;
+        _convPintarEscucha(false);
         if (!window._azkarinConv) return;
         var _t = (txt||'').toLowerCase().trim();
         var _hab = _convHablando();
+        // v390 MODO CORTE: sesion abierta mientras Azkarin hablaba -> SOLO valen palabras de parada
+        if (_puedeCorte) {
+          if (_esPalabraDeCorte(_t)) {
+            try { if (typeof chatSpeakStop === 'function') chatSpeakStop(); } catch(e){}
+            window._ttsFinTs = Date.now();   // turno de Asier: micro normal y sin retardo
+            window._ultimosDichos = [];      // lo que estaba diciendo ya no filtra su respuesta
+            _convLimpiarBuffer(); _convResetBackoff();
+            console.log('[Conv] cortado por voz:', _t);
+            setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 150);
+            return;
+          }
+          // cualquier otra cosa oida mientras habla se ignora (es su propio eco casi seguro)
+          setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 200);
+          return;
+        }
         // Filtro de eco (v360): comprueba SIEMPRE contra lo que Azkarin dijo en los últimos 12s,
         // aunque ya haya dejado de hablar (la transcripción del eco suele llegar tarde). Así NO se
         // contesta a sí mismo. Las frases cortas del usuario pasan; solo se filtran ecos largos.
@@ -15045,7 +15103,7 @@ async function doResetWithCode() {
       _convPedirWake();
       // El saludo se lee por TTS; el micro arranca SOLO cuando la voz termina
       // (lo reengancha el hook del TTS o el vigilante). Nunca a la vez.
-      addMsg('bot', '🎧 Modo conversación activo: habla tranquilo, puedes hacer pausas — espero a que termines del todo (unos segundos de silencio) antes de contestar. Toca el auricular para parar. (Si bloqueas el móvil o sales de la app, Android corta el micro y se para — es un límite del sistema.)');
+      addMsg('bot', '🎧 Te escucho. Para cortarme: di "para" o toca la pantalla.');
     } else {
       _convLiberarWake();
       try { if (window._convRec) window._convRec.stop(); } catch (e) {}
@@ -15059,8 +15117,11 @@ async function doResetWithCode() {
   setInterval(function() {
     try {
       if (!window._azkarinConv) return;
-      if (_convSesion || _ttsSpeaking || _ttsQueue.length > 0 || isRecording) return;
-      if (sendBtn && sendBtn.disabled) return;
+      if (_convSesion || isRecording) return;
+      var _hablando = _convHablando();
+      // v390: si esta hablando, _convEscuchar decide solo si abre el micro en modo corte
+      if (!_hablando && (_ttsSpeaking || _ttsQueue.length > 0)) return;
+      if (!_hablando && sendBtn && sendBtn.disabled) return;
       window._convEscuchar();
     } catch (e) {}
   }, 1500);
