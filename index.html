@@ -3293,7 +3293,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v390';</script>
+<script>document.getElementById('version-tag').textContent='v391';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3405,7 +3405,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v390';
+var APP_VERSION = 'v391';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -13797,6 +13797,31 @@ async function doResetWithCode() {
   var sendBtn = document.getElementById('chatbot-send');
   var micBtn = document.getElementById('chatbot-mic');
   var chatHistorial = [];
+  // ── v391 · GPS PARA AZKARIN ────────────────────────────────────────────────
+  // Manda la posicion del movil con cada mensaje para que Azkarin sepa DESDE DONDE
+  // sales y pueda decir cuanto tardas de verdad. Solo va con la app abierta y con
+  // permiso: una web NO puede seguir a nadie en segundo plano (eso seria una app
+  // nativa). Si se deniega el permiso o tarda, el mensaje se manda IGUAL, sin posicion:
+  // el GPS nunca puede dejarte sin hablar con Azkarin.
+  var _ubicUltima = null;
+  function _ubicFresca() { return (_ubicUltima && (Date.now() - _ubicUltima.ts) < 300000) ? _ubicUltima : null; }
+  function _pillaUbicacion(msMax) {
+    return new Promise(function(res) {
+      try { if (localStorage.getItem('azkarinGps') === 'off') return res(null); } catch (e) {}
+      if (!navigator.geolocation) return res(null);
+      var listo = false, ms = msMax || 3500;
+      var t = setTimeout(function() { if (!listo) { listo = true; res(_ubicFresca()); } }, ms);
+      try {
+        navigator.geolocation.getCurrentPosition(function(p) {
+          if (listo) return; listo = true; clearTimeout(t);
+          _ubicUltima = { lat: p.coords.latitude, lon: p.coords.longitude, precision: p.coords.accuracy, ts: Date.now() };
+          res(_ubicUltima);
+        }, function() {
+          if (listo) return; listo = true; clearTimeout(t); res(null);
+        }, { enableHighAccuracy: true, timeout: ms, maximumAge: 60000 });
+      } catch (e) { if (!listo) { listo = true; clearTimeout(t); res(null); } }
+    });
+  }
   var pendingFoto = null;
   var pendingAction = null;
   var recognition = null;
@@ -14464,6 +14489,7 @@ async function doResetWithCode() {
     }
     try {
       var _turnoId = nuevoTurnoId();
+      var _ubicNow = await _pillaUbicacion(3500); // v391: donde estoy AHORA (si hay permiso)
       startProgPoll(_turnoId);
       var _ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
       var _tAbort = _ctrl ? setTimeout(function() { try { _ctrl.abort(); } catch(e) {} }, 240000) : null;
@@ -14480,6 +14506,7 @@ async function doResetWithCode() {
           if (pdfsEnviar && pdfsEnviar.length) _b.pdfs = pdfsEnviar;
           if (audioEnviar && audioEnviar.b64 && framesEnviar && framesEnviar.length) _b.audio = audioEnviar; // v349
           _b.turno_id = _turnoId;
+          if (_ubicNow) _b.ubicacion = _ubicNow; // v391
           // v390: avisar al backend de que esto se va a ESCUCHAR, no a leer -> respuestas de 2-3
           // frases, sin listas ni markdown. Antes mandaba lo mismo que por escrito y soltaba
           // parrafos larguisimos ("no es una conversacion humana", Asier 5-ago).
@@ -14705,6 +14732,7 @@ async function doResetWithCode() {
     addTyping();
     try {
       var _turnoIdC = nuevoTurnoId();
+      var _ubicNowC = await _pillaUbicacion(2500); // v391
       startProgPoll(_turnoIdC);
       var _ctrlC = (typeof AbortController !== 'undefined') ? new AbortController() : null;
       var _tAbortC = _ctrlC ? setTimeout(function() { try { _ctrlC.abort(); } catch(e) {} }, 150000) : null;
@@ -14716,6 +14744,7 @@ async function doResetWithCode() {
           mensaje: '(confirmación)',
           historial: chatHistorial,
           turno_id: _turnoIdC,
+          ubicacion: _ubicNowC, // v391
           confirmar_accion: { herramienta: accion.herramienta, argumentos: accion.argumentos, confirmado: true }
         })
       });
