@@ -214,6 +214,11 @@ public class VozActivity extends Activity implements RecognitionListener {
             @Override public void onDone(String id) { if ("azk_mid".equals(id)) return; ui.post(new Runnable() { @Override public void run() { escuchar(); } }); }
         });
 
+        // v1.17: la ubicacion se pide APARTE del micro (codigo 8). Asi, si Asier dijera que no
+        // a la ubicacion, el walkie-talkie sigue funcionando igual: solo se queda sin decir tiempos.
+        if (Ubic.hayPermiso(this)) Ubic.arranca(this);
+        else requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 8);
+
         if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, 7);
         } else {
@@ -223,6 +228,13 @@ public class VozActivity extends Activity implements RecognitionListener {
 
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
+        if (code == 8) {   // v1.17: la ubicacion NUNCA corta la conversacion
+            if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) Ubic.arranca(this);
+            if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
+                requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, 7);
+            else escuchar();
+            return;
+        }
         if (code == 7 && res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) escuchar();
         else {
             estado.setText("  Sin micrófono");
@@ -781,6 +793,7 @@ public class VozActivity extends Activity implements RecognitionListener {
         cerrando = true;
         try { if (rec != null) rec.destroy(); } catch (Exception e) { /* nada */ }
         try { if (tts != null) { tts.stop(); tts.shutdown(); } } catch (Exception e) { /* nada */ }
+        Ubic.para(this);   // v1.17: se suelta el GPS al cerrar la tarjeta — aquí NO se sigue a nadie
         super.onDestroy();
     }
 

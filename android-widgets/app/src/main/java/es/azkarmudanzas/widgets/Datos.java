@@ -216,6 +216,11 @@ public class Datos {
             body.put("mensaje", mensaje);
             body.put("historial", historial == null ? new org.json.JSONArray() : historial);
             if (confirmarAccion != null) body.put("confirmar_accion", confirmarAccion);
+            // v1.17: donde esta Asier AHORA (si dio permiso y la tarjeta esta abierta).
+            // Si no hay, se manda el MOTIVO para que Azkarin lo explique en vez de callarse.
+            JSONObject _ub = Ubic.json();
+            if (_ub != null) body.put("ubicacion", _ub);
+            else { String _m = Ubic.motivo(); if (_m != null) body.put("ubicacion_error", _m); }
             OutputStream os = c.getOutputStream();
             os.write(body.toString().getBytes(StandardCharsets.UTF_8));
             os.close();

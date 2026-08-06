@@ -117,3 +117,23 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
   plan de trabajo de ellos**, jamás la pantalla de Asier (`AccionActivity.deReserva`). Cache
   propia (`cache_eq_*`), acción `REFRESCAR_EQUIPO`, códigos de PendingIntent 6/7 + 300..319, y
   se refresca solo cada media hora. Requiere backend 2.7.248 (`/api/equipo/<token>/hoy.json`).
+- v1.17 — **AZKARIN YA SABE DÓNDE ESTÁS: LA UBICACIÓN EN LA PROPIA APK.** Asier: *«no me
+  sale para activar la ubicación en la APK, yo uso la APK, no la app de Chrome»*. Y tenía
+  razón: el walkie-talkie hablaba con Azkarin **sin decirle nunca desde dónde**, y la APK ni
+  siquiera pedía el permiso (`AndroidManifest` solo tenía internet, micro e instalar), así que
+  el aviso no salía jamás. Ahora la APK pide `ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION`,
+  y al abrir la burbuja te sale el permiso de Android de toda la vida. Con eso, `Datos.chat()`
+  manda `ubicacion` (lat/lon/precisión/momento) con cada frase y Azkarin te dice **los
+  kilómetros y los minutos** hasta donde sea (backend 2.7.300/2.7.301).
+  - **NI RASTREO NI BATERÍA:** la posición se lee **solo mientras la tarjeta está abierta**
+    (`Ubic.arranca` al abrir, `Ubic.para` en `onDestroy`). En cuanto se cierra, se suelta el
+    GPS: aquí no se sigue a nadie en segundo plano ni se guarda por dónde has ido.
+  - **RED + GPS A LA VEZ**, quedándose con la lectura más nueva (dentro de un edificio la red
+    contesta en segundos y el GPS puede no contestar nunca), con el `LocationManager` de
+    siempre — sin Google Play Services, que el android.jar es API 25.
+  - **UNA POSICIÓN VIEJA NO SE MANDA** (caduca a los 5 min): calcular la ruta desde donde ya
+    no estás es peor que no calcularla. Si no hay posición, se manda el MOTIVO
+    (`ubicacion_error`: denegado / sin señal) y Azkarin lo explica en vez de callarse.
+  - **EL PERMISO DE UBICACIÓN NO PUEDE DEJARTE SIN HABLAR:** va aparte del micro (código 8);
+    si dices que no, el walkie-talkie sigue funcionando exactamente igual, solo que sin tiempos.
+  - Firmada con la MISMA `firma.jks` (SHA-256 d90d2e4a…): se instala **encima**, sin desinstalar.
