@@ -39,6 +39,10 @@ import java.util.Locale;
  */
 public class VozActivity extends Activity implements RecognitionListener {
 
+    // v1.18: mientras hay un aviso de permiso en pantalla, la tarjeta NO se cierra. Android
+    // manda onPause al abrir el aviso, y esta tarjeta se cierra en onPause: por eso el permiso
+    // salia y desaparecia al instante, sin dar tiempo a darle a Permitir (fallo de la v1.17).
+    boolean pidiendoPermiso = false;
     SpeechRecognizer rec;
     TextToSpeech tts;
     boolean ttsListo = false;
@@ -214,25 +218,41 @@ public class VozActivity extends Activity implements RecognitionListener {
             @Override public void onDone(String id) { if ("azk_mid".equals(id)) return; ui.post(new Runnable() { @Override public void run() { escuchar(); } }); }
         });
 
-        // v1.17: la ubicacion se pide APARTE del micro (codigo 8). Asi, si Asier dijera que no
-        // a la ubicacion, el walkie-talkie sigue funcionando igual: solo se queda sin decir tiempos.
-        if (Ubic.hayPermiso(this)) Ubic.arranca(this);
-        else requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 8);
-
-        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, 7);
+        // v1.18 · UN AVISO CADA VEZ, Y NADIE ESCUCHA MIENTRAS HAY UN AVISO EN PANTALLA.
+        // El fallo de la v1.17 (Asier: «no sale permiso de ubicacion para aceptar»): con el
+        // micro YA concedido, se pedia la ubicacion y AL MISMO TIEMPO se empezaba a escuchar.
+        // Como esta tarjeta se cierra sola con el silencio, se cerraba con el aviso encima y
+        // el permiso desaparecia antes de poder darle a Permitir. Ahora: si falta la ubicacion,
+        // se pide y NO se escucha; al contestar (onRequestPermissionsResult, codigo 8) sigue
+        // el camino de siempre. La ubicacion NUNCA corta la conversacion: si dice que no, el
+        // walkie-talkie va igual, solo que sin decir tiempos.
+        if (Ubic.hayPermiso(this)) {
+            Ubic.arranca(this);
+            if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                pidiendoPermiso = true;
+                requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, 7);
+            } else {
+                escuchar();
+            }
         } else {
-            escuchar();
+            estado.setText("  Permiso de ubicación");
+            respuesta.setText("Dale a PERMITIR para que pueda decirte cuánto tardas en llegar. Si dices que no, seguimos hablando igual: solo me quedo sin los tiempos.");
+            pidiendoPermiso = true;
+            requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 8);
         }
     }
 
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
+        pidiendoPermiso = false;   // v1.18: ya se contesto, la tarjeta vuelve a poder cerrarse
         if (code == 8) {   // v1.17: la ubicacion NUNCA corta la conversacion
             if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) Ubic.arranca(this);
-            if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
+            if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                pidiendoPermiso = true;
                 requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, 7);
-            else escuchar();
+            } else {
+                escuchar();
+            }
             return;
         }
         if (code == 7 && res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) escuchar();
@@ -800,6 +820,9 @@ public class VozActivity extends Activity implements RecognitionListener {
     @Override
     protected void onPause() {
         super.onPause();
+        // v1.18: si lo que hay delante es un aviso de PERMISO, no se cierra nada: hay que
+        // dejar que Asier conteste. Si no, el permiso se cierra solo y no sale nunca.
+        if (pidiendoPermiso) return;
         cierraYa(); // si Asier se va a otra cosa, el micro se suelta y la tarjeta se quita
     }
 }

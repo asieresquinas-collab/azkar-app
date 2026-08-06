@@ -137,3 +137,17 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
   - **EL PERMISO DE UBICACIÓN NO PUEDE DEJARTE SIN HABLAR:** va aparte del micro (código 8);
     si dices que no, el walkie-talkie sigue funcionando exactamente igual, solo que sin tiempos.
   - Firmada con la MISMA `firma.jks` (SHA-256 d90d2e4a…): se instala **encima**, sin desinstalar.
+- v1.18 — **EL PERMISO DE UBICACIÓN YA SALE DE VERDAD (arreglo del fallo de la v1.17).**
+  Asier, con la 1.17 instalada: *«no sale permiso de ubicación para aceptar»*, y en Ajustes
+  la app seguía enseñando solo Micrófono. El permiso ESTABA bien puesto en el manifest; lo
+  que fallaba era **cuándo se pedía**. Dos cosas, y la segunda es la gorda:
+  1. Con el micro YA concedido, se pedía la ubicación **y a la vez se empezaba a escuchar**.
+  2. **`onPause()` cerraba la tarjeta** (`cierraYa()`) — y abrir un aviso de permiso provoca
+     un `onPause`. O sea: el aviso salía y **se cerraba solo en el mismo instante**, sin dar
+     tiempo a darle a Permitir. Por eso parecía que no salía nada.
+  Ahora hay una marca `pidiendoPermiso`: mientras hay un aviso de permiso en pantalla, la
+  tarjeta **NO se cierra** (`onPause` se salta el cierre), y **no se escucha nada** hasta que
+  Asier contesta. Un aviso cada vez: primero la ubicación, y al contestar sigue el camino de
+  siempre del micro. Si dice que NO, el walkie-talkie funciona igual: solo se queda sin tiempos.
+  Además, **la versión sale a la vista** en la primera pantalla ("Widgets de Azkar · v1.18"),
+  para saber de un vistazo si la actualización entró de verdad.

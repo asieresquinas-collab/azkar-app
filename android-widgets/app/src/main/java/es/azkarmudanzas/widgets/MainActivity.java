@@ -56,7 +56,10 @@ public class MainActivity extends Activity {
         raiz.setPadding(pad, pad, pad, pad);
 
         TextView titulo = new TextView(this);
-        titulo.setText("Widgets de Azkar");
+        // v1.18: la version A LA VISTA, para saber de un vistazo si la actualizacion entro
+        String _vn = "?";
+        try { _vn = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) { /* nada */ }
+        titulo.setText("Widgets de Azkar  ·  v" + _vn);
         titulo.setTextSize(26);
         titulo.setTypeface(null, Typeface.BOLD);
         titulo.setTextColor(Color.parseColor("#1B4F8A"));
