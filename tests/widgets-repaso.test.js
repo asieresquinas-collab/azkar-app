@@ -21,9 +21,9 @@ const path = require('path');
 
 // La versión que se está publicando AHORA y la anterior (para comparar la firma).
 // Subir estos cuatro valores es lo único que hay que tocar aquí al sacar una APK nueva.
-const VC = 19;                              // versionCode
-const VN = '1.18';                          // versionName
-const APK = 'azkar-widgets-v118.apk';       // la que se publica
+const VC = 20;                              // versionCode
+const VN = '1.19';                          // versionName
+const APK = 'azkar-widgets-v119.apk';       // la que se publica
 const APK_ANT = 'azkar-widgets-v115.apk';   // la anterior: la firma tiene que ser LA MISMA
 
 // Las rutas salen de DÓNDE ESTÁ este fichero, no de una ruta clavada: así vale en

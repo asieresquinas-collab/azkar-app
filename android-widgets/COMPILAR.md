@@ -151,3 +151,16 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
   siempre del micro. Si dice que NO, el walkie-talkie funciona igual: solo se queda sin tiempos.
   Además, **la versión sale a la vista** en la primera pantalla ("Widgets de Azkar · v1.18"),
   para saber de un vistazo si la actualización entró de verdad.
+- v1.19 — **EL PERMISO SE PIDE EN LA PANTALLA DE LA APP, NO EN LA BURBUJA (así SÍ sale).**
+  Con la v1.18 seguía sin poder aceptarse. La razón de fondo estaba en el manifest: la
+  tarjeta del walkie-talkie (`VozActivity`) es **`android:noHistory="true"`** y con tema de
+  **diálogo** — es decir, **Android la destruye en cuanto le sale cualquier ventana encima**.
+  El aviso del permiso es una ventana encima: la tarjeta moría, el aviso se iba con ella y
+  `onRequestPermissionsResult` no llegaba NUNCA. Ninguna marca interna puede evitar eso: lo
+  hace el sistema, no nuestro código. Por eso en la pantalla normal de la app el permiso sí
+  salía y en la burbuja no.
+  Ahora el permiso de ubicación se pide en **`MainActivity`** (la primera pantalla de la app,
+  una pantalla normal donde los avisos se pueden contestar con calma) al abrirla, y se dice
+  en claro si quedó permitido o no. La burbuja **ya no intenta** sacar el aviso: si hay
+  permiso, usa la posición; y si no, sigue hablando igual, solo que sin decir tiempos.
+  Se mantiene la marca `pidiendoPermiso` de la v1.18 para el permiso del micro.

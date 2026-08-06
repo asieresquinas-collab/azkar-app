@@ -235,10 +235,17 @@ public class VozActivity extends Activity implements RecognitionListener {
                 escuchar();
             }
         } else {
-            estado.setText("  Permiso de ubicación");
-            respuesta.setText("Dale a PERMITIR para que pueda decirte cuánto tardas en llegar. Si dices que no, seguimos hablando igual: solo me quedo sin los tiempos.");
-            pidiendoPermiso = true;
-            requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 8);
+            // v1.19: aquí NO se pide el permiso. Esta tarjeta es `noHistory` y con tema de
+            // diálogo: Android la DESTRUYE en cuanto le sale una ventana encima, así que el
+            // aviso del permiso moría al instante y la respuesta no llegaba nunca. El permiso
+            // se pide en la pantalla principal de la app (MainActivity), que es normal y ahí
+            // sí se puede contestar. Aquí solo se sigue hablando, sin tiempos.
+            if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                pidiendoPermiso = true;
+                requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, 7);
+            } else {
+                escuchar();
+            }
         }
     }
 

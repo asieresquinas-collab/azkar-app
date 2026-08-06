@@ -7,6 +7,7 @@ import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.Uri;
@@ -351,10 +352,33 @@ public class MainActivity extends Activity {
         ui.post(new Runnable() { @Override public void run() { estado.setText(txt); } });
     }
 
+    // v1.19: qué ha contestado Asier al permiso de ubicación (solo para decírselo claro)
+    @Override
+    public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
+        if (code != 9) return;
+        boolean ok = false;
+        for (int r : res) if (r == PackageManager.PERMISSION_GRANTED) ok = true;
+        estado.setText(ok
+            ? "✅ Ubicación permitida. Ya puedes preguntarle a Azkarin cuánto tardas en llegar a un sitio."
+            : "La ubicación se ha quedado sin permiso: Azkarin seguirá funcionando igual, pero no podrá decirte cuánto tardas. Si cambias de idea: Ajustes → Aplicaciones → Azkar → Permisos → Ubicación.");
+    }
+
     // ── v1.4: AUTOACTUALIZACIÓN a un toque ─────────────────────────────────────
     @Override
     protected void onResume() {
         super.onResume();
+        // v1.19 · EL PERMISO DE UBICACIÓN SE PIDE AQUÍ, NO EN LA BURBUJA.
+        // La tarjeta del walkie-talkie es `noHistory` + tema de diálogo: Android la DESTRUYE en
+        // cuanto le sale cualquier ventana encima, así que el aviso del permiso moría ahí y la
+        // respuesta no llegaba nunca (por eso Asier no conseguía aceptarlo). Esta pantalla es
+        // una pantalla normal y corriente: aquí el aviso sale y se puede contestar tranquilamente.
+        try {
+            if (!Ubic.hayPermiso(this)) {
+                requestPermissions(new String[]{
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION}, 9);
+            }
+        } catch (Exception e) { /* si no se puede pedir, la app sigue igual */ }
         new Thread(new Runnable() {
             @Override
             public void run() {
