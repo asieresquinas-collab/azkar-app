@@ -3608,7 +3608,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v399';
+var APP_VERSION = 'v400';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -11937,78 +11937,113 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
 <script>
 // ══════════════════════════════════════════════════════════════
 //  CONSULTA DE DISPONIBILIDAD EN CALENDARIO (toni@azkarmudanzas.com)
+// ── v400 · SOLO LO QUE OCUPA CAMIÓN (Asier, 9-ago-2026) ────────────────────────
+// «Una ITV para recordar que vence dentro de una semana lo cuenta como servicio,
+// vacaciones cari también, y pedir un permiso: eso no lo hace el equipo de calle,
+// eso lo hace el chico de la oficina. Son recordatorios porque tenemos que tenerlos,
+// pero el día solo tiene un servicio, el de Pedro el 11; el 12 está vacío.»
+// Tres arreglos sobre la caja amarilla de antes:
+//  1. CUENTA BIEN: el backend (2.7.316) separa servicios de recordatorios. Aquí solo
+//     ocupan los servicios; los recordatorios se ven aparte, en gris, sin ocupar.
+//  2. NO TE MUEVE LA FECHA: los días libres cercanos se enseñan como texto. Nunca
+//     más te cambia el día que has puesto por tocar donde no era.
+//  3. NO VIAJA AL CLIENTE: clase ui-interno — se oculta al imprimir y se vacía antes
+//     de capturar el HTML en Guardar.
 // ══════════════════════════════════════════════════════════════
 (function() {
   var fserv = document.getElementById('f_fserv');
   if (!fserv) return;
 
-  // Crear indicador visual debajo del campo fecha
+  var parent = fserv.closest('.fi') || fserv.parentElement;
+
+  var calChip = document.createElement('div');
+  calChip.id = 'cal-chip';
+  calChip.className = 'ui-interno';
+  calChip.style.cssText = 'display:none;margin-top:4px;font-size:11.5px;line-height:1.6';
+  parent.appendChild(calChip);
+
   var calBox = document.createElement('div');
   calBox.id = 'cal-disponibilidad';
-  calBox.style.cssText = 'display:none;margin-top:6px;padding:10px 14px;border-radius:8px;font-family:Arial,sans-serif;font-size:13px;line-height:1.5;';
-  var parent = fserv.closest('.fi') || fserv.parentElement;
+  calBox.className = 'ui-interno';
+  calBox.style.cssText = 'display:none;margin-top:3px;padding:8px 10px;border-radius:7px;font-size:12px;line-height:1.5;background:#F4F6F9;border:1px solid #c8d2de;color:#233;max-width:540px';
   parent.appendChild(calBox);
 
   var calTimer = null;
-
   fserv.addEventListener('change', function() {
     clearTimeout(calTimer);
     calTimer = setTimeout(consultarCalendario, 300);
   });
 
+  function esc(t) { return String(t == null ? '' : t).replace(/</g, '&lt;'); }
+
+  function linea(color, texto) {
+    calChip.innerHTML = '';
+    var sp = document.createElement('span');
+    sp.style.cssText = 'display:inline-block;color:' + color + ';font-weight:700;cursor:pointer';
+    sp.innerHTML = texto + ' <u style="font-weight:400;opacity:.8">ver</u>';
+    sp.onclick = function() { calBox.style.display = (calBox.style.display === 'none' ? 'block' : 'none'); };
+    calChip.appendChild(sp);
+    calChip.style.display = 'block';
+  }
+
   async function consultarCalendario() {
     var fecha = fserv.value;
-    if (!fecha) { calBox.style.display = 'none'; return; }
-
-    calBox.style.display = 'block';
-    calBox.style.background = '#f0f4f8';
-    calBox.style.border = '2px solid #ccc';
-    calBox.innerHTML = '📅 Consultando calendario...';
+    calChip.innerHTML = ''; calChip.style.display = 'none';
+    calBox.innerHTML = ''; calBox.style.display = 'none';
+    if (!fecha) return;
 
     try {
       var controller = new AbortController();
       var tid = setTimeout(function() { controller.abort(); }, 15000);
       var res = await fetch(RAILWAY_API + '/api/calendar/check?date=' + fecha, { headers: apiHeaders(), signal: controller.signal });
       clearTimeout(tid);
-
       if (!res.ok) throw new Error('HTTP ' + res.status);
       var data = await res.json();
 
-      if (data.busy) {
-        // Día ocupado
-        calBox.style.background = 'linear-gradient(135deg, #ffeaa7, #fdcb6e)';
-        calBox.style.border = '2px solid #e17055';
-        var html = '⚠️ <b>' + formatFecha(fecha) + '</b> — Ocupado (' + data.events.length + ' servicio' + (data.events.length > 1 ? 's' : '') + ')';
-        html += '<div style="margin-top:6px;font-size:12px;">';
-        data.events.forEach(function(ev) {
-          var hora = ev.allDay ? 'Todo el día' : formatHora(ev.start) + ' - ' + formatHora(ev.end);
-          html += '• <b>' + ev.summary + '</b> — ' + hora + '<br>';
+      var servicios = data.events || [];
+      var notas = data.recordatorios || [];
+
+      var det = '<b>' + esc(formatFecha(fecha)) + '</b>';
+      if (servicios.length) {
+        det += '<div style="margin-top:5px">';
+        servicios.forEach(function(ev) {
+          det += '• <b>' + esc(ev.summary) + '</b> — ' + esc(horaDe(ev)) + '<br>';
         });
-        html += '</div>';
-        if (data.suggestions && data.suggestions.length > 0) {
-          html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e17055;font-size:12px;">';
-          html += '✅ <b>Días libres cercanos:</b><br>';
-          data.suggestions.forEach(function(s) {
-            html += '• <span style="cursor:pointer;color:#0984e3;text-decoration:underline;" onclick="document.getElementById(\'f_fserv\').value=\'' + s.date + '\';document.getElementById(\'f_fserv\').dispatchEvent(new Event(\'change\'));">' + s.dayName + ' ' + formatFecha(s.date) + '</span> (' + s.offset + ')<br>';
-          });
-          html += '</div>';
-        }
-        calBox.innerHTML = html;
+        det += '</div>';
       } else {
-        // Día libre
-        calBox.style.background = 'linear-gradient(135deg, #d5f5e3, #a3e4d7)';
-        calBox.style.border = '2px solid #27ae60';
-        calBox.innerHTML = '✅ <b>' + formatFecha(fecha) + '</b> — Disponible, no hay servicios ese día';
+        det += '<div style="margin-top:5px;color:#1a7a3f">Sin servicios: el equipo tiene el día entero.</div>';
+      }
+      if (notas.length) {
+        det += '<div style="margin-top:7px;padding-top:6px;border-top:1px solid #d7dee7;color:#6b7a8c;font-size:11.5px">'
+             + 'Recordatorios de oficina (<b>no ocupan el día</b>):<br>';
+        notas.forEach(function(ev) {
+          det += '· ' + esc(ev.summary) + (ev._motivo ? ' <i>(' + esc(ev._motivo) + ')</i>' : '') + '<br>';
+        });
+        det += '</div>';
+      }
+      if (servicios.length && data.suggestions && data.suggestions.length) {
+        det += '<div style="margin-top:7px;padding-top:6px;border-top:1px solid #d7dee7;font-size:11.5px">'
+             + 'Días libres cerca: ' + data.suggestions.map(function(x) { return esc(x.dayName + ' ' + formatFecha(x.date)); }).join(' · ')
+             + '<br><span style="color:#8a94a3">(no toco tu fecha: si quieres uno, ponlo tú)</span></div>';
+      }
+      calBox.innerHTML = det;
+
+      if (servicios.length) {
+        linea('#c07000', '🟠 Ese día ya hay ' + servicios.length + ' servicio' + (servicios.length > 1 ? 's' : ''));
+      } else if (notas.length) {
+        linea('#1a7a3f', '🟢 Día libre · ' + notas.length + ' recordatorio' + (notas.length > 1 ? 's' : '') + ' de oficina');
+      } else {
+        linea('#1a7a3f', '🟢 Día libre');
       }
     } catch (e) {
-      if (e.name === 'AbortError') {
-        calBox.innerHTML = '⚠️ Tiempo agotado consultando calendario';
-      } else {
-        calBox.style.background = '#f8d7da';
-        calBox.style.border = '2px solid #e74c3c';
-        calBox.innerHTML = '❌ Error consultando calendario: ' + e.message;
-      }
+      if (e.name === 'AbortError') { linea('#8a94a3', '⏳ Calendario: sin respuesta'); calBox.innerHTML = 'Tiempo agotado consultando el calendario.'; }
+      else { linea('#8a94a3', '⚠️ Calendario no disponible'); calBox.innerHTML = esc(e.message); }
     }
+  }
+
+  function horaDe(ev) {
+    if (ev.allDay) return 'Todo el día';
+    return formatHora(ev.start) + ' - ' + formatHora(ev.end);
   }
 
   function formatFecha(dateStr) {
