@@ -1144,7 +1144,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     <div class='ayuda-content'>
       <p>La app calcula automáticamente la distancia entre la dirección de recogida y la de entrega.</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al poner las dos direcciones en el dossier, aparece un cuadro abajo con la distancia calculada y la ruta.</div></div>
-      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>15 km o menos = GRATIS</strong> (no se cobra nada de desplazamiento). <strong>Si pasa de 15 km se cobran TODOS los kilómetros a 2 €/km</strong>, no solo los que pasan de 15. Ejemplo: 24 km → 24 × 2 € = <strong>48 €</strong> (no 18 €). Se añade automáticamente como línea en el presupuesto.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>15 km o menos = GRATIS</strong> (no se cobra nada de desplazamiento). <strong>Si pasa de 15 km se cobran TODOS los kilómetros a 2,40 €/km</strong>, no solo los que pasan de 15 (solo los km de ida: la vuelta ya va dentro de la tarifa). Ejemplo: 24 km → 24 × 2,40 € = <strong>57,60 €</strong> (no el exceso). Se añade automáticamente como línea en el presupuesto.</div></div>
       <div class='ayuda-tip'>Si la app no encuentra una dirección, prueba a escribirla más completa (con ciudad y provincia).</div>
     </div>
   </div>
@@ -3398,7 +3398,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v393';</script>
+<script>document.getElementById('version-tag').textContent='v394';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3510,7 +3510,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v393';
+var APP_VERSION = 'v394';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -11102,7 +11102,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
           document.getElementById('dist-tiempo').textContent = '🕐 ' + tiempoStr;
 
           // Lógica de precio por km: >15km = 2€/km, ≤15km = gratis
-          var PRECIO_KM = 2;
+          var PRECIO_KM = 2.40;
           var KM_GRATIS = 15;
           var costeEl = document.getElementById('dist-coste');
           var rutaEl = document.getElementById('dist-ruta');
