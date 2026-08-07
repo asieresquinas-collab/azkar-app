@@ -2844,6 +2844,14 @@ function TL_LOOKUP(inp){
     var av=document.createElement('div'); av.id='apilable-aviso';
     av.style.cssText='display:none;margin-top:4px;padding:8px 10px;border-radius:7px;font-size:12px;font-weight:700;line-height:1.45';
     f.parentNode.insertBefore(av, f.nextSibling);
+    // v397 · EL GUION (idea de Asier): al poner el día que PIDE el cliente, aquí sale qué
+    // día ofrecerle y con qué frase — escasez siempre, nunca la lista de días libres.
+    // «El cliente quiere el 25 y yo le digo que puedo sacarle un equipo el 26: si le
+    // enseñas todo vacío no hay urgencia y lo pierdes seguro.» Antonio no pregunta nada:
+    // lo ve aquí, donde pone la fecha.
+    var og=document.createElement('div'); og.id='ofrecer-guion';
+    og.style.cssText='display:none;margin-top:4px;padding:9px 11px;border-radius:7px;font-size:12.5px;line-height:1.5;background:#EEF4FB;border:1.5px solid #1B4F8A;color:#12365e';
+    f.parentNode.insertBefore(og, av.nextSibling);
     async function mira(){
       var v=f.value;
       if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){ av.style.display='none'; return; }
@@ -2885,8 +2893,24 @@ function TL_LOOKUP(inp){
         } else { av.style.display='none'; }
       }catch(e){ av.style.display='none'; }
     }
-    f.addEventListener('change', mira);
-    f.addEventListener('blur', mira);
+    async function guion(){
+      var v=f.value;
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){ og.style.display='none'; return; }
+      try{
+        var h={}; try{ var k=(typeof AZKAR_API_KEY!=='undefined'?AZKAR_API_KEY:localStorage.getItem('azkar_api_key')); if(k) h['x-api-key']=k; }catch(e){}
+        var r=await fetch(RAILWAY_API+'/api/ofrecer?fecha='+v,{headers:h});
+        var d=await r.json();
+        if(d && d.guion){
+          og.style.display='block';
+          og.innerHTML='<b>🗣️ QUÉ DECIRLE'+(d.fecha_ofrecer&&d.fecha_ofrecer!==v?' (ofrécele el '+d.fecha_ofrecer.slice(8,10)+', no el que pide)':'')+':</b><br>«'+String(d.guion).replace(/</g,'&lt;')+'»'
+            +(d.tipo==='apilable_otro'?'<br><span style="font-size:11px;color:#1a7a3f;font-weight:700">Si acepta ese día: cambia la fecha y dale al botón del 20% (día apilable).</span>':'')
+            +(d.tipo==='escasez'?'<br><span style="font-size:11px;color:#8a4b00;font-weight:700">Día vacío: a PRECIO ENTERO (nada de descuento — mira el suelo).</span>':'');
+        } else { og.style.display='none'; }
+      }catch(e){ og.style.display='none'; }
+    }
+    function todo(){ mira(); guion(); }
+    f.addEventListener('change', todo);
+    f.addEventListener('blur', todo);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', monta); else monta();
 })();
@@ -3456,7 +3480,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v396';</script>
+<script>document.getElementById('version-tag').textContent='v397';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3568,7 +3592,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v396';
+var APP_VERSION = 'v397';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
