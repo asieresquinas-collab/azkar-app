@@ -2862,7 +2862,7 @@ function TL_LOOKUP(inp){
         if(d && d.apilable){
           av.style.display='block'; av.style.background='#E8F7EE'; av.style.color='#1a7a3f'; av.style.border='1.5px solid #1a7a3f';
           av.innerHTML='🟢 <b>DÍA APILABLE</b>: '+String(d.motivo||'').replace(/</g,'&lt;')
-            +'.<br>Si este cliente se amolda a ese día (y esta mudanza también es pequeña y de zona), ofrécele el <b>20%</b>: '
+            +'.<br>Si este cliente se amolda a ese día (y esta mudanza también es pequeña, de zona y <b>sin mueble grande ni de módulos</b> — esos se comen el día), ofrécele el <b>20%</b>: '
             +'<button type="button" onclick="window._promoManual=true;CA();this.textContent=\'✓ 20% aplicado\';this.disabled=true" style="margin-top:4px;background:#1a7a3f;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer">Aplicar 20% (día apilable)</button>';
         } else if(d && /VAC\u00cdO|VACIO/i.test(d.motivo||'')){
           // v396 · DÍA VACÍO = este trabajo se come la JORNADA ENTERA del equipo.
@@ -3480,7 +3480,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v397';</script>
+<script>document.getElementById('version-tag').textContent='v398';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3592,7 +3592,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v397';
+var APP_VERSION = 'v398';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
