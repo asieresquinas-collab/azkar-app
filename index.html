@@ -89,6 +89,17 @@
      cuadraditos rotos en el PDF;
    · el botón de la promo, que llegaba al cliente diciendo "Pulsa para desactivar". */
 .col-dto,.no-pdf,.dosp,#promo-quincenal-banner{display:none!important}
+/* v405 (Asier, 9-ago-2026): «haz que esto esté alineado, unidades con unidades y precio
+   con precio; en la APK se ve bien pero cuando se genera el PDF sale mal».
+   El motivo: en pantalla la tabla tiene 8 columnas y la cabecera tiene 8 casillas, así que
+   cuadra. En el PDF se quitan las columnas que no van (mover fila, minutos, borrar), pero
+   la cabecera se quedaba con sus DOS casillas vacías de los extremos — y con una casilla de
+   más, todos los títulos se corrían un sitio a la derecha: "UNID." caía encima de los
+   precios y "PRECIO UNIT." encima de los descuentos. Lo mismo le pasaba a la fila de la
+   Salida, que llevaba su propio hueco de 24px y salía corrida respecto a las demás.
+   Quitando los huecos que no pintan nada, cabecera y filas vuelven a tener las MISMAS
+   casillas y todo cae en su columna. */
+.th > span:empty{display:none!important}
 .th{grid-template-columns:3.3fr 66px 106px 108px 32px!important}
 .cr{grid-template-columns:3.3fr 66px 106px 108px 32px!important}
 
@@ -3156,7 +3167,7 @@ function AR_SALIDA(precio){
   div.className='cr'; div.id='r'+sid;
   div.setAttribute('data-fijo','salida');
   div.style.background='#e8f0fe';
-  div.innerHTML='<div style="width:24px"></div>'
+  div.innerHTML='<div class="no-pdf" style="width:24px"></div>'
     +'<input list="dl" value="Salida" readonly style="font-weight:700;color:#1B4F8A;background:transparent;cursor:default">'
     
     +'<input type="number" value="1" readonly style="background:transparent;cursor:default">'
@@ -3624,7 +3635,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v404';
+var APP_VERSION = 'v405';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
