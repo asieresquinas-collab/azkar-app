@@ -2856,6 +2856,32 @@ function TL_LOOKUP(inp){
           av.innerHTML='🟢 <b>DÍA APILABLE</b>: '+String(d.motivo||'').replace(/</g,'&lt;')
             +'.<br>Si este cliente se amolda a ese día (y esta mudanza también es pequeña y de zona), ofrécele el <b>20%</b>: '
             +'<button type="button" onclick="window._promoManual=true;CA();this.textContent=\'✓ 20% aplicado\';this.disabled=true" style="margin-top:4px;background:#1a7a3f;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer">Aplicar 20% (día apilable)</button>';
+        } else if(d && /VAC\u00cdO|VACIO/i.test(d.motivo||'')){
+          // v396 · DÍA VACÍO = este trabajo se come la JORNADA ENTERA del equipo.
+          // Asier paga por día (Luis 200 + 100 el otro) y quiere un 40% encima: con dos
+          // personas el trabajo (sin contar el desplazamiento, que va aparte a 2,40/km)
+          // no puede bajar de 420 € de base. Si baja, aviso ROJO con el botón que sube
+          // la Salida hasta el mínimo. No se toca solo: un presupuesto ya mandado no
+          // puede cambiar de precio en silencio — pero aquí nadie pierde sin enterarse.
+          var n=parseInt((document.getElementById('num-operarios')||{}).value)||2;
+          var coste=200+Math.max(0,n-1)*100;
+          var minimo=Math.round(coste*1.40*100)/100;
+          var baseTrab=0, salidaInp=null;
+          document.querySelectorAll('#tb .cr').forEach(function(cr){
+            var ci=cr.querySelector('input[list="dl"]'); var ns=cr.querySelectorAll('input[type=number]');
+            var nom=ci?ci.value.trim():'';
+            if(cr.getAttribute('data-fijo')==='salida' || nom==='Salida'){ if(ns[1]) salidaInp=ns[1]; }
+            if(/^desplazamiento/i.test(nom)) return;
+            if(ns.length>=3) baseTrab+=(parseFloat(ns[0].value)||0)*(parseFloat(ns[1].value)||0)*(1-(parseFloat(ns[2].value)||0)/100);
+          });
+          if(baseTrab>0 && baseTrab<minimo){
+            var falta=Math.round((minimo-baseTrab)*100)/100;
+            av.style.display='block'; av.style.background='#FBE4E6'; av.style.color='#8a1622'; av.style.border='1.5px solid #c0392b';
+            av.innerHTML='🔴 <b>DÍA VACÍO — este trabajo se come la jornada entera</b> ('+n+' persona(s) = '+coste+' € de equipo + 40%).<br>'
+              +'El trabajo (sin desplazamiento) suma <b>'+baseTrab.toFixed(2)+' €</b> y el mínimo es <b>'+minimo.toFixed(2)+' €</b> — faltan <b>'+falta.toFixed(2)+' €</b>. '
+              +(salidaInp?'<button type="button" onclick="(function(b){var si=window._suelIn;si.value=((parseFloat(si.value)||0)+'+falta+').toFixed(2);CA();b.textContent=\'✓ Subido al mínimo\';b.disabled=true;})(this)" style="margin-top:4px;background:#c0392b;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer">Subir la Salida al mínimo (+'+falta.toFixed(2)+' €)</button>':'Súbelo a mano: no encuentro la línea de Salida.');
+            window._suelIn=salidaInp;
+          } else { av.style.display='none'; }
         } else { av.style.display='none'; }
       }catch(e){ av.style.display='none'; }
     }
@@ -3430,7 +3456,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v395';</script>
+<script>document.getElementById('version-tag').textContent='v396';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3542,7 +3568,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v395';
+var APP_VERSION = 'v396';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
