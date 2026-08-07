@@ -3617,7 +3617,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v401';
+var APP_VERSION = 'v402';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -16200,6 +16200,197 @@ async function doResetWithCode() {
     var abierto = panel && panel.classList.contains('open');
     b.style.display = (_hablando() && abierto) ? 'block' : 'none';
   }, 300);
+})();
+</script>
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+//  v402 · EL CALENDARIO DE LA CASA (Asier, 9-ago-2026, con la foto del selector gris)
+//  «¿Puedes hacer que la app, cuando abra para ver el calendario, se vea con las
+//   cosas y los días ocupados con servicios reales?»
+//  Antes se abría el calendario GRIS de Android: números y nada más. No decía si el
+//  día estaba pillado, ni con qué. Ahora se abre el nuestro:
+//    · cada día pintado por lo que hay DE VERDAD (con el filtro de ruido de 2.7.316:
+//      una ITV o unas vacaciones no ocupan),
+//    · debajo, la lista del mes con quién hay cada día y a qué hora,
+//    · y al tocar un día se pone la fecha, igual que antes.
+//  Todo con la clase ui-interno: no se imprime y se vacía al Guardar. El cliente no
+//  ve JAMÁS la agenda de la casa.
+// ══════════════════════════════════════════════════════════════════════════════
+(function(){
+  var COLORES = {
+    libre:    { fondo:'#eaf7ee', borde:'#bfe3c9', texto:'#1a7a3f', et:'Libre' },
+    apilable: { fondo:'#e6f3ff', borde:'#a9cdf0', texto:'#14508f', et:'Cabe otra (20%)' },
+    ocupado:  { fondo:'#fff2df', borde:'#f0cf9e', texto:'#9a5b00', et:'1 servicio' },
+    completo: { fondo:'#ffe6e4', borde:'#f2b5b0', texto:'#a32b20', et:'Completo' }
+  };
+  var cacheMes = {};
+  var mesVisto = null;
+  var capa = null, rejilla = null, listaEl = null, tituloEl = null;
+
+  function hoyISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function esc(t){ return String(t==null?'':t).replace(/</g,'&lt;'); }
+  function nombreMes(m){
+    var N=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    var p=m.split('-'); return N[parseInt(p[1],10)-1]+' de '+p[0];
+  }
+  function mueveMes(m, delta){
+    var p=m.split('-'), y=parseInt(p[0],10), mm=parseInt(p[1],10)-1+delta;
+    y += Math.floor(mm/12); mm=((mm%12)+12)%12;
+    return y+'-'+String(mm+1).padStart(2,'0');
+  }
+
+  function monta(){
+    if (capa) return;
+    capa = document.createElement('div');
+    capa.id = 'cal-casa';
+    capa.className = 'ui-interno';
+    capa.style.cssText = 'display:none;position:fixed;inset:0;z-index:100000;background:rgba(15,25,40,.55);align-items:center;justify-content:center;padding:10px;font-family:Barlow,Arial,sans-serif';
+    var caja = document.createElement('div');
+    caja.style.cssText = 'background:#fff;border-radius:14px;max-width:430px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.35)';
+    caja.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;background:linear-gradient(135deg,#1B4F8A,#2376C5);color:#fff;border-radius:14px 14px 0 0">'
+      + '<button type="button" id="cc-ant" style="background:rgba(255,255,255,.18);color:#fff;border:none;border-radius:8px;width:34px;height:34px;font-size:18px;cursor:pointer">&lsaquo;</button>'
+      + '<div id="cc-titulo" style="flex:1;text-align:center;font-weight:800;font-size:15px"></div>'
+      + '<button type="button" id="cc-sig" style="background:rgba(255,255,255,.18);color:#fff;border:none;border-radius:8px;width:34px;height:34px;font-size:18px;cursor:pointer">&rsaquo;</button>'
+      + '<button type="button" id="cc-cerrar" style="background:rgba(0,0,0,.22);color:#fff;border:none;border-radius:8px;width:34px;height:34px;font-size:16px;cursor:pointer">&#10005;</button>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:8px 8px 0;font-size:11px;font-weight:800;color:#7b8794;text-align:center">'
+      + '<div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div></div>'
+      + '<div id="cc-rejilla" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;padding:4px 8px 8px"></div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:8px;padding:0 12px 8px;font-size:10.5px;color:#5b6b7c">'
+      + '<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#eaf7ee;border:1px solid #bfe3c9"></span> Libre</span>'
+      + '<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#e6f3ff;border:1px solid #a9cdf0"></span> Cabe otra (20%)</span>'
+      + '<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#fff2df;border:1px solid #f0cf9e"></span> 1 servicio</span>'
+      + '<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#ffe6e4;border:1px solid #f2b5b0"></span> Completo</span>'
+      + '</div>'
+      + '<div id="cc-lista" style="border-top:1px solid #e6eaf0;padding:10px 14px 16px;font-size:12px;line-height:1.55;color:#233"></div>';
+    capa.appendChild(caja);
+    document.body.appendChild(capa);
+    rejilla = caja.querySelector('#cc-rejilla');
+    listaEl = caja.querySelector('#cc-lista');
+    tituloEl = caja.querySelector('#cc-titulo');
+    caja.querySelector('#cc-cerrar').onclick = cerrar;
+    caja.querySelector('#cc-ant').onclick = function(){ pinta(mueveMes(mesVisto,-1)); };
+    caja.querySelector('#cc-sig').onclick = function(){ pinta(mueveMes(mesVisto, 1)); };
+    capa.addEventListener('click', function(e){ if (e.target === capa) cerrar(); });
+  }
+
+  function cerrar(){ if (capa) capa.style.display='none'; }
+
+  async function traeMes(m){
+    if (cacheMes[m]) return cacheMes[m];
+    var h={}; try{ var k=(typeof AZKAR_API_KEY!=='undefined'?AZKAR_API_KEY:localStorage.getItem('azkar_api_key')); if(k) h['x-api-key']=k; }catch(e){}
+    try{
+      var r = await fetch(RAILWAY_API+'/api/calendar/mes?mes='+m, { headers: h });
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      var d = await r.json();
+      cacheMes[m] = d;
+      return d;
+    }catch(e){ return { mes:m, dias:[], _error:e.message }; }
+  }
+
+  function celda(txt, fondo, borde, color, click, sub, extra){
+    var c = document.createElement('div');
+    c.style.cssText = 'min-height:44px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;font-weight:700;'
+      + 'background:'+fondo+';border:1px solid '+borde+';color:'+color+';'+(click?'cursor:pointer;':'')+(extra||'');
+    c.innerHTML = txt + (sub?('<span style="font-size:9px;font-weight:700;opacity:.85;margin-top:1px">'+sub+'</span>'):'');
+    if (click) c.onclick = click;
+    return c;
+  }
+
+  async function pinta(m){
+    mesVisto = m;
+    tituloEl.textContent = nombreMes(m);
+    rejilla.innerHTML = '';
+    listaEl.innerHTML = '<span style="color:#8a94a3">Mirando el calendario…</span>';
+
+    var p = m.split('-'), y = parseInt(p[0],10), mm = parseInt(p[1],10);
+    var primero = new Date(Date.UTC(y, mm-1, 1));
+    var hueco = (primero.getUTCDay() + 6) % 7;
+    var ultimo = new Date(Date.UTC(y, mm, 0)).getUTCDate();
+    for (var i=0;i<hueco;i++) rejilla.appendChild(celda('', 'transparent', 'transparent', '#fff', null));
+
+    var datos = await traeMes(m);
+    if (mesVisto !== m) return;
+    var porFecha = {}; (datos.dias||[]).forEach(function(d){ porFecha[d.fecha]=d; });
+    var hoy = hoyISO();
+    var conCosas = [];
+
+    for (var d=1; d<=ultimo; d++){
+      var f = m+'-'+String(d).padStart(2,'0');
+      var info = porFecha[f] || { estado:'libre', n:0, servicios:[], recordatorios:0 };
+      var dom = new Date(Date.UTC(y, mm-1, d)).getUTCDay() === 0;
+      var col = COLORES[info.estado] || COLORES.libre;
+      var fondo = dom ? '#f2f4f7' : col.fondo, borde = dom ? '#e2e6ec' : col.borde, texto = dom ? '#a7b0bb' : col.texto;
+      var sub = '';
+      if (info.n > 0) sub = info.n + ' serv.';
+      else if (info.recordatorios > 0) sub = '·';
+      var extra = (f === hoy) ? 'box-shadow:0 0 0 2px #1B4F8A inset;' : '';
+      var c = celda(String(d), fondo, borde, texto, (function(fecha){ return function(){ elige(fecha); }; })(f), sub, extra);
+      c.title = (info.servicios||[]).map(function(s){return s.titulo;}).join(' · ');
+      rejilla.appendChild(c);
+      if ((info.servicios||[]).length) conCosas.push(info);
+    }
+
+    if (datos._error){
+      listaEl.innerHTML = '<span style="color:#a32b20">No he podido leer el calendario ('+esc(datos._error)+'). Los días salen en blanco: toca la fecha igual y compruébalo a mano.</span>';
+      return;
+    }
+    if (!conCosas.length){
+      listaEl.innerHTML = '<b>Este mes no hay ningún servicio puesto.</b><br><span style="color:#5b6b7c">Los recordatorios de oficina (ITV, permisos, vacaciones) no cuentan como servicio.</span>';
+      return;
+    }
+    var html = '<b style="font-size:12.5px">LO QUE HAY ESTE MES</b>';
+    conCosas.forEach(function(info){
+      var dd = parseInt(info.fecha.slice(8,10),10);
+      var col = COLORES[info.estado] || COLORES.libre;
+      html += '<div style="margin-top:7px;padding-left:8px;border-left:3px solid '+col.borde+'">'
+        + '<b>Día '+dd+'</b> <span style="font-size:10.5px;color:'+col.texto+';font-weight:700">'+col.et+'</span><br>';
+      info.servicios.forEach(function(s){
+        html += '<span style="color:#33414f">• '+esc(s.titulo)+(s.hora?' <span style="color:#8a94a3">('+esc(s.hora)+')</span>':' <span style="color:#8a94a3">(todo el día)</span>')+'</span><br>';
+      });
+      if (info.recordatorios) html += '<span style="font-size:10.5px;color:#8a94a3">+ '+info.recordatorios+' recordatorio(s) de oficina — no ocupan</span><br>';
+      html += '</div>';
+    });
+    listaEl.innerHTML = html;
+  }
+
+  function elige(fecha){
+    var f = document.getElementById('f_fserv');
+    if (f){ f.value = fecha; f.dispatchEvent(new Event('change', { bubbles:true })); }
+    cerrar();
+  }
+
+  function abrir(){
+    monta();
+    if (capa.style.display === 'flex') return;   // ya está abierto (click + focus disparan los dos)
+    capa.style.display = 'flex';
+    var f = document.getElementById('f_fserv');
+    var v = (f && /^\d{4}-\d{2}-\d{2}$/.test(f.value)) ? f.value.slice(0,7) : hoyISO().slice(0,7);
+    pinta(v);
+  }
+  window.abrirCalendarioCasa = abrir;
+
+  function engancha(){
+    var f = document.getElementById('f_fserv');
+    if (!f || f.getAttribute('data-calcasa')) return;
+    f.setAttribute('data-calcasa','1');
+    f.readOnly = true;
+    f.style.cursor = 'pointer';
+    f.addEventListener('click', function(ev){ ev.preventDefault(); abrir(); });
+    f.addEventListener('focus', function(){ f.blur(); abrir(); });
+    if (!document.getElementById('cc-boton')){
+      var b = document.createElement('button');
+      b.type='button'; b.id='cc-boton'; b.className='ui-interno';
+      b.innerHTML='📅 Ver la agenda del mes';
+      b.style.cssText='margin-top:4px;background:#EBF3FD;color:#1B4F8A;border:1px solid #a9cdf0;border-radius:7px;padding:5px 10px;font-size:11.5px;font-weight:700;font-family:Barlow,Arial,sans-serif;cursor:pointer';
+      b.onclick = abrir;
+      (f.closest('.fi') || f.parentElement).appendChild(b);
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', engancha);
+  else engancha();
+  setTimeout(engancha, 1200);
 })();
 </script>
 </body>
