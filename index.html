@@ -3635,7 +3635,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v405';
+var APP_VERSION = 'v406';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -10622,8 +10622,12 @@ function txCreatePresupuesto() {
       return;
     }
     let fullAddress = address.trim();
-    if (!fullAddress.match(/bilbao|barakaldo|getxo|portugalete|santurtzi|basauri|galdakao|durango|gernika|leioa|erandio|sopela|mungia|bermeo|ondarroa|bizkaia|vizcaya|vitoria|gasteiz|donostia|san\s*sebasti|irún|irun|eibar|mondragón|mondragon|arrasate|tolosa|zarautz|rentería|renteria|álava|alava|araba|gipuzkoa|guipúzcoa|guipuzcoa|cantabria|santander|torrelavega|castro\s*urdiales|burgos|logroño|logro|miranda|haro|pamplona|iruña|tudela|navarra|nafarroa|madrid|barcelona|zaragoza|valladolid|león|leon|euskadi|españa|spain/i)) {
+    // v406: misma regla que la calculadora de km — un nombre suelto (Sevilla, Cádiz) se
+    // busca tal cual; una calle sin pueblo se asume de Bizkaia, que es lo normal aquí.
+    if (/\d/.test(fullAddress) || /^(calle|c\/|c\.|avda\.?|avenida|av\.|plaza|pza\.?|paseo|p[ºo]\.?|camino|cno\.?|carretera|ctra\.?|ronda|barrio|b[ºo]\.?|pol[ií]gono|urb\.?|urbanizaci[oó]n)\b/i.test(fullAddress.trim())) {
       fullAddress += ', Bizkaia, España';
+    } else {
+      fullAddress += ', España';
     }
     const encoded = encodeURIComponent(fullAddress);
     const streetFrame = document.getElementById('sv-main-' + prefix + '-street');
@@ -11126,12 +11130,31 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
       .trim();
   }
 
-  // Añadir contexto geográfico si la dirección no incluye ciudad conocida
+  // v406 (Asier, 9-ago-2026): «en Bilbao y Vizcaya funciona bien lo de los km, pero pongo
+  // Bilbao en recogida y Sevilla en entrega y no encuentra la dirección».
+  // El fallo: a TODO lo que no estuviera en una lista de pueblos escrita a mano se le pegaba
+  // ", Bizkaia, España" detrás. Así que "Cádiz" se buscaba como "Cádiz, Bizkaia, España" y
+  // no existe — y lo que es peor, "Sevilla, Bizkaia" llegó a cazar un pueblo cualquiera de
+  // Bizkaia (Munitibar), o sea que podía dar unos kilómetros INVENTADOS sin avisar.
+  // Se acabó la lista: se mira la FORMA de lo que se escribe.
+  //   · Si lleva número o empieza por Calle/Avda/Plaza… es una CALLE → hace falta el pueblo,
+  //     y si no lo lleva se asume Bizkaia (es lo normal aquí).
+  //   · Si es un nombre suelto (Bilbao, Mungia, Sevilla, Cádiz) es un SITIO → se busca en
+  //     toda España tal cual, que es lo que hay que hacer.
+  // Y pase lo que pase se prueban las dos formas: si la primera no encuentra nada, va la otra.
+  var RE_CALLE = /^(calle|c\/|c\.|cl\.|avda\.?|avenida|av\.|plaza|pza\.?|plza\.?|paseo|p[ºo]\.?|traves[ií]a|trav\.?|camino|cno\.?|carretera|ctra\.?|ronda|glorieta|urbanizaci[oó]n|urb\.?|barrio|b[ºo]\.?|pol[ií]gono|pol\.?|grupo|muelle|alameda)\b/i;
+  function esNombreDeSitio(addr) {
+    var a = String(addr || '').trim();
+    if (!a) return false;
+    if (/\d/.test(a)) return false;            // "Gran Vía 1" → calle
+    if (RE_CALLE.test(a)) return false;        // "Calle Autonomía" → calle
+    return a.split(/[\s,]+/).filter(Boolean).length <= 4;
+  }
   function addContexto(addr) {
-    if (!addr.match(/bilbao|barakaldo|getxo|portugalete|santurtzi|basauri|galdakao|durango|gernika|leioa|erandio|sopela|mungia|bermeo|ondarroa|bizkaia|vizcaya|vitoria|gasteiz|donostia|san\s*sebasti|irún|irun|eibar|mondragón|mondragon|arrasate|tolosa|zarautz|rentería|renteria|álava|alava|araba|gipuzkoa|guipúzcoa|guipuzcoa|cantabria|santander|torrelavega|castro\s*urdiales|burgos|logroño|logro|miranda|haro|pamplona|iruña|tudela|navarra|nafarroa|madrid|barcelona|zaragoza|valladolid|león|leon|euskadi|españa|spain/i)) {
-      return addr + ', Bizkaia, España';
-    }
-    return addr;
+    return String(addr || '').trim() + ', Bizkaia, España';
+  }
+  function sinContexto(addr) {
+    return String(addr || '').trim() + ', España';
   }
 
   // Buscar en Nominatim (una sola petición)
@@ -11153,32 +11176,33 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     });
   }
 
-  // Geocodificar con reintentos inteligentes
+  // Geocodificar probando varias formas, en el orden que más sentido tiene
   function geocode(address) {
-    var original = addContexto(address.trim());
-    var limpia = addContexto(limpiarDireccion(address.trim()));
+    var a = String(address || '').trim();
+    var conBiz = addContexto(a);
+    var libre = sinContexto(a);
+    var limpiaBiz = addContexto(limpiarDireccion(a));
+    var intentos = esNombreDeSitio(a) ? [libre, conBiz, limpiaBiz] : [conBiz, limpiaBiz, libre];
+    // fuera repetidos, que cada intento cuesta un segundo de espera
+    intentos = intentos.filter(function(q, i) { return intentos.indexOf(q) === i; });
 
-    // Intento 1: dirección original
-    return nominatimSearch(original).then(function(data) {
-      if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), display: data[0].display_name };
+    function prueba(i) {
+      if (i >= intentos.length) {
+        console.warn('[Geocode] Sin resultados para:', a, '(probado:', intentos.join(' | '), ')');
+        return Promise.resolve(null);
       }
-      // Intento 2: sin prefijo de calle (esperar 1.1s por rate limit)
-      if (limpia !== original) {
-        console.log('[Geocode] Reintentando sin prefijo:', limpia);
-        return esperar(1100).then(function() {
-          return nominatimSearch(limpia);
-        }).then(function(data2) {
-          if (data2 && data2.length > 0) {
-            return { lat: parseFloat(data2[0].lat), lon: parseFloat(data2[0].lon), display: data2[0].display_name };
-          }
-          console.warn('[Geocode] Sin resultados para:', original, 'ni', limpia);
-          return null;
-        });
-      }
-      console.warn('[Geocode] Sin resultados para:', original);
-      return null;
-    });
+      var espera = i === 0 ? Promise.resolve() : esperar(1100);   // Nominatim: 1 petición/s
+      return espera.then(function() {
+        if (i > 0) console.log('[Geocode] Reintento', i, '→', intentos[i]);
+        return nominatimSearch(intentos[i]);
+      }).then(function(data) {
+        if (data && data.length > 0) {
+          return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), display: data[0].display_name };
+        }
+        return prueba(i + 1);
+      });
+    }
+    return prueba(0);
   }
 
   // Calcular ruta con OSRM (gratuito, sin API key)
