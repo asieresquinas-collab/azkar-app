@@ -3140,7 +3140,12 @@ document.addEventListener('click', function(e){
 })();
 
 // ── Añadir línea FIJA de Salida (no borrable, siempre presente) ──
-function AR_SALIDA(){
+// v401 (Asier, 9-ago-2026): «súbeme la salida de ahora en adelante a 100 euros».
+// DE HOY EN ADELANTE: los presupuestos nuevos salen con 100. Los ya hechos se abren
+// con el precio que tenían guardado (LD le pasa el suyo) — no se les toca el total.
+var SALIDA_EUR = 100;
+function AR_SALIDA(precio){
+  var _pSal = (precio === undefined || precio === null || precio === '' || isNaN(parseFloat(precio))) ? SALIDA_EUR : parseFloat(precio);
   // No duplicar si ya existe
   if(document.querySelector('[data-fijo="salida"]')) return;
   var ph=document.getElementById('rph');
@@ -3157,9 +3162,9 @@ function AR_SALIDA(){
     +'<input list="dl" value="Salida" readonly style="font-weight:700;color:#1B4F8A;background:transparent;cursor:default">'
     
     +'<input type="number" value="1" readonly style="background:transparent;cursor:default">'
-    +'<input type="number" value="70" readonly style="font-weight:700;background:transparent;cursor:default">'
+    +'<input type="number" value="'+_pSal+'" readonly style="font-weight:700;background:transparent;cursor:default">'
     +'<input type="number" value="0" readonly style="background:transparent;cursor:default">'
-    +'<div class="ctot" id="t'+sid+'" style="font-weight:700">70,00</div>'
+    +'<div class="ctot" id="t'+sid+'" style="font-weight:700">'+_pSal.toFixed(2).replace('.',',')+'</div>'
     +'<div class="col-tiempo" style="width:55px"></div>'
     +'<div style="width:27px;text-align:center;color:#1B4F8A;font-size:11px" title="Coste fijo">🔒</div>';
   var tb=document.getElementById('tb');
@@ -3256,10 +3261,14 @@ function LD(){
       var el=document.getElementById(tFields[i]);
       if(el&&data[tFields[i]]!==undefined) el.value=data[tFields[i]];
     }
+    var _salGuardada=null;
     if(data.rows&&data.rows.length){
-      for(var i=0;i<data.rows.length;i++){var r=data.rows[i]; if(r.c!=='Salida') AR(r.c,r.z,r.u,r.p,r.d,r.tm||'',r.tam||'Estándar');}
+      for(var i=0;i<data.rows.length;i++){var r=data.rows[i];
+        if(r.c==='Salida'){ if(_salGuardada===null && r.p!=='' && r.p!=null) _salGuardada=r.p; continue; }
+        AR(r.c,r.z,r.u,r.p,r.d,r.tm||'',r.tam||'Estándar');}
     }
-    if(typeof AR_SALIDA==='function') AR_SALIDA();
+    // v401: si el presupuesto ya traía su Salida (70 de antes), se respeta. Los nuevos, 100.
+    if(typeof AR_SALIDA==='function') AR_SALIDA(_salGuardada);
     // v194: Restaurar ascensor
     if(typeof setAscensor==='function'){setAscensor('rec',data.asc_rec||'');setAscensor('ent',data.asc_ent||'');}
     // v199: Restaurar promo manual
@@ -3608,7 +3617,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v400';
+var APP_VERSION = 'v401';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -11136,7 +11145,11 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     var addrRec = fRec.value.trim();
     var addrEnt = fEnt.value.trim();
 
-    if (addrRec.length < 8 || addrEnt.length < 8) {
+    // v401 (Asier, 9-ago-2026): «se pone Munguía en recogida y Bilbao en entrega y que me
+    // cuente los kilómetros; no hace falta que ponga la calle exacta». Antes hacían falta 8
+    // letras en cada campo, así que "Mungia" (6) y "Bilbao" (6) NUNCA disparaban el cálculo
+    // y el desplazamiento se quedaba sin poner. Con el nombre del pueblo basta.
+    if (addrRec.length < 3 || addrEnt.length < 3) {
       box.style.display = 'none';
       return;
     }
@@ -11214,6 +11227,19 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
             costeEl.textContent = '✅ GRATIS';
             costeEl.style.color = '#27ae60';
             rutaEl.textContent = KM_GRATIS + ' km o menos → sin cargo por desplazamiento';
+          }
+          // v401: enseñar QUÉ sitios ha cogido el mapa. Con el pueblo suelto suele acertar,
+          // pero si se equivoca hay que verlo ANTES de mandar el presupuesto.
+          var _corto = function(t) { t = String(t || ''); var pz = t.split(',').map(function(x){return x.trim();}); return pz.slice(0, 2).join(', ') || t; };
+          if (from && to) {
+            var _sit = document.getElementById('dist-sitios');
+            if (!_sit) {
+              _sit = document.createElement('div');
+              _sit.id = 'dist-sitios';
+              _sit.style.cssText = 'font-size:10.5px;color:#5b6b7c;margin-top:3px';
+              rutaEl.parentElement.appendChild(_sit);
+            }
+            _sit.textContent = '📍 ' + _corto(from.display) + '  →  ' + _corto(to.display) + '  (si no es ahí, afina la dirección)';
           }
 
           // Guardar en campo oculto para usar en presupuesto
