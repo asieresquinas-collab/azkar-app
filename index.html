@@ -1782,7 +1782,8 @@ function AR(c,z,u,p,d){
   div.querySelector('input').focus();
   CA();
   // v403: si la fila nace ya con un canapé/colchón, se le pone el precio cerrado
-  if(esDeDos(c)) aplica2p(div);
+  // v404: salvo cargando una ficha vieja — esa se queda con su precio de entonces
+  if(!window._restaurandoFicha && esDeDos(c)) aplica2p(div);
 }
 
 function QA(c,z){ AR(c,z); }
@@ -3138,7 +3139,11 @@ document.addEventListener('click', function(e){
 // con el precio que tenían guardado (LD le pasa el suyo) — no se les toca el total.
 var SALIDA_EUR = 100;
 function AR_SALIDA(precio){
-  var _pSal = (precio === undefined || precio === null || precio === '' || isNaN(parseFloat(precio))) ? SALIDA_EUR : parseFloat(precio);
+  // v404: "de hoy en adelante" de verdad. Si no viene precio, es un presupuesto NUEVO y
+  // se queda marcado como tal; los que vienen con su precio guardado se respetan.
+  var _salNueva = (precio === undefined || precio === null || precio === '' || isNaN(parseFloat(precio)));
+  var _pSal = _salNueva ? SALIDA_EUR : parseFloat(precio);
+  window._salidaNueva = _salNueva ? true : !!window._salidaNueva;
   // No duplicar si ya existe
   if(document.querySelector('[data-fijo="salida"]')) return;
   var ph=document.getElementById('rph');
@@ -3203,6 +3208,7 @@ function GD(){
   var ascE=document.getElementById('asc_ent');if(ascE)data.asc_ent=ascE.getAttribute('data-val')||'';
   // v199: Guardar estado promo manual
   data._promoManual=!!window._promoManual;
+  data._salidaNueva=!!window._salidaNueva;   // v404
   data.rows=[];
   var rows=document.querySelectorAll(".cr");
   for(var i=0;i<rows.length;i++){
@@ -3255,12 +3261,20 @@ function LD(){
       if(el&&data[tFields[i]]!==undefined) el.value=data[tFields[i]];
     }
     var _salGuardada=null;
-    if(data.rows&&data.rows.length){
-      for(var i=0;i<data.rows.length;i++){var r=data.rows[i];
-        if(r.c==='Salida'){ if(_salGuardada===null && r.p!=='' && r.p!=null) _salGuardada=r.p; continue; }
-        AR(r.c,r.z,r.u,r.p,r.d,r.tm||'',r.tam||'Estándar');}
-    }
+    // v404: cargando ficha → NO se re-tarifa nada (ni canapé ni colchón): lo de antes se
+    // queda exactamente como estaba.
+    window._restaurandoFicha = true;
+    try{
+      if(data.rows&&data.rows.length){
+        for(var i=0;i<data.rows.length;i++){var r=data.rows[i];
+          if(r.c==='Salida'){ if(_salGuardada===null && r.p!=='' && r.p!=null) _salGuardada=r.p; continue; }
+          AR(r.c,r.z,r.u,r.p,r.d,r.tm||'',r.tam||'Estándar');}
+      }
+    } finally { window._restaurandoFicha = false; }
     // v401: si el presupuesto ya traía su Salida (70 de antes), se respeta. Los nuevos, 100.
+    // v404: y si se la pisó el auto-guardado (100 en uno viejo), se le devuelve su 70.
+    window._salidaNueva = !!data._salidaNueva;
+    if(!data._salidaNueva && Math.abs(parseFloat(_salGuardada) - SALIDA_EUR) < 0.005) _salGuardada = 70;
     if(typeof AR_SALIDA==='function') AR_SALIDA(_salGuardada);
     // v194: Restaurar ascensor
     if(typeof setAscensor==='function'){setAscensor('rec',data.asc_rec||'');setAscensor('ent',data.asc_ent||'');}
@@ -3610,7 +3624,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v403';
+var APP_VERSION = 'v404';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -4781,6 +4795,9 @@ function collectFormData() {
 
   // v199: Guardar estado promo manual
   data._promoManual = !!window._promoManual;
+  // v404: ¿este presupuesto NACIÓ con la salida de 100? Sirve para no tocarle la salida a
+  // los de antes aunque un guardado automático se la haya pisado.
+  data._salidaNueva = !!window._salidaNueva;
 
   data.timestamp = Date.now();
   // v123: Preservar TODOS los campos de estado — leer de variable global O de IndexedDB
@@ -4821,6 +4838,13 @@ function restoreFormData(data) {
     if (el) el.value = (data[id] !== undefined && data[id] !== null) ? data[id] : '';
   });
 
+  // v404 (Asier, 9-ago-2026): «los que ya estaban hechos antes de esto NO los tienes que
+  // modificar; mira que estén todos como estaban menos el que estoy probando yo ahora».
+  // Aquí estaba el agujero: esta es la ruta por la que se abre un presupuesto que viene de
+  // la NUBE, y llamaba a AR_SALIDA() sin pasarle nada — así que le ponía la Salida de HOY
+  // (100 €) a un presupuesto que se cerró con 70. Ahora se guarda la Salida que traía la
+  // ficha y se le devuelve tal cual; solo los NUEVOS salen con la de hoy.
+  var _salFicha = null;
   if (data.rows && data.rows.length && typeof AR === 'function') {
     // v133: Pasar también el tiempo (r.tm) al restaurar
     // v137: Pasar también el tamaño (r.tam)
@@ -4830,7 +4854,10 @@ function restoreFormData(data) {
     window._restaurandoFicha = true;
     try {
       data.rows.forEach(r => {
-        if (r.c === 'Salida') return;
+        if (r.c === 'Salida') {
+          if (_salFicha === null && r.p !== '' && r.p !== null && r.p !== undefined) _salFicha = r.p;
+          return;
+        }
         window._dp2pRestore = r.dp || ''; window._dp2pBase = r.dpb || '';
         AR(r.c, r.z, r.u, r.p, r.d, r.tm || '', r.tam || 'Estándar');
         window._dp2pRestore = ''; window._dp2pBase = '';
@@ -4838,7 +4865,11 @@ function restoreFormData(data) {
     } finally { window._restaurandoFicha = false; window._dp2pRestore = ''; window._dp2pBase = ''; }
   }
 
-  if (typeof AR_SALIDA === 'function') AR_SALIDA();
+  // v404 · REPARACIÓN: si el presupuesto NO nació con la salida nueva y tiene guardado
+  // exactamente 100, es que se la pisó el auto-guardado al abrirlo. Se le devuelve su 70.
+  window._salidaNueva = !!data._salidaNueva;
+  if (!data._salidaNueva && Math.abs(parseFloat(_salFicha) - SALIDA_EUR) < 0.005) _salFicha = 70;
+  if (typeof AR_SALIDA === 'function') AR_SALIDA(_salFicha);
   if (typeof CA === 'function') CA();
   if (typeof SY === 'function') SY();
 
