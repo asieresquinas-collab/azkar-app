@@ -2833,6 +2833,38 @@ function TL_LOOKUP(inp){
 //  interno — no se enseña, no se explica y no sale en el PDF. Y solo afecta a lo que
 //  se haga DE HOY EN ADELANTE: lo ya hecho no lleva marca y se queda igual.
 // ══════════════════════════════════════════════════════════════════════════════
+// ── v395 · DÍA APILABLE (idea de Asier, 9-ago) ────────────────────────────────
+// Si el día elegido ya tiene UNA mudanza pequeña (≤500 € con IVA) y de zona, el
+// servidor lo marca y aquí sale un aviso verde: «si el cliente se amolda, 20%».
+// El botón activa la promo del 20% que ya existe (misma mecánica, con rastro).
+// Dos de 500 en un día = un equipo; en días distintos = dos equipos (4 sueldos).
+(function(){
+  function monta(){
+    var f=document.getElementById('f_fserv'); if(!f || document.getElementById('apilable-aviso')) return;
+    var av=document.createElement('div'); av.id='apilable-aviso';
+    av.style.cssText='display:none;margin-top:4px;padding:8px 10px;border-radius:7px;font-size:12px;font-weight:700;line-height:1.45';
+    f.parentNode.insertBefore(av, f.nextSibling);
+    async function mira(){
+      var v=f.value;
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){ av.style.display='none'; return; }
+      try{
+        var h={}; try{ var k=(typeof AZKAR_API_KEY!=='undefined'?AZKAR_API_KEY:localStorage.getItem('azkar_api_key')); if(k) h['x-api-key']=k; }catch(e){}
+        var r=await fetch(RAILWAY_API+'/api/apilable?fecha='+v,{headers:h});
+        var d=await r.json();
+        if(d && d.apilable){
+          av.style.display='block'; av.style.background='#E8F7EE'; av.style.color='#1a7a3f'; av.style.border='1.5px solid #1a7a3f';
+          av.innerHTML='🟢 <b>DÍA APILABLE</b>: '+String(d.motivo||'').replace(/</g,'&lt;')
+            +'.<br>Si este cliente se amolda a ese día (y esta mudanza también es pequeña y de zona), ofrécele el <b>20%</b>: '
+            +'<button type="button" onclick="window._promoManual=true;CA();this.textContent=\'✓ 20% aplicado\';this.disabled=true" style="margin-top:4px;background:#1a7a3f;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:700;cursor:pointer">Aplicar 20% (día apilable)</button>';
+        } else { av.style.display='none'; }
+      }catch(e){ av.style.display='none'; }
+    }
+    f.addEventListener('change', mira);
+    f.addEventListener('blur', mira);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', monta); else monta();
+})();
+
 var DOS_PERSONAS = ['Canapé', 'Canapé/Cama nido', 'Colchón'];
 function _norm2p(t){ return String(t||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
 function esDeDos(nombre){
@@ -3398,7 +3430,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v394';</script>
+<script>document.getElementById('version-tag').textContent='v395';</script>
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3510,7 +3542,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v394';
+var APP_VERSION = 'v395';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
