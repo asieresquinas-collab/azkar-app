@@ -2974,7 +2974,11 @@ function aplica2p(row, respetar){
   var ns=row.querySelectorAll('input[type=number]');
   if(!ns || ns.length<3) return;
   var nombre=cInp?cInp.value.trim():'';
-  var cerrado = (respetar > 0) ? parseFloat(respetar) : precio2p(nombre);
+  // v408: lo mismo que la Salida — en una ficha de ANTES del cambio no se re-tarifa nada.
+  // Se bloquea la línea (sigue sin descuento) pero con el precio que ya tenía.
+  var _actual = parseFloat(ns[1].value);
+  var cerrado = (respetar > 0) ? parseFloat(respetar)
+              : (_fichaEsAnterior() ? (_actual > 0 ? _actual : 0) : precio2p(nombre));
   row.setAttribute('data-2p','1');
   if(cerrado>0) ns[1].value=cerrado.toFixed(2);
   ns[2].value='0';
@@ -3152,12 +3156,43 @@ document.addEventListener('click', function(e){
 // DE HOY EN ADELANTE: los presupuestos nuevos salen con 100. Los ya hechos se abren
 // con el precio que tenían guardado (LD le pasa el suyo) — no se les toca el total.
 var SALIDA_EUR = 100;
+var SALIDA_ANTES = 70;              // lo que valía hasta el 8-ago-2026
+var SALIDA_DESDE = '2026-08-09';    // primer día con la salida a 100
+// v408 (Asier, 9-ago-2026, cabreado y con razón): «un cliente que estaba ya, aunque lo abra
+// ahora, si ponía 70 € la salida NO la modifiques. Puedo tener problemas si algún día se
+// miran los servicios y de repente suman 30 € más cada uno. Los clientes que ya estaban
+// déjalos como están; solo lo que hemos hecho de ayer a hoy en adelante».
+//
+// Los intentos anteriores dependían de que CADA sitio que abre una ficha se acordara de
+// pasarle el precio guardado, y con eso ya me la he pegado dos veces. Ahora la protección
+// vive DENTRO de la propia línea de Salida y mira la FECHA DEL PRESUPUESTO que hay en
+// pantalla: si la ficha es de antes del cambio, la salida es 70 y no hay más que hablar —
+// da igual por qué camino se haya abierto, hoy o dentro de un año.
+function _fichaEsAnterior(){
+  try{
+    var el=document.getElementById('f_fecha');
+    var v=el?String(el.value||'').trim():'';
+    if(!v) return false;                                  // sin fecha: presupuesto nuevo
+    var m=v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(!m){ var d=v.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+      if(d) m=[0,d[3],('0'+d[2]).slice(-2),('0'+d[1]).slice(-2)]; }
+    if(!m) return false;
+    return (m[1]+'-'+m[2]+'-'+m[3]) < SALIDA_DESDE;
+  }catch(e){ return false; }
+}
 function AR_SALIDA(precio){
-  // v404: "de hoy en adelante" de verdad. Si no viene precio, es un presupuesto NUEVO y
-  // se queda marcado como tal; los que vienen con su precio guardado se respetan.
-  var _salNueva = (precio === undefined || precio === null || precio === '' || isNaN(parseFloat(precio)));
-  var _pSal = _salNueva ? SALIDA_EUR : parseFloat(precio);
-  window._salidaNueva = _salNueva ? true : !!window._salidaNueva;
+  var _vieja = _fichaEsAnterior();
+  var _p = parseFloat(precio);
+  var _hay = !(precio === undefined || precio === null || precio === '' || isNaN(_p));
+  var _pSal;
+  if (_vieja) {
+    // Ficha de antes del cambio: JAMÁS la salida de hoy. Si lo guardado es exactamente la
+    // de hoy es que se la pisó un guardado automático → se le devuelve la suya.
+    _pSal = (_hay && Math.abs(_p - SALIDA_EUR) > 0.005) ? _p : SALIDA_ANTES;
+  } else {
+    _pSal = _hay ? _p : SALIDA_EUR;
+  }
+  window._salidaNueva = _vieja ? false : (!_hay ? true : !!window._salidaNueva);
   // No duplicar si ya existe
   if(document.querySelector('[data-fijo="salida"]')) return;
   var ph=document.getElementById('rph');
@@ -3285,10 +3320,9 @@ function LD(){
           AR(r.c,r.z,r.u,r.p,r.d,r.tm||'',r.tam||'Estándar');}
       }
     } finally { window._restaurandoFicha = false; }
-    // v401: si el presupuesto ya traía su Salida (70 de antes), se respeta. Los nuevos, 100.
-    // v404: y si se la pisó el auto-guardado (100 en uno viejo), se le devuelve su 70.
+    // v401/v408: se le pasa la Salida guardada; si la ficha es de antes del cambio, la
+    // propia AR_SALIDA se encarga de que no se le ponga la de hoy.
     window._salidaNueva = !!data._salidaNueva;
-    if(!data._salidaNueva && Math.abs(parseFloat(_salGuardada) - SALIDA_EUR) < 0.005) _salGuardada = 70;
     if(typeof AR_SALIDA==='function') AR_SALIDA(_salGuardada);
     // v194: Restaurar ascensor
     if(typeof setAscensor==='function'){setAscensor('rec',data.asc_rec||'');setAscensor('ent',data.asc_ent||'');}
@@ -3638,7 +3672,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v407';
+var APP_VERSION = 'v408';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -4879,10 +4913,9 @@ function restoreFormData(data) {
     } finally { window._restaurandoFicha = false; window._dp2pRestore = ''; window._dp2pBase = ''; }
   }
 
-  // v404 · REPARACIÓN: si el presupuesto NO nació con la salida nueva y tiene guardado
-  // exactamente 100, es que se la pisó el auto-guardado al abrirlo. Se le devuelve su 70.
+  // v408: la protección la hace AR_SALIDA mirando la fecha del presupuesto. Aquí solo se
+  // le pasa lo que traía guardado.
   window._salidaNueva = !!data._salidaNueva;
-  if (!data._salidaNueva && Math.abs(parseFloat(_salFicha) - SALIDA_EUR) < 0.005) _salFicha = 70;
   if (typeof AR_SALIDA === 'function') AR_SALIDA(_salFicha);
   if (typeof CA === 'function') CA();
   if (typeof SY === 'function') SY();
