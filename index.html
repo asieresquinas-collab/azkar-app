@@ -3627,8 +3627,13 @@ async function forceSync() {
   var id = ref.value;
   showSyncStatus('🔄 Sincronizando desde la nube...', 0);
 
-  if (!firebaseConfigured || !window._fb || !window._fb.getDoc) {
-    showSyncStatus('⚠ Firebase no está conectado', 4000);
+  // v409 · Si no hay nube, primero se intenta engancharla; solo se avisa si no hay manera.
+  if (!firebaseConfigured || !window._fb || !window._fb.getDoc || window._fb._sinSesion) {
+    showSyncStatus('🔄 Conectando con la nube...', 0);
+    try { if (window._reintentarNube) await window._reintentarNube(); } catch (_) {}
+  }
+  if (!firebaseConfigured || !window._fb || !window._fb.getDoc || window._fb._sinSesion) {
+    showSyncStatus('⚠ Sin nube ahora mismo — se guarda aquí y se sube en cuanto vuelva', 5000);
     return;
   }
 
@@ -3672,7 +3677,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v408';
+var APP_VERSION = 'v409';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -3683,7 +3688,11 @@ function ejecutarUpdateSiNoChat() {
   localStorage.removeItem('azkar-app-version');
   window.location.reload();
 }
-(function() {
+// v409 · La comprobación de versión ya no es solo al arrancar. Una app que se queda
+// abierta días en el móvil (que es lo normal en un PWA) no se enteraba nunca de que
+// había versión nueva: por eso Asier seguía viendo la v399 con la v408 publicada.
+// Ahora se mira también al volver a la app y cada media hora.
+function comprobarVersion() {
   try {
     fetch('./version.json?_=' + Date.now(), { cache: 'no-store' })
       .then(function(r) { return r.ok ? r.json() : null; })
@@ -3715,7 +3724,17 @@ function ejecutarUpdateSiNoChat() {
       })
       .catch(function(e) { console.log('[Azkar] Version check offline, skip'); });
   } catch(e) {}
-})();
+}
+window.comprobarVersion = comprobarVersion;
+comprobarVersion();
+setInterval(comprobarVersion, 1800000); // cada 30 min
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState !== 'visible') return;
+  var ult = parseInt(window._ultVersionCheck || 0, 10);
+  if (Date.now() - ult < 300000) return;   // como mucho una vez cada 5 min
+  window._ultVersionCheck = Date.now();
+  comprobarVersion();
+});
 
 // ── Limpieza forzada con ?clear=1 ──────────────────────
 if (window.location.search.indexOf('clear=1') > -1) {
@@ -4402,18 +4421,40 @@ async function checkAppHealth() {
     _appHealth.backend = false;
   }
 
-  // Check Firebase
-  _appHealth.firebase = firebaseConfigured && !!window._fb;
+  // v409 · LA NUBE TARDA MÁS DE 3 SEGUNDOS.
+  // Antes se juzgaba a los 3 s y saltaba «Firebase no conectado» aunque la nube
+  // entrase al cuarto segundo: cargar los módulos de Google, pedirle la llave al
+  // servidor (que puede estar dormido) e identificarse pasa de 3 s en cualquier
+  // móvil con datos. Ahora se espera de verdad y solo se avisa si tras 25 s y un
+  // reintento sigue sin haber nube.
+  _appHealth.firebase = await esperarNube(25000);
 
   // Mostrar banner si algo falla
   if (!_appHealth.backend) {
     showSyncStatus('⚠ Sin conexión al servidor — los datos se guardarán localmente', 8000);
   } else if (!_appHealth.firebase) {
-    showSyncStatus('⚠ Firebase no conectado — sincronización entre dispositivos desactivada', 8000);
+    showSyncStatus('⚠ Sin nube — se guarda en este móvil y se sube solo al reconectar', 8000);
   }
 
   return _appHealth;
 }
+
+// v409 · Espera a que la nube esté DE VERDAD lista (identificada, no el apaño sin sesión).
+async function esperarNube(msMax) {
+  var t0 = Date.now(), reintentado = false;
+  var lista = function () { return !!(firebaseConfigured && window._fb && !window._fb._sinSesion); };
+  while (Date.now() - t0 < (msMax || 25000)) {
+    if (lista()) return true;
+    // A mitad de camino, un empujón: si el servidor estaba frío, la llave ya estará lista.
+    if (!reintentado && Date.now() - t0 > 8000) {
+      reintentado = true;
+      try { if (window._reintentarNube) await window._reintentarNube(); } catch (_) {}
+    }
+    await new Promise(function (r) { setTimeout(r, 700); });
+  }
+  return lista();
+}
+window.esperarNube = esperarNube;
 
 // ══════════════════════════════════════════════════════════════
 //  v120: AUTO-REPAIR — Detecta y corrige problemas automáticamente
@@ -5028,6 +5069,10 @@ async function _reintentarNube() {
 }
 window._reintentarNube = _reintentarNube;
 window.addEventListener('online', function () { setTimeout(_reintentarNube, 1500); });
+// v409 · Y también por su cuenta cada minuto. Antes SOLO se reintentaba al perder y
+// recuperar la cobertura: si al arrancar el servidor estaba dormido o la llave había
+// caducado, el móvil se quedaba sin nube hasta cerrar y abrir la app.
+setInterval(function () { if (!firebaseConfigured && navigator.onLine) _reintentarNube(); }, 60000);
 
 // Diagnostico: escribir estadoNube() en la consola de cualquier dispositivo
 window.estadoNube = function () {
@@ -5040,6 +5085,10 @@ window.estadoNube = function () {
 
 async function initFirebase(config) {
   if (firebaseConfigured) return;
+  // v409 · Se guarda la configuración YA, antes de nada: si esto se cae antes de
+  // llegar abajo (por ejemplo no cargan los módulos de Google), el reintento
+  // automático sigue teniendo con qué volver a intentarlo.
+  window._fbPendingConfig = config;
   try {
     const { initializeApp, getApps, getApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
     const { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot } =
@@ -5073,7 +5122,15 @@ async function initFirebase(config) {
     
     // Store Firebase modules globally
     window._fb = { collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, db: firestoreDB };
-    
+
+    // v409 · Si estaba puesto el aviso de que no hay nube, se retira: ya la hay.
+    try {
+      var _sb = document.getElementById('sync-status');
+      if (_sb && _sb.style.display !== 'none' && /nube|firebase/i.test(_sb.textContent || '')) {
+        showSyncStatus('✓ Nube conectada', 3000);
+      }
+    } catch (_) {}
+
     // v118: Listen for real-time changes (baja datos de la nube al dispositivo)
     // Corregido: usar for...of en vez de forEach(async) para esperar correctamente
     const colRef = collection(firestoreDB, 'presupuestos');
