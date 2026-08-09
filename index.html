@@ -3677,17 +3677,41 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v409';
+var APP_VERSION = 'v410';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
 window._chatbotActivo = false;
 window._updatePendiente = false;
+// v410 · ESTE ERA EL CANDADO QUE DEJÓ A ASIER CLAVADO EN LA v399.
+// Antes se miraba la bandera window._chatbotActivo, y esa bandera se ponía a true al
+// abrir el chat pero NO se bajaba en todos los sitios donde el chat se cierra solo
+// (por ejemplo cuando Azkarin abre un presupuesto y se quita de en medio, o al salir
+// de la sesión). Bastaba con pedirle a Azkarin que abriera una ficha —cosa de todos
+// los días— para que la bandera se quedara en true PARA SIEMPRE y la app no volviera
+// a actualizarse nunca. Ahora se mira el panel de verdad, no la bandera.
+function _chatAbierto() {
+  try {
+    var p = document.getElementById('chatbot-panel');
+    var abierto = !!(p && p.classList.contains('open') && p.offsetParent !== null);
+    window._chatbotActivo = abierto;   // se corrige la bandera de paso
+    return abierto;
+  } catch (e) { return false; }
+}
+window._chatAbierto = _chatAbierto;
 function ejecutarUpdateSiNoChat() {
-  if (window._chatbotActivo) { window._updatePendiente = true; return; }
+  if (_chatAbierto()) { window._updatePendiente = true; return; }
   localStorage.removeItem('azkar-app-version');
   window.location.reload();
 }
+// v410 · Y si queda una actualización esperando, se mira cada 20 s si ya se puede
+// hacer, en vez de fiarlo todo a que alguien cierre el chat con la X.
+setInterval(function () {
+  if (window._updatePendiente && !_chatAbierto()) {
+    window._updatePendiente = false;
+    ejecutarUpdateSiNoChat();
+  }
+}, 20000);
 // v409 · La comprobación de versión ya no es solo al arrancar. Una app que se queda
 // abierta días en el móvil (que es lo normal en un PWA) no se enteraba nunca de que
 // había versión nueva: por eso Asier seguía viendo la v399 con la v408 publicada.
@@ -13738,6 +13762,7 @@ function showLoginScreen() {
   if (chatBubble) chatBubble.style.display = 'none';
   var chatPanel = document.getElementById('chatbot-panel');
   if (chatPanel) chatPanel.classList.remove('open');
+  window._chatbotActivo = false;   // v410
   loadSavedCredentials();
 }
 
@@ -15015,7 +15040,7 @@ async function doResetWithCode() {
           try {
             await loadPresupuesto(refAbrir);
             ST('dossier');
-            panel.classList.remove('open');
+            panel.classList.remove('open'); window._chatbotActivo = false;   // v410
             addMsg('bot', '✅ Presupuesto ' + refAbrir + ' cargado.');
           } catch (e) {
             addMsg('bot', '❌ Error al abrir el presupuesto: ' + (e.message || 'desconocido'));
