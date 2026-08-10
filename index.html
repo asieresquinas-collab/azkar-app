@@ -3257,7 +3257,7 @@ function GD(){
   var ascE=document.getElementById('asc_ent');if(ascE)data.asc_ent=ascE.getAttribute('data-val')||'';
   // v199: Guardar estado promo manual
   data._promoManual=!!window._promoManual;
-  data._salidaNueva=!!window._salidaNueva;   // v404
+  data._salidaNueva=!!window._salidaNueva; data._grua=window._gruaTipo||'';   /* v417 */   // v404
   data.rows=[];
   var rows=document.querySelectorAll(".cr");
   for(var i=0;i<rows.length;i++){
@@ -3310,19 +3310,30 @@ function LD(){
       if(el&&data[tFields[i]]!==undefined) el.value=data[tFields[i]];
     }
     var _salGuardada=null;
+    // v417: ¿la ficha guardada trae una fila «Salida»? Si no, es una de las que se
+    // guardaron con la línea renombrada a «Grúa (…)» y hay que repararla al vuelo.
+    var _sinSalida = !(data.rows||[]).some(function(x){ return x && x.c==='Salida'; });
     // v404: cargando ficha → NO se re-tarifa nada (ni canapé ni colchón): lo de antes se
     // queda exactamente como estaba.
     window._restaurandoFicha = true;
     try{
       if(data.rows&&data.rows.length){
         for(var i=0;i<data.rows.length;i++){var r=data.rows[i];
-          if(r.c==='Salida'){ if(_salGuardada===null && r.p!=='' && r.p!=null) _salGuardada=r.p; continue; }
+          // v417 · LA LÍNEA FIJA SE RECONOCE POR EL NOMBRE «Salida», y en la v415 yo la
+          // renombré a «Grúa (…)». Resultado: al recargar ya no se reconocía, se metía como
+          // una línea normal Y ADEMÁS nacía una Salida nueva a 100. A Asier le salió
+          // Salida 100 + Grúa 190 = 290. Ya no se renombra nada (más abajo), pero esto
+          // REPARA las fichas que se guardaron así: si no hay ninguna fila «Salida», la que
+          // se llama «Grúa (…)» ES la fija y se trata como tal.
+          if(r.c==='Salida' || (_sinSalida && /^Grúa \(/.test(String(r.c||'')))){
+            if(_salGuardada===null && r.p!=='' && r.p!=null) _salGuardada=r.p; continue; }
           AR(r.c,r.z,r.u,r.p,r.d,r.tm||'',r.tam||'Estándar');}
       }
     } finally { window._restaurandoFicha = false; try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); if(window.gruaRepinta) setTimeout(window.gruaRepinta, 350); }catch(e){} }
     // v401/v408: se le pasa la Salida guardada; si la ficha es de antes del cambio, la
     // propia AR_SALIDA se encarga de que no se le ponga la de hoy.
     window._salidaNueva = !!data._salidaNueva;
+    window._gruaTipo = data._grua || '';        // v417: la grúa se apunta en la ficha, no en el nombre de la línea
     if(typeof AR_SALIDA==='function') AR_SALIDA(_salGuardada);
     // v194: Restaurar ascensor
     if(typeof setAscensor==='function'){setAscensor('rec',data.asc_rec||'');setAscensor('ent',data.asc_ent||'');}
@@ -3677,7 +3688,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v416';
+var APP_VERSION = 'v417';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -4931,7 +4942,7 @@ function collectFormData() {
   data._promoManual = !!window._promoManual;
   // v404: ¿este presupuesto NACIÓ con la salida de 100? Sirve para no tocarle la salida a
   // los de antes aunque un guardado automático se la haya pisado.
-  data._salidaNueva = !!window._salidaNueva;
+  data._salidaNueva = !!window._salidaNueva; data._grua = window._gruaTipo || '';   /* v417 */
 
   data.timestamp = Date.now();
   // v123: Preservar TODOS los campos de estado — leer de variable global O de IndexedDB
@@ -16960,10 +16971,12 @@ async function doResetWithCode() {
     var c = fila.querySelector('input[list]'), n = fila.querySelectorAll('input[type=number]');
     return (c && n && n.length >= 2) ? { concepto: c, uds: n[0], precio: n[1] } : null;
   }
-  function esGrua() {
-    var f = campos(filaSalida());
-    return !!(f && /gr[uú]a|plataforma/i.test(f.concepto.value || ''));
-  }
+  // v417 · Antes esto miraba el NOMBRE de la línea de Salida, porque yo la renombraba a
+  // «Grúa (…)». Eso rompió el guardado: al recargar, la app no reconocía la línea fija y
+  // salían dos (Salida 100 + Grúa 190 = 290). Ya no se renombra: la grúa se apunta en la
+  // ficha (_grua) y la línea de Salida se queda llamándose Salida, valiendo 190.
+  // Que es lo que dijo Asier con sus palabras: «la salida son 190 cuando lo ponemos con la grúa».
+  function esGrua() { return !!window._gruaTipo; }
   function cajaEnt() {
     var e = document.getElementById('f_ent');
     return e ? (e.closest ? (e.closest('.fg') || e.closest('.fi') || e.parentNode) : e.parentNode) : null;
@@ -17020,8 +17033,6 @@ async function doResetWithCode() {
   function aplicar(tipo) {          // tipo: 'particular' | 'empresa'
     var f = campos(filaSalida());
     if (!f) { alert('No encuentro la línea de Salida. Abre o guarda el presupuesto y vuelve a intentarlo.'); return; }
-    f.concepto.value = (tipo === 'empresa') ? 'Grúa (mínimo 2 h)' : 'Grúa (1 subida)';
-    f.concepto.setAttribute('value', f.concepto.value);
     f.uds.value = '1';
     f.precio.value = String(GRUA_BASE);
     f.precio.setAttribute('value', String(GRUA_BASE));
@@ -17031,14 +17042,13 @@ async function doResetWithCode() {
     pinta(true);
     var m = document.getElementById('grua-msg');
     if (m) m.textContent = (tipo === 'empresa')
-      ? 'Empresa: los 190 € cubren 2 horas (es el mínimo). La hora de más, 50 €. Acuérdate del permiso.'
-      : 'Particular: los 190 € cubren una subida.';
+      ? 'Empresa: la Salida pasa a 190 € y cubre 2 horas (es el mínimo). La hora de más, 50 €. Acuérdate del permiso.'
+      : 'Particular: la Salida pasa a 190 € y cubre una subida.';
   }
 
   function quitar() {
     var f = campos(filaSalida());
     if (f) {
-      f.concepto.value = 'Salida'; f.concepto.setAttribute('value', 'Salida');
       var pv = (typeof SALIDA_EUR !== 'undefined') ? SALIDA_EUR : 100;
       f.precio.value = String(pv); f.precio.setAttribute('value', String(pv));
       try { if (typeof CA === 'function') CA(); } catch (e) {}
@@ -17080,7 +17090,7 @@ async function doResetWithCode() {
     caja.className = 'ui-interno';
     caja.innerHTML =
       '<button type="button" id="grua-btn">🏗️ ES SERVICIO DE GRÚA</button>'
-      + '<div id="grua-aviso">La grúa son <b>190 €</b>. Para un <b>particular</b> eso es <b>una subida</b>; '
+      + '<div id="grua-aviso">La grúa son <b>190 €</b>: la línea de <b>Salida</b> pasa de 100 a 190 y no se añade nada más. Para un <b>particular</b> eso es <b>una subida</b>; '
       + 'para una <b>empresa</b> son <b>2 horas</b> (el mínimo) y la hora de más va a <b>50 €</b>.<br>'
       + 'Este presupuesto es <b>solo de grúa</b>: una dirección y punto. Si además hay que mover cosas, quita la grúa y hazlo como una mudanza normal.</div>'
       + '<div id="grua-extras">'
