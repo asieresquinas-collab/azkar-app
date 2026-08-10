@@ -1373,9 +1373,6 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     </div>
   </div>
 
-  <!-- MARCA DE VERSIÓN PUBLICADA (texto visible, para comprobar desde fuera qué versión sirve GitHub Pages) -->
-  <p id="marca-version-publicada" style="text-align:center;color:#8aa;font-size:12px;margin:6px 0">VERSION-PUBLICADA-v411</p>
-
   <!-- SECCIÓN: DIRECTORIOS / ALTAS -->
   <div class='ayuda-section' id='sec-directorios'>
     <h3 onclick='ayudaToggle(this)'>DIRECTORIOS / CENTRAL DE ALTAS (SEO LOCAL)</h3>
@@ -3563,7 +3560,7 @@ function mostrarBannerAzkarin(data) {
   ✓ Sincronizado
 </div>
 <div id="version-tag" style="position:fixed;bottom:4px;right:4px;z-index:9997;background:rgba(0,0,0,.45);color:#fff;padding:2px 7px;border-radius:3px;font-family:'Barlow',sans-serif;font-size:9px;pointer-events:none;"></div>
-<script>document.getElementById('version-tag').textContent='v399';</script>
+
 
 <!-- Offline indicator -->
 <div id="offline-indicator" style="display:none;position:fixed;top:60px;right:16px;z-index:9998;background:#c0392b;color:#fff;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.2);">
@@ -3680,7 +3677,11 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v411';
+var APP_VERSION = 'v412';
+// v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
+// v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
+// la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
+try { document.getElementById('version-tag').textContent = APP_VERSION; } catch (e) {}
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
