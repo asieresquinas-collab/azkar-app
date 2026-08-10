@@ -3688,7 +3688,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v418';
+var APP_VERSION = 'v419';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -5013,9 +5013,16 @@ function restoreFormData(data) {
   // v408: la protección la hace AR_SALIDA mirando la fecha del presupuesto. Aquí solo se
   // le pasa lo que traía guardado.
   window._salidaNueva = !!data._salidaNueva;
+  // v419 · Asier: «cada vez que abro el presupuesto es como si tuviera que darle otra vez a
+  // lo de la grúa; el botón está azul y una vez que le das no se tendría que volver a
+  // cambiar». Era esto: la app tiene DOS formas de abrir un presupuesto —desde el archivo
+  // HTML (LD) y desde la nube / MIS PRESUPUESTOS (restoreFormData)— y yo solo había puesto
+  // la marca de la grúa en la primera. Por eso al abrirlo de la lista volvía a salir azul.
+  window._gruaTipo = data._grua || '';
   if (typeof AR_SALIDA === 'function') AR_SALIDA(_salFicha);
   if (typeof CA === 'function') CA();
   if (typeof SY === 'function') SY();
+  try { if (window.gruaRepinta) setTimeout(window.gruaRepinta, 120); } catch (e) {}   // v419
 
   // v199: Restaurar promo manual
   window._promoManual = !!data._promoManual;
