@@ -2115,6 +2115,10 @@ function RF(){
   updateGuardamueblesUI(false);
   // v376: Reset toggle plataforma elevadora
   window._currentPlataforma = false;
+  window._gruaEncendioClausula = false;   // v420: y quién la encendió
+  // v420: al limpiar, la ficha deja de ser de grúa (si no, la siguiente nacía con la grúa puesta)
+  window._gruaTipo = '';
+  try { if (window.gruaRepinta) setTimeout(window.gruaRepinta, 60); } catch (e) {}
   if (typeof updatePlataformaUI === 'function') updatePlataformaUI(false);
   // v199: Reset promo manual
   window._promoManual = false;
@@ -3688,7 +3692,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v419';
+var APP_VERSION = 'v420';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17041,6 +17045,30 @@ async function doResetWithCode() {
     if (av) av.style.display = on ? 'block' : 'none';
   }
 
+  // ── La cláusula del contrato, sola ──────────────────────────────────────────
+  // v420 · Asier: «necesito que cuando le dé a lo de grúa, también abajo en el contrato
+  // tengo para darles y ese grúa que se active; yo ahora lo he activado con la mano,
+  // pero puede ser que cuando le dé a lo de grúa se active solo lo del contrato».
+  // La cláusula es la 19ª del contrato — «Servicio con plataforma elevadora (elevador
+  // de fachada)» — y ya tenía su interruptor de siempre (togglePlataforma). No se toca
+  // ese mecanismo: se le da al mismo interruptor por dentro, para que el contrato salga
+  // igual que si lo hubiera pulsado él.
+  // Al QUITAR la grúa solo se apaga si la encendimos nosotros. Si él ya la tenía puesta
+  // a mano antes de poner la grúa, se queda como estaba: no se le apaga nada por detrás.
+  function clausulaContrato(on) {
+    try {
+      if (on) {
+        if (!window._currentPlataforma) window._gruaEncendioClausula = true;
+        window._currentPlataforma = true;
+      } else {
+        if (!window._gruaEncendioClausula) return;   // la puso él a mano → no se toca
+        window._gruaEncendioClausula = false;
+        window._currentPlataforma = false;
+      }
+      if (typeof updatePlataformaUI === 'function') updatePlataformaUI(window._currentPlataforma);
+    } catch (e) {}
+  }
+
   function aplicar(tipo) {          // tipo: 'particular' | 'empresa'
     var f = campos(filaSalida());
     if (!f) { alert('No encuentro la línea de Salida. Abre o guarda el presupuesto y vuelve a intentarlo.'); return; }
@@ -17050,11 +17078,13 @@ async function doResetWithCode() {
     try { if (typeof CA === 'function') CA(); } catch (e) {}
     try { if (typeof GD === 'function' && window._autoguardar) GD(); } catch (e) {}
     window._gruaTipo = tipo;
+    clausulaContrato(true);                          // v420
     pinta(true);
     var m = document.getElementById('grua-msg');
-    if (m) m.textContent = (tipo === 'empresa')
+    if (m) m.textContent = ((tipo === 'empresa')
       ? 'Empresa: la Salida pasa a 190 € y cubre 2 horas (es el mínimo). La hora de más, 50 €. Acuérdate del permiso.'
-      : 'Particular: la Salida pasa a 190 € y cubre una subida.';
+      : 'Particular: la Salida pasa a 190 € y cubre una subida.')
+      + ' En el contrato se ha activado sola la cláusula de plataforma elevadora.';
   }
 
   function quitar() {
@@ -17065,6 +17095,7 @@ async function doResetWithCode() {
       try { if (typeof CA === 'function') CA(); } catch (e) {}
     }
     window._gruaTipo = '';
+    clausulaContrato(false);                         // v420
     pinta(false);
     var m = document.getElementById('grua-msg'); if (m) m.textContent = '';
   }
@@ -17131,7 +17162,11 @@ async function doResetWithCode() {
     // Si se abre una ficha que YA era de grúa, se deja la pantalla como toca.
     pinta(esGrua());
   }
-  window.gruaRepinta = function () { try { pinta(esGrua()); } catch (e) {} };
+  // v420 · Al abrir una ficha que ya era de grúa (incluidas las de antes de la v420,
+  // que se guardaron sin la cláusula) se enciende también la del contrato.
+  window.gruaRepinta = function () {
+    try { pinta(esGrua()); if (esGrua()) clausulaContrato(true); } catch (e) {}
+  };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
   else monta();
