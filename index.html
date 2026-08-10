@@ -3688,7 +3688,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v417';
+var APP_VERSION = 'v418';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -16997,13 +16997,17 @@ async function doResetWithCode() {
   // cosa recupera exactamente lo que tenía (el mapa de entrega, por ejemplo, nace oculto
   // y solo aparece cuando hay dirección — si le pusiera display:'' lo estaría enseñando
   // cuando no toca).
-  function _mapaEntrega() {
-    var sv = document.getElementById('sv-entrega');
-    if (!sv) return null;
-    var tx = document.getElementById('tx-entrega');
-    var caja = tx && tx.closest ? tx.closest('div') : null;
-    // el bloque que envuelve la dirección de entrega Y su mapa
-    return (caja && caja.parentNode && caja.parentNode.contains(sv)) ? caja.parentNode : sv;
+  // v418 · EL MAPA BUENO ERA OTRO. En la v416 tapé '#sv-entrega', que es el de la pantalla
+  // de mapas sueltos. El de la FICHA lo crea el propio JS y se llama '#sv-main-entrega', y
+  // se mete como HERMANO del campo de la dirección — por eso, al esconder el campo, el mapa
+  // se quedaba ahí con sus dos cuadros en blanco. Se tapan los dos, por si acaso.
+  function _mapasEntrega() {
+    var out = [];
+    ['sv-main-entrega', 'sv-entrega'].forEach(function (id) {
+      var e = document.getElementById(id);
+      if (e) out.push(e);
+    });
+    return out;
   }
   function _tapa(el, on) {
     if (!el) return;
@@ -17014,7 +17018,7 @@ async function doResetWithCode() {
   function pinta(on) {
     var ent = cajaEnt(), lab = etiquetaRec(), bts = document.getElementById('grua-extras');
     _tapa(ent, on);                                       // la dirección de entrega
-    _tapa(_mapaEntrega(), on);                            // su mapa y su Street View
+    _mapasEntrega().forEach(function (m) { _tapa(m, on); });   // su mapa y su Street View
     _tapa(document.getElementById('distancia-box'), on);  // los km entre recogida y entrega
     if (lab) {
       if (on) { if (!lab.getAttribute('data-txt')) lab.setAttribute('data-txt', lab.textContent); lab.textContent = 'Dirección donde se pone la grúa'; }
