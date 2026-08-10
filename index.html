@@ -3677,7 +3677,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v410';
+var APP_VERSION = 'v411';
 
 // ── v127+v209: Comprobación de versión (NO recarga si chatbot activo) ─────────────
 // v209: Flag global — si el chatbot está abierto, diferir la recarga para no interrumpir
@@ -3699,17 +3699,31 @@ function _chatAbierto() {
   } catch (e) { return false; }
 }
 window._chatAbierto = _chatAbierto;
-function ejecutarUpdateSiNoChat() {
-  if (_chatAbierto()) { window._updatePendiente = true; return; }
-  localStorage.removeItem('azkar-app-version');
-  window.location.reload();
+// v411 · Y ESTE ERA EL DE VERDAD.
+// Recargar NO basta. window.location.reload() se sirve del caché HTTP del propio
+// navegador, y GitHub Pages manda el index.html con diez minutos de vida. Así que la
+// app borraba sus cachés, se quitaba el service worker, recargaba... y el navegador le
+// devolvía EL MISMO index.html viejo de su bolsillo. Y vuelta a empezar. Por eso el
+// móvil de Asier llevaba once versiones clavado haciendo todo "bien".
+// La solución que no falla: recargar con la versión pegada a la dirección. Dirección
+// distinta = caja distinta en el caché del navegador = index.html nuevo sí o sí.
+async function ejecutarUpdateSiNoChat(nueva) {
+  if (_chatAbierto()) { window._updatePendiente = nueva || true; return; }
+  try { localStorage.removeItem('azkar-app-version'); } catch (e) {}
+  // 1) Se obliga al navegador a rebajarse el index (así la dirección limpia también
+  //    queda al día para el próximo arranque desde el icono).
+  try { await fetch(location.pathname, { cache: 'reload' }); } catch (e) {}
+  // 2) Y se entra por una dirección que el caché no ha visto nunca.
+  var v = (typeof nueva === 'string' && nueva) ? nueva : String(Date.now());
+  location.replace(location.pathname + '?v=' + encodeURIComponent(v));
 }
 // v410 · Y si queda una actualización esperando, se mira cada 20 s si ya se puede
 // hacer, en vez de fiarlo todo a que alguien cierre el chat con la X.
 setInterval(function () {
   if (window._updatePendiente && !_chatAbierto()) {
+    var _n = window._updatePendiente;
     window._updatePendiente = false;
-    ejecutarUpdateSiNoChat();
+    ejecutarUpdateSiNoChat(typeof _n === 'string' ? _n : undefined);
   }
 }, 20000);
 // v409 · La comprobación de versión ya no es solo al arrancar. Una app que se queda
@@ -3742,7 +3756,7 @@ function comprobarVersion() {
               });
             }
           }).then(function() {
-            ejecutarUpdateSiNoChat();
+            ejecutarUpdateSiNoChat(data.version);
           });
         } else { try { localStorage.removeItem('azkar_update_try'); } catch(e){} }
       })
@@ -3774,7 +3788,10 @@ if (window.location.search.indexOf('clear=1') > -1) {
     }
     // Pequeña pausa para que el SW se desregistre completamente
     await new Promise(function(r) { setTimeout(r, 300); });
-    window.location.href = window.location.pathname;
+    // v411: se vuelve con la hora pegada. Volver a la direccion limpia era volver justo
+    // a la caja del cache donde el navegador guarda el index.html viejo.
+    try { await fetch(location.pathname, { cache: 'reload' }); } catch (e) {}
+    window.location.replace(window.location.pathname + '?v=' + Date.now());
   })();
 }
 // ── Test de conexión con ?test=1 ──────────────────────
@@ -3837,7 +3854,7 @@ if (window.location.search.indexOf('test=1') > -1) {
     addLog('azkar-app-version: ' + (localStorage.getItem('azkar-app-version') || 'NO SET'), '#4fc3f7');
     addLog('azkar-api-key: ' + (localStorage.getItem('azkar-api-key') ? 'SET (' + localStorage.getItem('azkar-api-key').length + ' chars)' : 'NO SET (no requerido)'), '#4fc3f7');
     // Botón para limpiar y recargar
-    addLog('<br><button onclick="caches.keys().then(function(n){return Promise.all(n.map(function(k){return caches.delete(k)}))}).then(function(){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(reg){reg.unregister()});localStorage.removeItem(\'azkar-app-version\');setTimeout(function(){window.location.href=window.location.pathname},500)})})" style="background:#E85C0D;color:#fff;border:none;padding:12px 24px;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;margin-top:10px;">🔄 LIMPIAR TODO Y RECARGAR</button>', '#fff');
+    addLog('<br><button onclick="caches.keys().then(function(n){return Promise.all(n.map(function(k){return caches.delete(k)}))}).then(function(){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(reg){reg.unregister()});localStorage.removeItem(\'azkar-app-version\');setTimeout(function(){window.location.replace(window.location.pathname+\'?v=\'+Date.now())},500)})})" style="background:#E85C0D;color:#fff;border:none;padding:12px 24px;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;margin-top:10px;">🔄 LIMPIAR TODO Y RECARGAR</button>', '#fff');
     addLog('<button onclick="window.location.href=window.location.pathname" style="background:#1B4F8A;color:#fff;border:none;padding:12px 24px;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;margin-top:10px;margin-left:10px;">← VOLVER A LA APP</button>', '#fff');
   });
 }
