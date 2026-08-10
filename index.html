@@ -3319,7 +3319,7 @@ function LD(){
           if(r.c==='Salida'){ if(_salGuardada===null && r.p!=='' && r.p!=null) _salGuardada=r.p; continue; }
           AR(r.c,r.z,r.u,r.p,r.d,r.tm||'',r.tam||'Estándar');}
       }
-    } finally { window._restaurandoFicha = false; }
+    } finally { window._restaurandoFicha = false; try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); }catch(e){} }
     // v401/v408: se le pasa la Salida guardada; si la ficha es de antes del cambio, la
     // propia AR_SALIDA se encarga de que no se le ponga la de hoy.
     window._salidaNueva = !!data._salidaNueva;
@@ -3677,7 +3677,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v413';
+var APP_VERSION = 'v414';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -4996,7 +4996,7 @@ function restoreFormData(data) {
         AR(r.c, r.z, r.u, r.p, r.d, r.tm || '', r.tam || 'Estándar');
         window._dp2pRestore = ''; window._dp2pBase = '';
       });
-    } finally { window._restaurandoFicha = false; window._dp2pRestore = ''; window._dp2pBase = ''; }
+    } finally { window._restaurandoFicha = false; try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); }catch(e){} window._dp2pRestore = ''; window._dp2pBase = ''; }
   }
 
   // v408: la protección la hace AR_SALIDA mirando la fecha del presupuesto. Aquí solo se
@@ -16665,6 +16665,273 @@ async function doResetWithCode() {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', engancha);
   else engancha();
   setTimeout(engancha, 1200);
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     v414 · FOTOS DEL CLIENTE EN LA PROPIA FICHA
+     Asier, 10-ago-2026: «estoy haciendo un presupuesto para la grúa y el cliente me ha
+     mandado fotos; me gustaría tener un apartado de fotos en el mismo presupuesto, que se
+     guarden en la carpeta del cliente y que luego lleguen al parte de los trabajadores».
+     Y: «que NO se vean en el PDF del cliente, es simplemente para tenerlo nosotros».
+
+     Lo de subir a Drive y enseñarlas en el parte ya existía, pero vivía en el portal de
+     EQUIPO: había que salir del presupuesto, entrar en EQUIPO, buscar el servicio y subirlas
+     allí. Esto trae ese cajón a la ficha.
+
+     TODO EL BLOQUE LLEVA ui-interno: se oculta al imprimir y se VACÍA antes de capturar el
+     HTML, así que no viaja al cliente ni por accidente.
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  var _tokEq = null;
+
+  async function tokenEquipo() {
+    if (_tokEq) return _tokEq;
+    try {
+      var u = localStorage.getItem('azkar_equipo_admin_url') || '';
+      var m = /\/api\/equipo\/([a-f0-9]{8,})/i.exec(u);
+      if (m) { _tokEq = m[1]; return _tokEq; }
+    } catch (e) {}
+    var h = (typeof apiHeaders === 'function') ? apiHeaders() : { 'Content-Type': 'application/json' };
+    try { var t = localStorage.getItem('azkar_token'); if (t) h['Authorization'] = 'Bearer ' + t; } catch (e) {}
+    var r = await fetch(RAILWAY_API + '/api/equipo-admin/enlace', { method: 'POST', headers: h, body: JSON.stringify({}) });
+    var d = await r.json();
+    if (!d || !d.url) throw new Error((d && d.error) || 'No he podido identificarme para subir fotos.');
+    try { localStorage.setItem('azkar_equipo_admin_url', d.url); } catch (e) {}
+    var m2 = /\/api\/equipo\/([a-f0-9]{8,})/i.exec(d.url);
+    if (!m2) throw new Error('El enlace de oficina no tiene la forma esperada.');
+    _tokEq = m2[1];
+    return _tokEq;
+  }
+
+  function refFicha() {
+    var e = document.getElementById('f_ref');
+    return String((e && e.value) || '').trim().replace(/[^0-9]/g, '');
+  }
+  function fcMsg(t, col) {
+    var m = document.getElementById('fc-msg');
+    if (m) { m.textContent = t || ''; m.style.color = col || '#667'; }
+  }
+
+  // ── Pintar las miniaturas ───────────────────────────────────────────────────
+  function pinta(fotos, tok, ref) {
+    var g = document.getElementById('fc-grid');
+    if (!g) return;
+    var base = RAILWAY_API + '/api/equipo/' + tok + '/parte/' + ref + '/foto/';
+    g.innerHTML = (fotos || []).map(function (f) {
+      var src = base + encodeURIComponent(f.fileId);
+      return '<div class="fc-item">'
+        + '<img class="fc-th" src="' + src + '" loading="lazy" alt="foto del cliente">'
+        + '<button class="fc-x" title="Quitar del parte" data-id="' + f.fileId + '">&#10005;</button>'
+        + '</div>';
+    }).join('') || '<div class="fc-vacio">Todavía no hay fotos. Arrástralas aquí, pégalas con Ctrl+V o usa los botones.</div>';
+    [].slice.call(g.querySelectorAll('.fc-th')).forEach(function (im) {
+      im.onclick = function () { verFotoFicha(this); };
+    });
+    [].slice.call(g.querySelectorAll('.fc-x')).forEach(function (b) {
+      b.onclick = async function () {
+        if (!confirm('¿Quitar esta foto del parte?\n\nEl archivo NO se borra de Drive: sigue en la carpeta del cliente.')) return;
+        var id = this.getAttribute('data-id');
+        fcMsg('Quitando…');
+        try {
+          var r = await fetch(RAILWAY_API + '/api/equipo/' + tok + '/parte/' + ref + '/fotos-muebles/quitar',
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fileId: id }) });
+          var d = await r.json();
+          if (d && d.ok) { fcMsg('Quitada del parte (sigue en Drive).', '#1a7a3f'); cargar(); }
+          else fcMsg((d && d.error) || 'No se pudo quitar.', '#b00');
+        } catch (e) { fcMsg('Sin conexión. Prueba otra vez.', '#b00'); }
+      };
+    });
+  }
+
+  async function cargar() {
+    var ref = refFicha();
+    var caja = document.getElementById('fc-box');
+    if (!caja) return;
+    if (!ref) { document.getElementById('fc-grid').innerHTML = '<div class="fc-vacio">Guarda el presupuesto primero: las fotos van a la carpeta del cliente y hace falta su número.</div>'; return; }
+    try {
+      var tok = await tokenEquipo();
+      var r = await fetch(RAILWAY_API + '/api/equipo/' + tok + '/parte/' + ref + '/fotos-muebles', { cache: 'no-store' });
+      var d = await r.json();
+      if (d && d.ok) pinta(d.fotos || [], tok, ref);
+      else fcMsg((d && d.error) || 'No he podido traer las fotos.', '#b00');
+    } catch (e) { fcMsg(e.message || 'No he podido traer las fotos.', '#b00'); }
+  }
+  window.fcCargarFotos = cargar;
+
+  // ── Subir ───────────────────────────────────────────────────────────────────
+  function aB64(file) {
+    return new Promise(function (ok, fallo) {
+      var fr = new FileReader();
+      fr.onload = function () { ok(String(fr.result).split(',')[1] || ''); };
+      fr.onerror = function () { fallo(new Error('No he podido leer la foto')); };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  async function subir(files) {
+    files = (files || []).filter(function (f) { return f && /^image\//i.test(f.type || ''); });
+    if (!files.length) { fcMsg('Eso no son fotos.', '#b00'); return; }
+    var ref = refFicha();
+    if (!ref) {
+      alert('Este presupuesto todavía no tiene número.\n\nGuárdalo primero (botón 💾 Guardar): las fotos se archivan en la carpeta del cliente y hace falta su número.');
+      return;
+    }
+    fcMsg('Subiendo ' + files.length + ' foto(s) a la carpeta del cliente…');
+    try {
+      var tok = await tokenEquipo();
+      var fotos = [];
+      for (var i = 0; i < files.length && i < 12; i++) {
+        fotos.push({
+          b64: await aB64(files[i]),
+          mime: files[i].type || 'image/jpeg',
+          idem: (files[i].name || '') + '_' + files[i].size + '_' + (files[i].lastModified || 0)
+        });
+      }
+      var r = await fetch(RAILWAY_API + '/api/equipo/' + tok + '/parte/' + ref + '/fotos-muebles',
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fotos: fotos }) });
+      var d = await r.json();
+      if (d && d.ok) {
+        var rep = (d.fotos || []).filter(function (x) { return x && x.repe; }).length;
+        fcMsg('✅ ' + (d.guardadas || 0) + ' foto(s) en la carpeta del cliente y en el parte de los chicos'
+          + (rep ? ' (' + rep + ' ya estaban)' : '') + '.', '#1a7a3f');
+        cargar();
+      } else fcMsg((d && d.error) || 'No se pudieron guardar.', '#b00');
+    } catch (e) { fcMsg(e.message || 'Sin conexión. Prueba otra vez.', '#b00'); }
+  }
+
+  // ── El visor, con galería (igual que el del parte) ───────────────────────────
+  var _gal = [], _gi = 0;
+  window.verFotoFicha = function (im) {
+    var ov = document.getElementById('fc-ov'); if (!ov || !im) return;
+    var g = document.getElementById('fc-grid');
+    _gal = [].slice.call(g.querySelectorAll('.fc-th')).map(function (x) { return x.src; });
+    _gi = Math.max(0, _gal.indexOf(im.src));
+    _pinta(); ov.style.display = 'flex'; document.body.style.overflow = 'hidden';
+  };
+  function _pinta() {
+    var i = document.getElementById('fc-ov-img'), n = document.getElementById('fc-ov-n');
+    if (i) i.src = _gal[_gi] || '';
+    if (n) n.textContent = _gal.length > 1 ? (_gi + 1) + ' / ' + _gal.length : '';
+  }
+  window.fcMover = function (d) { if (!_gal.length) return; _gi = (_gi + d + _gal.length) % _gal.length; _pinta(); };
+  window.fcCerrar = function () {
+    var ov = document.getElementById('fc-ov'); if (ov) ov.style.display = 'none';
+    document.body.style.overflow = ''; var i = document.getElementById('fc-ov-img'); if (i) i.src = '';
+  };
+
+  // ── Montaje ─────────────────────────────────────────────────────────────────
+  function monta() {
+    if (document.getElementById('fc-box')) return;
+    var obs = document.getElementById('f_obs');
+    if (!obs) return;
+
+    var st = document.createElement('style');
+    st.textContent = '@media print{#fc-box,#fc-ov{display:none !important}}'
+      + '#fc-box{margin:10px 0 4px;border:2px dashed #1B4F8A;border-radius:9px;padding:11px 12px;background:#F4F8FD}'
+      + '#fc-box.arrastrando{background:#DCEBFF;border-style:solid}'
+      + '.fc-tit{font-size:12px;font-weight:800;color:#1B4F8A;letter-spacing:.4px;margin-bottom:2px}'
+      + '.fc-sub{font-size:11px;color:#667;margin-bottom:9px;line-height:1.5}'
+      + '#fc-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:9px}'
+      + '.fc-item{position:relative}'
+      + '.fc-th{width:96px;height:96px;object-fit:cover;border-radius:8px;border:2px solid #D8DCE3;background:#eee;cursor:pointer;display:block}'
+      + '.fc-x{position:absolute;top:-8px;right:-8px;background:#c00;color:#fff;border:2px solid #fff;border-radius:50%;width:24px;height:24px;font-size:13px;line-height:1;cursor:pointer;padding:0}'
+      + '.fc-vacio{font-size:11.5px;color:#8a93a0;font-style:italic;padding:6px 0}'
+      + '.fc-btns{display:flex;gap:7px;flex-wrap:wrap}'
+      + '.fc-btn{background:#1B4F8A;color:#fff;border:none;border-radius:7px;padding:9px 13px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}'
+      + '.fc-btn.gris{background:#fff;color:#1B4F8A;border:1.5px solid #1B4F8A}'
+      + '#fc-ov{position:fixed;inset:0;background:rgba(0,0,0,.94);display:none;align-items:center;justify-content:center;z-index:99999}'
+      + '#fc-ov img{max-width:100%;max-height:100%;border-radius:8px}'
+      + '.fc-ovb{position:fixed;border:0;background:rgba(255,255,255,.2);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:100000;font-family:inherit;padding:0}'
+      + '.fc-ovx{top:14px;right:14px;width:52px;height:52px;font-size:28px}'
+      + '.fc-ova,.fc-ovs{top:50%;margin-top:-27px;width:54px;height:54px;font-size:34px;padding-bottom:5px}'
+      + '.fc-ova{left:10px}.fc-ovs{right:10px}'
+      + '#fc-ov-n{position:fixed;left:0;right:0;bottom:18px;text-align:center;color:#fff;font-size:16px;font-weight:800;text-shadow:0 1px 5px #000;z-index:100000;pointer-events:none}';
+    document.head.appendChild(st);
+
+    var box = document.createElement('div');
+    box.id = 'fc-box';
+    box.className = 'ui-interno';
+    box.innerHTML =
+      '<div class="fc-tit">&#128247; FOTOS QUE MANDA EL CLIENTE</div>'
+      + '<div class="fc-sub">Se guardan en la <b>carpeta del cliente en Drive</b> y salen en el <b>parte de los chicos</b>. '
+      + '<b>NO salen en el PDF del cliente</b>: esto es solo para nosotros.<br>'
+      + 'Arrástralas aquí, pégalas con <b>Ctrl+V</b> (vale una captura del WhatsApp) o usa los botones.</div>'
+      + '<div id="fc-grid"></div>'
+      + '<input type="file" id="fc-cam" accept="image/*" capture="environment" style="display:none">'
+      + '<input type="file" id="fc-file" accept="image/*" multiple style="display:none">'
+      + '<div class="fc-btns">'
+      + '  <button type="button" class="fc-btn" id="fc-b-cam">&#128248; Hacer foto</button>'
+      + '  <button type="button" class="fc-btn" id="fc-b-file">&#128444; Elegir fotos</button>'
+      + '  <button type="button" class="fc-btn gris" id="fc-b-peg">&#128203; Pegar (Ctrl+V)</button>'
+      + '  <button type="button" class="fc-btn gris" id="fc-b-rec">&#8635; Recargar</button>'
+      + '</div>'
+      + '<div id="fc-msg" style="font-size:11.5px;margin-top:7px;color:#667"></div>';
+
+    var cont = obs.closest ? (obs.closest('.fi') || obs.parentNode) : obs.parentNode;
+    cont.parentNode.insertBefore(box, cont.nextSibling);
+
+    var ov = document.createElement('div');
+    ov.id = 'fc-ov'; ov.className = 'ui-interno';
+    ov.innerHTML = '<button type="button" class="fc-ovb fc-ovx" onclick="fcCerrar()">&#10005;</button>'
+      + '<button type="button" class="fc-ovb fc-ova" onclick="fcMover(-1)">&#8249;</button>'
+      + '<img id="fc-ov-img" src="" alt="">'
+      + '<button type="button" class="fc-ovb fc-ovs" onclick="fcMover(1)">&#8250;</button>'
+      + '<div id="fc-ov-n"></div>';
+    ov.onclick = function (e) { if (e.target === ov) fcCerrar(); };
+    document.body.appendChild(ov);
+
+    document.getElementById('fc-b-cam').onclick = function () { document.getElementById('fc-cam').click(); };
+    document.getElementById('fc-b-file').onclick = function () { document.getElementById('fc-file').click(); };
+    document.getElementById('fc-b-rec').onclick = cargar;
+    document.getElementById('fc-cam').onchange = function () { subir([].slice.call(this.files || [])); this.value = ''; };
+    document.getElementById('fc-file').onchange = function () { subir([].slice.call(this.files || [])); this.value = ''; };
+    document.getElementById('fc-b-peg').onclick = async function () {
+      try {
+        var items = await navigator.clipboard.read();
+        var fs = [];
+        for (var i = 0; i < items.length; i++) {
+          for (var j = 0; j < items[i].types.length; j++) {
+            if (/^image\//.test(items[i].types[j])) {
+              var b = await items[i].getType(items[i].types[j]);
+              fs.push(new File([b], 'pegada-' + Date.now() + '-' + i + '.png', { type: items[i].types[j] }));
+            }
+          }
+        }
+        if (fs.length) subir(fs); else fcMsg('No hay ninguna foto copiada.', '#b00');
+      } catch (e) { fcMsg('Tu navegador no me deja leer el portapapeles: pincha en el cajón y pulsa Ctrl+V.', '#b00'); }
+    };
+
+    box.addEventListener('dragover', function (e) { e.preventDefault(); box.classList.add('arrastrando'); });
+    box.addEventListener('dragleave', function () { box.classList.remove('arrastrando'); });
+    box.addEventListener('drop', function (e) {
+      e.preventDefault(); box.classList.remove('arrastrando');
+      subir([].slice.call((e.dataTransfer && e.dataTransfer.files) || []));
+    });
+    document.addEventListener('paste', function (e) {
+      if (!document.getElementById('fc-box')) return;
+      var t = e.target, tag = (t && t.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;      // que no robe el pegar de los campos
+      var its = (e.clipboardData && e.clipboardData.items) || [];
+      var fs = [];
+      for (var i = 0; i < its.length; i++) if (/^image\//.test(its[i].type)) { var f = its[i].getAsFile(); if (f) fs.push(f); }
+      if (fs.length) { e.preventDefault(); subir(fs); }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      var ov2 = document.getElementById('fc-ov');
+      if (!ov2 || ov2.style.display !== 'flex') return;
+      if (e.key === 'Escape') fcCerrar();
+      else if (e.key === 'ArrowLeft') fcMover(-1);
+      else if (e.key === 'ArrowRight') fcMover(1);
+    });
+
+    cargar();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
+  else monta();
 })();
 </script>
 </body>
