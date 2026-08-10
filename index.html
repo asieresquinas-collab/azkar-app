@@ -3692,7 +3692,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v420';
+var APP_VERSION = 'v421';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17069,6 +17069,41 @@ async function doResetWithCode() {
     } catch (e) {}
   }
 
+  // ── La hora adicional de las empresas, a la vista pero sin cobrar ───────────
+  // v421 · Asier, probando la grúa de empresa: «son dos horas… pues tendría que poner el
+  // presupuesto sin marcar, pero sí poner "hora adicional", concepto cero y el precio de
+  // 50 euros, cuando sea para empresas».
+  // O sea: la línea SALE en el presupuesto para que la empresa vea de antemano lo que le
+  // costaría pasarse de las 2 horas, pero con 0 unidades → 0,00 € y el total no se mueve.
+  // Si luego se pasan de verdad, se le pone 1, 2… y se cobra sola.
+  var HORA_CONCEPTO = 'Grúa hora adicional';
+
+  function filaHora() {
+    var filas = document.querySelectorAll('#tb .cr');
+    for (var i = 0; i < filas.length; i++) {
+      var c = filas[i].querySelector('input[list]');
+      if (c && String(c.value).trim() === HORA_CONCEPTO) return filas[i];
+    }
+    return null;
+  }
+  function ponHora() {
+    if (filaHora()) return;                     // ya está puesta: no se duplica
+    if (typeof AR !== 'function') return;
+    AR(HORA_CONCEPTO, '', '0', String(GRUA_HORA), '0');
+    try { if (typeof CA === 'function') CA(); } catch (e) {}
+  }
+  function quitaHora() {
+    var f = filaHora();
+    if (!f) return;
+    var n = f.querySelectorAll('input[type=number]');
+    var uds = parseFloat(String(n && n[0] ? n[0].value : '0').replace(',', '.'));
+    if (uds > 0) return;                        // ya se han cobrado horas de verdad: no se toca
+    var id = parseInt(String(f.id || '').replace(/^r/, ''), 10);
+    if (typeof DR === 'function' && id) { DR(id); return; }
+    if (f.parentNode) f.parentNode.removeChild(f);
+    try { if (typeof CA === 'function') CA(); } catch (e) {}
+  }
+
   function aplicar(tipo) {          // tipo: 'particular' | 'empresa'
     var f = campos(filaSalida());
     if (!f) { alert('No encuentro la línea de Salida. Abre o guarda el presupuesto y vuelve a intentarlo.'); return; }
@@ -17079,10 +17114,11 @@ async function doResetWithCode() {
     try { if (typeof GD === 'function' && window._autoguardar) GD(); } catch (e) {}
     window._gruaTipo = tipo;
     clausulaContrato(true);                          // v420
+    if (tipo === 'empresa') ponHora(); else quitaHora();   // v421
     pinta(true);
     var m = document.getElementById('grua-msg');
     if (m) m.textContent = ((tipo === 'empresa')
-      ? 'Empresa: la Salida pasa a 190 € y cubre 2 horas (es el mínimo). La hora de más, 50 €. Acuérdate del permiso.'
+      ? 'Empresa: la Salida pasa a 190 € y cubre 2 horas (es el mínimo). Te dejo puesta la línea de «Grúa hora adicional» a 50 € con 0 unidades: se ve el precio pero no suma. Si se pasan, le pones las horas y se cobra sola. Acuérdate del permiso.'
       : 'Particular: la Salida pasa a 190 € y cubre una subida.')
       + ' En el contrato se ha activado sola la cláusula de plataforma elevadora.';
   }
@@ -17096,6 +17132,7 @@ async function doResetWithCode() {
     }
     window._gruaTipo = '';
     clausulaContrato(false);                         // v420
+    quitaHora();                                     // v421 (solo si sigue a 0 unidades)
     pinta(false);
     var m = document.getElementById('grua-msg'); if (m) m.textContent = '';
   }
@@ -17155,7 +17192,22 @@ async function doResetWithCode() {
       document.getElementById('grua-part').onclick = function () { aplicar('particular'); };
       document.getElementById('grua-emp').onclick = function () { aplicar('empresa'); };
     };
-    document.getElementById('grua-hora').onclick = function () { anade('Grúa hora adicional', GRUA_HORA); };
+    // v421 · Si la línea informativa ya está puesta (empresa), no se duplica: se le suma
+    // una hora a la que hay. Que es lo que se quiere decir con «se pasaron una hora».
+    document.getElementById('grua-hora').onclick = function () {
+      var f = filaHora();
+      if (f) {
+        var n = f.querySelectorAll('input[type=number]');
+        var u = (parseFloat(String(n[0].value).replace(',', '.')) || 0) + 1;
+        n[0].value = String(u); n[0].setAttribute('value', String(u));
+        if (!(parseFloat(String(n[1].value).replace(',', '.')) > 0)) { n[1].value = String(GRUA_HORA); n[1].setAttribute('value', String(GRUA_HORA)); }
+        try { if (typeof CA === 'function') CA(); } catch (e) {}
+        var m = document.getElementById('grua-msg');
+        if (m) m.textContent = 'Horas adicionales: ' + u + ' × ' + GRUA_HORA + ' €.';
+        return;
+      }
+      anade('Grúa hora adicional', GRUA_HORA);
+    };
     document.getElementById('grua-p90').onclick = function () { anade('Permiso CON señalización', PERMISO_SI); };
     document.getElementById('grua-p50').onclick = function () { anade('Permiso SIN señalización', PERMISO_NO); };
 
