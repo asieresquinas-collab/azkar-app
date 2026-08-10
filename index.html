@@ -3319,7 +3319,7 @@ function LD(){
           if(r.c==='Salida'){ if(_salGuardada===null && r.p!=='' && r.p!=null) _salGuardada=r.p; continue; }
           AR(r.c,r.z,r.u,r.p,r.d,r.tm||'',r.tam||'Estándar');}
       }
-    } finally { window._restaurandoFicha = false; try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); }catch(e){} }
+    } finally { window._restaurandoFicha = false; try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); if(window.gruaRepinta) setTimeout(window.gruaRepinta, 350); }catch(e){} }
     // v401/v408: se le pasa la Salida guardada; si la ficha es de antes del cambio, la
     // propia AR_SALIDA se encarga de que no se le ponga la de hoy.
     window._salidaNueva = !!data._salidaNueva;
@@ -3677,7 +3677,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v414';
+var APP_VERSION = 'v415';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -4996,7 +4996,7 @@ function restoreFormData(data) {
         AR(r.c, r.z, r.u, r.p, r.d, r.tm || '', r.tam || 'Estándar');
         window._dp2pRestore = ''; window._dp2pBase = '';
       });
-    } finally { window._restaurandoFicha = false; try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); }catch(e){} window._dp2pRestore = ''; window._dp2pBase = ''; }
+    } finally { window._restaurandoFicha = false; try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); if(window.gruaRepinta) setTimeout(window.gruaRepinta, 350); }catch(e){} window._dp2pRestore = ''; window._dp2pBase = ''; }
   }
 
   // v408: la protección la hace AR_SALIDA mirando la fecha del presupuesto. Aquí solo se
@@ -16929,6 +16929,166 @@ async function doResetWithCode() {
 
     cargar();
   }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
+  else monta();
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     v415 · EL BOTÓN DE LA GRÚA
+     Asier, 10-ago-2026: «me gustaría un botón para, si pongo la grúa, que este servicio
+     sea de grúa: que solamente sea una dirección y que se cobren 190 € que es el mínimo.
+     Que no tenga que andar pensando "voy a cobrar 190, como la salida son 100 le pongo 90
+     más". Que sea el mínimo 190 con la grúa cada vez que sea la grúa».
+
+     LAS REGLAS, tal y como me las dio:
+       · Es para cuando le alquilan SOLO la grúa. Si además hay que mover cosas, eso ya es
+         una mudanza normal y la grúa es una línea más.
+       · UNA sola dirección: donde se pone la grúa.
+       · PARTICULAR → 190 € = UNA subida (subir un sofá, por ejemplo).
+       · EMPRESA    → 190 € = DOS HORAS, que es el mínimo. La hora de más, 50 €.
+                      Y se le suma el permiso: 90 € con señalización, 50 € sin.
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  var GRUA_BASE = 190, GRUA_HORA = 50, PERMISO_SI = 90, PERMISO_NO = 50;
+
+  function filaSalida() { return document.querySelector('[data-fijo="salida"]'); }
+  function campos(fila) {
+    if (!fila) return null;
+    var c = fila.querySelector('input[list]'), n = fila.querySelectorAll('input[type=number]');
+    return (c && n && n.length >= 2) ? { concepto: c, uds: n[0], precio: n[1] } : null;
+  }
+  function esGrua() {
+    var f = campos(filaSalida());
+    return !!(f && /gr[uú]a|plataforma/i.test(f.concepto.value || ''));
+  }
+  function cajaEnt() {
+    var e = document.getElementById('f_ent');
+    return e ? (e.closest ? (e.closest('.fg') || e.closest('.fi') || e.parentNode) : e.parentNode) : null;
+  }
+  function etiquetaRec() {
+    var e = document.getElementById('f_rec');
+    var c = e && e.closest ? e.closest('.fi') : null;
+    return c ? c.querySelector('label') : null;
+  }
+
+  // ── Poner o quitar el modo grúa ─────────────────────────────────────────────
+  function pinta(on) {
+    var ent = cajaEnt(), lab = etiquetaRec(), bts = document.getElementById('grua-extras');
+    if (ent) {
+      // no-pdf: además de esconderse en pantalla, no sale en el PDF del cliente
+      ent.classList.toggle('no-pdf', !!on);
+      ent.style.display = on ? 'none' : '';
+    }
+    if (lab) {
+      if (on) { if (!lab.getAttribute('data-txt')) lab.setAttribute('data-txt', lab.textContent); lab.textContent = 'Dirección donde se pone la grúa'; }
+      else if (lab.getAttribute('data-txt')) lab.textContent = lab.getAttribute('data-txt');
+    }
+    if (bts) bts.style.display = on ? 'flex' : 'none';
+    var b = document.getElementById('grua-btn');
+    if (b) {
+      b.textContent = on ? '🏗️ GRÚA puesta — pulsa para quitarla' : '🏗️ ES SERVICIO DE GRÚA';
+      b.style.background = on ? '#E85C0D' : '#1B4F8A';
+    }
+    var av = document.getElementById('grua-aviso');
+    if (av) av.style.display = on ? 'block' : 'none';
+  }
+
+  function aplicar(tipo) {          // tipo: 'particular' | 'empresa'
+    var f = campos(filaSalida());
+    if (!f) { alert('No encuentro la línea de Salida. Abre o guarda el presupuesto y vuelve a intentarlo.'); return; }
+    f.concepto.value = (tipo === 'empresa') ? 'Grúa (mínimo 2 h)' : 'Grúa (1 subida)';
+    f.concepto.setAttribute('value', f.concepto.value);
+    f.uds.value = '1';
+    f.precio.value = String(GRUA_BASE);
+    f.precio.setAttribute('value', String(GRUA_BASE));
+    try { if (typeof CA === 'function') CA(); } catch (e) {}
+    try { if (typeof GD === 'function' && window._autoguardar) GD(); } catch (e) {}
+    window._gruaTipo = tipo;
+    pinta(true);
+    var m = document.getElementById('grua-msg');
+    if (m) m.textContent = (tipo === 'empresa')
+      ? 'Empresa: los 190 € cubren 2 horas (es el mínimo). La hora de más, 50 €. Acuérdate del permiso.'
+      : 'Particular: los 190 € cubren una subida.';
+  }
+
+  function quitar() {
+    var f = campos(filaSalida());
+    if (f) {
+      f.concepto.value = 'Salida'; f.concepto.setAttribute('value', 'Salida');
+      var pv = (typeof SALIDA_EUR !== 'undefined') ? SALIDA_EUR : 100;
+      f.precio.value = String(pv); f.precio.setAttribute('value', String(pv));
+      try { if (typeof CA === 'function') CA(); } catch (e) {}
+    }
+    window._gruaTipo = '';
+    pinta(false);
+    var m = document.getElementById('grua-msg'); if (m) m.textContent = '';
+  }
+
+  function anade(concepto, precio) {
+    if (typeof AR !== 'function') { alert('No puedo añadir la línea ahora mismo.'); return; }
+    AR(concepto, '', '1', String(precio), '0');
+    try { if (typeof CA === 'function') CA(); } catch (e) {}
+    var m = document.getElementById('grua-msg');
+    if (m) m.textContent = 'Añadido: ' + concepto + ' (' + precio + ' €).';
+  }
+
+  // ── Montaje ─────────────────────────────────────────────────────────────────
+  function monta() {
+    if (document.getElementById('grua-btn')) return;
+    var rec = document.getElementById('f_rec');
+    if (!rec) return;
+    var cont = rec.closest ? (rec.closest('.fg') || rec.closest('.fi') || rec.parentNode) : rec.parentNode;
+
+    var st = document.createElement('style');
+    st.textContent = '@media print{#grua-caja{display:none !important}}'
+      + '#grua-caja{margin:8px 0 2px}'
+      + '#grua-btn{background:#1B4F8A;color:#fff;border:none;border-radius:8px;padding:11px 16px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}'
+      + '#grua-extras{display:none;gap:7px;flex-wrap:wrap;margin-top:8px}'
+      + '.grua-x{background:#fff;color:#1B4F8A;border:1.5px solid #1B4F8A;border-radius:7px;padding:8px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}'
+      + '#grua-aviso{display:none;margin-top:8px;padding:9px 11px;border-radius:7px;background:#FEF0E7;border-left:4px solid #E85C0D;font-size:11.5px;color:#553;line-height:1.6}'
+      + '#grua-msg{font-size:11.5px;color:#1a7a3f;margin-top:6px;font-weight:600}'
+      + '.grua-tipo{background:#1B4F8A;color:#fff;border:none;border-radius:7px;padding:9px 14px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;margin-right:7px}';
+    document.head.appendChild(st);
+
+    var caja = document.createElement('div');
+    caja.id = 'grua-caja';
+    caja.className = 'ui-interno';
+    caja.innerHTML =
+      '<button type="button" id="grua-btn">🏗️ ES SERVICIO DE GRÚA</button>'
+      + '<div id="grua-aviso">La grúa son <b>190 €</b>. Para un <b>particular</b> eso es <b>una subida</b>; '
+      + 'para una <b>empresa</b> son <b>2 horas</b> (el mínimo) y la hora de más va a <b>50 €</b>.<br>'
+      + 'Este presupuesto es <b>solo de grúa</b>: una dirección y punto. Si además hay que mover cosas, quita la grúa y hazlo como una mudanza normal.</div>'
+      + '<div id="grua-extras">'
+      + '  <button type="button" class="grua-x" id="grua-hora">+ Hora adicional (50 €)</button>'
+      + '  <button type="button" class="grua-x" id="grua-p90">+ Permiso CON señalización (90 €)</button>'
+      + '  <button type="button" class="grua-x" id="grua-p50">+ Permiso SIN señalización (50 €)</button>'
+      + '</div>'
+      + '<div id="grua-msg"></div>';
+    cont.parentNode.insertBefore(caja, cont);
+
+    document.getElementById('grua-btn').onclick = function () {
+      if (esGrua()) {
+        if (confirm('¿Quitar la grúa y dejarlo como un presupuesto normal?\n\nLa Salida vuelve a su precio y se recupera la dirección de entrega.')) quitar();
+        return;
+      }
+      var q = document.getElementById('grua-msg');
+      q.innerHTML = '¿Para quién es? '
+        + '<button type="button" class="grua-tipo" id="grua-part">Particular (1 subida)</button>'
+        + '<button type="button" class="grua-tipo" id="grua-emp" style="background:#E85C0D">Empresa (2 h mínimo)</button>';
+      document.getElementById('grua-part').onclick = function () { aplicar('particular'); };
+      document.getElementById('grua-emp').onclick = function () { aplicar('empresa'); };
+    };
+    document.getElementById('grua-hora').onclick = function () { anade('Grúa hora adicional', GRUA_HORA); };
+    document.getElementById('grua-p90').onclick = function () { anade('Permiso CON señalización', PERMISO_SI); };
+    document.getElementById('grua-p50').onclick = function () { anade('Permiso SIN señalización', PERMISO_NO); };
+
+    // Si se abre una ficha que YA era de grúa, se deja la pantalla como toca.
+    pinta(esGrua());
+  }
+  window.gruaRepinta = function () { try { pinta(esGrua()); } catch (e) {} };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
   else monta();
