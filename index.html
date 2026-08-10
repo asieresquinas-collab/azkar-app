@@ -3677,7 +3677,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v412';
+var APP_VERSION = 'v413';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -7171,10 +7171,20 @@ async function moverEnMarcha(ref) {
       // v124: Estados en variables globales (datos van a Firebase via setDoc merge)
       window._currentEnMarcha = true;
       window._currentEnMarchaDate = Date.now();
-      showSyncStatus('✅ Carpeta ' + (data.folderName || ref) + ' movida a "2 En Marcha"', 5000);
+      showSyncStatus(data.ya_estaba
+        ? ('✅ ' + ref + ' marcado como EN MARCHA. La carpeta ya estaba en "2 En Marcha" (movida a mano), así que no he tocado Drive.')
+        : ('✅ Carpeta ' + (data.folderName || ref) + ' movida a "2 En Marcha"'), 6000);
       openMgr();
     } else {
-      showSyncStatus('❌ Error: ' + (data.error || 'No se pudo mover'), 6000);
+      await _fallaMover(data, ref, async function () {
+        var pr = await getPresupuesto(ref);
+        if (pr) {
+          pr._enMarcha = true; pr._enMarchaDate = Date.now();
+          await savePresupuesto(pr);
+          if (firebaseConfigured && window._fb) await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pr, { merge: true });
+        }
+        window._currentEnMarcha = true; window._currentEnMarchaDate = Date.now();
+      }, 'EN MARCHA');
     }
   } catch(e) {
     console.error('[EnMarcha] Error:', e);
@@ -7185,6 +7195,29 @@ async function moverEnMarcha(ref) {
 // ══════════════════════════════════════════════════════════════
 //  MOVER A "PAGADO FINALIZADO"
 // ══════════════════════════════════════════════════════════════
+// v413 · «LE DOY A PAGADO Y NO CAMBIA DE EN MARCHA A PAGADO».
+// Asier, 10-ago-2026, y clavó la causa: «¿puede ser que Antonio haya llevado la carpeta a
+// pagado finalizado a mano?». Sí. Estos botones mueven la carpeta en Drive y SOLO SI eso sale
+// bien marcan el estado del presupuesto. Con la carpeta ya movida a mano, el servidor no la
+// encontraba en el origen, daba error, y el estado no se marcaba NUNCA: le dabas mil veces y
+// seguía en EN MARCHA. El servidor ya da por bueno que esté en el destino (2.7.332); esto es
+// la otra mitad: si la carpeta no aparece por ningún lado, se pregunta si marcarlo igualmente,
+// porque el estado del presupuesto es cosa de la app, no de dónde esté una carpeta en Drive.
+async function _fallaMover(data, ref, marcar, queEs) {
+  var msg = (data && data.error) || 'No se pudo mover la carpeta';
+  if (data && data.no_encontrada) {
+    if (confirm('No encuentro la carpeta del ' + ref + ' en Drive (a lo mejor la han movido o renombrado a mano).\n\n'
+              + '¿Quieres que marque el presupuesto como ' + queEs + ' de todas formas?\n\n'
+              + 'La carpeta de Drive tendrás que colocarla tú.')) {
+      await marcar();
+      showSyncStatus('✅ ' + ref + ' marcado como ' + queEs + ' (la carpeta de Drive, revísala tú)', 6000);
+      openMgr();
+      return;
+    }
+  }
+  showSyncStatus('❌ ' + msg, 7000);
+}
+
 async function moverPagadoFinalizado(ref) {
   if (!ref) return;
   if (!confirm('¿Mover la carpeta del cliente ' + ref + ' de "2 En Marcha" a "PAGADO FINALIZADO"?\n\nEsto significa que el servicio está completado y cobrado.')) return;
@@ -7197,25 +7230,29 @@ async function moverPagadoFinalizado(ref) {
       body: JSON.stringify({ number: ref })
     });
     var data = await res.json();
-    if (data.success) {
-      // Marcar como pagado en IndexedDB
+    // v413: el marcado del estado, aparte, para poder hacerlo también cuando la carpeta
+    // ya la habían movido a mano y Drive no tiene nada que mover.
+    var _marcarPagado = async function () {
       var pres = await getPresupuesto(ref);
       if (pres) {
         pres._pagadoFinalizado = true;
         pres._pagadoFinalizadoDate = Date.now();
         await savePresupuesto(pres);
-        // Sync a Firebase
         if (firebaseConfigured && window._fb) {
           await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
         }
       }
-      // v124: Estados en variables globales (datos van a Firebase via setDoc merge)
       window._currentPagado = true;
       window._currentPagadoDate = Date.now();
-      showSyncStatus('✅ Carpeta ' + (data.folderName || ref) + ' movida a "PAGADO FINALIZADO"', 5000);
+    };
+    if (data.success) {
+      await _marcarPagado();
+      showSyncStatus(data.ya_estaba
+        ? ('✅ ' + ref + ' marcado como PAGADO. La carpeta ya estaba en "PAGADO FINALIZADO" (alguien la movió a mano), así que no he tocado Drive.')
+        : ('✅ Carpeta ' + (data.folderName || ref) + ' movida a "PAGADO FINALIZADO"'), 6000);
       openMgr();
     } else {
-      showSyncStatus('❌ Error: ' + (data.error || 'No se pudo mover'), 6000);
+      await _fallaMover(data, ref, _marcarPagado, 'PAGADO');
     }
   } catch(e) {
     console.error('[PagadoFinalizado] Error:', e);
@@ -7247,7 +7284,9 @@ async function moverPagadoAnual(ref) {
           await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
         }
       }
-      showSyncStatus('✅ Carpeta ' + (data.folderName || ref) + ' archivada en "2026 PAGADO"', 5000);
+      showSyncStatus(data.ya_estaba
+        ? ('✅ ' + ref + ' archivado. La carpeta ya estaba en "2026 PAGADO" (movida a mano), así que no he tocado Drive.')
+        : ('✅ Carpeta ' + (data.folderName || ref) + ' archivada en "2026 PAGADO"'), 6000);
       openMgr();
     } else {
       showSyncStatus('❌ Error: ' + (data.error || 'No se pudo mover'), 6000);
