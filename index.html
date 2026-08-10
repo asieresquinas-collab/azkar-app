@@ -3677,7 +3677,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v415';
+var APP_VERSION = 'v416';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -16975,13 +16975,34 @@ async function doResetWithCode() {
   }
 
   // ── Poner o quitar el modo grúa ─────────────────────────────────────────────
+  // v416 · Asier, con el PDF delante: «en el PDF pone ahí abajo dos cuadros que ponen
+  // dirección de entrega y se ve en blanco porque no hay dirección; a ver si se podría
+  // quitar también en el PDF cuando es la grúa, pero sin romper nada».
+  // Tenía razón: yo escondí el CAMPO de la dirección, pero el MAPA de entrega y la línea
+  // de la distancia son otros elementos y se quedaban ahí, vacíos.
+  // Se esconden con una CLASE, no tocando el display a mano: así al quitar la grúa cada
+  // cosa recupera exactamente lo que tenía (el mapa de entrega, por ejemplo, nace oculto
+  // y solo aparece cuando hay dirección — si le pusiera display:'' lo estaría enseñando
+  // cuando no toca).
+  function _mapaEntrega() {
+    var sv = document.getElementById('sv-entrega');
+    if (!sv) return null;
+    var tx = document.getElementById('tx-entrega');
+    var caja = tx && tx.closest ? tx.closest('div') : null;
+    // el bloque que envuelve la dirección de entrega Y su mapa
+    return (caja && caja.parentNode && caja.parentNode.contains(sv)) ? caja.parentNode : sv;
+  }
+  function _tapa(el, on) {
+    if (!el) return;
+    el.classList.toggle('grua-oculto', !!on);
+    el.classList.toggle('no-pdf', !!on);
+  }
+
   function pinta(on) {
     var ent = cajaEnt(), lab = etiquetaRec(), bts = document.getElementById('grua-extras');
-    if (ent) {
-      // no-pdf: además de esconderse en pantalla, no sale en el PDF del cliente
-      ent.classList.toggle('no-pdf', !!on);
-      ent.style.display = on ? 'none' : '';
-    }
+    _tapa(ent, on);                                       // la dirección de entrega
+    _tapa(_mapaEntrega(), on);                            // su mapa y su Street View
+    _tapa(document.getElementById('distancia-box'), on);  // los km entre recogida y entrega
     if (lab) {
       if (on) { if (!lab.getAttribute('data-txt')) lab.setAttribute('data-txt', lab.textContent); lab.textContent = 'Dirección donde se pone la grúa'; }
       else if (lab.getAttribute('data-txt')) lab.textContent = lab.getAttribute('data-txt');
@@ -17044,6 +17065,7 @@ async function doResetWithCode() {
 
     var st = document.createElement('style');
     st.textContent = '@media print{#grua-caja{display:none !important}}'
+      + '.grua-oculto{display:none !important}'
       + '#grua-caja{margin:8px 0 2px}'
       + '#grua-btn{background:#1B4F8A;color:#fff;border:none;border-radius:8px;padding:11px 16px;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}'
       + '#grua-extras{display:none;gap:7px;flex-wrap:wrap;margin-top:8px}'
