@@ -3700,7 +3700,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v424';
+var APP_VERSION = 'v425';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -11406,12 +11406,18 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
       // 1) Quitar prefijos de calle: "Calle", "C/", "Avda", "Plaza"...
       .replace(/^(calle|c\/|c\.|cl\.|avda\.?|avenida|av\.|plaza|pza\.?|plza\.?|paseo|pº|travesía|trav\.?|camino|cno\.?|carretera|ctra\.?|ronda|glorieta|urbanización|urb\.?)\s+/i, '')
       // 2) Quitar piso/puerta/escalera/orientación: "2c", "3ºA", "piso 2", "esc. B", "bajo dcha", "izda"
-      .replace(/\s+(piso|pta\.?|puerta|esc\.?|escalera|bajo|entreplanta|entresuelo|entlo\.?|bjo\.?|sob?re?ático|sático|izda\.?|izquierda|dcha\.?|derecha|izq\.?|der\.?)\s*\S*/gi, '')
+      // v425 · ¡OJO! Esto se comía el PUEBLO. En «Calle Gran Vía 70 3º Izquierda bilbao»,
+      // el \s*\S* de después de "Izquierda" se tragaba " bilbao" y la dirección se quedaba
+      // sin ciudad — y así no la encontraba nadie. Ahora se quita SOLO la palabra del piso
+      // y, como mucho, la letra o el número que va pegado (2ºA, esc. B), nunca lo siguiente.
+      .replace(/\s+(piso|pta\.?|puerta|esc\.?|escalera|entreplanta|entresuelo|entlo\.?|bjo\.?)\s*[0-9a-zA-Z]?[ºª]?\b/gi, ' ')
+      .replace(/\s+(bajo|sob?re?ático|sático|izda\.?|izquierda|dcha\.?|derecha|izq\.?|der\.?)\b/gi, ' ')
       // 3) Quitar piso con orientación pegado al número: "10 3 izda" → "10", "nº3 2 dcha" → "3"
       .replace(/\s+\d+\s*[ºªo]?\s*(izda|izquierda|dcha|derecha|izq|der)\b\.?/gi, ' ')
       // 3b) Quitar letra de piso pegada al número: "n2 2c" → "2", "nº3 1ºB" → "3"
       .replace(/\s+\d+\s*[ºª]?\s*[a-zA-Z](?:\s|,|$)/g, ' ')
       // 4) Quitar "nº" o "n" delante del número: "n2" → "2", "nº 5" → "5"
+      .replace(/(\d+)\s*,?\s+(\d+\s*[ºª])/g, '$1')   // «70 3º» → «70» (el 2º número es el piso)
       .replace(/\bn[ºª]?\s*(\d)/gi, '$1')
       .replace(/\s+/g, ' ')
       .trim();
@@ -11502,8 +11508,49 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     return { lat: parseFloat(r.lat), lon: parseFloat(r.lon), display: r.display_name, bizkaia: esDeBizkaia(r) };
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  //  v425 · PRIMERO GOOGLE, POR EL SERVIDOR
+  //  Asier, con la captura delante: «Calle Gran Vía 70 3º Izquierda bilbao» salía
+  //  NO ENCONTRADA mientras el mapa de Google de al lado la enseñaba perfectamente.
+  //  Es que se buscaba en OpenStreetMap, que quiere la dirección limpia y ordenada:
+  //  en cuanto le metes el piso y la mano no encuentra nada. Google sí, porque está
+  //  hecho para leer lo que escribe una persona.
+  //  Se le pregunta al SERVIDOR (no a Google directamente) para que la clave no baje
+  //  nunca al móvil ni se quede escrita en el HTML que se manda al cliente.
+  //  Si no hay clave o el servidor no contesta, sigue OpenStreetMap como toda la vida.
+  // ══════════════════════════════════════════════════════════════════════════
+  function _apiBase() { return (typeof RAILWAY_API !== 'undefined' ? RAILWAY_API : ''); }
+  function _apiCab() {
+    var h = (typeof apiHeaders === 'function' ? apiHeaders() : { 'Content-Type': 'application/json' });
+    try { var t = localStorage.getItem('azkar_token'); if (t) h['Authorization'] = 'Bearer ' + t; } catch (e) {}
+    return h;
+  }
+  function geocodePorServidor(address) {
+    if (!_apiBase()) return Promise.resolve(null);
+    return fetch(_apiBase() + '/api/geo/buscar?q=' + encodeURIComponent(address), { headers: _apiCab() })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.ok) {
+          window._geoUltimoMotivo = '';
+          return { lat: d.lat, lon: d.lon, display: d.formateada, bizkaia: !!d.bizkaia, fuente: d.fuente, exactitud: d.exactitud };
+        }
+        // El servidor la ha mirado y NO la da por buena: dice por qué.
+        if (d && d.motivo) { window._geoUltimoMotivo = d.motivo; return 'RECHAZADA'; }
+        return null;   // el servidor no ha podido: se prueba por nuestra cuenta
+      })
+      .catch(function () { return null; });
+  }
+
   // Geocodificar probando varias formas, en el orden que más sentido tiene
   function geocode(address) {
+    return geocodePorServidor(address).then(function (r) {
+      if (r === 'RECHAZADA') return null;
+      if (r) return r;
+      return geocodeOSM(address);
+    });
+  }
+
+  function geocodeOSM(address) {
     var a = String(address || '').trim();
     var nombraOtroSitio = RE_OTRA_PROVINCIA.test(a);
     var conBiz = addContexto(a);
@@ -11561,8 +11608,23 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
   }
   window.geoAzkar = geocode;
 
+  // v425 · La ruta, también por el servidor: Google Directions si hay clave, y si no
+  // el OSRM de siempre. Los kilómetros de Google son los que ve el cliente en su móvil,
+  // así que es lo que menos discusiones da.
+  function calcRoutePorServidor(from, to) {
+    if (!_apiBase()) return Promise.resolve(null);
+    return fetch(_apiBase() + '/api/geo/ruta?olat=' + from.lat + '&olon=' + from.lon + '&dlat=' + to.lat + '&dlon=' + to.lon, { headers: _apiCab() })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { return (d && d.ok) ? { distancia: d.metros, duracion: d.segundos, fuente: d.fuente } : null; })
+      .catch(function () { return null; });
+  }
+
   // Calcular ruta con OSRM (gratuito, sin API key)
   function calcRoute(from, to) {
+    return calcRoutePorServidor(from, to).then(function (r) { return r || calcRouteOSRM(from, to); });
+  }
+
+  function calcRouteOSRM(from, to) {
     var url = 'https://router.project-osrm.org/route/v1/driving/'
       + from.lon + ',' + from.lat + ';' + to.lon + ',' + to.lat
       + '?overview=false';
@@ -17721,11 +17783,37 @@ async function doResetWithCode() {
         lat = p.lat; lon = p.lon;
         if (cont) { cont.setAttribute('data-lat', lat); cont.setAttribute('data-lon', lon); }
       }
-      var png = await pintarMapa(lat, lon);
+      // v425 · Primero se pide la foto a Google POR EL SERVIDOR (la clave no baja aquí).
+      // Si no hay clave o no contesta, se pinta la de OpenStreetMap como hasta ahora.
+      var png = await fotoDeGoogle(lat, lon);
+      if (!png) png = await pintarMapa(lat, lon);
       if (png) img.src = png; else img.removeAttribute('src');
     } catch (e) { console.warn('[MapaPDF]', e && e.message); }
   }
 
+  // Le pide la foto al servidor y la mete DENTRO del documento (data:), que es lo que
+  // hace que se imprima siempre y que viaje con el HTML guardado.
+  async function fotoDeGoogle(lat, lon) {
+    try {
+      var base = (typeof RAILWAY_API !== 'undefined' ? RAILWAY_API : '');
+      if (!base) return null;
+      var cab = (typeof apiHeaders === 'function' ? apiHeaders() : {});
+      try { var t = localStorage.getItem('azkar_token'); if (t) cab['Authorization'] = 'Bearer ' + t; } catch (e) {}
+      var r = await fetch(base + '/api/geo/mapa?lat=' + lat + '&lon=' + lon + '&z=17&tam=640x320', { headers: cab });
+      if (!r.ok) return null;
+      var tipo = r.headers && r.headers.get ? (r.headers.get('Content-Type') || '') : '';
+      if (tipo.indexOf('image') < 0) return null;    // no hay clave: contesta JSON
+      var blob = await r.blob();
+      return await new Promise(function (ok) {
+        var fr = new FileReader();
+        fr.onloadend = function () { ok(String(fr.result || '') || null); };
+        fr.onerror = function () { ok(null); };
+        fr.readAsDataURL(blob);
+      });
+    } catch (e) { return null; }
+  }
+
+  window.fotoDeGoogle = fotoDeGoogle;
   window.pintarMapa = pintarMapa;
   window.fotoMapaPara = fotoMapaPara;
   // Al abrir una ficha guardada, se rehacen las dos fotos por si vienen vacías.
