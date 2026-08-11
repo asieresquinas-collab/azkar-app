@@ -3774,7 +3774,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v435';
+var APP_VERSION = 'v436';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8081,8 +8081,36 @@ function buildCompleteHTML(pageIds) {
         else sel.options[i].removeAttribute('selected');
       }
     });
+    // ══════════════════════════════════════════════════════════════════════════
+    //  v436 · LAS OBSERVACIONES, ENTERAS EN EL PDF
+    //  Asier, 11-ago-2026: «en observaciones, ¿podemos hacer el cuadrado ese más
+    //  grande, para cuando le mande el PDF que se vea todo? Porque si no, creo que
+    //  se va a ver cortado».
+    //  Tenía razón: un cuadro de texto tiene una altura fija y lo que no cabe se
+    //  queda dentro, con barra de desplazamiento — en pantalla se puede bajar, pero
+    //  en un papel NO: lo que sobra desaparece sin avisar. Y en Observaciones va lo
+    //  que NO hay que declarar, lo que el cliente monta él… cosas que si se cortan,
+    //  se cortan justo donde duele.
+    //  AL IMPRIMIR, cada cuadro de texto se cambia por un recuadro normal con el
+    //  mismo aspecto, que CRECE con lo que lleve dentro. Se pone el ancho que sea,
+    //  y siempre sale todo. Después se devuelve el cuadro a la pantalla tal cual.
+    // ══════════════════════════════════════════════════════════════════════════
+    var areasSav = [];
     el.querySelectorAll('textarea').forEach(function(ta) {
       ta.textContent = ta.value || '';
+      var c = window.getComputedStyle(ta);
+      var caja = document.createElement('div');
+      caja.className = ta.className;
+      if (ta.id) caja.setAttribute('data-de', ta.id);
+      caja.style.cssText = 'width:100%;box-sizing:border-box;white-space:pre-wrap;word-wrap:break-word;'
+        + 'overflow:visible;height:auto;resize:none;'
+        + 'min-height:' + (c.minHeight || '50px') + ';'
+        + 'border:' + c.border + ';border-radius:' + c.borderRadius + ';padding:' + c.padding + ';'
+        + 'font-family:' + c.fontFamily + ';font-size:' + c.fontSize + ';line-height:' + (c.lineHeight === 'normal' ? '1.45' : c.lineHeight) + ';'
+        + 'color:' + c.color + ';background:transparent';
+      caja.textContent = ta.value || '';
+      areasSav.push({ ta: ta, caja: caja });
+      if (ta.parentNode) ta.parentNode.replaceChild(caja, ta);
     });
     // v199: Eliminar elementos de promo del DOM si promo no está activa (antes de capturar)
     // v403 (Asier, 9-ago-2026): el BOTÓN de la promo se quita SIEMPRE. Estaba llegando al
@@ -8131,6 +8159,11 @@ function buildCompleteHTML(pageIds) {
     var html = el.outerHTML.replace(/style\s*=\s*["'][^"']*display\s*:\s*none[^"']*["']/gi, 'style="display:block"');
     // v403: devolver los precios de tarifa a la pantalla
     precioSav.forEach(function(x) { x.inp.value = x.v; x.inp.setAttribute('value', x.v); });
+    // v436: y devolver los cuadros de texto, que la pantalla se queda como estaba
+    for (var ai = areasSav.length - 1; ai >= 0; ai--) {
+      var av = areasSav[ai];
+      if (av.caja.parentNode) av.caja.parentNode.replaceChild(av.ta, av.caja);
+    }
     // v199: Restaurar elementos de promo al DOM
     for (var pi = promoEls.length - 1; pi >= 0; pi--) {
       var pe = promoEls[pi];
@@ -18487,6 +18520,79 @@ async function doResetWithCode() {
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
   else monta();
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     v436 · EL CUADRO DE OBSERVACIONES, QUE CREZCA Y ENCOJA SOLO
+     Asier, 11-ago-2026: «¿podemos hacer el cuadrado ese más grande, para cuando le
+     mande el PDF que se vea todo? Se podría hacer ajustable, que dependiendo de lo
+     que tengamos escrito se haga más pequeño o más grande, ¿puede ser?».
+     Pues eso mismo: el cuadro se estira con lo que hay escrito y se encoge cuando se
+     borra. Sin barra de desplazamiento y sin tener que arrastrar la esquinita.
+     Lo del PDF va aparte, en buildCompleteHTML: al imprimir, el cuadro se cambia por
+     un recuadro normal que crece con su contenido, así sale entero sea cual sea el
+     ancho del papel.
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  var PAGINAS = '#page-dossier, #page-presupuesto, #page-contrato';
+  var MINIMO = 50, TOPE = 4000;
+
+  function ajusta(ta) {
+    if (!ta || ta.tagName !== 'TEXTAREA') return;
+    try {
+      var antes = ta.style.height;
+      ta.style.height = 'auto';
+      var alto = Math.min(Math.max(ta.scrollHeight, MINIMO), TOPE);
+      // Si está en una pestaña escondida, scrollHeight sale 0: no se toca nada.
+      if (!ta.scrollHeight) { ta.style.height = antes; return; }
+      ta.style.height = alto + 'px';
+      ta.style.overflowY = (ta.scrollHeight > TOPE) ? 'auto' : 'hidden';
+    } catch (e) {}
+  }
+
+  function todas() {
+    try {
+      document.querySelectorAll(PAGINAS).forEach(function (p) {
+        p.querySelectorAll('textarea').forEach(ajusta);
+      });
+    } catch (e) {}
+  }
+
+  // 1) Mientras escribe
+  document.addEventListener('input', function (ev) {
+    var t = ev.target;
+    if (t && t.tagName === 'TEXTAREA' && t.closest && t.closest(PAGINAS)) ajusta(t);
+  }, true);
+
+  // 2) Cuando el texto lo mete la app: al abrir una ficha, al pasar una transcripción,
+  //    al traer algo de la nube… Todo eso acaba llamando a SY() o a restoreFormData().
+  function envuelve(nombre) {
+    var orig = window[nombre];
+    if (typeof orig !== 'function' || orig._altoAuto) return;
+    var nueva = function () {
+      var r = orig.apply(this, arguments);
+      setTimeout(todas, 0);
+      return r;
+    };
+    nueva._altoAuto = true;
+    window[nombre] = nueva;
+  }
+
+  // 3) Y al arrancar, al cambiar de pestaña y al girar el móvil (cambia el ancho,
+  //    cambia el número de líneas).
+  function arranca() {
+    ['SY', 'restoreFormData', 'ST'].forEach(envuelve);
+    todas();
+    setTimeout(todas, 900);
+    setTimeout(todas, 2500);
+  }
+  window.addEventListener('resize', function () { setTimeout(todas, 120); });
+  window.ajustaAlturaTextos = todas;
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arranca);
+  else arranca();
 })();
 </script>
 </body>
