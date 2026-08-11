@@ -3755,7 +3755,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v431';
+var APP_VERSION = 'v432';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18136,10 +18136,45 @@ async function doResetWithCode() {
       var ent = (document.getElementById('f_ent') || {}).value || '';
       var r = window._ultimaRuta;
       // En modo grúa hay UNA sola dirección: aquí no pinta nada un recorrido.
-      if (window._gruaTipo || !rec.trim() || !ent.trim() || !r || !r.geom || r.geom.length < 2) {
+      if (window._gruaTipo || !rec.trim() || !ent.trim()) {
         caja.style.display = 'none';
         return;
       }
+      // 🛑 v432 · SI NO SE PUEDE, SE DICE. Hasta ahora, cuando no se podía calcular la
+      // ruta el apartado simplemente NO APARECÍA, y Asier se quedaba mirando la pantalla
+      // sin saber por qué. Un fallo callado es peor que un fallo: ahora sale el apartado
+      // con el motivo y un botón para reintentar. Eso sí, el aviso es SOLO de pantalla:
+      // al cliente no le llega (clase no-pdf).
+      if (!r || !r.geom || r.geom.length < 2) {
+        caja.style.display = 'block';
+        var img0 = document.getElementById('sv-ruta-png');
+        if (img0) { img0.removeAttribute('src'); img0.classList.add('sin-foto'); }
+        var marco0 = document.getElementById('sv-ruta-marco');
+        if (marco0) marco0.style.display = 'none';
+        var av = document.getElementById('sv-ruta-aviso');
+        if (!av) {
+          av = document.createElement('div');
+          av.id = 'sv-ruta-aviso'; av.className = 'no-pdf';
+          av.style.cssText = 'border:1.5px solid #D8DCE3;border-top:none;border-radius:0 0 4px 4px;padding:12px 14px;background:#FEF0E7;font-size:12px;color:#553;line-height:1.6';
+          caja.insertBefore(av, document.getElementById('sv-ruta-pie'));
+        }
+        av.innerHTML = 'No he podido trazar el recorrido: <b>no consigo localizar una de las dos direcciones</b> en el mapa. '
+          + 'Prueba a dejar solo <b>calle, número y ciudad</b> (sin piso ni mano) en la que falle. '
+          + '<button type="button" id="sv-ruta-otra" style="margin-left:6px;background:#1B4F8A;color:#fff;border:none;border-radius:6px;padding:6px 11px;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer">Reintentar</button>';
+        var bt = document.getElementById('sv-ruta-otra');
+        if (bt) bt.onclick = function () {
+          av.innerHTML = 'Buscando…';
+          window._ultimaRuta = null;
+          try { ['sv-main-recogida', 'sv-main-entrega'].forEach(function (id) { var c = document.getElementById(id); if (c) { c.removeAttribute('data-lat'); c.removeAttribute('data-lon'); } }); } catch (e) {}
+          if (window.rutaSoloParaElMapa) window.rutaSoloParaElMapa();
+        };
+        var pie0 = document.getElementById('sv-ruta-pie');
+        if (pie0) pie0.textContent = '';
+        return;
+      }
+      // Sí hay ruta: fuera el aviso y vuelve el mapa
+      var avV = document.getElementById('sv-ruta-aviso'); if (avV) avV.remove();
+      var marcoV = document.getElementById('sv-ruta-marco'); if (marcoV) marcoV.style.display = '';
       var huella = rec + '|' + ent + '|' + Math.round(r.distancia || 0);
       caja.style.display = 'block';
 
