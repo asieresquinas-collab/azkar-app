@@ -3774,7 +3774,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v436';
+var APP_VERSION = 'v437';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8111,6 +8111,47 @@ function buildCompleteHTML(pageIds) {
       caja.textContent = ta.value || '';
       areasSav.push({ ta: ta, caja: caja });
       if (ta.parentNode) ta.parentNode.replaceChild(caja, ta);
+    });
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  v437 · 🛑 LA FECHA, ESCRITA COMO LA ESCRIBIMOS AQUÍ
+    //  Asier, 11-ago-2026: «una clienta me acaba de mandar esto y tiene razón, está
+    //  mal puesto: la fecha de su mudanza es el día 1 del 9 del 2026 y ahí pone día 9
+    //  del mes 1 del 2026».
+    //  QUÉ PASABA: las casillas de fecha y hora las dibuja el navegador, y cada una las
+    //  enseña en el idioma que tenga puesto. En su móvil, en español: 01/09/2026. Pero
+    //  el PDF NO se hace en su móvil, se hace en el servidor — y ese navegador va en
+    //  inglés, así que ponía 09/01/2026 (mes/día/año) y «08:30 AM». La clienta leyó
+    //  9 de enero. Con razón.
+    //  AHORA la fecha y la hora se ESCRIBEN a mano en el documento, en formato de aquí:
+    //  día/mes/año y la hora de 0 a 24. Ya no depende del idioma de ningún navegador.
+    // ══════════════════════════════════════════════════════════════════════════
+    var _fechaES = function (v) {
+      var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || ''));
+      return m ? (m[3] + '/' + m[2] + '/' + m[1]) : String(v || '');
+    };
+    var _horaES = function (v) {
+      var m = /^(\d{1,2}):(\d{2})/.exec(String(v || ''));
+      return m ? (('0' + m[1]).slice(-2) + ':' + m[2]) : String(v || '');
+    };
+    el.querySelectorAll('input[type="date"], input[type="time"], input[type="datetime-local"]').forEach(function (inp) {
+      var esFecha = inp.type !== 'time';
+      var texto = inp.type === 'time' ? _horaES(inp.value)
+        : (inp.type === 'datetime-local'
+          ? (_fechaES(inp.value) + ' ' + _horaES((inp.value || '').split('T')[1] || '')).trim()
+          : _fechaES(inp.value));
+      var c = window.getComputedStyle(inp);
+      var caja = document.createElement('div');
+      caja.className = inp.className;
+      if (inp.id) caja.setAttribute('data-de', inp.id);
+      caja.style.cssText = 'width:100%;box-sizing:border-box;white-space:nowrap;overflow:visible;'
+        + 'height:' + c.height + ';line-height:' + (parseFloat(c.height) - parseFloat(c.paddingTop || 0) - parseFloat(c.paddingBottom || 0)) + 'px;'
+        + 'border:' + c.border + ';border-radius:' + c.borderRadius + ';padding:' + c.padding + ';'
+        + 'font-family:' + c.fontFamily + ';font-size:' + c.fontSize + ';font-weight:' + c.fontWeight + ';'
+        + 'color:' + c.color + ';background:transparent';
+      caja.textContent = texto;
+      areasSav.push({ ta: inp, caja: caja });
+      if (inp.parentNode) inp.parentNode.replaceChild(caja, inp);
     });
     // v199: Eliminar elementos de promo del DOM si promo no está activa (antes de capturar)
     // v403 (Asier, 9-ago-2026): el BOTÓN de la promo se quita SIEMPRE. Estaba llegando al
