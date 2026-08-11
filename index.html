@@ -3774,7 +3774,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v437';
+var APP_VERSION = 'v438';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -7622,6 +7622,7 @@ function apiHeaders(extra) {
 // ── WhatsApp Business: abrir conversación con el número del cliente ──
 // v122: Variable global para enlace PDF pendiente de enviar por WhatsApp
 var _whatsappPdfLink = null;
+var _pdfLinkFrescoWA = null;   // v438: el PDF rehecho en ESTE envío (si no, no se manda enlace de PDF)
 var _whatsappClientName = '';
 var _whatsappClientNum = ''; var _whatsappFirmaUrl = '';
 
@@ -7744,7 +7745,25 @@ async function _crearFirmaParaWA() {
       body: JSON.stringify({ numero: number, nombre: clientName, email: clientEmail, telefono: clientTel, total: clientTotal, direccionRecogida: clientRec, direccionEntrega: clientEnt, fechaServicio: clientFecha, items: firmaItems, presupuestoHtml: completeHTML })
     });
     var d = await r.json();
-    return (d && d.ok) ? d.url : '';
+    if (!d || !d.ok) return '';
+
+    // v438 · Y EL PDF DE DRIVE, TAMBIÉN DE AHORA.
+    // El mensaje lleva dos enlaces: «Ver presupuesto» (el PDF de Drive) y el de firmar.
+    // El primero era de la última vez que se mandó por correo, así que podía ser de
+    // antes de tocar nada — que es como una clienta acabó firmando sin su DNI.
+    // Se rehace aquí con el MISMO documento que se acaba de mandar a firmar, así los
+    // dos enlaces enseñan lo mismo. Y de paso, la carpeta del cliente en Drive queda
+    // con el presupuesto bueno. Si el PDF falla, se manda solo el de firmar.
+    _pdfLinkFrescoWA = null;
+    try {
+      showSyncStatus('⏳ Actualizando también el PDF de la carpeta...', 0);
+      var pr = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO', '', d.url);
+      if (pr && pr.success && pr.drive) {
+        _pdfLinkFrescoWA = pr.drive.pdfProxyLink || pr.drive.webViewLink || null;
+      }
+    } catch (ePdf) { console.warn('[Firma WA] no he podido rehacer el PDF:', ePdf.message); }
+
+    return d.url;
   } catch (e) { console.error('[Firma WA] error creando sesión:', e); return ''; }
 }
 
@@ -7769,19 +7788,36 @@ async function enviarPresupuestoWhatsApp() {
     return;
   }
 
-  // v273: si no hay enlace de firma FRESCO de ESTE cliente, crearlo ahora
-  if (!_whatsappFirmaUrl || String(_whatsappClientNum) !== String(_curRefWA)) {
+  // ══════════════════════════════════════════════════════════════════════════
+  //  🛑 v438 · EL ENLACE SE REHACE SIEMPRE, CON LO QUE HAY AHORA EN PANTALLA
+  //  Asier, 11-ago-2026: «mandé un presupuesto a una clienta sin el DNI ni el nombre
+  //  completo; luego se los puse, le di a enviar por WhatsApp y le llegó EL MISMO, sin
+  //  los datos. Lo acabo de abrir y es el mismo. Ella ya lo ha firmado, pero lo ha
+  //  firmado sin sus datos».
+  //  POR QUÉ PASÓ: si ya había un enlace de ESE cliente, se reaprovechaba —y encima se
+  //  guardaba 60 días en el móvil—, así que todo lo que se tocara después NO llegaba.
+  //  Un enlace viejo con un documento viejo, y el cliente firmando el que no era.
+  //  AHORA se hace uno nuevo CADA VEZ que se pulsa enviar, con el presupuesto tal y
+  //  como está en ese momento. Tarda un segundo más; merece la pena de sobra.
+  //  (Y en el servidor, el enlace nuevo ANULA los anteriores de ese mismo cliente, para
+  //  que no pueda firmar por error una versión que ya no es la buena.)
+  // ══════════════════════════════════════════════════════════════════════════
+  {
     var _btnG = document.getElementById('btn-wa-pdf');
     if (_btnG) { _btnG.disabled = true; _btnG.innerHTML = '⏳'; }
-    showSyncStatus('⏳ Preparando el presupuesto para firmar...', 0);
+    showSyncStatus('⏳ Preparando el presupuesto de ahora mismo para firmar...', 0);
     var _fu = await _crearFirmaParaWA();
     if (_btnG) { _btnG.disabled = false; _btnG.innerHTML = '📄 PDF'; }
     if (!_fu) { showSyncStatus('', 1); alert('No he podido preparar el enlace de firma. Revisa la conexión e inténtalo otra vez.'); return; }
     _whatsappFirmaUrl = _fu;
     _whatsappClientNum = _curRefWA;
     _whatsappClientName = (document.getElementById('f_nom') || {}).value || '';
+    // 🛑 el enlace al PDF de Drive puede ser de un envío anterior: si no se ha rehecho
+    // AHORA, no se manda. Antes que un enlace viejo, ninguno — en la página de firma se
+    // ve el presupuesto entero de todas formas.
+    _whatsappPdfLink = _pdfLinkFrescoWA || null;
     _v237SaveWaLink(_curRefWA, _whatsappPdfLink || _fu, _whatsappClientName, _fu);
-    showSyncStatus('✅ Listo para enviar', 1500);
+    showSyncStatus('✅ Listo para enviar, con los datos de ahora', 1800);
   }
 
   var num = tel.replace(/[\s\-\(\)\.]/g, '');
