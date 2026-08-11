@@ -92,6 +92,9 @@
 /* v424: la FOTO del mapa. En pantalla se miran los marcos de Google (se puede navegar);
    al imprimir esos marcos salen en blanco, así que se enseña la foto, que sí se imprime. */
 .solo-pdf{display:block!important}
+/* v427: si no se ha podido hacer la foto del mapa, NADA — antes salía el icono de
+   imagen rota con el texto debajo, que queda peor que no poner nada. */
+.solo-pdf.sin-foto{display:none!important}
 /* v405 (Asier, 9-ago-2026): «haz que esto esté alineado, unidades con unidades y precio
    con precio; en la APK se ve bien pero cuando se genera el PDF sale mal».
    El motivo: en pantalla la tabla tiene 8 columnas y la cabecera tiene 8 casillas, así que
@@ -3700,7 +3703,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v426';
+var APP_VERSION = 'v427';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -10827,8 +10830,8 @@ function txCreatePresupuesto() {
     container.appendChild(flex);
     const foto = document.createElement('img');
     foto.id = 'sv-main-' + prefix + '-png';
-    foto.className = 'solo-pdf';
-    foto.alt = 'Mapa de ' + (prefix === 'recogida' ? 'recogida' : 'entrega');
+    foto.className = 'solo-pdf sin-foto';   // v427: nace escondida hasta que HAYA foto
+    foto.alt = '';
     foto.style.cssText = 'width:100%;max-height:230px;object-fit:cover;border:2px solid #1a5276;border-radius:4px;';
     container.appendChild(foto);
     const caption = document.createElement('p');
@@ -11567,6 +11570,15 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     var limpiaBiz = addContexto(limpiarDireccion(a));
     var limpiaLibre = sinContexto(limpiarDireccion(a));
 
+    // v427 · Asier, con el PDF delante: la recogida seguía sin salir. El motivo es que a
+    // OpenStreetMap se le pedía la dirección TAL CUAL —«Calle Gran Vía 70 3º Izquierda
+    // bilbao»— y con el piso dentro no encuentra nada. Ahora se le pide PRIMERO la
+    // dirección limpia (calle + número + ciudad), que es lo que entiende.
+    // Y si ni así, se prueba SIN el número: mejor caer en la calle correcta y decirlo,
+    // que quedarse sin mapa y sin kilómetros.
+    var limpiaMapa = (typeof window.dirParaMapa === 'function') ? window.dirParaMapa(a) : a;
+    var sinNumero = String(limpiaMapa).replace(/\s*,?\s*\b\d+\b\s*$/, '').replace(/\s+\d+\s+/, ' ').trim();
+
     var intentos;
     if (nombraOtroSitio) {
       // Él ha dicho dónde: se le hace caso y se busca tal cual.
@@ -11578,7 +11590,13 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     } else {
       // Una CALLE sin pueblo es de Bizkaia. Y si no aparece en Bizkaia, NO se busca por
       // ahí suelta: eso era lo que traía la Henao de Málaga.
-      intentos = [{ q: conBiz, venda: true }, { q: limpiaBiz, venda: true }, { q: libre, venda: true }];
+      intentos = [
+        { q: addContexto(limpiaMapa), venda: true },     // «Calle Gran Vía 70 bilbao, Bizkaia, España»
+        { q: conBiz, venda: true },
+        { q: limpiaBiz, venda: true },
+        { q: libre, venda: true },
+        { q: addContexto(sinNumero), venda: true, aprox: true }   // último recurso: la calle
+      ];
     }
     // fuera repetidos, que cada intento cuesta un segundo de espera
     var vistos = {};
@@ -11600,9 +11618,10 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
         return nominatimSearch(intentos[i].q, intentos[i].venda);
       }).then(function (data) {
         if (data && data.length) {
-          if (!exigeBizkaia) return _resultado(data[0]);
+          var _marca = function (f) { if (f && intentos[i].aprox) { f.aproximada = true; } return f; };
+          if (!exigeBizkaia) return _marca(_resultado(data[0]));
           for (var k = 0; k < data.length; k++) {
-            if (esDeBizkaia(data[k])) return _resultado(data[k]);
+            if (esDeBizkaia(data[k])) return _marca(_resultado(data[k]));
           }
           for (var k2 = 0; k2 < data.length && !_plabo; k2++) {
             if (esDelPaisVasco(data[k2])) _plabo = _resultado(data[k2]);
@@ -17777,7 +17796,7 @@ async function doResetWithCode() {
     var img = document.getElementById('sv-main-' + prefijo + '-png');
     if (!img) return;
     var dir = String(direccion || '').trim();
-    if (!dir) { img.removeAttribute('src'); return; }
+    if (!dir) { img.removeAttribute('src'); img.classList.add('sin-foto'); return; }
     if (_ultima[prefijo] === dir && img.getAttribute('src')) return;   // ya está hecha
     _ultima[prefijo] = dir;
     try {
@@ -17788,7 +17807,7 @@ async function doResetWithCode() {
       if (!(isFinite(lat) && isFinite(lon))) {
         if (typeof window.geoAzkar !== 'function') return;
         var p = await window.geoAzkar(dir);
-        if (!p) { img.removeAttribute('src'); return; }   // no se ha encontrado: mejor sin foto que con una foto de otro sitio
+        if (!p) { img.removeAttribute('src'); img.classList.add('sin-foto'); return; }   // no se ha encontrado: mejor sin foto que con una foto de otro sitio
         lat = p.lat; lon = p.lon;
         if (cont) { cont.setAttribute('data-lat', lat); cont.setAttribute('data-lon', lon); }
       }
@@ -17796,7 +17815,8 @@ async function doResetWithCode() {
       // Si no hay clave o no contesta, se pinta la de OpenStreetMap como hasta ahora.
       var png = await fotoDeGoogle(lat, lon);
       if (!png) png = await pintarMapa(lat, lon);
-      if (png) img.src = png; else img.removeAttribute('src');
+      if (png) { img.src = png; img.classList.remove('sin-foto'); }
+      else { img.removeAttribute('src'); img.classList.add('sin-foto'); }
     } catch (e) { console.warn('[MapaPDF]', e && e.message); }
   }
 
