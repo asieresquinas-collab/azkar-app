@@ -3774,7 +3774,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v434';
+var APP_VERSION = 'v435';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18195,9 +18195,19 @@ async function doResetWithCode() {
     caja.style.cssText = 'margin:10px 0;display:none';
     caja.innerHTML =
       '<div style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#1B4F8A;background:#D6E4F7;padding:5px 9px;border-radius:3px 3px 0 0;border:1.5px solid #D8DCE3;border-bottom:none">Recorrido del servicio</div>'
-      + '<iframe id="sv-ruta-marco" class="no-pdf" style="width:100%;height:260px;border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px" allowfullscreen></iframe>'
-      + '<img id="sv-ruta-png" class="solo-pdf sin-foto" alt="" style="width:100%;border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px">'
-      + '<p id="sv-ruta-pie" style="font-size:10px;color:#888;margin-top:4px;text-align:center"></p>';
+      // v435 · EL MAPA QUE VES ES EL MISMO QUE LE LLEGA AL CLIENTE.
+      // Antes, en pantalla iba un marco de Google que se abría a lo ancho de medio País
+      // Vasco: en un Vitoria → Legutio de 15 km salían Bilbao, Donostia, Pamplona y hasta
+      // Biarritz, con el camino hecho una rayita en un rincón. Asier: «no quiero que se
+      // vea que salgo desde Bilbao, porque si no se van a pensar que le estamos cobrando
+      // los kilómetros». Ahora se enseña la MISMA foto que va al PDF, que se recorta
+      // justo al camino: si el servicio es de Vitoria a Legutio, en el mapa solo sale
+      // Vitoria y Legutio. Para navegar, el botón de abajo abre Google Maps de verdad.
+      + '<div id="sv-ruta-espera" class="no-pdf" style="border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px;padding:26px 12px;text-align:center;font-size:12px;color:#7a8794;background:#F4F6F9">Dibujando el mapa del recorrido…</div>'
+      + '<img id="sv-ruta-png" class="sin-foto" alt="" style="width:100%;border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px">'
+      + '<p id="sv-ruta-pie" style="font-size:10px;color:#888;margin-top:4px;text-align:center"></p>'
+      + '<div class="no-pdf" style="text-align:center;margin-top:2px"><a id="sv-ruta-maps" href="#" target="_blank" rel="noopener" '
+      + 'style="display:inline-block;background:#1B4F8A;color:#fff;text-decoration:none;border-radius:6px;padding:6px 13px;font-size:11.5px;font-weight:700">🗺️ Abrir el recorrido en Google Maps</a></div>';
     ancla.parentElement.insertBefore(caja, ancla.nextSibling);
     return true;
   }
@@ -18224,8 +18234,8 @@ async function doResetWithCode() {
         caja.style.display = 'block';
         var img0 = document.getElementById('sv-ruta-png');
         if (img0) { img0.removeAttribute('src'); img0.classList.add('sin-foto'); }
-        var marco0 = document.getElementById('sv-ruta-marco');
-        if (marco0) marco0.style.display = 'none';
+        var esp0 = document.getElementById('sv-ruta-espera'); if (esp0) esp0.style.display = 'none';
+        var maps0 = document.getElementById('sv-ruta-maps'); if (maps0) maps0.parentElement.style.display = 'none';
         var av = document.getElementById('sv-ruta-aviso');
         if (!av) {
           av = document.createElement('div');
@@ -18249,27 +18259,34 @@ async function doResetWithCode() {
       }
       // Sí hay ruta: fuera el aviso y vuelve el mapa
       var avV = document.getElementById('sv-ruta-aviso'); if (avV) avV.remove();
-      var marcoV = document.getElementById('sv-ruta-marco'); if (marcoV) marcoV.style.display = '';
       var huella = rec + '|' + ent + '|' + Math.round(r.distancia || 0);
       caja.style.display = 'block';
 
-      // En pantalla, el mapa de Google con el camino (se puede mover y abrir)
-      var marco = document.getElementById('sv-ruta-marco');
+      // v435 · El botón para navegar de verdad (solo pantalla; al cliente no le llega).
       var lim = function (t) { return (typeof window.dirParaMapa === 'function' ? window.dirParaMapa(t) : t); };
-      if (marco) marco.src = 'https://maps.google.com/maps?saddr=' + encodeURIComponent(lim(rec))
-        + '&daddr=' + encodeURIComponent(lim(ent)) + '&output=embed';
+      var enlace = document.getElementById('sv-ruta-maps');
+      if (enlace) {
+        enlace.href = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(lim(rec))
+          + '&destination=' + encodeURIComponent(lim(ent)) + '&travelmode=driving';
+        enlace.parentElement.style.display = '';
+      }
 
       var pie = document.getElementById('sv-ruta-pie');
       if (pie) pie.textContent = 'De la recogida (A) a la entrega (B) · ' + _txtKm(r.distancia) + ' · ' + _txtMin(r.duracion) + ' en coche (sin tráfico)';
 
+      var img = document.getElementById('sv-ruta-png');
+      var esp = document.getElementById('sv-ruta-espera');
       if (_ultimo === huella) return;     // ya está pintada
       _ultimo = huella;
-      var img = document.getElementById('sv-ruta-png');
+      // Mientras se bajan los trozos del mapa, el hueco dice qué está pasando.
+      if (esp && (!img || !img.getAttribute('src'))) esp.style.display = '';
       var png = await pintarRuta(r.geom, r.distancia, r.duracion);
       if (img) {
         if (png) { img.src = png; img.classList.remove('sin-foto'); }
         else { img.removeAttribute('src'); img.classList.add('sin-foto'); }
       }
+      if (esp) esp.style.display = png ? 'none' : '';
+      if (esp && !png) esp.textContent = 'No he podido dibujar el mapa del recorrido. Los kilómetros de arriba sí son buenos.';
     } catch (e) { console.warn('[Ruta]', e && e.message); }
   }
 
