@@ -2063,8 +2063,10 @@ function SY(){
   function G(id){ var e=document.getElementById(id); return e?e.value:''; }
   function S(id,v){ var e=document.getElementById(id); if(e) e.textContent=v||'—'; }
   S('c_nom',G('f_nom')); S('c_dni',G('f_dni')); S('c_tel',G('f_tel'));
-  S('c_rec',G('f_rec')); S('c_ent',G('f_ent'));
-  S('c_dom',G('f_fac')||G('f_rec'));
+  // v433: la dirección completa = calle y número + piso/puerta (los dos campos)
+  var _dc = function (p) { return (typeof window.dirCompleta === 'function') ? window.dirCompleta(p) : G('f_' + p); };
+  S('c_rec', _dc('rec')); S('c_ent', _dc('ent'));
+  S('c_dom', G('f_fac') || _dc('rec'));
   S('c_ref',G('f_ref'));
   var fs=G('f_fserv');
   var hs=G('f_hserv');
@@ -3323,6 +3325,22 @@ function GD(){
   // v199: Guardar estado promo manual
   data._promoManual=!!window._promoManual;
   data._salidaNueva=!!window._salidaNueva; data._grua=window._gruaTipo||'';   /* v417 */   // v404
+  // v433 · LA DIRECCIÓN, EN DOS CAMPOS. Asier: «que pueda llegar a la calle y el número
+  // siempre; lo demás que se ponga en un apartado diferente que está al lado, así no
+  // tenemos ese problema». En la ficha se guarda la dirección ENTERA (que es lo que ven
+  // el cliente y los chicos), y aparte las dos piezas, para poder volver a repartirlas.
+  try {
+    if (typeof window.dirCompleta === 'function') {
+      ['rec', 'ent'].forEach(function (p) {
+        var pta = document.getElementById('f_' + p + '_pta');
+        if (pta && String(pta.value || '').trim()) {
+          data['f_' + p] = window.dirCompleta(p);
+          data['f_' + p + '_calle'] = (document.getElementById('f_' + p) || {}).value || '';
+          data['f_' + p + '_pta'] = pta.value;
+        }
+      });
+    }
+  } catch (e) {}
   try { var _tk = tarifaKmParaGuardar(); if (_tk > 0) data._kmTarifa = _tk; } catch (e) {}   /* v423: con qué precio de km se hizo ESTA ficha */
   data.rows=[];
   var rows=document.querySelectorAll(".cr");
@@ -3401,6 +3419,7 @@ function LD(){
     window._salidaNueva = !!data._salidaNueva;
     window._gruaTipo = data._grua || '';        // v417: la grúa se apunta en la ficha, no en el nombre de la línea
     try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423: esta ficha se queda con SU precio de km
+    try { if (window.repartirDirecciones) window.repartirDirecciones(data); } catch (e) {}   // v433
     if(typeof AR_SALIDA==='function') AR_SALIDA(_salGuardada);
     // v194: Restaurar ascensor
     if(typeof setAscensor==='function'){setAscensor('rec',data.asc_rec||'');setAscensor('ent',data.asc_ent||'');}
@@ -3755,7 +3774,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v432';
+var APP_VERSION = 'v433';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -5010,6 +5029,22 @@ function collectFormData() {
   // v404: ¿este presupuesto NACIÓ con la salida de 100? Sirve para no tocarle la salida a
   // los de antes aunque un guardado automático se la haya pisado.
   data._salidaNueva = !!window._salidaNueva; data._grua = window._gruaTipo || '';   /* v417 */
+  // v433 · LA DIRECCIÓN, EN DOS CAMPOS. Asier: «que pueda llegar a la calle y el número
+  // siempre; lo demás que se ponga en un apartado diferente que está al lado, así no
+  // tenemos ese problema». En la ficha se guarda la dirección ENTERA (que es lo que ven
+  // el cliente y los chicos), y aparte las dos piezas, para poder volver a repartirlas.
+  try {
+    if (typeof window.dirCompleta === 'function') {
+      ['rec', 'ent'].forEach(function (p) {
+        var pta = document.getElementById('f_' + p + '_pta');
+        if (pta && String(pta.value || '').trim()) {
+          data['f_' + p] = window.dirCompleta(p);
+          data['f_' + p + '_calle'] = (document.getElementById('f_' + p) || {}).value || '';
+          data['f_' + p + '_pta'] = pta.value;
+        }
+      });
+    }
+  } catch (e) {}
   try { var _tk = tarifaKmParaGuardar(); if (_tk > 0) data._kmTarifa = _tk; } catch (e) {}   /* v423: con qué precio de km se hizo ESTA ficha */
 
   data.timestamp = Date.now();
@@ -5088,6 +5123,7 @@ function restoreFormData(data) {
   // la marca de la grúa en la primera. Por eso al abrirlo de la lista volvía a salir azul.
   window._gruaTipo = data._grua || '';
   try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423
+  try { if (window.repartirDirecciones) window.repartirDirecciones(data); } catch (e) {}   // v433
   if (typeof AR_SALIDA === 'function') AR_SALIDA(_salFicha);
   if (typeof CA === 'function') CA();
   if (typeof SY === 'function') SY();
@@ -18270,6 +18306,128 @@ async function doResetWithCode() {
   window.pintarRuta = pintarRuta;
   window.pintaRutaDelServicio = pintaRutaDelServicio;
   window.rutaSoloParaElMapa = rutaSoloParaElMapa;
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
+  else monta();
+})();
+</script>
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     LA DIRECCIÓN, EN DOS CAMPOS  ·  v433 · 11-ago-2026
+     Asier, después de una mañana peleándonos con los mapas: «vamos a hacer una cosa
+     para que pueda llegar a la calle y el número siempre. Los demás apartados que se
+     puedan meter al lado, pero en otro. El tercero C, por ejemplo, número 4: hasta ahí
+     sí llega, pero lo demás que se ponga en un apartado diferente que está al lado.
+     Así no tenemos ese problema».
+     Y tiene toda la razón: en vez de que la app adivine dónde acaba la calle y empieza
+     el piso, lo dice él. Al mapa le llega SIEMPRE calle, número y ciudad — limpio.
+     · Lo que ven el CLIENTE y los CHICOS: la dirección entera, como siempre.
+     · Lo que ve el MAPA: solo el primer campo.
+     Y las fichas viejas no se tocan: se quedan como estaban hasta que él quiera.
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  var CAMPOS = [
+    { p: 'rec', tit: 'Piso, puerta…' },
+    { p: 'ent', tit: 'Piso, puerta…' }
+  ];
+
+  function dirCompleta(p) {
+    var c = document.getElementById('f_' + p);
+    var t = document.getElementById('f_' + p + '_pta');
+    var a = String((c && c.value) || '').trim();
+    var b = String((t && t.value) || '').trim();
+    return (a + (b ? (/[,;]$/.test(a) ? ' ' : ', ') + b : '')).trim();
+  }
+
+  // Reparte una dirección de una sola pieza en calle+número y el resto.
+  // Solo se usa cuando Asier lo pide con el botón: nunca por su cuenta.
+  function reparte(txt) {
+    var d = String(txt || '').trim();
+    if (!d) return { calle: '', pta: '' };
+    var limpia = (typeof window.dirParaMapa === 'function') ? window.dirParaMapa(d) : d;
+    if (!limpia || limpia === d) return { calle: d, pta: '' };
+    // Lo que sobra respecto de la versión limpia, es el piso y la mano.
+    var resto = d;
+    limpia.split(/\s+/).forEach(function (t) { resto = resto.replace(t, ' '); });
+    resto = resto
+      .replace(/\bn[ºª]?\b/gi, ' ')          // el «n» suelto de «n1» no es el piso
+      .replace(/\s{2,}/g, ' ')
+      .replace(/^[\s,.-]+|[\s,.-]+$/g, '');
+    return { calle: limpia, pta: resto };
+  }
+
+  function monta() {
+    if (document.getElementById('f_rec_pta')) return true;
+    var hecho = false;
+    CAMPOS.forEach(function (c) {
+      var inp = document.getElementById('f_' + c.p);
+      if (!inp || document.getElementById('f_' + c.p + '_pta')) return;
+      var fila = document.createElement('div');
+      fila.style.cssText = 'display:flex;gap:7px;align-items:flex-start';
+      inp.parentNode.insertBefore(fila, inp);
+      inp.style.flex = '1 1 auto';
+      inp.style.minWidth = '0';
+      inp.placeholder = 'Calle, número y ciudad';
+      fila.appendChild(inp);
+
+      var extra = document.createElement('input');
+      extra.type = 'text';
+      extra.id = 'f_' + c.p + '_pta';
+      extra.placeholder = c.tit;
+      extra.title = 'Piso, mano, escalera, oficina… Esto NO se le manda al mapa, pero sí sale en el presupuesto y en el parte.';
+      extra.style.cssText = 'flex:0 0 34%;min-width:0;border:1.5px solid #D8DCE3;border-radius:0 0 3px 3px;padding:8px 10px;font-family:inherit;font-size:13px;background:#fff;outline:none';
+      extra.oninput = function () { try { if (typeof SY === 'function') SY(); } catch (e) {} };
+      fila.appendChild(extra);
+      hecho = true;
+    });
+
+    // Un botón chiquitín para repartir lo que ya está escrito, cuando él quiera.
+    ['rec', 'ent'].forEach(function (p) {
+      if (document.getElementById('dir-sep-' + p)) return;
+      var pta = document.getElementById('f_' + p + '_pta');
+      if (!pta) return;
+      var b = document.createElement('button');
+      b.type = 'button'; b.id = 'dir-sep-' + p; b.className = 'no-pdf';
+      b.textContent = '✂️ Separar el piso';
+      b.style.cssText = 'margin-top:3px;background:none;border:1px solid #D8DCE3;color:#5b6b7c;border-radius:5px;padding:3px 8px;font-family:inherit;font-size:10.5px;cursor:pointer';
+      b.title = 'Coge lo que hay escrito y deja la calle y el número aquí, y el piso en el campo de al lado';
+      b.onclick = function () {
+        var inp = document.getElementById('f_' + p);
+        var r = reparte(inp.value);
+        if (!r.pta) { b.textContent = 'Ahí ya solo hay calle y número'; setTimeout(function () { b.textContent = '✂️ Separar el piso'; }, 2500); return; }
+        inp.value = r.calle;
+        pta.value = r.pta;
+        try { inp.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+        try { if (typeof SY === 'function') SY(); } catch (e) {}
+        b.textContent = '✅ Separado';
+        setTimeout(function () { b.textContent = '✂️ Separar el piso'; }, 2500);
+      };
+      pta.parentNode.parentNode.appendChild(b);
+    });
+    return hecho;
+  }
+
+  // Al abrir una ficha: solo se reparte si se guardó repartida. Una ficha vieja se
+  // queda EXACTAMENTE como estaba — que es la norma de siempre.
+  function repartirDirecciones(data) {
+    monta();
+    ['rec', 'ent'].forEach(function (p) {
+      var inp = document.getElementById('f_' + p);
+      var pta = document.getElementById('f_' + p + '_pta');
+      if (!inp || !pta) return;
+      if (data && data['f_' + p + '_pta']) {
+        inp.value = data['f_' + p + '_calle'] || inp.value;
+        pta.value = data['f_' + p + '_pta'];
+      } else {
+        pta.value = '';       // ficha antigua: todo sigue en el campo de siempre
+      }
+    });
+    try { if (typeof SY === 'function') SY(); } catch (e) {}
+  }
+
+  window.dirCompleta = dirCompleta;
+  window.repartirDirecciones = repartirDirecciones;
+  window.repartirTexto = reparte;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
   else monta();
