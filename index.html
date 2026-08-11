@@ -3700,7 +3700,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v425';
+var APP_VERSION = 'v426';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -10846,7 +10846,13 @@ function txCreatePresupuesto() {
       container.style.display = 'none';
       return;
     }
-    let fullAddress = address.trim();
+    // v426 · Asier: «sigue sin llevarme al número exacto».
+    // El mapa buscaba el TEXTO ENTERO, con el piso y la mano dentro: «Calle Gran Vía 70
+    // 3º Izquierda bilbao». Y eso Google lo lee como una búsqueda suelta y te deja caer
+    // por el barrio, no en el portal. El piso no le sirve de nada a un mapa: lo que
+    // localiza un punto es CALLE + NÚMERO + CIUDAD. Así que al mapa se le manda eso,
+    // limpio. Lo que escribe Asier NO se toca: se limpia solo la copia que va al mapa.
+    let fullAddress = window.dirParaMapa ? window.dirParaMapa(address) : address.trim();
     // v406: misma regla que la calculadora de km — un nombre suelto (Sevilla, Cádiz) se
     // busca tal cual; una calle sin pueblo se asume de Bizkaia, que es lo normal aquí.
     if (/\d/.test(fullAddress) || /^(calle|c\/|c\.|avda\.?|avenida|av\.|plaza|pza\.?|paseo|p[ºo]\.?|camino|cno\.?|carretera|ctra\.?|ronda|barrio|b[ºo]\.?|pol[ií]gono|urb\.?|urbanizaci[oó]n)\b/i.test(fullAddress.trim())) {
@@ -10857,9 +10863,12 @@ function txCreatePresupuesto() {
     const encoded = encodeURIComponent(fullAddress);
     const streetFrame = document.getElementById('sv-main-' + prefix + '-street');
     const mapFrame = document.getElementById('sv-main-' + prefix + '-map');
-    mapFrame.src = 'https://maps.google.com/maps?q=' + encoded + '&t=k&z=17&output=embed';
-    streetFrame.src = 'https://maps.google.com/maps?q=' + encoded + '&layer=c&z=17&output=embed';
+    mapFrame.src = 'https://maps.google.com/maps?q=' + encoded + '&t=k&z=18&output=embed';
+    streetFrame.src = 'https://maps.google.com/maps?q=' + encoded + '&layer=c&z=18&output=embed';
     container.style.display = 'block';
+    // Y en cuanto se sepa el PUNTO exacto (lo busca el buscador de siempre), se vuelven a
+    // apuntar los dos marcos a esas coordenadas: ahí ya no hay interpretación posible.
+    try { if (window.afinarMapasConElPunto) window.afinarMapasConElPunto(prefix, address); } catch (e) {}
     // v424: y la FOTO del mapa para el PDF (la de verdad, la que se imprime)
     try { if (window.fotoMapaPara) window.fotoMapaPara(prefix, address); } catch (e) {}
   }
@@ -17790,6 +17799,68 @@ async function doResetWithCode() {
       if (png) img.src = png; else img.removeAttribute('src');
     } catch (e) { console.warn('[MapaPDF]', e && e.message); }
   }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  v426 · LA DIRECCIÓN QUE VE EL MAPA
+  //  Asier: «sigue sin llevarme al número exacto». Le mandábamos al mapa el texto
+  //  entero —«Calle Gran Vía 70 3º Izquierda bilbao»— y Google lo lee como una
+  //  búsqueda suelta: te deja por el barrio. Un mapa solo entiende CALLE + NÚMERO +
+  //  CIUDAD; el piso y la mano sobran y encima estorban.
+  //  OJO: esto NO toca lo que él escribe. Solo la copia que va al mapa.
+  // ══════════════════════════════════════════════════════════════════════════
+  function dirParaMapa(a) {
+    var d = String(a || '').trim();
+    return d
+      // «70 3º Izquierda» / «25 4º Dcha» → «70» / «25»
+      .replace(/\s+\d+\s*[ºªo]?\s*(izda|izquierda|dcha|derecha|izq|der|centro|ctro)\b\.?/gi, ' ')
+      // «piso 3», «esc. B», «pta 2»
+      .replace(/\s+(piso|pta\.?|puerta|esc\.?|escalera|entreplanta|entresuelo|entlo\.?)\s*[0-9a-zA-Z]?[ºª]?\b/gi, ' ')
+      // la mano suelta, sin número delante
+      .replace(/\s+(bajo|sob?re?ático|sático|izda\.?|izquierda|dcha\.?|derecha|izq\.?|der\.?)\b\.?/gi, ' ')
+      // dos números seguidos: el segundo con º/ª es el piso («70 3º» → «70»)
+      .replace(/(\d+)\s*,?\s+\d+\s*[ºª]\b/g, '$1')
+      // «2 2C» → «2» (piso y puerta pegados, sin el º)
+      .replace(/(\d+)\s+\d{1,2}[A-Za-z]\b/g, '$1')
+      // «Juan de la Cosa 2, 2C, Bilbao» → se quita el «2C», pero SOLO si ya había un
+      // número antes (si no, ese número ES el portal: «Gran Vía, 70, Bilbao» no se toca)
+      .replace(/,\s*\d{1,2}\s*[ºª]?\s*[A-Za-z]?\s*,/g, function (m, pos, txt) {
+        return /\d/.test(String(txt).slice(0, pos)) ? ',' : m;
+      })
+      // «nº 5» → «5»
+      .replace(/\bn[ºª]?\s*(\d)/gi, '$1')
+      .replace(/\s*,\s*,/g, ',')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
+  // Cuando ya se sabe el punto exacto, los marcos se apuntan a las COORDENADAS.
+  // Ahí ya no hay interpretación: es ese portal y no otro.
+  var _afinado = {};
+  async function afinarMapasConElPunto(prefijo, direccion) {
+    try {
+      var dir = String(direccion || '').trim();
+      if (!dir || _afinado[prefijo] === dir) return;
+      var cont = document.getElementById('sv-main-' + prefijo);
+      var lat = parseFloat(cont && cont.getAttribute('data-lat'));
+      var lon = parseFloat(cont && cont.getAttribute('data-lon'));
+      if (!(isFinite(lat) && isFinite(lon))) {
+        if (typeof window.geoAzkar !== 'function') return;
+        var p = await window.geoAzkar(dir);
+        if (!p) return;                      // no se ha encontrado: se deja la búsqueda por texto
+        lat = p.lat; lon = p.lon;
+        if (cont) { cont.setAttribute('data-lat', lat); cont.setAttribute('data-lon', lon); }
+      }
+      _afinado[prefijo] = dir;
+      var mapa = document.getElementById('sv-main-' + prefijo + '-map');
+      var calle = document.getElementById('sv-main-' + prefijo + '-street');
+      var punto = lat + ',' + lon;
+      if (mapa) mapa.src = 'https://maps.google.com/maps?q=' + punto + '&t=k&z=19&output=embed';
+      if (calle) calle.src = 'https://maps.google.com/maps?q=' + punto + '&layer=c&cbll=' + punto + '&cbp=12,0,0,0,0&output=embed';
+    } catch (e) { console.warn('[Mapas]', e && e.message); }
+  }
+
+  window.dirParaMapa = dirParaMapa;
+  window.afinarMapasConElPunto = afinarMapasConElPunto;
 
   // Le pide la foto al servidor y la mete DENTRO del documento (data:), que es lo que
   // hace que se imprima siempre y que viaje con el HTML guardado.
