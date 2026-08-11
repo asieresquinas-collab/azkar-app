@@ -2116,6 +2116,7 @@ function RF(){
   // v376: Reset toggle plataforma elevadora
   window._currentPlataforma = false;
   window._gruaEncendioClausula = false;   // v420: y quién la encendió
+  try { soltarTarifaKm(); } catch (e) {}   // v423: la ficha nueva cobra a la tarifa de hoy
   // v420: al limpiar, la ficha deja de ser de grúa (si no, la siguiente nacía con la grúa puesta)
   window._gruaTipo = '';
   try { if (window.gruaRepinta) setTimeout(window.gruaRepinta, 60); } catch (e) {}
@@ -3262,6 +3263,7 @@ function GD(){
   // v199: Guardar estado promo manual
   data._promoManual=!!window._promoManual;
   data._salidaNueva=!!window._salidaNueva; data._grua=window._gruaTipo||'';   /* v417 */   // v404
+  try { var _tk = tarifaKmParaGuardar(); if (_tk > 0) data._kmTarifa = _tk; } catch (e) {}   /* v423: con qué precio de km se hizo ESTA ficha */
   data.rows=[];
   var rows=document.querySelectorAll(".cr");
   for(var i=0;i<rows.length;i++){
@@ -3338,6 +3340,7 @@ function LD(){
     // propia AR_SALIDA se encarga de que no se le ponga la de hoy.
     window._salidaNueva = !!data._salidaNueva;
     window._gruaTipo = data._grua || '';        // v417: la grúa se apunta en la ficha, no en el nombre de la línea
+    try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423: esta ficha se queda con SU precio de km
     if(typeof AR_SALIDA==='function') AR_SALIDA(_salGuardada);
     // v194: Restaurar ascensor
     if(typeof setAscensor==='function'){setAscensor('rec',data.asc_rec||'');setAscensor('ent',data.asc_ent||'');}
@@ -3692,7 +3695,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v422';
+var APP_VERSION = 'v423';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -4947,6 +4950,7 @@ function collectFormData() {
   // v404: ¿este presupuesto NACIÓ con la salida de 100? Sirve para no tocarle la salida a
   // los de antes aunque un guardado automático se la haya pisado.
   data._salidaNueva = !!window._salidaNueva; data._grua = window._gruaTipo || '';   /* v417 */
+  try { var _tk = tarifaKmParaGuardar(); if (_tk > 0) data._kmTarifa = _tk; } catch (e) {}   /* v423: con qué precio de km se hizo ESTA ficha */
 
   data.timestamp = Date.now();
   // v123: Preservar TODOS los campos de estado — leer de variable global O de IndexedDB
@@ -5023,6 +5027,7 @@ function restoreFormData(data) {
   // HTML (LD) y desde la nube / MIS PRESUPUESTOS (restoreFormData)— y yo solo había puesto
   // la marca de la grúa en la primera. Por eso al abrirlo de la lista volvía a salir azul.
   window._gruaTipo = data._grua || '';
+  try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423
   if (typeof AR_SALIDA === 'function') AR_SALIDA(_salFicha);
   if (typeof CA === 'function') CA();
   if (typeof SY === 'function') SY();
@@ -11236,6 +11241,66 @@ function txCreatePresupuesto() {
     })();
 })();
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  TARIFA DE KILÓMETROS POR TRAMOS  ·  v423 · 11-ago-2026
+//  Asier preguntó si cobrando el gasoil a 1,70 y los km a 2 € —y SOLO la ida—
+//  estaba cobrando bien un Madrid. Echando la cuenta: en un Madrid el camión rueda
+//  800 km y él facturaba 400, o sea 1 €/km rodado. El gasoil solo ya se come 340 €,
+//  y el Observatorio de Costes del Ministerio pone un rígido de 3 ejes en 1,82 €/km.
+//  Cobrando solo la ida, iba por debajo de coste en cuanto el viaje era largo.
+//  La regla de la ida SÍ vale en local: el camión vuelve y sigue trabajando ese día.
+//  En un Madrid la vuelta son 400 km vacíos y un día perdido. Por eso, dos tramos.
+//  Si algún día quiere otro número, se cambia AQUÍ y en api/oscar.js, y nada más.
+// ══════════════════════════════════════════════════════════════════════════════
+var PRECIO_KM_CERCA = 2.40;        // hasta 150 km — como siempre
+var PRECIO_KM_LARGO = 3.50;        // de 150 km en adelante
+var KM_LARGA_DISTANCIA = 150;
+var KM_GRATIS_APP = 15;
+
+function precioKmHoy(kmNum) {
+  return (parseFloat(kmNum) || 0) > KM_LARGA_DISTANCIA ? PRECIO_KM_LARGO : PRECIO_KM_CERCA;
+}
+// 🛑 LOS PRESUPUESTOS DE ANTES NO SE TOCAN. Es la norma de Asier: si abre una ficha
+// vieja y de repente suma más, puede tener un problema serio. Cada ficha guarda con
+// qué precio de km se hizo (_kmTarifa) y al abrirla manda ESE, no el de hoy.
+function precioKmDeLaFicha(kmNum) {
+  if (window._kmTarifaFijada && window._kmTarifa > 0) return window._kmTarifa;
+  return precioKmHoy(kmNum);
+}
+// Al abrir una ficha: su tarifa es la guardada; si es tan vieja que no la tiene, la
+// que se lea en su propia línea de Desplazamiento; y si tampoco, la de cerca de siempre.
+function fijarTarifaKmDeFicha(guardada) {
+  var p = parseFloat(guardada);
+  if (!(p > 0)) {
+    try {
+      var filas = document.querySelectorAll('#tb .cr');
+      for (var i = 0; i < filas.length; i++) {
+        var ins = filas[i].querySelectorAll('input');
+        if (ins[0] && /^Desplazamiento/i.test(ins[0].value)) { p = parseFloat(String(ins[2] && ins[2].value).replace(',', '.')); break; }
+      }
+    } catch (e) {}
+  }
+  window._kmTarifa = (p > 0) ? p : PRECIO_KM_CERCA;
+  window._kmTarifaFijada = true;
+}
+// Ficha nueva: sin tarifa fijada, manda la de hoy.
+function soltarTarifaKm() { window._kmTarifa = 0; window._kmTarifaFijada = false; }
+// Lo que se guarda en la ficha.
+function tarifaKmParaGuardar() {
+  if (window._kmTarifaFijada && window._kmTarifa > 0) return window._kmTarifa;
+  try {
+    var filas = document.querySelectorAll('#tb .cr');
+    for (var i = 0; i < filas.length; i++) {
+      var ins = filas[i].querySelectorAll('input');
+      if (ins[0] && /^Desplazamiento/i.test(ins[0].value)) {
+        var p = parseFloat(String(ins[2] && ins[2].value).replace(',', '.'));
+        if (p > 0) return p;
+      }
+    }
+  } catch (e) {}
+  return 0;   // 0 = esta ficha todavía no tiene km; se decidirá cuando los tenga
+}
+
 // ── LÍNEA DE KM EN PRESUPUESTO ──────────────────────────────
 function actualizarLineaKm(kmNum, precioKm, kmGratis) {
   // Buscar si ya existe una fila de "Desplazamiento" en el presupuesto
@@ -11507,9 +11572,10 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
           document.getElementById('dist-km').textContent = km + ' km';
           document.getElementById('dist-tiempo').textContent = '🕐 ' + tiempoStr;
 
-          // Lógica de precio por km: >15km = 2€/km, ≤15km = gratis
-          var PRECIO_KM = 2.40;
-          var KM_GRATIS = 15;
+          // v423: la tarifa depende del tramo (hasta 150 km / más de 150 km) y, si la
+          // ficha es de antes, de la que ella traiga. Ver precioKmDeLaFicha().
+          var PRECIO_KM = precioKmDeLaFicha(kmNum);
+          var KM_GRATIS = KM_GRATIS_APP;
           var costeEl = document.getElementById('dist-coste');
           var rutaEl = document.getElementById('dist-ruta');
 
@@ -11517,7 +11583,8 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
             var costeKm = Math.round(kmNum) * PRECIO_KM;
             costeEl.textContent = '💰 ' + costeKm.toFixed(2) + ' €';
             costeEl.style.color = '#e67e22';
-            rutaEl.textContent = Math.round(kmNum) + ' km × ' + PRECIO_KM + ' €/km = ' + costeKm.toFixed(2) + ' € — pasa de ' + KM_GRATIS + ' km, se cobran TODOS (se añade al presupuesto)';
+            rutaEl.textContent = Math.round(kmNum) + ' km × ' + PRECIO_KM.toFixed(2) + ' €/km = ' + costeKm.toFixed(2) + ' € — pasa de ' + KM_GRATIS + ' km, se cobran TODOS (se añade al presupuesto)'
+              + (kmNum > KM_LARGA_DISTANCIA ? ' · LARGA DISTANCIA: la vuelta son km vacíos, por eso el km va a ' + PRECIO_KM_LARGO.toFixed(2) + ' €' : '');
           } else {
             costeEl.textContent = '✅ GRATIS';
             costeEl.style.color = '#27ae60';
