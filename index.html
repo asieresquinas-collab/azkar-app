@@ -3755,7 +3755,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v428';
+var APP_VERSION = 'v429';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -11695,7 +11695,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     if (!_apiBase()) return Promise.resolve(null);
     return fetch(_apiBase() + '/api/geo/ruta?olat=' + from.lat + '&olon=' + from.lon + '&dlat=' + to.lat + '&dlon=' + to.lon, { headers: _apiCab() })
       .then(function (r) { return r.json(); })
-      .then(function (d) { return (d && d.ok) ? { distancia: d.metros, duracion: d.segundos, fuente: d.fuente } : null; })
+      .then(function (d) { return (d && d.ok) ? { distancia: d.metros, duracion: d.segundos, fuente: d.fuente, geom: d.geom || [] } : null; })
       .catch(function () { return null; });
   }
 
@@ -11707,7 +11707,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
   function calcRouteOSRM(from, to) {
     var url = 'https://router.project-osrm.org/route/v1/driving/'
       + from.lon + ',' + from.lat + ';' + to.lon + ',' + to.lat
-      + '?overview=false';
+      + '?overview=simplified&geometries=geojson';
     return fetch(url)
       .then(function(r) {
         if (!r.ok) { console.error('[OSRM] HTTP', r.status); return { code: 'Error' }; }
@@ -11718,7 +11718,9 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
           var route = data.routes[0];
           return {
             distancia: route.distance, // metros
-            duracion: route.duration   // segundos
+            duracion: route.duration,  // segundos
+            // v429: y EL DIBUJO de la ruta, para pintar el mapa de recogida→entrega
+            geom: ((route.geometry || {}).coordinates || []).map(function (c) { return [c[1], c[0]]; })
           };
         }
         return null;
@@ -11788,6 +11790,9 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
         document.getElementById('dist-ruta').textContent = 'Calculando ruta...';
 
         return calcRoute(from, to).then(function(ruta) {
+          // v429: se guarda la ruta entera para el MAPA DE RECOGIDA → ENTREGA
+          try { window._ultimaRuta = ruta ? { geom: ruta.geom || [], from: from, to: to, distancia: ruta.distancia, duracion: ruta.duracion } : null; } catch (e) {}
+          try { if (window.pintaRutaDelServicio) setTimeout(window.pintaRutaDelServicio, 60); } catch (e) {}
           if (!ruta) {
             document.getElementById('dist-km').textContent = '⚠ Sin ruta';
             document.getElementById('dist-tiempo').textContent = '';
@@ -17316,7 +17321,8 @@ async function doResetWithCode() {
   // se quedaba ahí con sus dos cuadros en blanco. Se tapan los dos, por si acaso.
   function _mapasEntrega() {
     var out = [];
-    ['sv-main-entrega', 'sv-entrega'].forEach(function (id) {
+    // v429: y el RECORRIDO recogida→entrega, que en un servicio de grúa no existe
+    ['sv-main-entrega', 'sv-entrega', 'sv-ruta'].forEach(function (id) {
       var e = document.getElementById(id);
       if (e) out.push(e);
     });
@@ -17969,6 +17975,179 @@ async function doResetWithCode() {
       });
     } catch (e) {}
   };
+})();
+</script>
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     EL MAPA DEL VIAJE: RECOGIDA → ENTREGA  ·  v429 · 11-ago-2026
+     Asier, viendo un mapa que salió así por casualidad: «puede ser que en el de
+     arriba ponga la dirección de recogida y abajo la de entrega, y marque un mapa
+     de recogida hasta entrega como lo marca aquí. Para poder mandárselo al cliente
+     queda muy serio y muy bien».
+     Pues eso: un mapa con el camino de una dirección a la otra, los dos puntos
+     marcados y los kilómetros y el tiempo escritos. En pantalla es el mapa de Google
+     de siempre (se puede mover); en el PDF es una FOTO hecha aquí, que se imprime.
+     Este SÍ es para el cliente: va en el presupuesto.
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  var TILE = 256, ANCHO = 4, ALTO = 2;      // 1024 × 512: apaisado, como el hueco
+
+  function _x(lon, z) { return (lon + 180) / 360 * Math.pow(2, z); }
+  function _y(lat, z) {
+    var r = lat * Math.PI / 180;
+    return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z);
+  }
+  function _teja(url) {
+    return new Promise(function (ok) {
+      var im = new Image();
+      im.crossOrigin = 'anonymous';
+      im.onload = function () { ok(im); };
+      im.onerror = function () { ok(null); };
+      im.src = url;
+    });
+  }
+  function _txtKm(m) {
+    var km = (m || 0) / 1000;
+    return (km >= 100 ? Math.round(km) : km.toFixed(1)) + ' km';
+  }
+  function _txtMin(sg) {
+    var m = Math.round((sg || 0) / 60);
+    return m >= 60 ? (Math.floor(m / 60) + ' h ' + (m % 60) + ' min') : (m + ' min');
+  }
+
+  // Dibuja el camino entero, con los dos extremos marcados.
+  async function pintarRuta(geom, distancia, duracion) {
+    if (!geom || geom.length < 2) return null;
+    // 1) El recuadro que hay que abarcar
+    var laMin = 90, laMax = -90, loMin = 180, loMax = -180;
+    geom.forEach(function (p) {
+      if (p[0] < laMin) laMin = p[0]; if (p[0] > laMax) laMax = p[0];
+      if (p[1] < loMin) loMin = p[1]; if (p[1] > loMax) loMax = p[1];
+    });
+    // 2) El zoom más cercano en el que TODO el camino cabe
+    var z = 16;
+    for (; z >= 3; z--) {
+      var dx = Math.abs(_x(loMax, z) - _x(loMin, z));
+      var dy = Math.abs(_y(laMin, z) - _y(laMax, z));
+      if (dx <= ANCHO - 0.35 && dy <= ALTO - 0.35) break;   // un margen para que no roce
+    }
+    var cx = (_x(loMin, z) + _x(loMax, z)) / 2;
+    var cy = (_y(laMin, z) + _y(laMax, z)) / 2;
+    var x0 = cx - ANCHO / 2, y0 = cy - ALTO / 2;
+
+    var lienzo = document.createElement('canvas');
+    lienzo.width = ANCHO * TILE; lienzo.height = ALTO * TILE;
+    var g = lienzo.getContext('2d');
+    g.fillStyle = '#e8e6e1'; g.fillRect(0, 0, lienzo.width, lienzo.height);
+
+    var faenas = [];
+    for (var i = Math.floor(x0); i < x0 + ANCHO; i++) {
+      for (var j = Math.floor(y0); j < y0 + ALTO; j++) {
+        (function (tx, ty) {
+          faenas.push(_teja('https://tile.openstreetmap.org/' + z + '/' + tx + '/' + ty + '.png')
+            .then(function (im) { if (im) g.drawImage(im, (tx - x0) * TILE, (ty - y0) * TILE); }));
+        })(i, j);
+      }
+    }
+    await Promise.all(faenas);
+
+    // 3) El camino
+    var pt = function (p) { return [(_x(p[1], z) - x0) * TILE, (_y(p[0], z) - y0) * TILE]; };
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 9;
+    g.beginPath(); geom.forEach(function (p, k) { var q = pt(p); k ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.stroke();
+    g.strokeStyle = '#1B4F8A'; g.lineWidth = 5;
+    g.beginPath(); geom.forEach(function (p, k) { var q = pt(p); k ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.stroke();
+
+    // 4) Los dos extremos: verde donde se recoge, naranja donde se entrega
+    var chincheta = function (p, color, letra) {
+      var q = pt(p);
+      g.beginPath(); g.arc(q[0], q[1], 13, 0, Math.PI * 2);
+      g.fillStyle = color; g.fill();
+      g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke();
+      g.fillStyle = '#fff'; g.font = 'bold 15px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(letra, q[0], q[1] + 1);
+      g.textAlign = 'start'; g.textBaseline = 'alphabetic';
+    };
+    chincheta(geom[0], '#1a7a3f', 'A');
+    chincheta(geom[geom.length - 1], '#E85C0D', 'B');
+
+    // 5) Los kilómetros y el tiempo, escritos
+    var etiqueta = _txtKm(distancia) + '  ·  ' + _txtMin(duracion) + ' en coche';
+    g.font = 'bold 17px sans-serif';
+    var an = g.measureText(etiqueta).width + 22;
+    g.fillStyle = 'rgba(27,79,138,.92)';
+    g.fillRect(12, 12, an, 34);
+    g.fillStyle = '#fff'; g.fillText(etiqueta, 23, 35);
+
+    g.font = '12px sans-serif';
+    var cred = '© OpenStreetMap';
+    var ac = g.measureText(cred).width + 8;
+    g.fillStyle = 'rgba(255,255,255,.8)';
+    g.fillRect(lienzo.width - ac, lienzo.height - 17, ac, 17);
+    g.fillStyle = '#444'; g.fillText(cred, lienzo.width - ac + 4, lienzo.height - 5);
+
+    try { return lienzo.toDataURL('image/png'); } catch (e) { return null; }
+  }
+
+  // ── El hueco donde vive, justo debajo de la caja de la distancia ──
+  function monta() {
+    if (document.getElementById('sv-ruta')) return true;
+    var ancla = document.getElementById('distancia-box');
+    if (!ancla || !ancla.parentElement) return false;
+    var caja = document.createElement('div');
+    caja.id = 'sv-ruta';
+    caja.style.cssText = 'margin:10px 0;display:none';
+    caja.innerHTML =
+      '<div style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#1B4F8A;background:#D6E4F7;padding:5px 9px;border-radius:3px 3px 0 0;border:1.5px solid #D8DCE3;border-bottom:none">Recorrido del servicio</div>'
+      + '<iframe id="sv-ruta-marco" class="no-pdf" style="width:100%;height:260px;border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px" allowfullscreen></iframe>'
+      + '<img id="sv-ruta-png" class="solo-pdf sin-foto" alt="" style="width:100%;border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px">'
+      + '<p id="sv-ruta-pie" style="font-size:10px;color:#888;margin-top:4px;text-align:center"></p>';
+    ancla.parentElement.insertBefore(caja, ancla.nextSibling);
+    return true;
+  }
+
+  var _ultimo = '';
+  async function pintaRutaDelServicio() {
+    try {
+      if (!monta()) return;
+      var caja = document.getElementById('sv-ruta');
+      var rec = (document.getElementById('f_rec') || {}).value || '';
+      var ent = (document.getElementById('f_ent') || {}).value || '';
+      var r = window._ultimaRuta;
+      // En modo grúa hay UNA sola dirección: aquí no pinta nada un recorrido.
+      if (window._gruaTipo || !rec.trim() || !ent.trim() || !r || !r.geom || r.geom.length < 2) {
+        caja.style.display = 'none';
+        return;
+      }
+      var huella = rec + '|' + ent + '|' + Math.round(r.distancia || 0);
+      caja.style.display = 'block';
+
+      // En pantalla, el mapa de Google con el camino (se puede mover y abrir)
+      var marco = document.getElementById('sv-ruta-marco');
+      var lim = function (t) { return (typeof window.dirParaMapa === 'function' ? window.dirParaMapa(t) : t); };
+      if (marco) marco.src = 'https://maps.google.com/maps?saddr=' + encodeURIComponent(lim(rec))
+        + '&daddr=' + encodeURIComponent(lim(ent)) + '&output=embed';
+
+      var pie = document.getElementById('sv-ruta-pie');
+      if (pie) pie.textContent = 'De la recogida (A) a la entrega (B) · ' + _txtKm(r.distancia) + ' · ' + _txtMin(r.duracion) + ' en coche (sin tráfico)';
+
+      if (_ultimo === huella) return;     // ya está pintada
+      _ultimo = huella;
+      var img = document.getElementById('sv-ruta-png');
+      var png = await pintarRuta(r.geom, r.distancia, r.duracion);
+      if (img) {
+        if (png) { img.src = png; img.classList.remove('sin-foto'); }
+        else { img.removeAttribute('src'); img.classList.add('sin-foto'); }
+      }
+    } catch (e) { console.warn('[Ruta]', e && e.message); }
+  }
+
+  window.pintarRuta = pintarRuta;
+  window.pintaRutaDelServicio = pintaRutaDelServicio;
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
+  else monta();
 })();
 </script>
 </body>
