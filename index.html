@@ -3774,7 +3774,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v433';
+var APP_VERSION = 'v434';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -11598,6 +11598,32 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
     return /pais vasco|euskadi|euskal herria/.test(_norm([a.state, a.region, r && r.display_name].join(' ')));
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  //  v434 · UNA PROVINCIA NO ES UNA DIRECCIÓN  (11-ago-2026, tarde)
+  //  Asier: «también trabajo en Vitoria y no quiero que se vea que salgo desde Bilbao,
+  //  porque si no se van a pensar que le estamos cobrando los kilómetros».
+  //  Lo que pasaba era peor que un mapa feo: en un Vitoria → Legutio la entrega no se
+  //  encontraba y el buscador devolvía LA PROVINCIA ENTERA («Vizcaya, España»), cuyo
+  //  centro está al lado de Bilbao. De ahí salían 74,5 km y 180 € de desplazamiento
+  //  INVENTADOS en un presupuesto que se le manda al cliente.
+  //  Desde ahora, un resultado que sea una provincia, una comunidad o un país se tira
+  //  a la basura: se sigue buscando, y si no hay nada se dice que no se encuentra.
+  //  Un hueco se ve; unos kilómetros inventados, no.
+  // ══════════════════════════════════════════════════════════════════════════
+  var OSM_DEMASIADO_GRANDE = ['country', 'state', 'region', 'province', 'county'];
+  function esDireccionDeVerdad(r) {
+    var tipo = _norm((r && (r.addresstype || r.type)) || '');
+    if (OSM_DEMASIADO_GRANDE.indexOf(tipo) >= 0) return false;
+    var rango = parseInt(r && r.place_rank, 10);   // país 4 · comunidad 8 · provincia 12 · ciudad 16 · calle 26
+    if (!isNaN(rango) && rango <= 12) return false;
+    return true;
+  }
+  // Y por si el servidor es viejo o contesta cualquier cosa: si lo que devuelve es
+  // «Vizcaya, España» o «Álava, España» a secas, tampoco vale.
+  var RE_SOLO_PROVINCIA = /^\s*(vizcaya|bizkaia|alava|álava|araba|gipuzkoa|guipuzcoa|guipúzcoa|pais vasco|país vasco|euskadi|cantabria|navarra|burgos|la rioja|espa[nñ]a)\s*(,\s*(pais vasco|país vasco|euskadi|espa[nñ]a)\s*)*$/i;
+  function pareceProvinciaSuelta(txt) { return RE_SOLO_PROVINCIA.test(String(txt || '').trim()); }
+  window.pareceProvinciaSuelta = pareceProvinciaSuelta;
+
   function nominatimSearch(query, conVenda) {
     var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=8&addressdetails=1'
       + '&email=info@azkarmudanzas.com'
@@ -11636,6 +11662,14 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (d && d.ok) {
+          // v434 · si lo que ha encontrado es la provincia entera, NO vale: de ahí salían
+          // los 74,5 km y los 180 € del Vitoria → Legutio.
+          if (pareceProvinciaSuelta(d.formateada)) {
+            console.warn('[Geocode] El servidor me da «' + d.formateada + '» — eso es una provincia, no una dirección. La descarto.');
+            window._geoUltimoMotivo = 'Con «' + address + '» solo encuentro la provincia entera, no la calle. '
+              + 'Escríbeme la calle, el número y el pueblo (por ejemplo: «C. de Zarraua 9, Legutio»).';
+            return 'RECHAZADA';
+          }
           window._geoUltimoMotivo = '';
           return { lat: d.lat, lon: d.lon, display: d.formateada, bizkaia: !!d.bizkaia, fuente: d.fuente, exactitud: d.exactitud };
         }
@@ -11709,7 +11743,12 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
       return espera.then(function () {
         if (i > 0) console.log('[Geocode] Reintento', i, '→', intentos[i].q);
         return nominatimSearch(intentos[i].q, intentos[i].venda);
-      }).then(function (data) {
+      }).then(function (bruta) {
+        // v434 · fuera provincias y comunidades: eso no es una dirección de nadie.
+        var data = (bruta || []).filter(esDireccionDeVerdad);
+        if (bruta && bruta.length && !data.length) {
+          console.warn('[Geocode] Descarto', bruta[0].display_name, '— es una provincia o una zona, no una dirección');
+        }
         if (data && data.length) {
           var _marca = function (f) { if (f && intentos[i].aprox) { f.aproximada = true; } return f; };
           if (!exigeBizkaia) return _marca(_resultado(data[0]));
