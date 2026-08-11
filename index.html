@@ -3395,7 +3395,7 @@ function LD(){
             if(_salGuardada===null && r.p!=='' && r.p!=null) _salGuardada=r.p; continue; }
           AR(r.c,r.z,r.u,r.p,r.d,r.tm||'',r.tam||'Estándar');}
       }
-    } finally { window._restaurandoFicha = false; try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); if(window.gruaRepinta) setTimeout(window.gruaRepinta, 350); if(window.fotosMapaRefrescar) setTimeout(window.fotosMapaRefrescar, 900); }catch(e){} }
+    } finally { window._restaurandoFicha = false; try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); if(window.gruaRepinta) setTimeout(window.gruaRepinta, 350); if(window.fotosMapaRefrescar) setTimeout(window.fotosMapaRefrescar, 900); if(window.rutaSoloParaElMapa) setTimeout(window.rutaSoloParaElMapa, 1400); }catch(e){} }
     // v401/v408: se le pasa la Salida guardada; si la ficha es de antes del cambio, la
     // propia AR_SALIDA se encarga de que no se le ponga la de hoy.
     window._salidaNueva = !!data._salidaNueva;
@@ -3755,7 +3755,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v430';
+var APP_VERSION = 'v431';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -5075,7 +5075,7 @@ function restoreFormData(data) {
         AR(r.c, r.z, r.u, r.p, r.d, r.tm || '', r.tam || 'Estándar');
         window._dp2pRestore = ''; window._dp2pBase = '';
       });
-    } finally { window._restaurandoFicha = false; try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); if(window.gruaRepinta) setTimeout(window.gruaRepinta, 350); if(window.fotosMapaRefrescar) setTimeout(window.fotosMapaRefrescar, 900); }catch(e){} window._dp2pRestore = ''; window._dp2pBase = ''; }
+    } finally { window._restaurandoFicha = false; try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); if(window.gruaRepinta) setTimeout(window.gruaRepinta, 350); if(window.fotosMapaRefrescar) setTimeout(window.fotosMapaRefrescar, 900); if(window.rutaSoloParaElMapa) setTimeout(window.rutaSoloParaElMapa, 1400); }catch(e){} window._dp2pRestore = ''; window._dp2pBase = ''; }
   }
 
   // v408: la protección la hace AR_SALIDA mirando la fecha del presupuesto. Aquí solo se
@@ -18163,8 +18163,78 @@ async function doResetWithCode() {
     } catch (e) { console.warn('[Ruta]', e && e.message); }
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  //  v431 · Y AL ABRIR UNA FICHA GUARDADA, TAMBIÉN
+  //  Asier: «y sigue sin planificar la ruta». Y es que la ruta solo se calculaba
+  //  cuando él TOCABA una dirección con el dedo (por el evento del teclado). Al abrir
+  //  un presupuesto ya guardado, las direcciones se rellenan por código, no hay
+  //  teclado de por medio, y no se calculaba nada — así que el recorrido no aparecía.
+  //  🛑 ESTO NO TOCA LA LÍNEA DE KILÓMETROS. Solo mira dónde están los dos sitios y
+  //  pinta el mapa. El precio de una ficha guardada no se mueve por abrirla: ni el
+  //  desplazamiento, ni nada. Es la norma de siempre.
+  // ══════════════════════════════════════════════════════════════════════════
+  async function rutaSoloParaElMapa() {
+    try {
+      var rec = ((document.getElementById('f_rec') || {}).value || '').trim();
+      var ent = ((document.getElementById('f_ent') || {}).value || '').trim();
+      if (!rec || !ent || window._gruaTipo) return;
+      if (window._ultimaRuta && window._ultimaRuta.geom && window._ultimaRuta.geom.length > 1) {
+        return pintaRutaDelServicio();     // ya está calculada, solo hay que pintarla
+      }
+      if (typeof window.geoAzkar !== 'function') return;
+
+      // Las coordenadas: si ya están apuntadas en la ficha, se aprovechan.
+      var pto = async function (id, dir) {
+        var c = document.getElementById(id);
+        var la = parseFloat(c && c.getAttribute('data-lat')), lo = parseFloat(c && c.getAttribute('data-lon'));
+        if (isFinite(la) && isFinite(lo)) return { lat: la, lon: lo };
+        var p = await window.geoAzkar(dir);
+        if (!p) return null;
+        if (c) { c.setAttribute('data-lat', p.lat); c.setAttribute('data-lon', p.lon); }
+        return { lat: p.lat, lon: p.lon };
+      };
+      var a = await pto('sv-main-recogida', rec);
+      if (!a) return;
+      var b = await pto('sv-main-entrega', ent);
+      if (!b) return;
+
+      var r = await rutaEntre(a, b);
+      if (!r) return;
+      window._ultimaRuta = { geom: r.geom || [], from: a, to: b, distancia: r.metros, duracion: r.segundos };
+      await pintaRutaDelServicio();
+    } catch (e) { console.warn('[Ruta] al abrir:', e && e.message); }
+  }
+
+  // El camino entre dos puntos: primero el servidor (Google si hay clave), y si no OSRM.
+  async function rutaEntre(a, b) {
+    var base = (typeof RAILWAY_API !== 'undefined' ? RAILWAY_API : '');
+    if (base) {
+      try {
+        var cab = (typeof apiHeaders === 'function' ? apiHeaders() : {});
+        try { var t = localStorage.getItem('azkar_token'); if (t) cab['Authorization'] = 'Bearer ' + t; } catch (e) {}
+        var r = await fetch(base + '/api/geo/ruta?olat=' + a.lat + '&olon=' + a.lon + '&dlat=' + b.lat + '&dlon=' + b.lon, { headers: cab });
+        var d = await r.json();
+        if (d && d.ok) return { metros: d.metros, segundos: d.segundos, geom: d.geom || [] };
+      } catch (e) { /* a la reserva */ }
+    }
+    try {
+      var u = 'https://router.project-osrm.org/route/v1/driving/' + a.lon + ',' + a.lat + ';' + b.lon + ',' + b.lat
+        + '?overview=simplified&geometries=geojson';
+      var r2 = await fetch(u);
+      var j = await r2.json();
+      if (j && j.code === 'Ok' && j.routes && j.routes.length) {
+        return {
+          metros: j.routes[0].distance, segundos: j.routes[0].duration,
+          geom: ((j.routes[0].geometry || {}).coordinates || []).map(function (c) { return [c[1], c[0]]; })
+        };
+      }
+    } catch (e) { /* nada */ }
+    return null;
+  }
+
   window.pintarRuta = pintarRuta;
   window.pintaRutaDelServicio = pintaRutaDelServicio;
+  window.rutaSoloParaElMapa = rutaSoloParaElMapa;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
   else monta();
