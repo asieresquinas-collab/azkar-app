@@ -3755,7 +3755,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v429';
+var APP_VERSION = 'v430';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -10915,6 +10915,11 @@ function txCreatePresupuesto() {
     } else {
       fullAddress += ', España';
     }
+    // 🛑 v430 · EL CANDADO. Asier: «esto no me lleva de recogida a entrega, me lleva de
+    // recogida a Vitoria centro». El mapa de UNA dirección nunca puede acabar dibujando
+    // una ruta. Si aun así quedara algo que Google pudiera leer como «de X a Y» (una
+    // «a» suelta entre dos trozos), se le quita antes de mandarlo.
+    fullAddress = String(fullAddress).replace(/\s+a\s+(?=\d)/gi, ' ').replace(/\s{2,}/g, ' ').trim();
     const encoded = encodeURIComponent(fullAddress);
     const streetFrame = document.getElementById('sv-main-' + prefix + '-street');
     const mapFrame = document.getElementById('sv-main-' + prefix + '-map');
@@ -17906,7 +17911,22 @@ async function doResetWithCode() {
       })
       // «nº 5» → «5»
       .replace(/\bn[ºª]?\s*(\d)/gi, '$1')
+      // v430 · «edificio A», «oficina 203», «local 2», «nave 5»… al mapa le sobran.
+      // OJO: «portal» NO está en esta lista a propósito — en Vitoria hay una calle que
+      // se llama «Portal de Gamarra», y quitarlo se cargaría el nombre de la calle.
+      // 🛑 «nave» y «pabellón» NO se tocan: en un polígono ESE es el número de la
+      //    dirección (Pol. Martiartu, pabellón 44 — la nave de Asier, sin ir más lejos).
+      .replace(/\s+(edificio|edif\.?|oficina|ofic\.?|despacho|dpto\.?|departamento|planta)\s*[0-9A-Za-z]{0,4}\b/gi, ' ')
+      // 🛑 v430 · LO QUE LE LLEVABA A VITORIA CENTRO.
+      // «calle portal de gamarra n1 A 9 A vitoria»: esas letras sueltas son el portal y
+      // la mano, pero Google lee «9 A vitoria» como «9 A vitoria» = «del 9 A vitoria», o
+      // sea DE UN SITIO A OTRO, y te pinta una ruta al centro del pueblo. Detrás de un
+      // número, las letras y pisos sueltos se van; el pueblo (que tiene más de una letra)
+      // se queda.
+      .replace(/(\b\d+\b)(?:\s+(?:[A-Za-z]|\d{1,2}\s*[ºª]?\s*[A-Za-z]?)\b)+(?=\s|,|$)/g, '$1')
+      .replace(/\s+,/g, ',')
       .replace(/\s*,\s*,/g, ',')
+      .replace(/,\s*$/, '')
       .replace(/\s{2,}/g, ' ')
       .trim();
   }
