@@ -3774,7 +3774,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v439';
+var APP_VERSION = 'v440';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18801,6 +18801,80 @@ async function doResetWithCode() {
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
   else monta();
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     v440 · EL CARTEL DE «NO ACEPTADO»
+     Asier, 12-ago-2026: «cuando firme uno… uno va a estar en captación y el otro en
+     marcha. Que quede claro y simple: que ponga ESTE PRESUPUESTO NO HA SIDO ACEPTADO,
+     el aceptado ha sido el otro. Para que no haya lío luego».
+     Al darle a EN MARCHA a una oferta, el servidor marca las demás fichas del mismo
+     cliente (_noElegida + _eleccionCliente). Aquí, al abrir una de esas fichas, sale
+     el cartel bien visible. Es SOLO de pantalla (ui-interno + no-pdf): al cliente
+     jamás le llega. Y la ficha se guarda igual que siempre, en la misma carpeta —
+     nada se borra.
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  function monta() {
+    if (document.getElementById('cartel-no-elegida')) return;
+    var inp = document.getElementById('f_ref');
+    if (!inp || !inp.parentElement) return;
+    var c = document.createElement('div');
+    c.id = 'cartel-no-elegida';
+    c.className = 'no-pdf ui-interno';
+    c.style.cssText = 'display:none;margin-top:6px;background:#FDECEA;border:2px solid #C0392B;color:#7B241C;'
+      + 'border-radius:6px;padding:9px 12px;font-size:12.5px;font-weight:700;line-height:1.5';
+    inp.parentElement.appendChild(c);
+  }
+
+  async function pinta() {
+    try {
+      monta();
+      var c = document.getElementById('cartel-no-elegida');
+      if (!c) return;
+      var ref = ((document.getElementById('f_ref') || {}).value || '').trim().toUpperCase();
+      if (!ref) { c.style.display = 'none'; return; }
+      var data = null;
+      try { data = await getPresupuesto(ref); } catch (e) {}
+      if (data && data._noElegida) {
+        c.innerHTML = '❌ ESTE PRESUPUESTO NO HA SIDO ACEPTADO — el cliente eligió el <b>'
+          + (data._eleccionCliente || 'otro') + '</b>.<br>'
+          + '<span style="font-weight:400">Se guarda igualmente en la carpeta del cliente, para que quede constancia de lo que se le ofreció. No hay que borrarlo ni tocarlo.</span>';
+        c.style.display = 'block';
+      } else {
+        c.style.display = 'none';
+      }
+    } catch (e) {}
+  }
+
+  // Se repinta al abrir una ficha (por los dos caminos) y al cambiar el número a mano.
+  function envuelve(nombre) {
+    var orig = window[nombre];
+    if (typeof orig !== 'function' || orig._cartelNoElegida) return;
+    var nueva = function () {
+      var r = orig.apply(this, arguments);
+      if (r && typeof r.then === 'function') { r.then(function () { setTimeout(pinta, 250); }).catch(function () {}); }
+      else setTimeout(pinta, 250);
+      return r;
+    };
+    nueva._cartelNoElegida = true;
+    window[nombre] = nueva;
+  }
+
+  function arranca() {
+    monta();
+    ['loadPresupuesto', 'restoreFormData'].forEach(envuelve);
+    var inp = document.getElementById('f_ref');
+    if (inp) inp.addEventListener('input', function () { setTimeout(pinta, 150); });
+    setTimeout(pinta, 1200);
+    setTimeout(pinta, 4000);
+  }
+  window._cartelNoElegidaPinta = pinta;
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arranca);
+  else arranca();
 })();
 </script>
 </body>
