@@ -3774,7 +3774,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v438';
+var APP_VERSION = 'v439';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18670,6 +18670,137 @@ async function doResetWithCode() {
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arranca);
   else arranca();
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     v439 · DUPLICAR PRESUPUESTO (variantes B, C… del mismo cliente)
+     Asier, 12-ago-2026: «hay clientes que quieren dos presupuestos. ¿Cómo se puede
+     hacer para que tenga el mismo número de cliente pero que tenga una parte? Igual
+     quiere un presupuesto con cajas haciéndolas nosotros, que tiene un precio, y otro
+     sin hacerlas nosotros, que tiene otro. Un apartado donde ponga duplicar el
+     presupuesto, que se guarde con la misma sintaxis y que no me rompa nada».
+     CÓMO FUNCIONA:
+      · El 6520 se duplica como 6520-B (luego -C, -D…): mismo cliente, misma carpeta
+        de Drive (el servidor quita la letra al buscar la carpeta), pero cada variante
+        es SU ficha: sus artículos, su precio, su PDF (6520-B_PRESUPUESTO…) y su firma.
+      · El duplicado nace con lo que hay EN PANTALLA en ese momento y SIN estados:
+        ni firmado, ni en marcha, ni pagado. El original se queda exactamente igual.
+      · La tarifa de km de la ficha original se conserva (mismas condiciones).
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  var LETRAS = 'BCDEFGH';
+
+  function baseDe(ref) { var m = /^(\d+)/.exec(String(ref || '').trim()); return m ? m[1] : String(ref || '').trim(); }
+  function esVariante(ref) { return /^\d+-[A-Z]$/.test(String(ref || '').trim().toUpperCase()); }
+
+  // ¿Existe ya esa ficha? Se mira en la nube si se puede, y si no, en el propio móvil.
+  async function existeFicha(ref) {
+    try {
+      if (typeof firebaseConfigured !== 'undefined' && firebaseConfigured && window._fb && window._fb.getDoc) {
+        var snap = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', ref));
+        if (snap && snap.exists()) return true;
+      }
+    } catch (e) { /* sin nube: se mira abajo */ }
+    try { var d = await getPresupuesto(ref); if (d) return true; } catch (e) {}
+    return false;
+  }
+
+  async function duplicarPresupuesto() {
+    try {
+      var refActual = ((document.getElementById('f_ref') || {}).value || '').trim();
+      if (!refActual) { alert('Abre o crea primero el presupuesto del cliente.'); return; }
+      var base = baseDe(refActual);
+
+      // La primera letra libre: B, C, D…
+      var nueva = '';
+      for (var i = 0; i < LETRAS.length; i++) {
+        var cand = base + '-' + LETRAS[i];
+        if (!(await existeFicha(cand))) { nueva = cand; break; }
+      }
+      if (!nueva) { alert('El cliente ' + base + ' ya tiene variantes hasta la ' + LETRAS[LETRAS.length - 1] + '. Borra alguna o dímelo.'); return; }
+
+      if (!confirm('¿Duplicar este presupuesto como ' + nueva + '?\n\n'
+        + '· Mismo cliente y misma carpeta de Drive (' + base + ')\n'
+        + '· Se copia TODO lo que hay ahora en pantalla\n'
+        + '· El nuevo nace limpio: sin firmar, sin EN MARCHA, sin pagar\n'
+        + '· El original (' + refActual + ') se queda exactamente como está\n\n'
+        + 'Al aceptar se abre la variante ' + nueva + ' para que cambies lo que quieras (las cajas, por ejemplo).')) return;
+
+      // La foto de lo que hay en pantalla AHORA
+      var data = collectFormData();
+
+      // El duplicado nace SIN estados ni rastros del original
+      ['_enMarcha', '_enMarchaDate', '_pagadoFinalizado', '_pagadoFinalizadoDate', '_guardamuebles',
+       '_archivado2026', '_firmado', '_firmadoTs', '_firmadoFecha', '_firmadoVariante',
+       '_seguimientoFirmaTs', '_seguimientoJustifTs', '_rowsCorrupt', '_rowsExpectedCount'
+      ].forEach(function (k) { delete data[k]; });
+
+      // 🛑 la tarifa de km de la ficha original se conserva: misma oferta, mismas condiciones
+      try { var _tk = (typeof tarifaKmParaGuardar === 'function') ? tarifaKmParaGuardar() : 0; if (_tk > 0) data._kmTarifa = _tk; } catch (e) {}
+
+      data.f_ref = nueva;
+      data.id = nueva;
+      data._varianteDe = base;
+      data._varianteCreada = Date.now();
+      data.timestamp = Date.now();
+
+      showSyncStatus('⧉ Creando la variante ' + nueva + '…', 0);
+      await savePresupuestoFull(data);
+      await loadPresupuesto(nueva);
+      showSyncStatus('⧉ Variante ' + nueva + ' creada y abierta — cambia lo que quieras: el ' + refActual + ' no se toca', 8000);
+      setTimeout(pintaEtiqueta, 300);
+    } catch (e) {
+      console.error('[Duplicar]', e);
+      alert('No he podido duplicar: ' + (e && e.message ? e.message : e));
+    }
+  }
+
+  // La etiqueta de «esto es una variante», al lado del número
+  function pintaEtiqueta() {
+    try {
+      var inp = document.getElementById('f_ref');
+      var et = document.getElementById('dup-etiqueta');
+      if (!inp || !et) return;
+      var ref = String(inp.value || '').trim().toUpperCase();
+      if (esVariante(ref)) {
+        et.textContent = '⧉ Variante ' + ref.slice(-1) + ' del cliente ' + baseDe(ref);
+        et.style.display = 'inline-block';
+      } else { et.style.display = 'none'; }
+    } catch (e) {}
+  }
+
+  function monta() {
+    try {
+      if (document.getElementById('btn-duplicar')) return true;
+      var inp = document.getElementById('f_ref');
+      if (!inp || !inp.parentElement) return false;
+      var fila = document.createElement('div');
+      fila.className = 'no-pdf ui-interno';
+      fila.style.cssText = 'margin-top:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+      fila.innerHTML = '<button type="button" id="btn-duplicar" '
+        + 'style="background:#fff;color:#1B4F8A;border:1.5px solid #1B4F8A;border-radius:6px;padding:5px 11px;'
+        + 'font-family:Barlow,sans-serif;font-size:11px;font-weight:700;cursor:pointer">⧉ Duplicar presupuesto (variante B, C…)</button>'
+        + '<span id="dup-etiqueta" style="display:none;background:#FEF0E7;color:#E85C0D;border:1px solid #E85C0D;'
+        + 'border-radius:4px;padding:3px 8px;font-size:10.5px;font-weight:700"></span>';
+      inp.parentElement.appendChild(fila);
+      document.getElementById('btn-duplicar').onclick = duplicarPresupuesto;
+      inp.addEventListener('input', pintaEtiqueta);
+      pintaEtiqueta();
+      setTimeout(pintaEtiqueta, 1500);
+      setTimeout(pintaEtiqueta, 4000);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  window.duplicarPresupuesto = duplicarPresupuesto;
+  window._dupBaseDe = baseDe;
+  window._dupEsVariante = esVariante;
+  window._dupPintaEtiqueta = pintaEtiqueta;
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
+  else monta();
 })();
 </script>
 </body>
