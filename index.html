@@ -3293,7 +3293,12 @@ function _fichaEsAnterior(){
     return (m[1]+'-'+m[2]+'-'+m[3]) < SALIDA_DESDE;
   }catch(e){ return false; }
 }
-function AR_SALIDA(precio){
+function AR_SALIDA(precio, nombreGuardado){
+  // v445: la línea nueva nace como «Servicio base: equipo y vehículo», pero una ficha
+  // guardada CONSERVA el nombre con el que se guardó («Salida» en las viejas): lo viejo
+  // no cambia al abrirse — ni el precio ni el nombre.
+  var _nomSal = (nombreGuardado === 'Salida' || String(nombreGuardado || '').indexOf('Servicio base') === 0)
+    ? nombreGuardado : 'Servicio base: equipo y vehículo';
   var _vieja = _fichaEsAnterior();
   var _p = parseFloat(precio);
   var _hay = !(precio === undefined || precio === null || precio === '' || isNaN(_p));
@@ -3319,7 +3324,7 @@ function AR_SALIDA(precio){
   div.setAttribute('data-fijo','salida');
   div.style.background='#e8f0fe';
   div.innerHTML='<div class="no-pdf" style="width:24px"></div>'
-    +'<input list="dl" value="Servicio base: equipo y vehículo" readonly style="font-weight:700;color:#1B4F8A;background:transparent;cursor:default">'
+    +'<input list="dl" value="'+_nomSal+'" readonly style="font-weight:700;color:#1B4F8A;background:transparent;cursor:default">'
     
     +'<input type="number" value="1" readonly style="background:transparent;cursor:default">'
     +'<input type="number" value="'+_pSal+'" readonly style="font-weight:700;background:transparent;cursor:default">'
@@ -3439,7 +3444,7 @@ function LD(){
       var el=document.getElementById(tFields[i]);
       if(el&&data[tFields[i]]!==undefined) el.value=data[tFields[i]];
     }
-    var _salGuardada=null;
+    var _salGuardada=null, _salNombre=null;
     // v417: ¿la ficha guardada trae una fila «Salida»? Si no, es una de las que se
     // guardaron con la línea renombrada a «Grúa (…)» y hay que repararla al vuelo.
     var _sinSalida = !(data.rows||[]).some(function(x){ return x && (x.c==='Salida' || String(x.c||'').indexOf('Servicio base')===0); });
@@ -3456,7 +3461,9 @@ function LD(){
           // REPARA las fichas que se guardaron así: si no hay ninguna fila «Salida», la que
           // se llama «Grúa (…)» ES la fija y se trata como tal.
           if(r.c==='Salida' || String(r.c||'').indexOf('Servicio base')===0 || (_sinSalida && /^Grúa \(/.test(String(r.c||'')))){
-            if(_salGuardada===null && r.p!=='' && r.p!=null) _salGuardada=r.p; continue; }
+            if(_salGuardada===null && r.p!=='' && r.p!=null) _salGuardada=r.p;
+            if(_salNombre===null && (r.c==='Salida' || String(r.c||'').indexOf('Servicio base')===0)) _salNombre=r.c;   // v445: la ficha conserva SU nombre
+            continue; }
           AR(r.c,r.z,r.u,r.p,r.d,r.tm||'',r.tam||'Estándar');}
       }
     } finally { window._restaurandoFicha = false; try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); if(window.gruaRepinta) setTimeout(window.gruaRepinta, 350); if(window.fotosMapaRefrescar) setTimeout(window.fotosMapaRefrescar, 900); if(window.rutaSoloParaElMapa) setTimeout(window.rutaSoloParaElMapa, 1400); }catch(e){} }
@@ -3466,7 +3473,7 @@ function LD(){
     window._gruaTipo = data._grua || '';        // v417: la grúa se apunta en la ficha, no en el nombre de la línea
     try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423: esta ficha se queda con SU precio de km
     try { if (window.repartirDirecciones) window.repartirDirecciones(data); } catch (e) {}   // v433
-    if(typeof AR_SALIDA==='function') AR_SALIDA(_salGuardada);
+    if(typeof AR_SALIDA==='function') AR_SALIDA(_salGuardada, _salNombre);
     // v194: Restaurar ascensor
     if(typeof setAscensor==='function'){setAscensor('rec',data.asc_rec||'');setAscensor('ent',data.asc_ent||'');}
     // v199: Restaurar promo manual
@@ -5138,7 +5145,7 @@ function restoreFormData(data) {
   // la NUBE, y llamaba a AR_SALIDA() sin pasarle nada — así que le ponía la Salida de HOY
   // (100 €) a un presupuesto que se cerró con 70. Ahora se guarda la Salida que traía la
   // ficha y se le devuelve tal cual; solo los NUEVOS salen con la de hoy.
-  var _salFicha = null;
+  var _salFicha = null, _salNombreF = null;
   if (data.rows && data.rows.length && typeof AR === 'function') {
     // v133: Pasar también el tiempo (r.tm) al restaurar
     // v137: Pasar también el tamaño (r.tam)
@@ -5150,6 +5157,7 @@ function restoreFormData(data) {
       data.rows.forEach(r => {
         if (r.c === 'Salida' || String(r.c||'').indexOf('Servicio base')===0) {
           if (_salFicha === null && r.p !== '' && r.p !== null && r.p !== undefined) _salFicha = r.p;
+          if (_salNombreF === null) _salNombreF = r.c;   // v445: la ficha conserva SU nombre
           return;
         }
         window._dp2pRestore = r.dp || ''; window._dp2pBase = r.dpb || '';
@@ -5170,7 +5178,7 @@ function restoreFormData(data) {
   window._gruaTipo = data._grua || '';
   try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423
   try { if (window.repartirDirecciones) window.repartirDirecciones(data); } catch (e) {}   // v433
-  if (typeof AR_SALIDA === 'function') AR_SALIDA(_salFicha);
+  if (typeof AR_SALIDA === 'function') AR_SALIDA(_salFicha, _salNombreF);
   if (typeof CA === 'function') CA();
   if (typeof SY === 'function') SY();
   try { if (window.gruaRepinta) setTimeout(window.gruaRepinta, 120); } catch (e) {}   // v419
