@@ -1209,7 +1209,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <p>La app calcula sola la distancia REAL por carretera entre la recogida y la entrega (con Google; OpenStreetMap de reserva), y añade la línea de Desplazamiento al presupuesto.</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al poner las dos direcciones sale el cuadro con <strong>km, minutos y precio</strong>, y debajo <strong>a qué dos sitios ha ido el mapa</strong> (📍 recogida → entrega). Míralo SIEMPRE antes de enviar: si no es ahí, afina la dirección.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>La tarifa (desde el 11-ago-2026):</strong> 15 km o menos = GRATIS. Si pasa de 15, se cobran TODOS los km de ida: hasta 150 km a <strong>2,40 €/km</strong>; de 150 en adelante a <strong>3,50 €/km</strong> (viaje largo: la vuelta son km vacíos). Ejemplo: 24 km → 24 × 2,40 = 57,60 €. Un Madrid (400 km) → 1.400 €.</div></div>
-      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>🛑 Los presupuestos de ANTES del cambio no se tocan:</strong> cada ficha guarda con qué precio de km se hizo, y al abrirla cobra con SU tarifa de entonces (también si alguien puso el precio del km a mano: se respeta). Solo las fichas nuevas van a la tarifa de hoy. Cuando manda el candado, la pantalla lo dice: <strong>«🔒 esta ficha tiene su tarifa fijada»</strong> con lo que costaría a tarifa de hoy — si no es a propósito, revísalo antes de enviar.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>🛑 Los presupuestos de ANTES del cambio no se tocan:</strong> cada ficha guarda con qué precio de km se hizo, y al abrirla cobra con SU tarifa de entonces (también si alguien puso el precio del km a mano: se respeta). Solo las fichas nuevas van a la tarifa de hoy. Cuando manda el candado, la pantalla lo dice: <strong>«🔒 esta ficha tiene su tarifa fijada»</strong> con lo que costaría a tarifa de hoy — si no es a propósito, revísalo antes de enviar. Y la caja de arriba se cuadra SIEMPRE con la línea de Desplazamiento del presupuesto (la línea es la que cobra): si alguien cambia el precio de la línea a mano, la caja lo refleja y lo avisa.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Una provincia no es una dirección:</strong> si el buscador solo encuentra «Vizcaya» o «Álava» a secas, se descarta y se dice — nunca se inventan kilómetros. Una calle sin pueblo se asume de Bizkaia; si nombras otra ciudad (Vitoria, Madrid…) se te hace caso. Álava y Gipuzkoa valen igual que Bizkaia.</div></div>
       <div class='ayuda-tip'>Si no encuentra una dirección: deja en el campo principal solo <strong>calle, número y ciudad</strong>, y el piso/mano en el campo de al lado («Piso, puerta…»).</div>
       <div class='ayuda-warn'>En viajes de más de 150 km la app te recuerda mirar la <strong>carga de vuelta</strong> (Clicktrans) antes de cerrar el precio.</div>
@@ -3814,7 +3814,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v442';
+var APP_VERSION = 'v443';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8127,6 +8127,10 @@ async function _v236EnsureRowsFromLocal() {
 }
 
 function buildCompleteHTML(pageIds) {
+  // v443: antes de capturar NADA, la caja de km se cuadra con la línea del
+  // presupuesto (la línea es la que cobra; la caja es informativa). Así no puede
+  // volver a salir un PDF con 408 € arriba y 340 € abajo, como el 6512.
+  try { if (typeof window.cuadrarCajaKm === 'function') window.cuadrarCajaKm(); } catch (e) {}
   // Recoger TODOS los estilos de la página
   var styles = '';
   document.querySelectorAll('style').forEach(function(s) {
@@ -18928,6 +18932,82 @@ async function doResetWithCode() {
   }
   window._cartelNoElegidaPinta = pinta;
 
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arranca);
+  else arranca();
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     v443 · LA CAJA DE KM Y LA LÍNEA DEL PRESUPUESTO, SIEMPRE CUADRADAS
+     Asier, 12-ago-2026, con el PDF del 6512: la caja de arriba decía «170 × 2,40 =
+     408 €» y la línea de Desplazamiento de abajo iba a 2,00 €/km = 340 €. El MISMO
+     PDF con dos números. Lo que cobra es LA LÍNEA (esa suma al total); la caja es
+     informativa — pero si alguien toca el precio de la línea a mano (que es lo que
+     pasó), la caja se quedaba con el número viejo y el PDF salía contradictorio.
+     DESDE AHORA la caja se cuadra SOLA con la línea: cada vez que cambia algo del
+     presupuesto y justo antes de capturar cualquier PDF. Si el precio de la línea no
+     es la tarifa de hoy, la caja lo dice (solo en pantalla): «🔒 el km va al precio
+     de la línea (2,00 €/km) — hoy sería 3,50». Nada de números que se contradicen.
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  function filaDesplazamiento() {
+    var rows = document.querySelectorAll('#tb .cr');
+    for (var i = 0; i < rows.length; i++) {
+      var inp = rows[i].querySelector('input');
+      if (inp && /^Desplazamiento/i.test(inp.value || '')) return rows[i];
+    }
+    return null;
+  }
+
+  function cuadrarCajaKm() {
+    try {
+      var box = document.getElementById('distancia-box');
+      var costeEl = document.getElementById('dist-coste');
+      var rutaEl = document.getElementById('dist-ruta');
+      if (!box || !costeEl || !rutaEl) return;
+      if (box.style.display === 'none') return;
+      var fila = filaDesplazamiento();
+      if (!fila) return;
+      var ins = fila.querySelectorAll('input');
+      if (ins.length < 3) return;
+      var u = parseFloat(ins[1].value) || 0;
+      var p = parseFloat(ins[2].value) || 0;
+      if (!(u > 0)) return;                      // línea a 0 (SIN CARGO): la caja ya lo dice
+      var total = u * p;
+      var enCaja = parseFloat(String(costeEl.textContent).replace(/[^0-9.,]/g, '').replace(',', '.'));
+      // ¿Ya cuadra? No tocar nada (que no parpadee).
+      if (isFinite(enCaja) && Math.abs(enCaja - total) < 0.01) return;
+
+      costeEl.textContent = '💰 ' + total.toFixed(2) + ' €';
+      costeEl.style.color = '#e67e22';
+      var hoy = (typeof precioKmHoy === 'function') ? precioKmHoy(u) : p;
+      var nota = '';
+      if (Math.abs(p - hoy) >= 0.01) {
+        nota = ' · 🔒 el km va al precio de la LÍNEA del presupuesto (' + p.toFixed(2) + ' €/km) — a tarifa de hoy serían '
+          + hoy.toFixed(2) + ' €/km (' + (u * hoy).toFixed(2) + ' €). Si no es a propósito, corrígelo ANTES de enviar.';
+      }
+      rutaEl.innerHTML = u + ' km × ' + p.toFixed(2) + ' €/km = ' + total.toFixed(2) + ' €'
+        + '<span class="no-pdf"> — cuadrado con la línea del presupuesto' + nota + '</span>';
+    } catch (e) {}
+  }
+
+  // 1) Cada vez que se recalculan los totales (o sea: cada vez que se toca algo)
+  function envuelve(nombre) {
+    var orig = window[nombre];
+    if (typeof orig !== 'function' || orig._cuadraKm) return;
+    var nueva = function () {
+      var r = orig.apply(this, arguments);
+      try { cuadrarCajaKm(); } catch (e) {}
+      return r;
+    };
+    nueva._cuadraKm = true;
+    window[nombre] = nueva;
+  }
+
+  window.cuadrarCajaKm = cuadrarCajaKm;
+
+  function arranca() { envuelve('CA'); setTimeout(cuadrarCajaKm, 1500); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arranca);
   else arranca();
 })();
