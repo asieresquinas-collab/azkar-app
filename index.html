@@ -931,7 +931,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-index'>
     <div class='ayuda-index-item' onclick='ayudaIr("sec-lo-nuevo")'>
       <span class='idx-icon'>🆕</span>
-      <span class='idx-title'>Lo nuevo (jul 2026)</span>
+      <span class='idx-title'>Lo nuevo (ago 2026)</span>
     </div>
     <div class='ayuda-index-item' onclick='ayudaIr("sec-parte-guardamuebles")'>
       <span class='idx-icon'>📦</span>
@@ -1017,9 +1017,44 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 
   <!-- SECCIÓN: LO NUEVO (v366, julio 2026) — qué hemos construido y qué falta -->
   <div class='ayuda-section' id='sec-lo-nuevo'>
-    <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (JULIO 2026): QUÉ HAY Y CÓMO SE USA</h3>
+    <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo construido en las últimas sesiones, en cristiano. Cada cosa está probada y en marcha.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v440 · backend 2.7.352), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🖊️ El camino del cliente, de la firma al calendario (así funciona AHORA):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>El cliente firma</strong> (por el enlace que le mandas): la ficha queda marcada FIRMADA y te sale el apunte en la Libreta. <strong>Nada más</strong>: la firma NO es la reserva.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Llega el justificante de la señal</strong> → le das a <strong>EN MARCHA</strong> (el botón de siempre). Ahí, SOLO: se mueve la carpeta de Drive, <strong>se crea el evento en Google Calendar</strong> con la fecha, hora, direcciones y operarios de la ficha, y queda apuntado en la Libreta. Sin señal no hay ni EN MARCHA ni calendario — regla de la casa.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Si el cliente tenía dos ofertas</strong> (variantes), al darle a EN MARCHA a la elegida las demás quedan marcadas solas: al abrirlas sale el cartel rojo «❌ ESTE PRESUPUESTO NO HA SIDO ACEPTADO — el cliente eligió el otro». No se borra nada: quedan de constancia en la misma carpeta.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>⧉ Duplicar presupuesto (dos ofertas para el mismo cliente):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al lado del nº de presupuesto está el botón <strong>«⧉ Duplicar presupuesto (variante B, C…)»</strong>. El 6520 se duplica como <strong>6520-B</strong> con todo lo de pantalla, y se abre para cambiar lo que sea (las cajas, por ejemplo). El original no se toca ni una coma.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Misma carpeta de Drive para todas las variantes; cada PDF con su nombre (6520-B_PRESUPUESTO…). Cada variante tiene SU enlace de firma y el cliente firma la que elija. El duplicado nace limpio: sin firmar, sin EN MARCHA, sin pagar.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📨 Enviar por WhatsApp (arreglado a fondo):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cada vez que pulsas enviar se crea un documento <strong>NUEVO con lo que hay en pantalla en ese momento</strong> (antes reaprovechaba el enlace viejo y una clienta firmó sin sus datos). Y un enlace nuevo <strong>anula los anteriores</strong> de ese cliente: si abre uno viejo ve «Hemos actualizado su presupuesto» y no puede firmarlo.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🗺️ Direcciones, mapas y kilómetros (ver también la sección "Cálculo de km"):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Dos campos de dirección:</strong> en el de siempre va calle, número y ciudad; en el de al lado («Piso, puerta…») va el resto. Así el mapa siempre llega al portal. Botón «✂️ Separar el piso» para lo ya escrito.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Las direcciones las busca <strong>Google por el servidor</strong> (la clave no baja al móvil). Una provincia a secas («Vizcaya») NUNCA se acepta como dirección: antes un hueco que kilómetros inventados. Álava y Gipuzkoa valen igual que Bizkaia — trabajamos allí también.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Recorrido del servicio:</strong> mapa recortado justo al camino (en un Vitoria→Legutio no sale Bilbao), con A verde, B naranja y los km · min escritos. Lo que ves en pantalla es lo MISMO que va en el PDF del cliente. Botón para abrir la ruta en Google Maps de verdad.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📄 El PDF del cliente (tres arreglos gordos):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>La fecha, siempre en formato de aquí</strong> (01/09/2026 y hora de 0 a 24) — antes el servidor la pintaba en inglés y una clienta leyó «9 de enero» en vez de «1 de septiembre».</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Las Observaciones salen ENTERAS:</strong> el cuadro crece en pantalla según escribes, y al imprimir se estira con todo su contenido (antes cortaba a las dos líneas y media sin avisar).</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Los mapas del PDF son FOTOS que viajan dentro del documento (los marcos de Google salen en blanco al imprimir). Y lo interno (botones, fotos del cliente, avisos) JAMÁS sale en el PDF.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🛒 En el presupuesto:</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Canapé → tapa automática:</strong> al escribir un canapé se añade sola la línea «Tapa de canapé» (19 €, 1 ud) con su aviso. Abrir una ficha guardada NO añade nada.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>La grúa</strong> tiene su botón: particular (190 € el servicio) o empresa (2 horas dentro, y la línea informativa de «hora adicional 50 €» a 0 uds). Al activarla se marca sola la cláusula de plataforma del contrato.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🤖 Los robots que corren solos (sin tocar nada):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>La Libreta:</strong> las llamadas se transcriben y los compromisos («te llamo luego») se apuntan solos. Nada se cierra ni caduca solo: la X la das tú.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Facturas:</strong> cada 30 min se mira info@, y las facturas se clasifican y archivan solas en Drive → Facturas → mes → titular. Aviso en la Libreta si hay alguna «Por revisar».</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Los sin firmar:</strong> cada día a las 10:00, presupuesto enviado hace 2-15 días sin firmar → apunte en la Libreta con nombre y teléfono. Y si FIRMÓ pero no ha mandado la señal → también. La app NO manda nada al cliente: el toque lo das tú.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Leads del correo:</strong> lo que entra por info@ crea ficha y borrador solo (el envío lo apruebas tú). Víspera a las 20:00, repaso del lunes y vigía de fichajes: igual que en julio.</div></div>
+
+      <hr style='margin:20px 0;border:none;border-top:2px dashed #D6E4F7'>
+      <p style='font-weight:700;color:#888'>⬇️ Lo de julio de 2026 (sigue todo en marcha):</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>👷 Portal de los operarios ("los chicos"):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Un enlace para el equipo</strong> (pídeselo a Azkarin: "dame el enlace del portal de los chicos"). Ahí ven los trabajos de HOY y de la semana por días: horas, direcciones con mapa, señalizaciones e inventario. Se actualiza solo con el calendario. Sin precios ni notas comerciales: eso no les sale.</div></div>
@@ -1103,7 +1138,10 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'><strong>Botón RELACIÓN (morado):</strong> Genera un inventario editable de enseres por zonas, sin precios. Ver sección "Relación de enseres".</div></div>
       <div class='ayuda-tip'>Cada vez que generas un PDF se crea una versión nueva (_v2, _v3...) en Drive. No se sobreescriben las anteriores.</div>
       <div class='ayuda-tip'>Una copia del email se envía siempre a <strong>info@azkarmudanzas.com</strong> para que quede registro.</div>
-    </div>
+          <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'><strong>Enviar por WhatsApp (📄 PDF junto al teléfono):</strong> crea SIEMPRE un documento nuevo con lo de pantalla y su enlace de firma; los enlaces viejos de ese cliente quedan anulados (si el cliente abre uno, ve «Hemos actualizado su presupuesto» y no puede firmarlo).</div></div>
+      <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'><strong>Lo que va bien en el papel:</strong> la fecha en formato de aquí (01/09/2026, hora de 0 a 24), las Observaciones ENTERAS (el recuadro crece con su contenido) y los mapas como foto. Lo interno (fotos del cliente, botones, avisos) jamás sale.</div></div>
+      <div class='ayuda-tip'>Cuando el cliente firma: PDF firmado a su carpeta de Drive, copia al cliente, aviso a info@, ficha marcada FIRMADA y apunte en la Libreta. El calendario NO se crea con la firma: se crea al darle a EN MARCHA (cuando llega la señal).</div>
+</div>
   </div>
 
   <!-- SECCIÓN: GOOGLE DRIVE -->
@@ -1168,14 +1206,16 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-km'>
     <h3 onclick='ayudaToggle(this)'>CÁLCULO DE KILÓMETROS</h3>
     <div class='ayuda-content'>
-      <p>La app calcula automáticamente la distancia entre la dirección de recogida y la de entrega.</p>
-      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al poner las dos direcciones en el dossier, aparece un cuadro abajo con la distancia calculada y la ruta.</div></div>
-      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>15 km o menos = GRATIS</strong> (no se cobra nada de desplazamiento). <strong>Si pasa de 15 km se cobran TODOS los kilómetros a 2,40 €/km</strong>, no solo los que pasan de 15 (solo los km de ida: la vuelta ya va dentro de la tarifa). Ejemplo: 24 km → 24 × 2,40 € = <strong>57,60 €</strong> (no el exceso). Se añade automáticamente como línea en el presupuesto.</div></div>
-      <div class='ayuda-tip'>Si la app no encuentra una dirección, prueba a escribirla más completa (con ciudad y provincia).</div>
+      <p>La app calcula sola la distancia REAL por carretera entre la recogida y la entrega (con Google; OpenStreetMap de reserva), y añade la línea de Desplazamiento al presupuesto.</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al poner las dos direcciones sale el cuadro con <strong>km, minutos y precio</strong>, y debajo <strong>a qué dos sitios ha ido el mapa</strong> (📍 recogida → entrega). Míralo SIEMPRE antes de enviar: si no es ahí, afina la dirección.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>La tarifa (desde el 11-ago-2026):</strong> 15 km o menos = GRATIS. Si pasa de 15, se cobran TODOS los km de ida: hasta 150 km a <strong>2,40 €/km</strong>; de 150 en adelante a <strong>3,50 €/km</strong> (viaje largo: la vuelta son km vacíos). Ejemplo: 24 km → 24 × 2,40 = 57,60 €. Un Madrid (400 km) → 1.400 €.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>🛑 Los presupuestos de ANTES del cambio no se tocan:</strong> cada ficha guarda con qué precio de km se hizo, y al abrirla cobra con SU tarifa de entonces. Solo las fichas nuevas van a la tarifa de hoy.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Una provincia no es una dirección:</strong> si el buscador solo encuentra «Vizcaya» o «Álava» a secas, se descarta y se dice — nunca se inventan kilómetros. Una calle sin pueblo se asume de Bizkaia; si nombras otra ciudad (Vitoria, Madrid…) se te hace caso. Álava y Gipuzkoa valen igual que Bizkaia.</div></div>
+      <div class='ayuda-tip'>Si no encuentra una dirección: deja en el campo principal solo <strong>calle, número y ciudad</strong>, y el piso/mano en el campo de al lado («Piso, puerta…»).</div>
+      <div class='ayuda-warn'>En viajes de más de 150 km la app te recuerda mirar la <strong>carga de vuelta</strong> (Clicktrans) antes de cerrar el precio.</div>
     </div>
   </div>
 
-  <!-- SECCIÓN: FICHAJE -->
   <div class='ayuda-section' id='sec-fichaje'>
     <h3 onclick='ayudaToggle(this)'>FICHAJE DE EMPLEADOS</h3>
     <div class='ayuda-content'>
@@ -3774,7 +3814,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v440';
+var APP_VERSION = 'v441';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
