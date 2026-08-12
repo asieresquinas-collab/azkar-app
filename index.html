@@ -1209,7 +1209,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <p>La app calcula sola la distancia REAL por carretera entre la recogida y la entrega (con Google; OpenStreetMap de reserva), y añade la línea de Desplazamiento al presupuesto.</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al poner las dos direcciones sale el cuadro con <strong>km, minutos y precio</strong>, y debajo <strong>a qué dos sitios ha ido el mapa</strong> (📍 recogida → entrega). Míralo SIEMPRE antes de enviar: si no es ahí, afina la dirección.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>La tarifa (desde el 11-ago-2026):</strong> 15 km o menos = GRATIS. Si pasa de 15, se cobran TODOS los km de ida: hasta 150 km a <strong>2,40 €/km</strong>; de 150 en adelante a <strong>3,50 €/km</strong> (viaje largo: la vuelta son km vacíos). Ejemplo: 24 km → 24 × 2,40 = 57,60 €. Un Madrid (400 km) → 1.400 €.</div></div>
-      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>🛑 Los presupuestos de ANTES del cambio no se tocan:</strong> cada ficha guarda con qué precio de km se hizo, y al abrirla cobra con SU tarifa de entonces. Solo las fichas nuevas van a la tarifa de hoy.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>🛑 Los presupuestos de ANTES del cambio no se tocan:</strong> cada ficha guarda con qué precio de km se hizo, y al abrirla cobra con SU tarifa de entonces (también si alguien puso el precio del km a mano: se respeta). Solo las fichas nuevas van a la tarifa de hoy. Cuando manda el candado, la pantalla lo dice: <strong>«🔒 esta ficha tiene su tarifa fijada»</strong> con lo que costaría a tarifa de hoy — si no es a propósito, revísalo antes de enviar.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Una provincia no es una dirección:</strong> si el buscador solo encuentra «Vizcaya» o «Álava» a secas, se descarta y se dice — nunca se inventan kilómetros. Una calle sin pueblo se asume de Bizkaia; si nombras otra ciudad (Vitoria, Madrid…) se te hace caso. Álava y Gipuzkoa valen igual que Bizkaia.</div></div>
       <div class='ayuda-tip'>Si no encuentra una dirección: deja en el campo principal solo <strong>calle, número y ciudad</strong>, y el piso/mano en el campo de al lado («Piso, puerta…»).</div>
       <div class='ayuda-warn'>En viajes de más de 150 km la app te recuerda mirar la <strong>carga de vuelta</strong> (Clicktrans) antes de cerrar el precio.</div>
@@ -3814,7 +3814,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v441';
+var APP_VERSION = 'v442';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -12053,8 +12053,22 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
             var costeKm = Math.round(kmNum) * PRECIO_KM;
             costeEl.textContent = '💰 ' + costeKm.toFixed(2) + ' €';
             costeEl.style.color = '#e67e22';
-            rutaEl.textContent = Math.round(kmNum) + ' km × ' + PRECIO_KM.toFixed(2) + ' €/km = ' + costeKm.toFixed(2) + ' € — pasa de ' + KM_GRATIS + ' km, se cobran TODOS (se añade al presupuesto)'
-              + (kmNum > KM_LARGA_DISTANCIA ? ' · LARGA DISTANCIA: la vuelta son km vacíos, por eso el km va a ' + PRECIO_KM_LARGO.toFixed(2) + ' €' : '');
+            // v442 · EL TEXTO DICE LA VERDAD. En el 6512 (Bilbao→Pamplona, 170 km) el
+            // cuadro cobró 2,40 (la tarifa FIJADA de la ficha, con su candado) pero el
+            // letrero añadía «por eso el km va a 3,50» — una contradicción que ENCIMA
+            // salía en el PDF del cliente. Ahora: la coletilla de larga distancia solo
+            // sale si la tarifa larga es la que SE ESTÁ aplicando; si manda el candado,
+            // se dice el candado. Y todo lo que es cocina interna (la coletilla y el
+            // «se añade al presupuesto») ya no viaja al PDF (no-pdf): el cliente ve la
+            // cuenta limpia — «170 km × 2,40 €/km = 408,00 €» — y punto.
+            var _coletilla = '';
+            if (kmNum > KM_LARGA_DISTANCIA) {
+              _coletilla = (PRECIO_KM === PRECIO_KM_LARGO)
+                ? ' · LARGA DISTANCIA: la vuelta son km vacíos, por eso el km va a ' + PRECIO_KM_LARGO.toFixed(2) + ' €'
+                : ' · 🔒 ESTA FICHA TIENE SU TARIFA FIJADA (' + PRECIO_KM.toFixed(2) + ' €/km) y se respeta — hoy un viaje así iría a ' + PRECIO_KM_LARGO.toFixed(2) + ' €/km (' + (Math.round(kmNum) * PRECIO_KM_LARGO).toFixed(2) + ' €). Si no es a propósito, revísalo ANTES de enviar.';
+            }
+            rutaEl.innerHTML = Math.round(kmNum) + ' km × ' + PRECIO_KM.toFixed(2) + ' €/km = ' + costeKm.toFixed(2) + ' €'
+              + '<span class="no-pdf"> — pasa de ' + KM_GRATIS + ' km, se cobran TODOS (se añade al presupuesto)' + _coletilla + '</span>';
           } else {
             costeEl.textContent = '✅ GRATIS';
             costeEl.style.color = '#27ae60';
@@ -12068,6 +12082,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
             if (!_sit) {
               _sit = document.createElement('div');
               _sit.id = 'dist-sitios';
+              _sit.className = 'no-pdf';   // v442: es chivato NUESTRO, el cliente no lo necesita
               _sit.style.cssText = 'font-size:10.5px;color:#5b6b7c;margin-top:3px';
               rutaEl.parentElement.appendChild(_sit);
             }
