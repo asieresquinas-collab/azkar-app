@@ -1062,7 +1062,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v449 · backend 2.7.355), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v450 · backend 2.7.355), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📐 El papel, a medida (v447):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El PDF del cliente sale <strong>encuadrado</strong>: dossier en la primera hoja; datos, direcciones, mapas y observaciones en la segunda; el presupuesto (qué incluye, seguro, tabla, totales, validez y firmas) en su hoja; y el contrato entero en la suya. Sin páginas a medias ni huecos.</div></div>
@@ -3880,7 +3880,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v449';
+var APP_VERSION = 'v450';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8251,7 +8251,7 @@ function buildCompleteHTML(pageIds) {
       if (ta.id) caja.setAttribute('data-de', ta.id);
       caja.style.cssText = 'width:100%;box-sizing:border-box;white-space:pre-wrap;word-wrap:break-word;'
         + 'overflow:visible;height:auto;resize:none;'
-        + 'min-height:' + (c.minHeight || '50px') + ';'
+        + 'min-height:34px;'   // v450: la caja del papel ABRAZA lo escrito (copiar el min-height del cuadro de pantalla dejaba un palmo vacío que se partía entre hojas)
         + 'border:' + c.border + ';border-radius:' + c.borderRadius + ';padding:' + c.padding + ';'
         + 'font-family:' + c.fontFamily + ';font-size:' + c.fontSize + ';line-height:' + (c.lineHeight === 'normal' ? '1.45' : c.lineHeight) + ';'
         + 'color:' + c.color + ';background:transparent';
