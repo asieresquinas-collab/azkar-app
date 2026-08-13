@@ -50,6 +50,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        // v1.22: al abrir la app, se recoge lo que Azkarin haya dejado pendiente
+        try { Datos.recogerAlarmas(this); } catch (Exception e) { }
         int pad = (int) (16 * getResources().getDisplayMetrics().density);
 
         LinearLayout raiz = new LinearLayout(this);

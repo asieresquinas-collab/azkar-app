@@ -42,6 +42,20 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
 
 ## Historial de versiones
 
+### v1.22 (13-ago-2026) — LAS ALARMAS QUE PONE AZKARIN SOLO
+Asier: *«que me las ponga sin preguntar… cuando en una llamada se dice que hay que
+hacer algo al de una hora, o el cliente ha dicho la hora, que la pongas en ese
+momento, y que avise para que no se me pase nada»*.
+- **`Datos.recogerAlarmas(ctx)`** (hilo propio): pregunta a `/api/widget/alarmas`, mete
+  cada una en el reloj con `AlarmaActivity.aplicar(...)` y avisa al servidor de las que
+  entraron DE VERDAD (`/api/widget/alarmas/puestas`). Solo cuenta como puesta la que el
+  reloj cogió — si no, se reintenta en el siguiente vistazo.
+- Se llama desde **los tres widgets** (refrescan cada media hora), **la burbuja** y **la
+  pantalla principal**: cada vez que el móvil se asoma, recoge lo que haya.
+- El servidor apunta las alarmas al transcribir las llamadas (backend 2.7.364); aquí
+  solo se recogen. 🛑 El servidor no puede meter alarmas en el móvil por su cuenta.
+
+
 ### v1.21 (13-ago-2026) — LA ALARMA, SOLA Y DE IDA Y VUELTA
 Asier probó la v1.20 desde la burbuja y salió lo que tenía que salir mal: Azkarin dijo
 *«tienes la alarma lista en el botón de abajo»*… **y la burbuja no pinta botones**. Su

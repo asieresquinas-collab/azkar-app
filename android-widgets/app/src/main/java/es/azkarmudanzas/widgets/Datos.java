@@ -3,6 +3,7 @@ package es.azkarmudanzas.widgets;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -97,6 +98,86 @@ public class Datos {
         } catch (Exception e) {
             return "Fallo de conexión [" + e.getClass().getSimpleName() + "]" + (e.getMessage() != null ? ": " + e.getMessage() : "") + " — dale a 🩺 PROBAR CONEXIÓN para ver si llego al servidor";
         }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  v1.22 · LAS ALARMAS QUE PONE AZKARIN SOLO
+    //  Asier: «cuando en una llamada se dice que hay que hacer algo a tal hora, que
+    //  la pongas en ese momento… y que avise, para que no se me pase nada».
+    //  El servidor no puede meter una alarma en el móvil por su cuenta, así que es
+    //  el móvil el que pregunta: cada vez que se asoma (la burbuja, la app o un
+    //  widget refrescando) recoge lo que haya y lo mete en el reloj.
+    // ══════════════════════════════════════════════════════════════════════════
+    static String ultimoErrorAlarmas = "";
+
+    /** Trae las alarmas que el móvil tiene que poner ahora (null si no se puede). */
+    static JSONArray alarmasPendientes(Context ctx) {
+        SharedPreferences p = prefs(ctx);
+        String jwt = p.getString("jwt", "");
+        if (jwt.isEmpty()) return null;
+        JSONArray r = pedirAlarmas(jwt);
+        if (r != null) return r;
+        String u = p.getString("usuario", ""), pw = p.getString("pass", "");
+        if (u.isEmpty() || pw.isEmpty()) return null;
+        if (login(ctx, u, pw) == null) return pedirAlarmas(p.getString("jwt", ""));
+        return null;
+    }
+
+    private static JSONArray pedirAlarmas(String jwt) {
+        try {
+            HttpURLConnection c = conecta(BASE + "/api/widget/alarmas", "GET", jwt);
+            int code = c.getResponseCode();
+            if (code != 200) { ultimoErrorAlarmas = "HTTP " + code; return null; }
+            JSONObject j = new JSONObject(leerTodo(c.getInputStream()));
+            ultimoErrorAlarmas = "";
+            return j.optJSONArray("alarmas");
+        } catch (Exception e) {
+            ultimoErrorAlarmas = String.valueOf(e.getMessage());
+            return null;
+        }
+    }
+
+    /** Le dice al servidor cuáles han entrado DE VERDAD en el reloj. */
+    static void alarmasPuestas(Context ctx, JSONArray ids) {
+        if (ids == null || ids.length() == 0) return;
+        try {
+            String jwt = prefs(ctx).getString("jwt", "");
+            if (jwt.isEmpty()) return;
+            HttpURLConnection c = conecta(BASE + "/api/widget/alarmas/puestas", "POST", jwt);
+            JSONObject cuerpo = new JSONObject();
+            cuerpo.put("ids", ids);
+            c.setDoOutput(true);
+            c.getOutputStream().write(cuerpo.toString().getBytes("UTF-8"));
+            c.getResponseCode();
+        } catch (Exception e) { /* si falla, se reintenta en el siguiente vistazo */ }
+    }
+
+    /**
+     * EL RECADERO: mira si hay alarmas que poner y las pone. Va en su propio hilo,
+     * así que se puede llamar desde donde sea (widget, burbuja, pantalla) sin miedo.
+     */
+    static void recogerAlarmas(final Context ctx) {
+        if (ctx == null) return;
+        final Context app = ctx.getApplicationContext();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    JSONArray lista = alarmasPendientes(app);
+                    if (lista == null || lista.length() == 0) return;
+                    JSONArray puestas = new JSONArray();
+                    for (int i = 0; i < lista.length() && i < 10; i++) {
+                        JSONObject a = lista.optJSONObject(i);
+                        if (a == null) continue;
+                        String hecho = AlarmaActivity.aplicar(app, "poner",
+                                a.optInt("hora", -1), a.optInt("minutos", 0), a.optString("texto", "Azkar"));
+                        // Solo se da por puesta si el reloj la ha cogido de verdad.
+                        if (hecho != null && hecho.startsWith("⏰")) puestas.put(a.optString("id", ""));
+                    }
+                    alarmasPuestas(app, puestas);
+                } catch (Exception e) { /* nunca puede tumbar al widget */ }
+            }
+        }).start();
     }
 
     /** Trae el resumen del widget. Si el pase caducó, re-entra solo con lo guardado. */

@@ -67,6 +67,8 @@ public class WidgetRepaso extends AppWidgetProvider {
 
     @Override
     public void onUpdate(final Context ctx, final AppWidgetManager mgr, final int[] ids) {
+        // v1.22: de paso que se refresca, mira si Azkarin ha dejado alguna alarma que poner
+        try { Datos.recogerAlarmas(ctx); } catch (Exception e) { }
         // 1) pintar YA lo último que tuvimos (cache) — el widget nunca se queda en blanco
         for (int id : ids) {
             pinta(ctx, mgr, id, Datos.cacheLineasRepaso(ctx), Datos.cacheAccionesRepaso(ctx),

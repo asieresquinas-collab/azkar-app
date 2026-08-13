@@ -80,6 +80,8 @@ public class VozActivity extends Activity implements RecognitionListener {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        // v1.22: al abrir la burbuja, se recoge lo que Azkarin haya dejado pendiente
+        try { Datos.recogerAlarmas(this); } catch (Exception e) { }
         // v1.3: en el coche la pantalla NO se apaga mientras la conversación está abierta
         // (si se apagara, Android pausa la tarjeta y se cortaría la charla).
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
