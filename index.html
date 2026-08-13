@@ -128,6 +128,7 @@
 #distancia-box{margin-top:10mm!important;page-break-inside:avoid!important}
 /* ========== v447 · ENCUADRE: cada cosa en su hoja, sin blancos ========== */
 #cw-detalle{page-break-before:always!important}
+#bloque-obs{page-break-inside:avoid!important}
 /* la tabla PUEDE partirse entre hojas (cada fila sigue entera); sin esto una tabla
    larga se va en bloque a la hoja siguiente y deja la anterior en blanco */
 #tb{page-break-inside:auto!important}
@@ -1061,7 +1062,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v448 · backend 2.7.354), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v449 · backend 2.7.355), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📐 El papel, a medida (v447):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El PDF del cliente sale <strong>encuadrado</strong>: dossier en la primera hoja; datos, direcciones, mapas y observaciones en la segunda; el presupuesto (qué incluye, seguro, tabla, totales, validez y firmas) en su hoja; y el contrato entero en la suya. Sin páginas a medias ni huecos.</div></div>
@@ -3879,7 +3880,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v448';
+var APP_VERSION = 'v449';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8376,6 +8377,13 @@ function buildCompleteHTML(pageIds) {
           });
         }
       }
+      // v449: el bloque de Observaciones lleva etiqueta en el papel, para que ni se
+      // parta por la mitad ni el encuadre del servidor tenga que adivinarlo.
+      var _obsEl = el.querySelector('#f_obs');
+      if (_obsEl) {
+        var _obsCont = _obsEl.closest ? (_obsEl.closest('.fg') || _obsEl.parentNode) : _obsEl.parentNode;
+        if (_obsCont && !_obsCont.id) { _obsCont.id = 'bloque-obs'; v447Sav.obsCont = _obsCont; }
+      }
       var _fac = el.querySelector('#f_fac');
       if (_fac && !String(_fac.value || '').trim()) {
         var _contF = _fac.closest ? (_fac.closest('.fi') || _fac.parentNode) : _fac.parentNode;
@@ -8391,6 +8399,7 @@ function buildCompleteHTML(pageIds) {
     try {
       if (v447Sav.fila && v447Sav.fila.parentNode) v447Sav.fila.parentNode.removeChild(v447Sav.fila);
       v447Sav.ocultados.forEach(function (c) { c.className = c.className.replace(/\s*no-pdf/, ''); });
+      if (v447Sav.obsCont) v447Sav.obsCont.removeAttribute('id');
     } catch (e) {}
     // v436: y devolver los cuadros de texto, que la pantalla se queda como estaba
     for (var ai = areasSav.length - 1; ai >= 0; ai--) {
@@ -12157,7 +12166,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
 
           var kmNum = parseFloat(km);
           document.getElementById('dist-km').textContent = km + ' km';
-          document.getElementById('dist-tiempo').textContent = '🕐 ' + tiempoStr;
+          document.getElementById('dist-tiempo').textContent = tiempoStr;   // v449: sin emoji — en el PDF salía un cuadradito vacío
 
           // v423: la tarifa depende del tramo (hasta 150 km / más de 150 km) y, si la
           // ficha es de antes, de la que ella traiga. Ver precioKmDeLaFicha().
@@ -12187,7 +12196,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
             rutaEl.innerHTML = Math.round(kmNum) + ' km × ' + PRECIO_KM.toFixed(2) + ' €/km = ' + costeKm.toFixed(2) + ' €'
               + '<span class="no-pdf"> — pasa de ' + KM_GRATIS + ' km, se cobran TODOS (se añade al presupuesto)' + _coletilla + '</span>';
           } else {
-            costeEl.textContent = '✅ GRATIS';
+            costeEl.textContent = 'GRATIS';   // v449: sin emoji — en el PDF salía un cuadradito vacío
             costeEl.style.color = '#27ae60';
             rutaEl.textContent = KM_GRATIS + ' km o menos → sin cargo por desplazamiento';
           }
@@ -19093,7 +19102,7 @@ async function doResetWithCode() {
       // ¿Ya cuadra? No tocar nada (que no parpadee).
       if (isFinite(enCaja) && Math.abs(enCaja - total) < 0.01) return;
 
-      costeEl.textContent = '💰 ' + total.toFixed(2) + ' €';
+      costeEl.textContent = total.toFixed(2) + ' €';   // v449: sin emoji
       costeEl.style.color = '#e67e22';
       var hoy = (typeof precioKmHoy === 'function') ? precioKmHoy(u) : p;
       var nota = '';
