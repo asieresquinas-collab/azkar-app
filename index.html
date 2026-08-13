@@ -1067,13 +1067,19 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v460 · backend 2.7.366), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v461 · backend 2.7.367), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📐 El papel, a medida (v447):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El PDF del cliente sale <strong>encuadrado</strong>: dossier en la primera hoja; datos, direcciones, mapas y observaciones en la segunda; el presupuesto (qué incluye, seguro, tabla, totales, validez y firmas) en su hoja; y el contrato entero en la suya. Sin páginas a medias ni huecos.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>La tabla se ajusta sola al papel (<strong>el acordeón</strong>): si se pasa de hoja por poco, aprieta las filas un puntito; si es un mudanzón, reparte las líneas entre las hojas que hagan falta, todas llenas, y la última siempre termina con los totales y las <strong>firmas al pie</strong>. Una fila nunca se corta por la mitad. En pantalla no cambia nada y los precios ni se miran.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Los mapas de recogida y entrega van <strong>lado a lado</strong> y en <strong>foto de satélite</strong> (los edificios desde arriba, con los nombres de las calles) en el papel, con su etiqueta, y el recorrido debajo. Los iconos del presupuesto (escudo del seguro, calendario de la validez…) ahora van <strong>dibujados</strong>: salen siempre, también en el PDF que monta el servidor.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Y un vigía nuevo: si la línea de Desplazamiento cobra unos kilómetros que <strong>no cuadran</strong> con la ruta real entre las direcciones (como un 22 km guardado en una mudanza de 1 km), sale un <strong>cartel rojo solo en pantalla</strong> que te dice qué pasa y cómo arreglarlo. La app nunca cambia el precio sola.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>⚖️ De las llamadas, solo lo que se dijo (v461):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Quién atendió la llamada</strong> se saca del nombre que se dice al descolgar («mi nombre es Antonio de Azkar»), no de lo que parezca. Y solo cuenta si lo dice el lado de Azkar: que el <strong>cliente</strong> se llame Asier y se presente ya no confunde a nadie. Si en la llamada no se presenta nadie de la casa, Azkarin te dice <strong>«no consta quién la atendió»</strong> — no se la cuelga a ninguno. Cuando el análisis se equivoca, te lo dice y te enseña la frase de la llamada.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Nada se da por acordado <strong>sin la frase que lo respalde</strong>. Cada compromiso tiene que estar en la transcripción con sus palabras; si no está, se cae: no entra en la Libreta, no te avisa y <strong>no pone alarma</strong>. Y si esa frase la dijo el <strong>cliente</strong>, deja de apuntarse como cosa nuestra (se acabó lo de «Toni se va de vacaciones» cuando era la clienta).</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Puedes pedirle la <strong>prueba</strong>: «¿dónde pone eso?». Cada cosa pendiente guarda la frase literal de la llamada y te la lee tal cual. Y los <strong>muebles o datos que no aparecen</strong> en la llamada te los da como «esto no lo encuentro dicho, confírmaselo», nunca como algo que el cliente haya pedido.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si la llamada es muy larga y la transcripción llega <strong>cortada</strong>, no se descarta nada: lo que no se ha podido comprobar te lo dice marcado. Antes callarse que equivocarse.</div></div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🔔 Azkarin te pone las alarmas él solo (v460):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando en una llamada queda algo <strong>con hora</strong> («le llamo dentro de una hora», «a las cinco»), Azkarin apunta la alarma <strong>sin preguntar</strong> y tu móvil la mete en el reloj con el nombre de lo que hay que hacer: «Paula: llamar con el precio». Y el aviso te dice a qué hora la ha puesto.</div></div>
@@ -3901,7 +3907,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v460';
+var APP_VERSION = 'v461';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
