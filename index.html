@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v456 · backend 2.7.362), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v457 · backend 2.7.363), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📐 El papel, a medida (v447):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El PDF del cliente sale <strong>encuadrado</strong>: dossier en la primera hoja; datos, direcciones, mapas y observaciones en la segunda; el presupuesto (qué incluye, seguro, tabla, totales, validez y firmas) en su hoja; y el contrato entero en la suya. Sin páginas a medias ni huecos.</div></div>
@@ -1076,7 +1076,8 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Y un vigía nuevo: si la línea de Desplazamiento cobra unos kilómetros que <strong>no cuadran</strong> con la ruta real entre las direcciones (como un 22 km guardado en una mudanza de 1 km), sale un <strong>cartel rojo solo en pantalla</strong> que te dice qué pasa y cómo arreglarlo. La app nunca cambia el precio sola.</div></div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>⏰ Despertador con Azkarin (v455):</p>
-      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Dile a Azkarin «ponme el despertador a las 6 menos 5» y te saca un <strong>botón naranja</strong>. Con la <strong>app de widgets (v1.20 o más nueva)</strong> instalada, al tocarlo la alarma se pone SOLA en el reloj y sale el aviso «⏰ Alarma puesta a las 05:55». Si no la tienes, se abre el reloj con la alarma escrita y solo hay que darle a <strong>GUARDAR</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Dile a Azkarin <strong>«ponme el despertador a las 6 menos 5»</strong> y, con la <strong>app de widgets (v1.21 o más nueva)</strong> instalada, la alarma se pone <strong>SOLA</strong> en el reloj — sin tocar nada. Si se lo dices por la <strong>burbuja</strong> del widget, te lo confirma hablando; si escribes desde la web, sale además un botón por si acaso.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>También las quita y te las enseña: <strong>«quítame la alarma de las 7»</strong> o <strong>«¿qué alarmas tengo?»</strong> (esto último te abre la lista del reloj: Azkarin no ve las que pusiste tú a mano).</div></div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🗺️ Mapas con memoria justa (v454):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>La ruta y las coordenadas de los mapas son <strong>de esta ficha</strong>: al cambiar de presupuesto, lo del cliente anterior se tira y se recalcula. Antes podía colarse el recorrido del cliente de antes (pasó con el 6524 de Usansolo, que enseñaba un trayecto de Bilbao).</div></div>
@@ -3893,7 +3894,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v456';
+var APP_VERSION = 'v457';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -15945,20 +15946,37 @@ async function doResetWithCode() {
         // v455: Botón de ALARMA (poner_alarma) — abre el reloj del móvil con la
         // alarma preparada; Asier solo le da a GUARDAR. Una app web no puede
         // ponerla sola: Android no se lo permite a nadie.
-        if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'alarma' && data.datos.alarma_url) {
+        if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'alarma') {
+          // v457 · SIN TENER QUE DARLE AL BOTÓN. Asier: «¿por qué no haces que funcione
+          // sin darle, y que pueda quitarlas y ponerlas?». Si la app de widgets (v1.21+)
+          // está instalada, se le manda la orden SOLA por un marco escondido: pone o quita
+          // la alarma sin tocar nada. El botón se queda debajo por si el móvil no la tiene
+          // (entonces abre el reloj) — nunca un toque muerto.
+          var _modoAl = String(data.datos.modo || 'poner');
           var _hAl = String(data.datos.hora_texto || '').replace(/</g, '&lt;');
           var _mAl = String(data.datos.mensaje || '').replace(/</g, '&lt;');
-          // v456 · CON LA APK INSTALADA, LA ALARMA SE PONE SOLA. La app de widgets
-          // (v1.20) tiene su propia pantalla de alarma: se le manda el enlace
-          // azkarwidget://alarma?... y ella la pone en el reloj sin tocar nada más.
-          // Si no estuviera instalada, a los 1,2 s se cae al enlace del reloj de
-          // siempre (que obliga a darle a GUARDAR). Nunca un toque muerto.
           var _urlApk = data.datos.alarma_apk_url || '';
-          var _urlReloj = data.datos.alarma_url;
+          var _urlReloj = data.datos.alarma_url || '';
           var _idAl = 'al' + Date.now();
-          addMsg('bot', '⏰ <b>Alarma de las ' + _hAl + '</b>' + (_mAl ? ' · ' + _mAl : '') + '<br>'
-            + '<a href="javascript:void(0)" id="' + _idAl + '" style="display:inline-block;margin:6px 0 0 0;padding:9px 15px;background:#E85C0D;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">⏰ Poner la alarma</a>'
-            + '<br><span style="font-size:11px;color:#889">Con la app de widgets instalada se pone sola; si no, se abre tu reloj y le das a GUARDAR ✓</span>');
+          var _tit = _modoAl === 'ver' ? '⏰ <b>Tus alarmas</b>'
+                   : (_modoAl === 'quitar' ? ('⏰ <b>Quitar la alarma de las ' + _hAl + '</b>')
+                                           : ('⏰ <b>Alarma de las ' + _hAl + '</b>' + (_mAl ? ' · ' + _mAl : '')));
+          var _txtBoton = _modoAl === 'ver' ? 'Ver las alarmas'
+                        : (_modoAl === 'quitar' ? 'Quitarla en el reloj' : 'Ponerla en el reloj');
+          addMsg('bot', _tit + '<br>'
+            + '<a href="javascript:void(0)" id="' + _idAl + '" style="display:inline-block;margin:6px 0 0 0;padding:9px 15px;background:#E85C0D;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">⏰ ' + _txtBoton + '</a>'
+            + '<br><span style="font-size:11px;color:#889">Con la app de widgets se hace solo; si no la tienes, toca el botón</span>');
+          // 1) intento CALLADO por la app de widgets: si está, lo hace ella sola
+          try {
+            if (_urlApk) {
+              var _mrc = document.createElement('iframe');
+              _mrc.style.display = 'none';
+              _mrc.src = _urlApk;
+              document.body.appendChild(_mrc);
+              setTimeout(function () { try { _mrc.remove(); } catch (e) {} }, 4000);
+            }
+          } catch (e) { /* si no se puede, queda el botón */ }
+          // 2) y el botón, para el móvil sin la app (abre el reloj)
           setTimeout(function () {
             var _b = document.getElementById(_idAl);
             if (!_b) return;
@@ -15971,10 +15989,10 @@ async function doResetWithCode() {
                   window.location.href = _urlApk;
                   setTimeout(function () {
                     document.removeEventListener('visibilitychange', _fuera);
-                    if (!_volvio && !document.hidden) window.location.href = _urlReloj;
+                    if (!_volvio && !document.hidden && _urlReloj) window.location.href = _urlReloj;
                   }, 1200);
-                } else { window.location.href = _urlReloj; }
-              } catch (e) { window.location.href = _urlReloj; }
+                } else if (_urlReloj) { window.location.href = _urlReloj; }
+              } catch (e) { if (_urlReloj) window.location.href = _urlReloj; }
             };
           }, 60);
         }

@@ -42,6 +42,19 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
 
 ## Historial de versiones
 
+### v1.21 (13-ago-2026) — LA ALARMA, SOLA Y DE IDA Y VUELTA
+Asier probó la v1.20 desde la burbuja y salió lo que tenía que salir mal: Azkarin dijo
+*«tienes la alarma lista en el botón de abajo»*… **y la burbuja no pinta botones**. Su
+recado: *«que funcione sin tener que darle al botón, y que pueda quitarlas y ponerlas»*.
+- **`AlarmaActivity.aplicar(...)`** — método estático que hace el trabajo y DEVUELVE en
+  cristiano lo que ha pasado. Lo usa la pantalla del enlace **y la burbuja**.
+- **`VozActivity`**: cuando la respuesta trae `accion:"alarma"`, la pone/quita **sola** y
+  lo dice hablando. Sin botones, sin confirmar nada.
+- **QUITAR** (`ACTION_DISMISS_ALARM` buscando por hora) y **VER** (`ACTION_SHOW_ALARMS`).
+  Enlaces: `azkarwidget://alarma?q=quitar&h=7&m=0` y `azkarwidget://alarma?q=ver`.
+- Si el reloj no dejara quitarla de una, abre la lista y LO DICE (nunca un toque muerto).
+
+
 ### v1.20 (13-ago-2026) — EL DESPERTADOR DE AZKARIN
 Asier, tras un «recordatorio de calendario» de Azkarin que no despierta a nadie:
 *«¿puedes hacer que Azkarin me pueda activar el despertador del móvil, que yo le diga y

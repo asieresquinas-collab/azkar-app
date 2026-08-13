@@ -406,6 +406,20 @@ public class VozActivity extends Activity implements RecognitionListener {
                             prepararLlamada(datos.optString("call_id"), msg);
                             return;
                         }
+                        // v1.21 · LA ALARMA SE PONE SOLA, SIN BOTONES. Asier: «¿por qué no
+                        // haces que funcione sin tener que darle al botón, y que pueda quitarlas
+                        // y ponerlas?». Como la burbuja YA es la app, aquí no hace falta ningún
+                        // enlace: se toca el reloj directamente y se dice lo que ha pasado.
+                        if (datos != null && "alarma".equals(datos.optString("accion"))) {
+                            String _modoAl = datos.optString("modo", "poner");
+                            String _hechoAl = AlarmaActivity.aplicar(VozActivity.this, _modoAl,
+                                    datos.optInt("hora", -1), datos.optInt("minutos", 0),
+                                    datos.optString("mensaje", "Azkar"));
+                            String _decir = msg.isEmpty() ? _hechoAl : (msg + " " + _hechoAl);
+                            meteHistorial("assistant", _decir);
+                            di(_decir);
+                            return;
+                        }
                         // v1.11: Azkarin manda una RUTA → botón(es) de navegación en la tarjeta
                         if (datos != null && "navegar".equals(datos.optString("accion"))) {
                             String _dstNav = datos.optString("destino", "el destino");
