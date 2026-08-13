@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v455 · backend 2.7.361), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v456 · backend 2.7.362), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📐 El papel, a medida (v447):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El PDF del cliente sale <strong>encuadrado</strong>: dossier en la primera hoja; datos, direcciones, mapas y observaciones en la segunda; el presupuesto (qué incluye, seguro, tabla, totales, validez y firmas) en su hoja; y el contrato entero en la suya. Sin páginas a medias ni huecos.</div></div>
@@ -1076,7 +1076,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Y un vigía nuevo: si la línea de Desplazamiento cobra unos kilómetros que <strong>no cuadran</strong> con la ruta real entre las direcciones (como un 22 km guardado en una mudanza de 1 km), sale un <strong>cartel rojo solo en pantalla</strong> que te dice qué pasa y cómo arreglarlo. La app nunca cambia el precio sola.</div></div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>⏰ Despertador con Azkarin (v455):</p>
-      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Dile a Azkarin «ponme el despertador a las 6 menos 5» y te saca un <strong>botón naranja</strong>: al tocarlo se abre el reloj del móvil con la alarma ya preparada (hora y nombre) y solo hay que darle a <strong>GUARDAR</strong>. Ojo: hasta que no le das a guardar, la alarma NO está puesta — una app no puede ponerla sola, Android no lo permite.</div></div>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Dile a Azkarin «ponme el despertador a las 6 menos 5» y te saca un <strong>botón naranja</strong>. Con la <strong>app de widgets (v1.20 o más nueva)</strong> instalada, al tocarlo la alarma se pone SOLA en el reloj y sale el aviso «⏰ Alarma puesta a las 05:55». Si no la tienes, se abre el reloj con la alarma escrita y solo hay que darle a <strong>GUARDAR</strong>.</div></div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🗺️ Mapas con memoria justa (v454):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>La ruta y las coordenadas de los mapas son <strong>de esta ficha</strong>: al cambiar de presupuesto, lo del cliente anterior se tira y se recalcula. Antes podía colarse el recorrido del cliente de antes (pasó con el 6524 de Usansolo, que enseñaba un trayecto de Bilbao).</div></div>
@@ -3893,7 +3893,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v455';
+var APP_VERSION = 'v456';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -15948,9 +15948,35 @@ async function doResetWithCode() {
         if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'alarma' && data.datos.alarma_url) {
           var _hAl = String(data.datos.hora_texto || '').replace(/</g, '&lt;');
           var _mAl = String(data.datos.mensaje || '').replace(/</g, '&lt;');
+          // v456 · CON LA APK INSTALADA, LA ALARMA SE PONE SOLA. La app de widgets
+          // (v1.20) tiene su propia pantalla de alarma: se le manda el enlace
+          // azkarwidget://alarma?... y ella la pone en el reloj sin tocar nada más.
+          // Si no estuviera instalada, a los 1,2 s se cae al enlace del reloj de
+          // siempre (que obliga a darle a GUARDAR). Nunca un toque muerto.
+          var _urlApk = data.datos.alarma_apk_url || '';
+          var _urlReloj = data.datos.alarma_url;
+          var _idAl = 'al' + Date.now();
           addMsg('bot', '⏰ <b>Alarma de las ' + _hAl + '</b>' + (_mAl ? ' · ' + _mAl : '') + '<br>'
-            + '<a href="' + data.datos.alarma_url + '" style="display:inline-block;margin:6px 0 0 0;padding:9px 15px;background:#E85C0D;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">⏰ Ponerla en el reloj del móvil</a>'
-            + '<br><span style="font-size:11px;color:#889">Se abre tu reloj con la alarma preparada — dale a GUARDAR ✓</span>');
+            + '<a href="javascript:void(0)" id="' + _idAl + '" style="display:inline-block;margin:6px 0 0 0;padding:9px 15px;background:#E85C0D;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">⏰ Poner la alarma</a>'
+            + '<br><span style="font-size:11px;color:#889">Con la app de widgets instalada se pone sola; si no, se abre tu reloj y le das a GUARDAR ✓</span>');
+          setTimeout(function () {
+            var _b = document.getElementById(_idAl);
+            if (!_b) return;
+            _b.onclick = function () {
+              try {
+                if (_urlApk) {
+                  var _volvio = false;
+                  var _fuera = function () { _volvio = true; };
+                  document.addEventListener('visibilitychange', _fuera, { once: true });
+                  window.location.href = _urlApk;
+                  setTimeout(function () {
+                    document.removeEventListener('visibilitychange', _fuera);
+                    if (!_volvio && !document.hidden) window.location.href = _urlReloj;
+                  }, 1200);
+                } else { window.location.href = _urlReloj; }
+              } catch (e) { window.location.href = _urlReloj; }
+            };
+          }, 60);
         }
         // v209: Preview PDF del presupuesto en el chat
         if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'preview_presupuesto_pdf') {

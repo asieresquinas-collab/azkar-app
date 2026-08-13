@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="es.azkarmudanzas.widgets"
-    android:versionCode="20"
-    android:versionName="1.19">
+    android:versionCode="21"
+    android:versionName="1.20">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
 
@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- v1.20: para que Azkarin pueda PONER el despertador en el reloj (lo pidió Asier).
+         Es un permiso normal: no pregunta nada al instalar ni al usarlo. -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
 
     <!-- Para poder encontrar la app de Azkar instalada y abrirla desde los widgets.
          v1.15: y para poder LLAMAR con Zoiper (o con el marcador de siempre si no está)
@@ -47,6 +50,10 @@
             <data android:scheme="mailto" />
         </intent>
         <package android:name="com.zoiper.android.app" />
+        <!-- v1.20: el reloj del móvil, para poder ponerle la alarma -->
+        <intent>
+            <action android:name="android.intent.action.SET_ALARM" />
+        </intent>
     </queries>
 
     <application
@@ -99,6 +106,25 @@
             android:excludeFromRecents="true"
             android:noHistory="true"
             android:label="Azkar" />
+
+        <!-- v1.20: EL DESPERTADOR DE AZKARIN. Pantalla que no se ve: le llega
+             azkarwidget://alarma?h=5&amp;m=55&amp;t=… desde el chat y pone la alarma en el
+             reloj SOLA. Si el reloj obliga a confirmar, lo abre con la alarma escrita y
+             lo dice. Nunca se da por puesta una alarma que no existe. -->
+        <activity
+            android:name=".AlarmaActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:label="Alarma Azkar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="azkarwidget" android:host="alarma" />
+            </intent-filter>
+        </activity>
 
         <!-- Widget 1: la burbuja de Azkarin (tócala y habla) -->
         <receiver

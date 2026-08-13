@@ -41,6 +41,23 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
    → Asier descarga e instala CON UN TOQUE, sin enlaces.
 
 ## Historial de versiones
+
+### v1.20 (13-ago-2026) — EL DESPERTADOR DE AZKARIN
+Asier, tras un «recordatorio de calendario» de Azkarin que no despierta a nadie:
+*«¿puedes hacer que Azkarin me pueda activar el despertador del móvil, que yo le diga y
+ponerme alarmas?»*. Una PÁGINA WEB no puede poner alarmas (Android no se lo permite a
+ninguna) — **pero esta APK sí**, que es una aplicación de verdad.
+- Pantalla nueva invisible **`AlarmaActivity`**, con enlace propio
+  `azkarwidget://alarma?h=5&m=55&t=Salir%20a%20por%20la%20gr%C3%BAa`.
+- Pone la alarma en el reloj **sola** (`AlarmClock.ACTION_SET_ALARM` con `EXTRA_SKIP_UI`)
+  y avisa con un mensajito: «⏰ Alarma puesta a las 05:55 · …».
+- Si un reloj de otra marca obliga a confirmar, **plan B**: abre el reloj con la alarma
+  escrita y lo DICE («dale a GUARDAR»). Nunca se da por puesta una alarma que no existe.
+- Permiso `com.android.alarm.permission.SET_ALARM` (normal: no pregunta nada) y el reloj
+  declarado en `<queries>` (Android 11+ esconde lo que no declaras).
+- El chat de Azkarin (app v456) llama a este enlace y, si la APK no estuviera instalada,
+  cae solo en el intent del reloj de siempre (guardar a mano).
+
 - v1.0–v1.1 — Primeros widgets (burbuja de Azkarin + panel del día). v1.1: login sin
   autocorrector del teclado (arreglaba el usuario a escondidas) + botón PROBAR CONEXIÓN.
 - v1.2 — Burbuja = walkie-talkie: tocas y hablas directo, sin abrir navegador ni app.
