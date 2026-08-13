@@ -1067,12 +1067,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v452 · backend 2.7.357), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v453 · backend 2.7.360), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📐 El papel, a medida (v447):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El PDF del cliente sale <strong>encuadrado</strong>: dossier en la primera hoja; datos, direcciones, mapas y observaciones en la segunda; el presupuesto (qué incluye, seguro, tabla, totales, validez y firmas) en su hoja; y el contrato entero en la suya. Sin páginas a medias ni huecos.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>La tabla se ajusta sola al papel (<strong>el acordeón</strong>): si se pasa de hoja por poco, aprieta las filas un puntito; si es un mudanzón, reparte las líneas entre las hojas que hagan falta, todas llenas, y la última siempre termina con los totales y las <strong>firmas al pie</strong>. Una fila nunca se corta por la mitad. En pantalla no cambia nada y los precios ni se miran.</div></div>
-      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Los mapas de recogida y entrega van <strong>lado a lado</strong> en el papel, con su etiqueta, y el recorrido debajo. Los iconos del presupuesto (escudo del seguro, calendario de la validez…) ahora van <strong>dibujados</strong>: salen siempre, también en el PDF que monta el servidor.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Los mapas de recogida y entrega van <strong>lado a lado</strong> y en <strong>foto de satélite</strong> (los edificios desde arriba, con los nombres de las calles) en el papel, con su etiqueta, y el recorrido debajo. Los iconos del presupuesto (escudo del seguro, calendario de la validez…) ahora van <strong>dibujados</strong>: salen siempre, también en el PDF que monta el servidor.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Y un vigía nuevo: si la línea de Desplazamiento cobra unos kilómetros que <strong>no cuadran</strong> con la ruta real entre las direcciones (como un 22 km guardado en una mudanza de 1 km), sale un <strong>cartel rojo solo en pantalla</strong> que te dice qué pasa y cómo arreglarlo. La app nunca cambia el precio sola.</div></div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🧾 El presupuesto, mejor contado (v445):</p>
@@ -3885,7 +3885,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v452';
+var APP_VERSION = 'v453';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18206,7 +18206,9 @@ async function doResetWithCode() {
       for (var j = 0; j < ALTO; j++) {
         (function (i, j) {
           var tx = x0 + i, ty = y0 + j;
-          var url = 'https://tile.openstreetmap.org/' + z + '/' + tx + '/' + ty + '.png';
+          // v453: para las DIRECCIONES, foto de SATÉLITE (Esri World Imagery) — «que se vean
+          // los edificios desde arriba». El recorrido sigue en plano, que ahí manda la línea.
+          var url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/' + z + '/' + ty + '/' + tx + '.jpg';
           faenas.push(_bajaTeja(url).then(function (im) { if (im) g.drawImage(im, i * TILE, j * TILE); }));
         })(i, j);
       }
@@ -18221,7 +18223,7 @@ async function doResetWithCode() {
 
     // El crédito de OpenStreetMap, que es obligatorio y además queda serio
     g.font = '11px sans-serif';
-    var cred = '© OpenStreetMap';
+    var cred = '© Esri · Maxar';   // v453: la foto de dirección ahora es de satélite
     var an = g.measureText(cred).width + 8;
     g.fillStyle = 'rgba(255,255,255,.75)';
     g.fillRect(lienzo.width - an, lienzo.height - 16, an, 16);
@@ -18345,7 +18347,7 @@ async function doResetWithCode() {
       if (!base) return null;
       var cab = (typeof apiHeaders === 'function' ? apiHeaders() : {});
       try { var t = localStorage.getItem('azkar_token'); if (t) cab['Authorization'] = 'Bearer ' + t; } catch (e) {}
-      var r = await fetch(base + '/api/geo/mapa?lat=' + lat + '&lon=' + lon + '&z=17&tam=640x320', { headers: cab });
+      var r = await fetch(base + '/api/geo/mapa?lat=' + lat + '&lon=' + lon + '&z=17&tam=640x320&tipo=hybrid', { headers: cab });
       if (!r.ok) return null;
       var tipo = r.headers && r.headers.get ? (r.headers.get('Content-Type') || '') : '';
       if (tipo.indexOf('image') < 0) return null;    // no hay clave: contesta JSON
