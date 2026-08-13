@@ -1067,13 +1067,17 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v453 · backend 2.7.360), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v454 · backend 2.7.360), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📐 El papel, a medida (v447):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El PDF del cliente sale <strong>encuadrado</strong>: dossier en la primera hoja; datos, direcciones, mapas y observaciones en la segunda; el presupuesto (qué incluye, seguro, tabla, totales, validez y firmas) en su hoja; y el contrato entero en la suya. Sin páginas a medias ni huecos.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>La tabla se ajusta sola al papel (<strong>el acordeón</strong>): si se pasa de hoja por poco, aprieta las filas un puntito; si es un mudanzón, reparte las líneas entre las hojas que hagan falta, todas llenas, y la última siempre termina con los totales y las <strong>firmas al pie</strong>. Una fila nunca se corta por la mitad. En pantalla no cambia nada y los precios ni se miran.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Los mapas de recogida y entrega van <strong>lado a lado</strong> y en <strong>foto de satélite</strong> (los edificios desde arriba, con los nombres de las calles) en el papel, con su etiqueta, y el recorrido debajo. Los iconos del presupuesto (escudo del seguro, calendario de la validez…) ahora van <strong>dibujados</strong>: salen siempre, también en el PDF que monta el servidor.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Y un vigía nuevo: si la línea de Desplazamiento cobra unos kilómetros que <strong>no cuadran</strong> con la ruta real entre las direcciones (como un 22 km guardado en una mudanza de 1 km), sale un <strong>cartel rojo solo en pantalla</strong> que te dice qué pasa y cómo arreglarlo. La app nunca cambia el precio sola.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🗺️ Mapas con memoria justa (v454):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>La ruta y las coordenadas de los mapas son <strong>de esta ficha</strong>: al cambiar de presupuesto, lo del cliente anterior se tira y se recalcula. Antes podía colarse el recorrido del cliente de antes (pasó con el 6524 de Usansolo, que enseñaba un trayecto de Bilbao).</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Si en una dirección se escribe <strong>«Guardamuebles»</strong>, la app sabe que es nuestra nave: los mapas y los kilómetros van al polígono de Arrigorriaga, y en el papel se queda escrito «Guardamuebles».</div></div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🧾 El presupuesto, mejor contado (v445):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Encima de la tabla de precios va la franja <strong>«Qué incluye cada precio»</strong> (cada mueble es precio final con transporte, desmontaje y montaje; cajas prestadas gratis, embalarlas es «Hacer cajas» aparte; y el «No incluye»: conexiones y desconexiones de luz o agua, colgar cuadros o lámparas, muebles encolados o de obra) y la banda azul del <strong>seguro</strong>: responsabilidad por ley, sin franquicias. Sale en pantalla y en el PDF del cliente.</div></div>
@@ -3529,6 +3533,7 @@ function LD(){
     // propia AR_SALIDA se encarga de que no se le ponga la de hoy.
     window._salidaNueva = !!data._salidaNueva;
     window._gruaTipo = data._grua || '';        // v417: la grúa se apunta en la ficha, no en el nombre de la línea
+    window._ultimaRuta = null;                 // v454: la ruta del cliente anterior no vale para esta ficha
     try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423: esta ficha se queda con SU precio de km
     try { if (window.repartirDirecciones) window.repartirDirecciones(data); } catch (e) {}   // v433
     if(typeof AR_SALIDA==='function') AR_SALIDA(_salGuardada, _salNombre);
@@ -3885,7 +3890,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v453';
+var APP_VERSION = 'v454';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -5234,6 +5239,7 @@ function restoreFormData(data) {
   // HTML (LD) y desde la nube / MIS PRESUPUESTOS (restoreFormData)— y yo solo había puesto
   // la marca de la grúa en la primera. Por eso al abrirlo de la lista volvía a salir azul.
   window._gruaTipo = data._grua || '';
+  window._ultimaRuta = null;                   // v454: la ruta del cliente anterior no vale para esta ficha
   try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423
   try { if (window.repartirDirecciones) window.repartirDirecciones(data); } catch (e) {}   // v433
   if (typeof AR_SALIDA === 'function') AR_SALIDA(_salFicha, _salNombreF);
@@ -12139,8 +12145,8 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
         // v117: Guardar coordenadas en sv-main para que el backend las use en el PDF
         var svRec = document.getElementById('sv-main-recogida');
         var svEnt = document.getElementById('sv-main-entrega');
-        if (svRec && from) { svRec.setAttribute('data-lat', from.lat); svRec.setAttribute('data-lon', from.lon); }
-        if (svEnt && to) { svEnt.setAttribute('data-lat', to.lat); svEnt.setAttribute('data-lon', to.lon); }
+        if (svRec && from) { svRec.setAttribute('data-lat', from.lat); svRec.setAttribute('data-lon', from.lon); svRec.setAttribute('data-dir', ((document.getElementById('f_rec') || {}).value || '').trim()); }   // v454
+        if (svEnt && to) { svEnt.setAttribute('data-lat', to.lat); svEnt.setAttribute('data-lon', to.lon); svEnt.setAttribute('data-dir', ((document.getElementById('f_ent') || {}).value || '').trim()); }   // v454
 
         if (!from || !to) {
           document.getElementById('dist-km').textContent = '⚠ No encontrada';
@@ -12158,7 +12164,7 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis) {
 
         return calcRoute(from, to).then(function(ruta) {
           // v429: se guarda la ruta entera para el MAPA DE RECOGIDA → ENTREGA
-          try { window._ultimaRuta = ruta ? { geom: ruta.geom || [], from: from, to: to, distancia: ruta.distancia, duracion: ruta.duracion } : null; } catch (e) {}
+          try { window._ultimaRuta = ruta ? { geom: ruta.geom || [], from: from, to: to, distancia: ruta.distancia, duracion: ruta.duracion, rec: ((document.getElementById('f_rec') || {}).value || '').trim(), ent: ((document.getElementById('f_ent') || {}).value || '').trim() } : null; } catch (e) {}   // v454
           try { if (window.pintaRutaDelServicio) setTimeout(window.pintaRutaDelServicio, 60); } catch (e) {}
           if (!ruta) {
             document.getElementById('dist-km').textContent = '⚠ Sin ruta';
@@ -18244,6 +18250,8 @@ async function doResetWithCode() {
     try {
       // Si la calculadora de km ya la encontró, se aprovechan sus coordenadas.
       var cont = document.getElementById('sv-main-' + prefijo);
+      // v454: coordenadas de OTRA dirección (cliente anterior) no valen
+      if (cont && (cont.getAttribute('data-dir') || '') !== dir) { cont.removeAttribute('data-lat'); cont.removeAttribute('data-lon'); }
       var lat = parseFloat(cont && cont.getAttribute('data-lat'));
       var lon = parseFloat(cont && cont.getAttribute('data-lon'));
       if (!(isFinite(lat) && isFinite(lon))) {
@@ -18251,7 +18259,7 @@ async function doResetWithCode() {
         var p = await window.geoAzkar(dir);
         if (!p) { img.removeAttribute('src'); img.classList.add('sin-foto'); return; }   // no se ha encontrado: mejor sin foto que con una foto de otro sitio
         lat = p.lat; lon = p.lon;
-        if (cont) { cont.setAttribute('data-lat', lat); cont.setAttribute('data-lon', lon); }
+        if (cont) { cont.setAttribute('data-lat', lat); cont.setAttribute('data-lon', lon); cont.setAttribute('data-dir', dir); }
       }
       // v425 · Primero se pide la foto a Google POR EL SERVIDOR (la clave no baja aquí).
       // Si no hay clave o no contesta, se pinta la de OpenStreetMap como hasta ahora.
@@ -18272,6 +18280,10 @@ async function doResetWithCode() {
   // ══════════════════════════════════════════════════════════════════════════
   function dirParaMapa(a) {
     var d = String(a || '').trim();
+    // v454 · «Guardamuebles» no es una dirección: es NUESTRA nave (ficha 6524, la
+    // entrega decía «Guardamuebles» y el mapa trajo un prado). Al mapa y a los
+    // kilómetros va el polígono de Arrigorriaga; en el papel se queda lo escrito.
+    if (/^\s*(el\s+|nuestro\s+|al\s+)?guardamuebles\s*$/i.test(d)) return 'Polígono Martiartu, Arrigorriaga';
     return d
       // «70 3º Izquierda» / «25 4º Dcha» → «70» / «25»
       .replace(/\s+\d+\s*[ºªo]?\s*(izda|izquierda|dcha|derecha|izq|der|centro|ctro)\b\.?/gi, ' ')
@@ -18318,6 +18330,8 @@ async function doResetWithCode() {
       var dir = String(direccion || '').trim();
       if (!dir || _afinado[prefijo] === dir) return;
       var cont = document.getElementById('sv-main-' + prefijo);
+      // v454: coordenadas de OTRA dirección (cliente anterior) no valen
+      if (cont && (cont.getAttribute('data-dir') || '') !== dir) { cont.removeAttribute('data-lat'); cont.removeAttribute('data-lon'); }
       var lat = parseFloat(cont && cont.getAttribute('data-lat'));
       var lon = parseFloat(cont && cont.getAttribute('data-lon'));
       if (!(isFinite(lat) && isFinite(lon))) {
@@ -18325,7 +18339,7 @@ async function doResetWithCode() {
         var p = await window.geoAzkar(dir);
         if (!p) return;                      // no se ha encontrado: se deja la búsqueda por texto
         lat = p.lat; lon = p.lon;
-        if (cont) { cont.setAttribute('data-lat', lat); cont.setAttribute('data-lon', lon); }
+        if (cont) { cont.setAttribute('data-lat', lat); cont.setAttribute('data-lon', lon); cont.setAttribute('data-dir', dir); }
       }
       _afinado[prefijo] = dir;
       var mapa = document.getElementById('sv-main-' + prefijo + '-map');
@@ -18524,6 +18538,15 @@ async function doResetWithCode() {
       var rec = (document.getElementById('f_rec') || {}).value || '';
       var ent = (document.getElementById('f_ent') || {}).value || '';
       var r = window._ultimaRuta;
+      // v454 · LA RUTA RANCIA (ficha 6524, Usansolo): al cambiar de presupuesto, la
+      // ruta del cliente ANTERIOR seguía en memoria y se pintaba con sus calles y sus
+      // kilómetros. Si la ruta guardada no es de ESTAS direcciones, a la basura.
+      if (r && (String(r.rec || '').trim() !== rec.trim() || String(r.ent || '').trim() !== ent.trim())) {
+        r = null; window._ultimaRuta = null; _ultimo = '';
+        var imgV = document.getElementById('sv-ruta-png');
+        if (imgV) { imgV.removeAttribute('src'); imgV.classList.add('sin-foto'); }
+        try { setTimeout(function () { if (window.rutaSoloParaElMapa) window.rutaSoloParaElMapa(); }, 80); } catch (eV) {}
+      }
       // En modo grúa hay UNA sola dirección: aquí no pinta nada un recorrido.
       if (window._gruaTipo || !rec.trim() || !ent.trim()) {
         caja.style.display = 'none';
@@ -18618,11 +18641,13 @@ async function doResetWithCode() {
       // Las coordenadas: si ya están apuntadas en la ficha, se aprovechan.
       var pto = async function (id, dir) {
         var c = document.getElementById(id);
+        // v454: coordenadas apuntadas para OTRA dirección no valen
+        if (c && (c.getAttribute('data-dir') || '') !== dir) { c.removeAttribute('data-lat'); c.removeAttribute('data-lon'); }
         var la = parseFloat(c && c.getAttribute('data-lat')), lo = parseFloat(c && c.getAttribute('data-lon'));
         if (isFinite(la) && isFinite(lo)) return { lat: la, lon: lo };
-        var p = await window.geoAzkar(dir);
+        var p = await window.geoAzkar(window.dirParaMapa ? window.dirParaMapa(dir) : dir);   // v454
         if (!p) return null;
-        if (c) { c.setAttribute('data-lat', p.lat); c.setAttribute('data-lon', p.lon); }
+        if (c) { c.setAttribute('data-lat', p.lat); c.setAttribute('data-lon', p.lon); c.setAttribute('data-dir', dir); }
         return { lat: p.lat, lon: p.lon };
       };
       var a = await pto('sv-main-recogida', rec);
@@ -18632,7 +18657,7 @@ async function doResetWithCode() {
 
       var r = await rutaEntre(a, b);
       if (!r) return;
-      window._ultimaRuta = { geom: r.geom || [], from: a, to: b, distancia: r.metros, duracion: r.segundos };
+      window._ultimaRuta = { geom: r.geom || [], from: a, to: b, distancia: r.metros, duracion: r.segundos, rec: rec, ent: ent };   // v454: la ruta sabe de QUIÉN es
       await pintaRutaDelServicio();
     } catch (e) { console.warn('[Ruta] al abrir:', e && e.message); }
   }
