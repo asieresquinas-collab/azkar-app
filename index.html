@@ -1061,7 +1061,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v447 · backend 2.7.354), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v448 · backend 2.7.354), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📐 El papel, a medida (v447):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El PDF del cliente sale <strong>encuadrado</strong>: dossier en la primera hoja; datos, direcciones, mapas y observaciones en la segunda; el presupuesto (qué incluye, seguro, tabla, totales, validez y firmas) en su hoja; y el contrato entero en la suya. Sin páginas a medias ni huecos.</div></div>
@@ -3189,7 +3189,7 @@ function AR(c,z,u,p,d,tm,tam){
   div.className='cr'; div.id='r'+id;
   var tamOpts='<option'+(tam==='Estándar'?' selected':'')+'>Estándar</option><option'+(tam==='Pequeño'?' selected':'')+'>Pequeño</option><option'+(tam==='Grande'?' selected':'')+'>Grande</option><option'+(tam==='Muy grande'?' selected':'')+'>Muy grande</option>';
   div.innerHTML='<div class="move-btns"><button title="Subir" data-dir="up">▲</button><button title="Bajar" data-dir="down">▼</button></div>'
-    +'<div style="display:flex;align-items:center;gap:2px"><input list="dl" placeholder="Concepto..." value="'+c+'" oninput="PL_LOOKUP(this);CA();chk2p(this)" onchange="PL_LOOKUP(this);CA();chk2p(this);chkCanape(this)" style="flex:1;min-width:0"><span class="tamano-badge" onclick="cycleTam(this)" title="Click para cambiar tamaño" data-tam="'+tam+'" style="font-size:7px;padding:2px 4px;border-radius:3px;cursor:pointer;font-weight:700;letter-spacing:.3px;white-space:nowrap;flex-shrink:0;user-select:none;'+tamBadgeStyle(tam)+'">'+tamLabel(tam)+'</span></div>'
+    +'<div style="display:flex;align-items:center;gap:2px"><input list="dl" placeholder="Concepto..." value="'+c+'" oninput="PL_LOOKUP(this);CA();chk2p(this);chkCanape(this)" onchange="PL_LOOKUP(this);CA();chk2p(this);chkCanape(this)" style="flex:1;min-width:0"><span class="tamano-badge" onclick="cycleTam(this)" title="Click para cambiar tamaño" data-tam="'+tam+'" style="font-size:7px;padding:2px 4px;border-radius:3px;cursor:pointer;font-weight:700;letter-spacing:.3px;white-space:nowrap;flex-shrink:0;user-select:none;'+tamBadgeStyle(tam)+'">'+tamLabel(tam)+'</span></div>'
     +'<input type="number" min="0" step="0.1" placeholder="0" value="'+u+'" oninput="CA()">'
     +'<input type="number" min="0" step="0.01" placeholder="0,00" value="'+p+'" oninput="CA()">'
     +'<input type="number" class="col-dto" min="0" max="100" step="1" placeholder="0" value="'+d+'" oninput="CA()">'
@@ -3203,6 +3203,10 @@ function AR(c,z,u,p,d,tm,tam){
     div.querySelector('.tiempo-input').value=t[0]+t[1];
   }
   CA(); CT();
+  // v448 · CADA CANAPÉ, SU TAPA — también cuando la fila entra por código (catálogo,
+  // botones, dictado). Al teclear ya salta por oninput; al abrir ficha guardada,
+  // chkCanape se frena solo con _restaurandoFicha (la norma de siempre).
+  try { if (c && typeof chkCanape === 'function') { var _ciC = div.querySelector('input[list]'); if (_ciC) chkCanape(_ciC); } } catch (e) {}
   // v393 · ENTRE DOS: si la fila viene de una ficha guardada con su marca, se restaura
   // tal cual (sin volver a preguntar); si es un canapé/colchón NUEVO, se pregunta.
   try{
@@ -3875,7 +3879,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v447';
+var APP_VERSION = 'v448';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
