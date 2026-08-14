@@ -1067,13 +1067,18 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v471 · backend 2.7.379), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v472 · backend 2.7.382), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📐 El papel, a medida (v447):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El PDF del cliente sale <strong>encuadrado</strong>: dossier en la primera hoja; datos, direcciones, mapas y observaciones en la segunda; el presupuesto (qué incluye, seguro, tabla, totales, validez y firmas) en su hoja; y el contrato entero en la suya. Sin páginas a medias ni huecos.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>La tabla se ajusta sola al papel (<strong>el acordeón</strong>): si se pasa de hoja por poco, aprieta las filas un puntito; si es un mudanzón, reparte las líneas entre las hojas que hagan falta, todas llenas, y la última siempre termina con los totales y las <strong>firmas al pie</strong>. Una fila nunca se corta por la mitad. En pantalla no cambia nada y los precios ni se miran.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Los mapas de recogida y entrega van <strong>lado a lado</strong> y en <strong>foto de satélite</strong> (los edificios desde arriba, con los nombres de las calles) en el papel, con su etiqueta, y el recorrido debajo. Los iconos del presupuesto (escudo del seguro, calendario de la validez…) ahora van <strong>dibujados</strong>: salen siempre, también en el PDF que monta el servidor.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Y un vigía nuevo: si la línea de Desplazamiento cobra unos kilómetros que <strong>no cuadran</strong> con la ruta real entre las direcciones (como un 22 km guardado en una mudanza de 1 km), sale un <strong>cartel rojo solo en pantalla</strong> que te dice qué pasa y cómo arreglarlo. La app nunca cambia el precio sola.</div></div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>✍️ El parte: la firma ya no se pierde (v472):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>La firma del cliente <strong>se guarda sola en cuanto se levanta el dedo</strong>, sin esperar al botón verde. Si Chrome se cierra en el bolsillo o el móvil se apaga, al volver a abrir el parte <strong>la firma sigue en su recuadro</strong> y solo hay que darle al botón. Vale también si se abre desde otro móvil.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>📺 <strong>La tele ya no atasca el parte.</strong> Si la foto de la tele está hecha pero no hay cobertura para subirla, ahora sale un aviso que lo dice y <strong>deja firmar igualmente</strong>: la foto se manda sola en cuanto haya señal. Si de verdad no se ha hecho la foto, sigue sin poderse cerrar (ahí no hay atajo).</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🔍 <strong>Caja negra:</strong> cada paso del parte queda apuntado con su hora — cuándo lo abrieron, cuándo firmaron, si se quedaron sin cobertura, dónde se atascaron. Pregúntale a Azkarin <strong>«¿qué pasó con el parte del 6524?»</strong> y te lo cuenta en orden. No guarda fotos ni datos del cliente: solo qué pasó y cuándo.</div></div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>💬 Que Azkarin vea el WhatsApp del cliente (v470):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con la <strong>app de widgets v1.25</strong>, Azkarin sale en la lista de <strong>Compartir</strong> del móvil. Desde el chat del cliente: los tres puntos → <strong>Exportar chat</strong> (sin archivos) → <strong>Azkarin</strong>. O mantienes pulsados unos mensajes → Compartir → Azkarin. La conversación entra al momento y te dice a qué ficha la ha enganchado.</div></div>
@@ -3926,7 +3931,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v471';
+var APP_VERSION = 'v472';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
