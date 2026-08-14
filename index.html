@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v463 · backend 2.7.369), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v464 · backend 2.7.371), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📐 El papel, a medida (v447):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El PDF del cliente sale <strong>encuadrado</strong>: dossier en la primera hoja; datos, direcciones, mapas y observaciones en la segunda; el presupuesto (qué incluye, seguro, tabla, totales, validez y firmas) en su hoja; y el contrato entero en la suya. Sin páginas a medias ni huecos.</div></div>
@@ -1420,6 +1420,11 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>MODO PRUEBA</strong> (con AUTO apagado): Azkarin trabaja SOLO con el modelo que elijas, sin Gemini de reserva. Sirve para probar modelos. Los modelos gratis fallan más en tareas con herramientas, por eso el modo AUTO deja esas para Gemini.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Las etiquetas ⚡ y 🧠:</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cada respuesta de Azkarin lleva una etiqueta: <strong>⚡ = modelo gratis</strong> (Ollama/gemma4) y <strong>🧠 = Gemini</strong> (de pago). Así ves de un vistazo qué motor contestó.</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Qué Gemini trabaja en cada cosa (v463):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Dentro de Gemini también hay reparto: la <strong>charla y el día a día</strong> van con el <strong>3.1 Flash Lite</strong>, que es el más barato (0,25 $ y 1,50 $ el millón), y los <strong>presupuestos y las cosas difíciles</strong> con el más listo. Así el dinero se va donde importa.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Desde el 14 de agosto el listo es el <strong>Gemini 3.7 Flash</strong>: con la oferta de lanzamiento cuesta <strong>0,75 $ y 3,75 $</strong> el millón, <strong>la mitad</strong> que el 3.6 que había antes, y encima es mejor. La oferta acaba el <strong>31 de diciembre</strong>: en enero pasará a costar lo mismo que costaba el 3.6, así que no se pierde nada.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Si Google no te tiene abierto el 3.7 en tu cuenta, se queda con el 3.6, y si tampoco, con el 3.5 — <strong>nunca baja al modelo flojo</strong> para lo importante. Lo mira solo cada seis horas: en cuanto Google te lo abra, se cambia sin que hagas nada. Con <strong>/gemini</strong> ves cuál está trabajando y puedes tocarlo tú.</div></div>
+
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Controlar el gasto — comando /gasto:</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Escribe <strong>/gasto</strong> para ver cuánto se lleva gastado en Gemini este mes. También puedes preguntárselo en lenguaje normal: "¿cuánto llevo de gasto en Gemini este mes?".</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Hay un <strong>tope al mes</strong> (ahora <strong>150 €</strong>). Al llegar al tope, Azkarin <strong>deja de usar Gemini solo</strong> y sigue con el modelo gratis. Así no hay sustos en la factura. Para cambiarlo sin salir del chat: <strong>/gasto tope 200</strong>. Y si miras la factura de verdad en Google, <strong>/gasto real 77,40</strong> pone el contador en ese número exacto.</div></div>
@@ -3908,7 +3913,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v463';
+var APP_VERSION = 'v464';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
