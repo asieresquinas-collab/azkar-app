@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v468 · backend 2.7.375), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v469 · backend 2.7.376), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📐 El papel, a medida (v447):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El PDF del cliente sale <strong>encuadrado</strong>: dossier en la primera hoja; datos, direcciones, mapas y observaciones en la segunda; el presupuesto (qué incluye, seguro, tabla, totales, validez y firmas) en su hoja; y el contrato entero en la suya. Sin páginas a medias ni huecos.</div></div>
@@ -3735,7 +3735,7 @@ function azkarinArrancarRepaso() {
     var bubble = document.getElementById('chatbot-bubble');
     if (bubble) bubble.style.display = 'flex';
     var panel = document.getElementById('chatbot-panel');
-    if (panel && !panel.classList.contains('open')) { panel.classList.add('open'); window._chatbotActivo = true; }
+    if (panel && !panel.classList.contains('open')) { panel.classList.add('open'); window._chatbotActivo = true; chatbotMotorReal(); }
     setTimeout(function() {
       var inp = document.getElementById('chatbot-input');
       if (inp) inp.value = 'repásame lo de hoy';
@@ -3920,7 +3920,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v468';
+var APP_VERSION = 'v469';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -7731,6 +7731,28 @@ async function saveFirebaseConfig() {
 //  BACKUP AUTOMÁTICO A GOOGLE DRIVE (blindado anti-pérdida)
 // ══════════════════════════════════════════════════════════════
 const RAILWAY_API = 'https://azkar-presupuestos-production.up.railway.app';
+
+// v468 · EL CARTELITO DE LA CABECERA DECÍA "MiniMax M3" — Y ERA MENTIRA.
+// Estaba escrito a mano en el HTML desde hace meses: pusiera lo que pusiera el motor
+// de verdad, ahí seguía MiniMax. Asier lo vio el 14-ago en una captura y con razón
+// pensó que estaba hablando con otro modelo. Ahora se pregunta y se pone el de verdad;
+// si no se puede preguntar, se queda en algo que no engaña a nadie.
+let _motorPintado = 0;
+function chatbotMotorReal() {
+  try {
+    if (Date.now() - _motorPintado < 120000) return;      // no machacar el servidor al abrir y cerrar
+    _motorPintado = Date.now();
+    const el = document.getElementById('ch-sub-motor');
+    if (!el) return;
+    fetch(RAILWAY_API + '/api/health?nocache=' + Date.now(), { cache: 'no-store' })
+      .then(r => r.json())
+      .then(j => {
+        const m = String((j && j.gemini_model) || '').replace(/^gemini-/, '').replace(/-preview$/, '').replace(/-/g, ' ');
+        if (m) el.textContent = 'Asistente IA · Gemini ' + m.replace(/\bflash\b/i, 'Flash').replace(/\blite\b/i, 'Lite').replace(/\bpro\b/i, 'Pro');
+      })
+      .catch(() => { });
+  } catch (e) { }
+}
 // v365: LLAVE DE LA API (candado backend 2.7.133 — antes esas rutas estaban abiertas a cualquiera).
 // Se añade sola a TODAS las llamadas al backend: envoltorio de fetch (cubre cada fetch de la app
 // sin tocar los 100+ sitios que llaman) + se guarda en azkar_api_key para el XHR de vídeos que ya
@@ -15041,7 +15063,7 @@ async function doResetWithCode() {
 
 <div id="chatbot-panel">
   <div id="chatbot-header">
-    <div style="display:flex;align-items:center;gap:10px"><img src="icons/azkarin-64.png" alt="Azkarin" style="width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.3)"><div><div class="ch-title">Azkarin</div><div class="ch-sub">Asistente IA &middot; MiniMax M3</div></div></div>
+    <div style="display:flex;align-items:center;gap:10px"><img src="icons/azkarin-64.png" alt="Azkarin" style="width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.3)"><div><div class="ch-title">Azkarin</div><div class="ch-sub" id="ch-sub-motor">Asistente IA &middot; Azkar Mudanzas</div></div></div>
     <div>
       <button onclick="chatbotHistorial()" title="Ver historial de acciones">&#128203;</button>
       <button onclick="chatbotCopiarConv()" title="Copiar toda la conversación (para pegársela a Claude)">&#128228;</button>
