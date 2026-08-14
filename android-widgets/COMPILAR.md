@@ -42,6 +42,8 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
 
 ## Historial de versiones
 
+- **v1.23 (14-ago-2026) · «Compartir con Azkarin».** Asier: «necesito que Azkarin pueda ver los mensajes de WhatsApp, solo mirarlos, para poner en los partes las horas y lo que se ha dicho… y no me quiero jugar que me bloqueen». Nueva `CompartirActivity`: Azkarin aparece en la lista de Compartir del móvil, así que desde un chat de WhatsApp se hace «Exportar chat» (o Compartir mensajes) y la conversación entra en la app de un toque. Aguanta texto suelto, el .txt de Android y el .zip del iPhone. 🛑 NO se conecta a WhatsApp: solo recibe lo que Asier comparte a mano, igual que copiar y pegar — cero riesgo de bloqueo. Y es solo para MIRAR: no hay forma de contestar.
+
 ### v1.22 (13-ago-2026) — LAS ALARMAS QUE PONE AZKARIN SOLO
 Asier: *«que me las ponga sin preguntar… cuando en una llamada se dice que hay que
 hacer algo al de una hora, o el cliente ha dicho la hora, que la pongas en ese

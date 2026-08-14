@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="es.azkarmudanzas.widgets"
-    android:versionCode="23"
-    android:versionName="1.22">
+    android:versionCode="24"
+    android:versionName="1.23">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
 
@@ -111,6 +111,41 @@
              azkarwidget://alarma?h=5&amp;m=55&amp;t=… desde el chat y pone la alarma en el
              reloj SOLA. Si el reloj obliga a confirmar, lo abre con la alarma escrita y
              lo dice. Nunca se da por puesta una alarma que no existe. -->
+        <!-- v1.23 · «COMPARTIR CON AZKARIN» (Asier, 14-ago-2026).
+             Para que al compartir un chat de WhatsApp (o exportarlo) aparezca Azkarin
+             en la lista y la conversación entre en la app de un toque.
+             🛑 Esto NO se conecta a WhatsApp: solo recibe lo que Asier comparte a mano,
+             igual que si lo copiara y lo pegara. Y es solo para MIRAR: desde aquí no se
+             contesta ni se manda nada a nadie. -->
+        <activity
+            android:name=".CompartirActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:label="Azkarin (guardar conversación)">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/zip" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".AlarmaActivity"
             android:exported="true"
