@@ -1067,7 +1067,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v473 · backend 2.7.385), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v474 · backend 2.7.387), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>🛏️ Arreglado: el canapé que no dejaba poner precio (v474):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Si abrías una ficha <strong>con fecha de antes del 9 de agosto</strong> y añadías un <strong>canapé o un colchón nuevo</strong>, la línea se quedaba <strong>sin precio y con el campo bloqueado</strong>: no había forma de escribirlo y no se podía mandar el presupuesto. Ya está arreglado.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora la regla es sencilla: <strong>una línea que añades hoy coge el precio cerrado de hoy</strong> (canapé 71,42 €, colchón 19,91 €, canapé/cama nido 89,06 €), sea la ficha del año que sea. Y <strong>una línea que ya estaba guardada sigue con SU precio de entonces</strong> — un presupuesto viejo no cambia ni un céntimo por abrirlo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y una norma nueva que no se salta nadie: <strong>un precio en blanco no se bloquea nunca</strong>. Si por lo que sea una línea no trae precio cerrado, el campo se queda abierto para que lo escribas tú. Antes que un campo muerto, lo pones a mano.</div></div>
 
       <p style='font-weight:700;color:#00897B;margin-top:16px'>🔄 La casilla del CAMBIO DE MUEBLES (v473):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En la ficha del presupuesto, justo debajo de Guardamuebles, hay una casilla nueva: <strong>CAMBIO DE MUEBLES (PERMUTA)</strong>. Es para cuando un mueble va de una casa a otra y otro se vuelve — «llevo el mío y me traigo el suyo».</div></div>
@@ -1084,7 +1089,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Los mapas de recogida y entrega van <strong>lado a lado</strong> y en <strong>foto de satélite</strong> (los edificios desde arriba, con los nombres de las calles) en el papel, con su etiqueta, y el recorrido debajo. Los iconos del presupuesto (escudo del seguro, calendario de la validez…) ahora van <strong>dibujados</strong>: salen siempre, también en el PDF que monta el servidor.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Y un vigía nuevo: si la línea de Desplazamiento cobra unos kilómetros que <strong>no cuadran</strong> con la ruta real entre las direcciones (como un 22 km guardado en una mudanza de 1 km), sale un <strong>cartel rojo solo en pantalla</strong> que te dice qué pasa y cómo arreglarlo. La app nunca cambia el precio sola.</div></div>
 
-      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>✍️ El parte: la firma ya no se pierde (v473):</p>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>✍️ El parte: la firma ya no se pierde (v472):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>La firma del cliente <strong>se guarda sola en cuanto se levanta el dedo</strong>, sin esperar al botón verde. Si Chrome se cierra en el bolsillo o el móvil se apaga, al volver a abrir el parte <strong>la firma sigue en su recuadro</strong> y solo hay que darle al botón. Vale también si se abre desde otro móvil.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>📺 <strong>La tele ya no atasca el parte.</strong> Si la foto de la tele está hecha pero no hay cobertura para subirla, ahora sale un aviso que lo dice y <strong>deja firmar igualmente</strong>: la foto se manda sola en cuanto haya señal. Si de verdad no se ha hecho la foto, sigue sin poderse cerrar (ahí no hay atajo).</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🔍 <strong>Caja negra:</strong> cada paso del parte queda apuntado con su hora — cuándo lo abrieron, cuándo firmaron, si se quedaron sin cobertura, dónde se atascaron. Pregúntale a Azkarin <strong>«¿qué pasó con el parte del 6524?»</strong> y te lo cuenta en orden. No guarda fotos ni datos del cliente: solo qué pasó y cuándo.</div></div>
@@ -3315,16 +3320,42 @@ function aplica2p(row, respetar){
   var nombre=cInp?cInp.value.trim():'';
   // v408: lo mismo que la Salida — en una ficha de ANTES del cambio no se re-tarifa nada.
   // Se bloquea la línea (sigue sin descuento) pero con el precio que ya tenía.
+  // ══════════════════════════════════════════════════════════════════════════
+  //  v474 · 17-ago-2026, con el presupuesto a medio mandar. Asier: «cada vez que
+  //  intento poner un canapé no me deja, no me sale el precio y no lo puedo escribir».
+  //  QUÉ PASABA: en una ficha con fecha anterior al 9-ago, un canapé/colchón NUEVO
+  //  se quedaba con el precio EN BLANCO y encima BLOQUEADO — un campo muerto, sin
+  //  forma de poner el precio y sin poder mandar el presupuesto.
+  //  LA CONFUSIÓN: «una ficha vieja no se re-tarifa» vale para las líneas que YA
+  //  estaban GUARDADAS en esa ficha, no para una línea que se añade HOY. Ahora se
+  //  distingue por `respetar`: solo lo llevan las filas que vienen de la ficha.
+  //  🛑 Y una regla nueva que no se salta nadie: un precio EN BLANCO no se bloquea
+  //     JAMÁS. Antes que dejar un campo muerto, que Asier lo escriba a mano.
+  // ══════════════════════════════════════════════════════════════════════════
   var _actual = parseFloat(ns[1].value);
-  var cerrado = (respetar > 0) ? parseFloat(respetar)
-              : (_fichaEsAnterior() ? (_actual > 0 ? _actual : 0) : precio2p(nombre));
+  var _abriendoFicha = (respetar !== undefined) || !!window._restaurandoFicha;
+  var cerrado;
+  // 🛑 Y NO se mira la FECHA para decidir esto. Comprobado el 17-ago: al abrir una ficha
+  // detrás de otra, la fecha que hay en pantalla puede ser todavía la de la ficha ANTERIOR
+  // (se vio en vivo: ficha de julio abriéndose y el campo diciendo 17-ago). Fiarse de la
+  // fecha aquí es fiarse de una carrera. La regla que vale es más simple y no falla:
+  // ABRIENDO UNA FICHA NO SE RE-TARIFA NADA, sea del año que sea.
+  if (respetar > 0) cerrado = parseFloat(respetar);              // lo guardado manda: no se toca
+  else if (_abriendoFicha) cerrado = (_actual > 0 ? _actual : 0);// abriendo: NO se inventa ningún precio
+  else cerrado = precio2p(nombre);                               // línea nueva de hoy: precio cerrado de hoy
   row.setAttribute('data-2p','1');
   if(cerrado>0) ns[1].value=cerrado.toFixed(2);
   ns[2].value='0';
-  ns[1].readOnly=true; ns[2].readOnly=true;
-  ns[1].style.background='#EEF3FA'; ns[2].style.background='#EEF3FA';
-  ns[1].title='Precio cerrado: va entre dos personas. No se puede cambiar.';
+  var _hayPrecio = parseFloat(ns[1].value) > 0;
+  ns[1].readOnly=_hayPrecio; ns[2].readOnly=true;                // 🛑 sin precio, NO se bloquea
+  ns[1].style.background=_hayPrecio?'#EEF3FA':''; ns[2].style.background='#EEF3FA';
+  ns[1].title=_hayPrecio ? 'Precio cerrado: va entre dos personas. No se puede cambiar.'
+                         : 'Va entre dos personas, pero esta línea no trae precio cerrado: escríbelo tú.';
   ns[2].title='En esta línea no se hace descuento: va entre dos personas.';
+  // Si la ficha es de antes y le acabo de poner el precio de HOY, que se entere.
+  if(!_abriendoFicha && _hayPrecio && _fichaEsAnterior()){
+    try{ if(typeof showSyncStatus==='function') showSyncStatus('🛏️ '+nombre+' → precio de HOY ('+cerrado.toFixed(2)+' €). Esta ficha es de antes: si querías el de entonces, cámbialo.', 7000); }catch(e){}
+  }
   if(!row.querySelector('.dosp')){
     var et=document.createElement('span');
     et.className='dosp'; et.textContent='👥';
@@ -4110,7 +4141,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v473';
+var APP_VERSION = 'v474';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
