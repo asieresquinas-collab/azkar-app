@@ -1067,7 +1067,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v475 · backend 2.7.388), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v476 · backend 2.7.388), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>🚚 ARREGLADO: los kilómetros que no se ponían (v476):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Desde la v473 el cuadro de la distancia podía salir con <strong>«❌ Error»</strong> y, lo grave, <strong>el presupuesto se quedaba sin línea de Desplazamiento</strong>. Un Bilbao → Alcalá de 412 km sin cobrar un solo kilómetro. Era un fallo mío al mover el código de los km; ya está arreglado.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Y para que no vuelva a colarse: si hay <strong>ruta de verdad entre recogida y entrega y NO hay línea de desplazamiento</strong>, sale un <strong>cartel rojo</strong> que dice cuántos km hay y lo que serían en euros, con un botón <strong>«Poner los kilómetros»</strong> que la mete de un toque. 🛑 Con botón, no sola: la app nunca cambia el precio por su cuenta, y menos en una ficha vieja donde a lo mejor no se cobraron a propósito.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Además, ahora un fallo en un adorno (el chivato de 📍 a qué sitios ha ido el mapa) <strong>ya no puede tumbar el cobro de los kilómetros</strong>: si los km están calculados, se quedan puestos pase lo que pase.</div></div>
 
       <p style='font-weight:700;color:#856404;margin-top:16px'>🔔 Los avisos del portal de autónomos, a la vista (v475):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En el portal del autónomo, arriba del todo, ahora sale <strong>siempre</strong> una barra que dice cómo están los avisos: activados, sin activar, bloqueados en el navegador, o que ese navegador no puede darlos. Antes solo salía un cartel en un caso muy concreto y en los demás <strong>el autónomo se quedaba sin avisos sin enterarse</strong>.</div></div>
@@ -4147,7 +4152,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v475';
+var APP_VERSION = 'v476';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -12559,23 +12564,45 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
 
           // v401: enseñar QUÉ sitios ha cogido el mapa. Con el pueblo suelto suele acertar,
           // pero si se equivoca hay que verlo ANTES de mandar el presupuesto.
-          var _corto = function(t) { t = String(t || ''); var pz = t.split(',').map(function(x){return x.trim();}); return pz.slice(0, 2).join(', ') || t; };
-          if (from && to) {
-            var _sit = document.getElementById('dist-sitios');
-            if (!_sit) {
-              _sit = document.createElement('div');
-              _sit.id = 'dist-sitios';
-              _sit.className = 'no-pdf';   // v442: es chivato NUESTRO, el cliente no lo necesita
-              _sit.style.cssText = 'font-size:10.5px;color:#5b6b7c;margin-top:3px';
-              rutaEl.parentElement.appendChild(_sit);
+          // ══════════════════════════════════════════════════════════════════════
+          //  v476 · 17-ago-2026. AQUÍ SE ROMPIÓ TODO EN LA v473: al llevarme el pintado
+          //  de los km a pintarDistanciaYKm() me llevé también la declaración de `rutaEl`,
+          //  y este trozo se quedó usándola. Resultado: «Cannot read properties of
+          //  undefined (reading 'parentElement')», el cuadro poniendo ❌ Error y —lo grave—
+          //  EL PRESUPUESTO SIN LÍNEA DE DESPLAZAMIENTO. Un Bilbao→Alcalá de 412 km sin
+          //  cobrar un solo kilómetro. Ahora se coge el elemento aquí mismo y, además,
+          //  este chivato va en su propio try: es un adorno, y un adorno NO puede tumbar
+          //  el cobro de los kilómetros.
+          // ══════════════════════════════════════════════════════════════════════
+          try {
+            var _corto = function(t) { t = String(t || ''); var pz = t.split(',').map(function(x){return x.trim();}); return pz.slice(0, 2).join(', ') || t; };
+            var _rutaEl = document.getElementById('dist-ruta');
+            if (from && to && _rutaEl && _rutaEl.parentElement) {
+              var _sit = document.getElementById('dist-sitios');
+              if (!_sit) {
+                _sit = document.createElement('div');
+                _sit.id = 'dist-sitios';
+                _sit.className = 'no-pdf';   // v442: es chivato NUESTRO, el cliente no lo necesita
+                _sit.style.cssText = 'font-size:10.5px;color:#5b6b7c;margin-top:3px';
+                _rutaEl.parentElement.appendChild(_sit);
+              }
+              _sit.textContent = '📍 ' + _corto(from.display) + '  →  ' + _corto(to.display) + '  (si no es ahí, afina la dirección)';
             }
-            _sit.textContent = '📍 ' + _corto(from.display) + '  →  ' + _corto(to.display) + '  (si no es ahí, afina la dirección)';
-          }
+          } catch (e) { console.warn('[Distancia] chivato de sitios:', e && e.message); }
 
         });
       })
       .catch(function(err) {
         console.error('[Distancia] Error:', err);
+        // v476 · 🛑 Si los kilómetros YA estaban calculados y puestos, un fallo posterior
+        // (un adorno, un mapa que no carga) NO puede borrarlos de la pantalla ni dejar el
+        // presupuesto sin desplazamiento. Se repinta lo bueno y se avisa aparte.
+        if (parseFloat(window._kmRutaBase) > 0) {
+          try { pintarDistanciaYKm(); } catch (e2) {}
+          var _av = document.getElementById('dist-ruta');
+          if (_av) _av.innerHTML += '<span class="no-pdf" style="color:#c0392b"> · (hubo un fallo al pintar el detalle, pero los kilómetros son buenos)</span>';
+          return;
+        }
         document.getElementById('dist-km').textContent = '❌ Error';
         document.getElementById('dist-tiempo').textContent = '';
         document.getElementById('dist-ruta').textContent = 'Error de conexión: ' + err.message;
@@ -19583,6 +19610,26 @@ async function doResetWithCode() {
       if (!isFinite(km) || !(km > 0) || !box) { if (viejo) viejo.remove(); return; }
       var gratis = (typeof KM_GRATIS !== 'undefined' && KM_GRATIS > 0) ? KM_GRATIS : 15;
       var fila = filaKm(), texto = '';
+      // ══════════════════════════════════════════════════════════════════════════
+      //  v476 · FALTA LA LÍNEA DE LOS KILÓMETROS  (Asier, 17-ago-2026)
+      //  «no me calcula los km, y prefiero que cobre 10 km menos a que no lo especifique
+      //   y no ponga ninguno; si sabe las direcciones tenemos que hacer que lo detecte y
+      //   los ponga en el presupuesto».
+      //  Un Bilbao→Alcalá de 412 km sin una sola línea de desplazamiento no puede salir
+      //  por la puerta. Si hay ruta de verdad y NO hay línea, sale un cartel rojo con un
+      //  botón que la pone de un toque.
+      //  🛑 El botón, y no automático: la norma de la casa es que la app NUNCA cambia el
+      //     precio sola, y menos al abrir una ficha vieja donde a lo mejor no se cobraron
+      //     los km a propósito. Pero pasar desapercibido ya no puede.
+      // ══════════════════════════════════════════════════════════════════════════
+      if (!fila && km > gratis) {
+        var _tar = (typeof precioKmDeLaFicha === 'function') ? precioKmDeLaFicha(km) : 2.40;
+        var _imp = Math.round(km) * _tar;
+        texto = '⛔ <b>FALTA EL DESPLAZAMIENTO:</b> de recogida a entrega hay <b>' + km.toFixed(1)
+          + ' km</b> y el presupuesto <b>no cobra ni uno</b>. A tarifa de esta ficha serían <b>'
+          + Math.round(km) + ' km × ' + _tar.toFixed(2) + ' €/km = ' + _imp.toFixed(2) + ' €</b>.'
+          + ' <button onclick="ponerLineaKmAhora()" style="margin-left:8px;padding:7px 14px;background:#c0392b;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:800;cursor:pointer">Poner los kilómetros</button>';
+      }
       if (fila) {
         var ins = fila.querySelectorAll('input');
         var u = parseFloat(ins[1] && ins[1].value) || 0;
@@ -19615,6 +19662,20 @@ async function doResetWithCode() {
     } catch (e) {}
   }
   window.avisoKmChoque = avisoKmChoque;
+
+  // v476 · pone la línea de desplazamiento con la ruta REAL y la tarifa de ESTA ficha.
+  // Lo hace solo cuando Asier lo pide con el botón: los precios los decide él.
+  window.ponerLineaKmAhora = function () {
+    var km = window._kmRutaReal;
+    if (!isFinite(km) || !(km > 0)) { alert('Todavía no sé los kilómetros de este servicio. Toca una dirección para que los calcule.'); return; }
+    var gratis = (typeof KM_GRATIS_APP !== 'undefined' && KM_GRATIS_APP > 0) ? KM_GRATIS_APP : 15;
+    var tar = (typeof precioKmDeLaFicha === 'function') ? precioKmDeLaFicha(km) : 2.40;
+    if (typeof actualizarLineaKm === 'function') actualizarLineaKm(km, tar, gratis, !!window._currentPermuta);
+    if (typeof CA === 'function') CA();
+    if (typeof showSyncStatus === 'function') showSyncStatus('🚚 Desplazamiento puesto: ' + Math.round(km) + ' km × ' + tar.toFixed(2) + ' €/km', 6000);
+    try { avisoKmChoque(); } catch (e) {}
+    if (window._currentPresupuestoRef && typeof saveNow === 'function') setTimeout(saveNow, 500);
+  };
   // cada recálculo revisa el choque (la misma percha que la caja de km)
   function envuelveCA() {
     var orig = window.CA;
