@@ -1067,7 +1067,13 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v474 · backend 2.7.387), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v475 · backend 2.7.388), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#856404;margin-top:16px'>🔔 Los avisos del portal de autónomos, a la vista (v475):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En el portal del autónomo, arriba del todo, ahora sale <strong>siempre</strong> una barra que dice cómo están los avisos: activados, sin activar, bloqueados en el navegador, o que ese navegador no puede darlos. Antes solo salía un cartel en un caso muy concreto y en los demás <strong>el autónomo se quedaba sin avisos sin enterarse</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Hay un botón <strong>«Probar aviso»</strong>: manda un aviso a ese móvil en el momento. Si pita, están bien. Si no, dice <strong>por qué</strong> — que no está suscrito, que está de baja, que la suscripción caducó o que falló el servidor. Nunca un «ya está» a ciegas.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Si le sale <strong>«bloqueados»</strong>, la propia barra le explica cómo desbloquearlos: candado 🔒 al lado de la dirección → Permisos → Notificaciones → Permitir, y recargar. Y si abrió el portal <strong>dentro de WhatsApp</strong> u otra app, le dice que lo abra en Chrome o Safari — ahí los avisos no funcionan.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Acuérdate de una cosa: los avisos <strong>solo salen cuando publicas o actualizas un trabajo</strong>. Darse de alta no manda ninguno. Por eso está el botón de probar.</div></div>
 
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>🛏️ Arreglado: el canapé que no dejaba poner precio (v474):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Si abrías una ficha <strong>con fecha de antes del 9 de agosto</strong> y añadías un <strong>canapé o un colchón nuevo</strong>, la línea se quedaba <strong>sin precio y con el campo bloqueado</strong>: no había forma de escribirlo y no se podía mandar el presupuesto. Ya está arreglado.</div></div>
@@ -4141,7 +4147,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v474';
+var APP_VERSION = 'v475';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
