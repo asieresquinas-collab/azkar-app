@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="es.azkarmudanzas.widgets"
-    android:versionCode="26"
-    android:versionName="1.25">
+    android:versionCode="27"
+    android:versionName="1.26">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
 
@@ -60,6 +60,7 @@
         android:label="Azkar Widgets"
         android:icon="@drawable/azkarin"
         android:allowBackup="true"
+        android:largeHeap="true"
         android:theme="@android:style/Theme.Material.Light">
 
         <activity
@@ -143,6 +144,21 @@
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <!-- v1.26 · «Exportar chat CON archivos» (Android) no manda un zip: manda
+                 el .txt y cada foto como archivos SUELTOS, todos a la vez. Sin esto,
+                 Azkarin ni siquiera salía en la lista de Compartir para ese export —
+                 por eso las fotos no podían entrar por este camino. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <!-- v1.26 · y unas fotos sueltas del chat (una o varias) también valen -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
             </intent-filter>
         </activity>
 
