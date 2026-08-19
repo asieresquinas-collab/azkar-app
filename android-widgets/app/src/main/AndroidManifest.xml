@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="es.azkarmudanzas.widgets"
-    android:versionCode="27"
-    android:versionName="1.26">
+    android:versionCode="28"
+    android:versionName="1.27">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
 
@@ -153,6 +153,12 @@
                 <action android:name="android.intent.action.SEND_MULTIPLE" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="*/*" />
+            </intent-filter>
+            <!-- v1.27 · un PDF suelto (un presupuesto, un justificante) también vale -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/pdf" />
             </intent-filter>
             <!-- v1.26 · y unas fotos sueltas del chat (una o varias) también valen -->
             <intent-filter>

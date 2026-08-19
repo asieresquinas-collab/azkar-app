@@ -75,6 +75,13 @@ public class CompartirActivity extends Activity {
     private int _bytesFotos = 0;
     private int _fotosVistas = 0;   // cuántas imágenes VENÍAN (aunque alguna no quepa)
 
+    // v1.27 · los PDFs que van en el chat (presupuestos mandados, justificantes del
+    // cliente): Asier, 19-ago: «quiero que se vea lo que se ha mandado». Van aparte
+    // de las fotos y el servidor los guarda en la carpeta del cliente como WA_<nombre>.
+    private static final int MAX_DOCS = 10;
+    private final JSONArray _docs = new JSONArray();
+    private int _docsVistos = 0;
+
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -124,11 +131,15 @@ public class CompartirActivity extends Activity {
                                 if (nombreArchivo.isEmpty()) nombreArchivo = nombre;
                             }
                             fotosDentroDelZip(datos);   // v1.26: las fotos del zip del iPhone
+                            docsDentroDelZip(datos);    // v1.27: y los PDFs del chat (presupuestos, justificantes)
                         } else {
                             String mime = mimeDeImagen(datos);
                             if (mime != null) {
                                 _fotosVistas++;
                                 anadirFoto(nombre, datos, mime);
+                            } else if (esPdf(datos, nombre)) {
+                                _docsVistos++;
+                                anadirDoc(nombre, datos);
                             } else if (pareceTexto(datos, nombre) && texto.trim().isEmpty()) {
                                 texto = new String(datos, StandardCharsets.UTF_8);
                                 if (nombreArchivo.isEmpty()) nombreArchivo = nombre;
@@ -161,7 +172,8 @@ public class CompartirActivity extends Activity {
                     _textoPendiente = texto;
                     _nombreArchivo = nombreArchivo;
 
-                    if (_fotos.length() > 0) aviso("Mandando la conversación y " + _fotos.length() + " foto(s)…");
+                    if (_fotos.length() > 0 || _docs.length() > 0) aviso("Mandando la conversación con "
+                            + _fotos.length() + " foto(s) y " + _docs.length() + " PDF(s)…");
                     mandar(texto, nombreArchivo, null);
                 } catch (Exception e) {
                     fin("No se ha podido guardar: " + e.getMessage());
@@ -214,13 +226,14 @@ public class CompartirActivity extends Activity {
             // v1.26: subir fotos y que el servidor las coloque en Drive lleva su tiempo.
             // Con los 15 s de siempre, el móvil colgaría ANTES de que el servidor acabe
             // y diría «no se ha podido» con todo ya guardado. Se espera hasta 4 minutos.
-            if (_fotos.length() > 0) { c.setConnectTimeout(20000); c.setReadTimeout(240000); }
+            if (_fotos.length() > 0 || _docs.length() > 0) { c.setConnectTimeout(20000); c.setReadTimeout(240000); }
             c.setDoOutput(true);
             JSONObject cuerpo = new JSONObject();
             cuerpo.put("texto", texto);
             cuerpo.put("filename", archivo);
             if (contacto != null && !contacto.isEmpty()) cuerpo.put("contacto", contacto);
             if (_fotos.length() > 0) cuerpo.put("fotos", _fotos);
+            if (_docs.length() > 0) cuerpo.put("documentos", _docs);
             OutputStream os = c.getOutputStream();
             os.write(cuerpo.toString().getBytes(StandardCharsets.UTF_8));
             os.close();
@@ -242,6 +255,7 @@ public class CompartirActivity extends Activity {
                     + " (" + n + " mensajes)"
                     + (ref == null || ref.isEmpty() || "null".equals(ref) ? " — sin ficha que le cuadre" : " → ficha " + ref);
             msg += trozoDeLasFotos(j);
+            msg += trozoDeLosDocs(j);
             if (j.optBoolean("suelto", false)) msg += ". Ojo: venía sin fechas, así que sé lo que pone pero no a qué hora.";
             fin(msg);
         } catch (Exception e) { fin("No se ha podido guardar: " + e.getMessage()); }
@@ -269,6 +283,71 @@ public class CompartirActivity extends Activity {
         }
         if (_fotosVistas > mandadas) s += " · " + (_fotosVistas - mandadas) + " se quedaron fuera por tamaño";
         return s;
+    }
+
+    /** v1.27 · Lo que se dice de los PDFs del chat, sin mentir. */
+    private String trozoDeLosDocs(JSONObject j) {
+        int mandados = _docs.length();
+        if (mandados == 0 && _docsVistos == 0) return "";
+        int guardados = j.optInt("docs_guardados", -1);
+        String s;
+        if (guardados >= 0) {
+            if (guardados > 0) s = " · " + guardados + " PDF(s) del chat guardados en su carpeta";
+            else {
+                String err = j.optString("docs_error", "");
+                s = " · ⚠️ los " + mandados + " PDF(s) NO se han guardado" + (err.isEmpty() || "null".equals(err) ? "" : " (" + err + ")");
+            }
+        } else {
+            s = " · ⚠️ los " + mandados + " PDF(s) NO han entrado: el servidor aún no sabe guardarlos (falta actualizarlo)";
+        }
+        if (_docsVistos > mandados) s += " · " + (_docsVistos - mandados) + " PDF(s) se quedaron fuera por tamaño";
+        return s;
+    }
+
+    /** v1.27 · Un PDF se conoce por dentro (%PDF) o por el nombre. */
+    private boolean esPdf(byte[] d, String nombre) {
+        if (d != null && d.length > 4 && d[0] == 0x25 && d[1] == 0x50 && d[2] == 0x44 && d[3] == 0x46) return true;
+        return nombre != null && nombre.toLowerCase().endsWith(".pdf");
+    }
+
+    /** v1.27 · Meter un PDF en el paquete, con los mismos topes de siempre. */
+    private void anadirDoc(String nombre, byte[] datos) {
+        try {
+            if (_docs.length() >= MAX_DOCS) return;
+            if (datos.length > MAX_BYTES_FOTO) return;
+            if (_bytesFotos + datos.length > MAX_BYTES_TOTAL) return;
+            JSONObject d = new JSONObject();
+            d.put("nombre", (nombre == null || nombre.isEmpty()) ? ("documento-" + (_docs.length() + 1) + ".pdf") : nombre);
+            d.put("base64", android.util.Base64.encodeToString(datos, android.util.Base64.NO_WRAP));
+            _docs.put(d);
+            _bytesFotos += datos.length;
+        } catch (Exception e) { /* un pdf que no entra no rompe el resto */ }
+    }
+
+    /** v1.27 · Y del zip del iPhone, los PDFs (presupuestos, justificantes). */
+    private void docsDentroDelZip(byte[] datos) {
+        try {
+            ZipInputStream z = new ZipInputStream(new java.io.ByteArrayInputStream(datos));
+            ZipEntry e;
+            while ((e = z.getNextEntry()) != null) {
+                String nombre = e.getName() == null ? "" : e.getName();
+                if (!nombre.toLowerCase().endsWith(".pdf")) continue;
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                int n, total = 0;
+                boolean pasado = false;
+                while ((n = z.read(buf)) > 0) {
+                    bos.write(buf, 0, n);
+                    total += n;
+                    if (total > MAX_BYTES_FOTO) { pasado = true; break; }
+                }
+                _docsVistos++;
+                if (pasado || bos.size() == 0) continue;
+                int barra = nombre.lastIndexOf('/');
+                anadirDoc(barra >= 0 ? nombre.substring(barra + 1) : nombre, bos.toByteArray());
+            }
+            z.close();
+        } catch (Exception ex) { /* un pdf ilegible no tumba el envío */ }
     }
 
     // ── leer el archivo que nos comparten ────────────────────────────────────
