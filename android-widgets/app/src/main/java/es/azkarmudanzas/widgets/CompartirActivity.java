@@ -135,9 +135,25 @@ public class CompartirActivity extends Activity {
                     }
 
                     for (Uri uri : uris) {
+                        // v1.29 · ANTES de tragarse el archivo, mirar cuánto pesa y qué es.
+                        // Un vídeo de cien megas leído entero dejaba el móvil sin memoria y
+                        // la pantalla moría SIN DECIR NADA — Asier compartía y no llegaba ni
+                        // el texto. Lo que no cabe se salta (y CONSTA), y el resto sigue.
+                        String nombre = nombreDe(uri);
+                        long peso = pesoDe(uri);
+                        String tipo = null;
+                        try { tipo = getContentResolver().getType(uri); } catch (Exception eT) { }
+                        boolean pintaVideo = (tipo != null && tipo.startsWith("video/"))
+                                || (nombre != null && nombre.toLowerCase().matches(".*\\.(mp4|3gp|mov)$"));
+                        if (pintaVideo && peso > MAX_BYTES_VIDEO) { _videosVistos++; continue; }
+                        if (peso > 40L * 1024 * 1024) {
+                            if (tipo != null && tipo.startsWith("image/")) _fotosVistas++;
+                            else if (tipo != null && tipo.contains("pdf")) _docsVistos++;
+                            else if (pintaVideo) _videosVistos++;
+                            continue;
+                        }
                         byte[] datos = leerUri(uri);
                         if (datos == null || datos.length == 0) continue;
-                        String nombre = nombreDe(uri);
                         // El .zip se reconoce por dentro (empieza por «PK»), no por el
                         // nombre: muchas veces el nombre no llega o llega sin extensión.
                         boolean esZip = datos.length > 4 && datos[0] == 0x50 && datos[1] == 0x4B;
@@ -182,8 +198,11 @@ public class CompartirActivity extends Activity {
                     }
                     // v1.26: fotos sí pero texto no (compartir solo unas fotos del chat).
                     // No se tira: se manda igual, diciendo lo que es.
-                    if ((texto == null || texto.trim().isEmpty()) && (_fotos.length() > 0 || _videos.length() > 0)) {
-                        texto = "(Asier ha compartido " + _fotos.length() + " foto(s) y " + _videos.length() + " vídeo(s) del chat, sin texto)";
+                    // v1.29: y también los PDFs SOLOS (el justificante de una reserva, un
+                    // presupuesto). Antes, compartir solo un PDF moría con «No he podido
+                    // leer la conversación» — el manifest lo aceptaba pero esto lo tiraba.
+                    if ((texto == null || texto.trim().isEmpty()) && (_fotos.length() > 0 || _videos.length() > 0 || _docs.length() > 0)) {
+                        texto = "(Asier ha compartido " + _fotos.length() + " foto(s), " + _docs.length() + " PDF(s) y " + _videos.length() + " vídeo(s) del chat, sin texto)";
                     }
 
                     if (texto == null || texto.trim().isEmpty()) { fin("No he podido leer la conversación. Prueba con «Exportar chat»."); return; }
@@ -195,8 +214,11 @@ public class CompartirActivity extends Activity {
                     if (_fotos.length() > 0 || _docs.length() > 0 || _videos.length() > 0) aviso("Mandando la conversación con "
                             + _fotos.length() + " foto(s), " + _docs.length() + " PDF(s) y " + _videos.length() + " vídeo(s)…");
                     mandar(texto, nombreArchivo, null);
-                } catch (Exception e) {
-                    fin("No se ha podido guardar: " + e.getMessage());
+                } catch (Throwable e) {
+                    // v1.29: Throwable, no Exception — si el móvil se queda sin memoria
+                    // (OutOfMemoryError) esto era lo único que podía avisar, y no saltaba:
+                    // la pantalla moría en silencio y Asier creía que había compartido.
+                    fin("No se ha podido guardar: " + e.getClass().getSimpleName() + (e.getMessage() != null ? " · " + e.getMessage() : ""));
                 }
             }
         }).start();
@@ -541,6 +563,21 @@ public class CompartirActivity extends Activity {
             _fotos.put(f);
             _bytesFotos += datos.length;
         } catch (Exception e) { /* una foto que no entra no rompe el resto */ }
+    }
+
+    /** v1.29 · Cuánto pesa el archivo, SIN leerlo (para saltarse los que no caben). */
+    private long pesoDe(Uri uri) {
+        try {
+            android.database.Cursor cur = getContentResolver().query(uri, null, null, null, null);
+            if (cur != null) {
+                int i = cur.getColumnIndex(android.provider.OpenableColumns.SIZE);
+                long t = -1;
+                if (i >= 0 && cur.moveToFirst() && !cur.isNull(i)) t = cur.getLong(i);
+                cur.close();
+                return t;
+            }
+        } catch (Exception e) { /* sin peso: se lee con el tope de siempre */ }
+        return -1;
     }
 
     private String nombreDe(Uri uri) {
