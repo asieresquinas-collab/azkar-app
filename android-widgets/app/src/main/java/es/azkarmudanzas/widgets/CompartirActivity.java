@@ -56,6 +56,14 @@ import java.util.zip.ZipEntry;
  *  el móvil ni el servidor: 30 fotos como mucho, ninguna de más de 6 MB, y no más
  *  de 24 MB en total. El aviso final dice LA VERDAD: cuántas fotos venían, cuántas
  *  se han guardado, y si el servidor todavía no sabe guardarlas, también.
+ *
+ *  ── v1.28 · Y LOS VÍDEOS (Asier, 19-ago-2026) ────────────────────────────────
+ *  «necesito que también pueda entender los vídeos». El cliente graba la habitación
+ *  con los muebles y lo manda por WhatsApp: ese vídeo vale tanto como las fotos.
+ *  Ahora viajan también (dos como mucho, de hasta 12 MB cada uno — más gordos no
+ *  los puede mirar el motor), el servidor los guarda en la carpeta del cliente
+ *  (backend 2.7.399) y Azkarin puede VERLOS para sacar el inventario. El tope
+ *  total sube a 32 MB para que quepan vídeos y fotos sin pasarse del servidor.
  * ══════════════════════════════════════════════════════════════════════════════
  */
 public class CompartirActivity extends Activity {
@@ -70,7 +78,7 @@ public class CompartirActivity extends Activity {
     // v1.26 · las fotos que van con la conversación (se reusan si hay que reenviar)
     private static final int MAX_FOTOS = 30;
     private static final int MAX_BYTES_FOTO = 6 * 1024 * 1024;    // 6 MB por foto
-    private static final int MAX_BYTES_TOTAL = 24 * 1024 * 1024;  // 24 MB entre todas
+    private static final int MAX_BYTES_TOTAL = 32 * 1024 * 1024;  // v1.28: 32 MB entre todo (fotos+PDFs+vídeos; en base64 abulta un tercio más y el servidor corta en 50)
     private final JSONArray _fotos = new JSONArray();
     private int _bytesFotos = 0;
     private int _fotosVistas = 0;   // cuántas imágenes VENÍAN (aunque alguna no quepa)
@@ -81,6 +89,15 @@ public class CompartirActivity extends Activity {
     private static final int MAX_DOCS = 10;
     private final JSONArray _docs = new JSONArray();
     private int _docsVistos = 0;
+
+    // v1.28 · los vídeos del chat (el cliente grabando la habitación con los muebles):
+    // Asier, 19-ago: «necesito que también pueda entender los vídeos». Dos como mucho
+    // y de hasta 12 MB cada uno — más gordos, el motor no los puede mirar y se
+    // guardarían para nada. El servidor los pone en la carpeta como WA_<nombre>.
+    private static final int MAX_VIDEOS = 2;
+    private static final int MAX_BYTES_VIDEO = 12 * 1024 * 1024;
+    private final JSONArray _videos = new JSONArray();
+    private int _videosVistos = 0;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -132,6 +149,7 @@ public class CompartirActivity extends Activity {
                             }
                             fotosDentroDelZip(datos);   // v1.26: las fotos del zip del iPhone
                             docsDentroDelZip(datos);    // v1.27: y los PDFs del chat (presupuestos, justificantes)
+                            videosDentroDelZip(datos);  // v1.28: y los vídeos del chat
                         } else {
                             String mime = mimeDeImagen(datos);
                             if (mime != null) {
@@ -140,13 +158,15 @@ public class CompartirActivity extends Activity {
                             } else if (esPdf(datos, nombre)) {
                                 _docsVistos++;
                                 anadirDoc(nombre, datos);
+                            } else if (esVideo(datos, nombre)) {
+                                _videosVistos++;
+                                anadirVideo(nombre, datos);
                             } else if (pareceTexto(datos, nombre) && texto.trim().isEmpty()) {
                                 texto = new String(datos, StandardCharsets.UTF_8);
                                 if (nombreArchivo.isEmpty()) nombreArchivo = nombre;
                             }
-                            // lo que no es ni foto ni texto (audios, vídeos, pdf) se queda
-                            // en el móvil: el servidor solo guarda fotos, y decir otra cosa
-                            // sería mentir.
+                            // lo que no es foto, PDF, vídeo ni texto (audios, contactos…)
+                            // se queda en el móvil: decir otra cosa sería mentir.
                         }
                     }
 
@@ -162,8 +182,8 @@ public class CompartirActivity extends Activity {
                     }
                     // v1.26: fotos sí pero texto no (compartir solo unas fotos del chat).
                     // No se tira: se manda igual, diciendo lo que es.
-                    if ((texto == null || texto.trim().isEmpty()) && _fotos.length() > 0) {
-                        texto = "(Asier ha compartido " + _fotos.length() + " foto(s) del chat, sin texto)";
+                    if ((texto == null || texto.trim().isEmpty()) && (_fotos.length() > 0 || _videos.length() > 0)) {
+                        texto = "(Asier ha compartido " + _fotos.length() + " foto(s) y " + _videos.length() + " vídeo(s) del chat, sin texto)";
                     }
 
                     if (texto == null || texto.trim().isEmpty()) { fin("No he podido leer la conversación. Prueba con «Exportar chat»."); return; }
@@ -172,8 +192,8 @@ public class CompartirActivity extends Activity {
                     _textoPendiente = texto;
                     _nombreArchivo = nombreArchivo;
 
-                    if (_fotos.length() > 0 || _docs.length() > 0) aviso("Mandando la conversación con "
-                            + _fotos.length() + " foto(s) y " + _docs.length() + " PDF(s)…");
+                    if (_fotos.length() > 0 || _docs.length() > 0 || _videos.length() > 0) aviso("Mandando la conversación con "
+                            + _fotos.length() + " foto(s), " + _docs.length() + " PDF(s) y " + _videos.length() + " vídeo(s)…");
                     mandar(texto, nombreArchivo, null);
                 } catch (Exception e) {
                     fin("No se ha podido guardar: " + e.getMessage());
@@ -226,7 +246,7 @@ public class CompartirActivity extends Activity {
             // v1.26: subir fotos y que el servidor las coloque en Drive lleva su tiempo.
             // Con los 15 s de siempre, el móvil colgaría ANTES de que el servidor acabe
             // y diría «no se ha podido» con todo ya guardado. Se espera hasta 4 minutos.
-            if (_fotos.length() > 0 || _docs.length() > 0) { c.setConnectTimeout(20000); c.setReadTimeout(240000); }
+            if (_fotos.length() > 0 || _docs.length() > 0 || _videos.length() > 0) { c.setConnectTimeout(20000); c.setReadTimeout(240000); }
             c.setDoOutput(true);
             JSONObject cuerpo = new JSONObject();
             cuerpo.put("texto", texto);
@@ -234,6 +254,7 @@ public class CompartirActivity extends Activity {
             if (contacto != null && !contacto.isEmpty()) cuerpo.put("contacto", contacto);
             if (_fotos.length() > 0) cuerpo.put("fotos", _fotos);
             if (_docs.length() > 0) cuerpo.put("documentos", _docs);
+            if (_videos.length() > 0) cuerpo.put("videos", _videos);   // v1.28
             OutputStream os = c.getOutputStream();
             os.write(cuerpo.toString().getBytes(StandardCharsets.UTF_8));
             os.close();
@@ -256,6 +277,7 @@ public class CompartirActivity extends Activity {
                     + (ref == null || ref.isEmpty() || "null".equals(ref) ? " — sin ficha que le cuadre" : " → ficha " + ref);
             msg += trozoDeLasFotos(j);
             msg += trozoDeLosDocs(j);
+            msg += trozoDeLosVideos(j);
             if (j.optBoolean("suelto", false)) msg += ". Ojo: venía sin fechas, así que sé lo que pone pero no a qué hora.";
             fin(msg);
         } catch (Exception e) { fin("No se ha podido guardar: " + e.getMessage()); }
@@ -302,6 +324,74 @@ public class CompartirActivity extends Activity {
         }
         if (_docsVistos > mandados) s += " · " + (_docsVistos - mandados) + " PDF(s) se quedaron fuera por tamaño";
         return s;
+    }
+
+    /** v1.28 · Lo que se dice de los vídeos del chat, sin mentir. */
+    private String trozoDeLosVideos(JSONObject j) {
+        int mandados = _videos.length();
+        if (mandados == 0 && _videosVistos == 0) return "";
+        int guardados = j.optInt("videos_guardados", -1);
+        String s;
+        if (guardados >= 0) {
+            if (guardados > 0) s = " · " + guardados + " vídeo(s) del chat guardados en su carpeta (Azkarin puede verlos)";
+            else {
+                String err = j.optString("videos_error", "");
+                s = " · ⚠️ los " + mandados + " vídeo(s) NO se han guardado" + (err.isEmpty() || "null".equals(err) ? "" : " (" + err + ")");
+            }
+        } else {
+            s = " · ⚠️ los " + mandados + " vídeo(s) NO han entrado: el servidor aún no sabe guardarlos (falta actualizarlo)";
+        }
+        if (_videosVistos > mandados) s += " · " + (_videosVistos - mandados) + " vídeo(s) se quedaron fuera (más de dos, o de más de 12 MB)";
+        return s;
+    }
+
+    /** v1.28 · Un vídeo se conoce por dentro (la caja «ftyp» del MP4/3GP/MOV) o por el nombre. */
+    private boolean esVideo(byte[] d, String nombre) {
+        if (d != null && d.length > 12 && d[4] == 'f' && d[5] == 't' && d[6] == 'y' && d[7] == 'p') return true;
+        if (nombre == null) return false;
+        String bajo = nombre.toLowerCase();
+        return bajo.endsWith(".mp4") || bajo.endsWith(".3gp") || bajo.endsWith(".mov");
+    }
+
+    /** v1.28 · Meter un vídeo en el paquete, con sus topes (2 como mucho, 12 MB cada uno). */
+    private void anadirVideo(String nombre, byte[] datos) {
+        try {
+            if (_videos.length() >= MAX_VIDEOS) return;
+            if (datos.length > MAX_BYTES_VIDEO) return;
+            if (_bytesFotos + datos.length > MAX_BYTES_TOTAL) return;
+            JSONObject v = new JSONObject();
+            v.put("nombre", (nombre == null || nombre.isEmpty()) ? ("video-" + (_videos.length() + 1) + ".mp4") : nombre);
+            v.put("base64", android.util.Base64.encodeToString(datos, android.util.Base64.NO_WRAP));
+            _videos.put(v);
+            _bytesFotos += datos.length;
+        } catch (Exception e) { /* un vídeo que no entra no rompe el resto */ }
+    }
+
+    /** v1.28 · Y del zip del iPhone, los vídeos del chat. */
+    private void videosDentroDelZip(byte[] datos) {
+        try {
+            ZipInputStream z = new ZipInputStream(new java.io.ByteArrayInputStream(datos));
+            ZipEntry e;
+            while ((e = z.getNextEntry()) != null) {
+                String nombre = e.getName() == null ? "" : e.getName();
+                String bajo = nombre.toLowerCase();
+                if (!(bajo.endsWith(".mp4") || bajo.endsWith(".3gp") || bajo.endsWith(".mov"))) continue;
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                int n, total = 0;
+                boolean pasado = false;
+                while ((n = z.read(buf)) > 0) {
+                    bos.write(buf, 0, n);
+                    total += n;
+                    if (total > MAX_BYTES_VIDEO) { pasado = true; break; }
+                }
+                _videosVistos++;
+                if (pasado || bos.size() == 0) continue;
+                int barra = nombre.lastIndexOf('/');
+                anadirVideo(barra >= 0 ? nombre.substring(barra + 1) : nombre, bos.toByteArray());
+            }
+            z.close();
+        } catch (Exception ex) { /* un vídeo ilegible no tumba el envío */ }
     }
 
     /** v1.27 · Un PDF se conoce por dentro (%PDF) o por el nombre. */
@@ -361,7 +451,7 @@ public class CompartirActivity extends Activity {
             while ((leidos = is.read(buf)) > 0) {
                 bos.write(buf, 0, leidos);
                 total += leidos;
-                if (total > 8 * 1024 * 1024) break;   // 8 MB: de sobra para un chat entero
+                if (total > 40 * 1024 * 1024) break;   // v1.28: antes 8 MB, pero un vídeo del chat o un zip con vídeos abulta más — si se cortara aquí llegaría roto
             }
             is.close();
             return bos.toByteArray();
