@@ -242,7 +242,7 @@ public class CompartirActivity extends Activity {
                                 String nombre = caja.getText().toString().trim();
                                 if (nombre.isEmpty()) { fin("Sin nombre no lo puedo guardar."); return; }
                                 final String n = nombre;
-                                new Thread(new Runnable() { public void run() { mandar(_textoPendiente, _nombreArchivo, n); } }).start();
+                                new Thread(new Runnable() { public void run() { try { mandar(_textoPendiente, _nombreArchivo, n); } catch (Throwable t) { fin("No se ha podido guardar: " + t.getClass().getSimpleName()); } } }).start();
                             }
                         })
                         .setNegativeButton("Dejarlo", new android.content.DialogInterface.OnClickListener() {
@@ -270,16 +270,56 @@ public class CompartirActivity extends Activity {
             // y diría «no se ha podido» con todo ya guardado. Se espera hasta 4 minutos.
             if (_fotos.length() > 0 || _docs.length() > 0 || _videos.length() > 0) { c.setConnectTimeout(20000); c.setReadTimeout(240000); }
             c.setDoOutput(true);
-            JSONObject cuerpo = new JSONObject();
-            cuerpo.put("texto", texto);
-            cuerpo.put("filename", archivo);
-            if (contacto != null && !contacto.isEmpty()) cuerpo.put("contacto", contacto);
-            if (_fotos.length() > 0) cuerpo.put("fotos", _fotos);
-            if (_docs.length() > 0) cuerpo.put("documentos", _docs);
-            if (_videos.length() > 0) cuerpo.put("videos", _videos);   // v1.28
-            OutputStream os = c.getOutputStream();
-            os.write(cuerpo.toString().getBytes(StandardCharsets.UTF_8));
-            os.close();
+            // ── v1.30 · EL ENVÍO A CHORRO, SIN HINCHAR LA MEMORIA ────────────────
+            // Antes se montaba TODO el cuerpo en un solo texto gigante (cuerpo.toString())
+            // y encima el móvil lo guardaba entero otra vez antes de enviarlo. Con un
+            // export gordo (30 fotos + PDFs) eso podía pasar de 100 MB de golpe: el móvil
+            // se quedaba sin memoria y la pantalla MORÍA SIN DECIR NADA (Asier, 19-ago:
+            // «no me ha dicho absolutamente nada», tres veces). Ahora se escribe el JSON
+            // trozo a trozo directo a la conexión (chunked): nunca existe el texto gigante.
+            c.setChunkedStreamingMode(0);
+            android.util.JsonWriter w = new android.util.JsonWriter(new java.io.OutputStreamWriter(c.getOutputStream(), StandardCharsets.UTF_8));
+            w.beginObject();
+            w.name("texto").value(texto);
+            w.name("filename").value(archivo);
+            if (contacto != null && !contacto.isEmpty()) w.name("contacto").value(contacto);
+            if (_fotos.length() > 0) {
+                w.name("fotos"); w.beginArray();
+                for (int i = 0; i < _fotos.length(); i++) {
+                    JSONObject f = _fotos.getJSONObject(i);
+                    w.beginObject();
+                    w.name("nombre").value(f.optString("nombre"));
+                    w.name("mime").value(f.optString("mime"));
+                    w.name("base64").value(f.optString("base64"));
+                    w.endObject();
+                }
+                w.endArray();
+            }
+            if (_docs.length() > 0) {
+                w.name("documentos"); w.beginArray();
+                for (int i = 0; i < _docs.length(); i++) {
+                    JSONObject d = _docs.getJSONObject(i);
+                    w.beginObject();
+                    w.name("nombre").value(d.optString("nombre"));
+                    w.name("base64").value(d.optString("base64"));
+                    w.endObject();
+                }
+                w.endArray();
+            }
+            if (_videos.length() > 0) {
+                w.name("videos"); w.beginArray();
+                for (int i = 0; i < _videos.length(); i++) {
+                    JSONObject v = _videos.getJSONObject(i);
+                    w.beginObject();
+                    w.name("nombre").value(v.optString("nombre"));
+                    w.name("base64").value(v.optString("base64"));
+                    w.endObject();
+                }
+                w.endArray();
+            }
+            w.endObject();
+            w.flush();
+            w.close();
             int code = c.getResponseCode();
             String resp = Datos.leerTodo(code < 400 ? c.getInputStream() : c.getErrorStream());
             JSONObject j;
