@@ -1260,7 +1260,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'><strong>Botón RELACIÓN (morado):</strong> Genera un inventario editable de enseres por zonas, sin precios. Ver sección "Relación de enseres".</div></div>
       <div class='ayuda-tip'>Cada vez que generas un PDF se crea una versión nueva (_v2, _v3...) en Drive. No se sobreescriben las anteriores.</div>
       <div class='ayuda-tip'>Una copia del email se envía siempre a <strong>info@azkarmudanzas.com</strong> para que quede registro.</div>
-          <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'><strong>Enviar por WhatsApp (📄 PDF junto al teléfono):</strong> crea SIEMPRE un documento nuevo con lo de pantalla y su enlace de firma; los enlaces viejos de ese cliente quedan anulados (si el cliente abre uno, ve «Hemos actualizado su presupuesto» y no puede firmarlo).</div></div>
+          <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'><strong>Enviar por WhatsApp (📄 PDF junto al teléfono):</strong> el botón está SIEMPRE que el presupuesto tenga teléfono (desde v481 — antes a veces no salía). Al pulsarlo crea un documento nuevo con lo de pantalla y su enlace de firma; los enlaces viejos de ese cliente quedan anulados (si el cliente abre uno, ve «Hemos actualizado su presupuesto» y no puede firmarlo).</div></div>
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'><strong>Lo que va bien en el papel:</strong> la fecha en formato de aquí (01/09/2026, hora de 0 a 24), las Observaciones ENTERAS (el recuadro crece con su contenido) y los mapas como foto. Lo interno (fotos del cliente, botones, avisos) jamás sale.</div></div>
       <div class='ayuda-tip'>Cuando el cliente firma: PDF firmado a su carpeta de Drive, copia al cliente, aviso a info@, ficha marcada FIRMADA y apunte en la Libreta. El calendario NO se crea con la firma: se crea al darle a EN MARCHA (cuando llega la señal).</div>
       <div class='ayuda-tip'><strong>Oferta válida 30 días</strong> (v444): todos los presupuestos llevan la validez escrita en el aviso de abajo, con la fecha límite calculada de la fecha del presupuesto («válido hasta el 11/09/2026»). Ayuda a cerrar: pasado el plazo, precios sujetos a revisión.</div>
@@ -2714,8 +2714,12 @@ async function PA(){
       var clientTelWA = (document.getElementById('f_tel') || {}).value || '';
       var pdfLink = result.drive && result.drive.pdfProxyLink ? result.drive.pdfProxyLink : (result.drive && result.drive.webViewLink ? result.drive.webViewLink : '');
       // v271: si se creó sesión de firma, por WhatsApp se manda el enlace de FIRMA (el cliente revisa y firma)
-      var _waLink = firmaUrl || pdfLink;
-      if (clientTelWA && pdfLink) {
+      // v481: el botón se ofrece SIEMPRE que haya teléfono — antes exigía además que la
+      // respuesta trajera el enlace del PDF, y si esa pieza cojeaba (Adriana, 19-ago:
+      // «el PDF está en su carpeta pero no me sale el botón de compartir») el botón no
+      // salía con todo lo demás bien hecho. Al pulsarlo se rehace todo fresco (v438),
+      // así que no necesita el enlace de antemano.
+      if (clientTelWA) {
         _ofrecerWhatsApp(clientTelWA, clientName, number, pdfLink, firmaUrl);
       }
 
@@ -4152,7 +4156,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v480';
+var APP_VERSION = 'v481';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8089,8 +8093,10 @@ function _ofrecerWhatsApp(tel, clientName, clientNum, pdfLink, firmaUrl) {
     _whatsappClientNum = clientNum || '';
     _v237SaveWaLink(clientNum, pdfLink, clientName, firmaUrl);
   }
-  // Solo creamos el botón si hay teléfono (la lógica original)
-  if (!tel || !pdfLink) return;
+  // Solo creamos el botón si hay teléfono. v481: ya NO hace falta el enlace del PDF —
+  // al pulsar el botón se rehace el presupuesto y la firma frescos (v438), así que
+  // el botón vale igual aunque el enlace no haya llegado.
+  if (!tel) return;
   _crearBtnWAPdf();
   var btn = document.getElementById('btn-wa-pdf');
   if (btn) {
@@ -8106,12 +8112,16 @@ async function _v237TryReactivarBtnWA() {
     var ref = (document.getElementById('f_ref') || {}).value || '';
     var tel = (document.getElementById('f_tel') || {}).value || '';
     if (!ref || !tel || tel.trim().length < 6) return;
+    // v481: el botón aparece SIEMPRE que haya presupuesto abierto y teléfono — el link
+    // guardado, si lo hay, se repobla; y si no lo hay da igual, porque al pulsar el
+    // botón se rehace todo fresco (v438). Antes, sin link guardado en ESTE aparato,
+    // el botón no salía nunca (Adriana, 19-ago).
     var saved = _v237GetWaLink(ref);
-    if (!saved || !saved.link) return;
-    // Hay un link guardado y hay teléfono. Repoblar y mostrar botón.
-    _whatsappPdfLink = saved.link; _whatsappFirmaUrl = saved.firma || '';
-    _whatsappClientName = saved.name || '';
-    _whatsappClientNum = ref;
+    if (saved && saved.link) {
+      _whatsappPdfLink = saved.link; _whatsappFirmaUrl = saved.firma || '';
+      _whatsappClientName = saved.name || '';
+      _whatsappClientNum = ref;
+    }
     _crearBtnWAPdf();
     var btn = document.getElementById('btn-wa-pdf');
     if (btn) btn.style.display = 'flex';
