@@ -2266,7 +2266,7 @@ function _comercialActual(){
 
 function RF(){
   if(!confirm('¿Limpiar todos los datos del presupuesto?')) return;
-  window._kmRutaReal = null;   // v486: el km medido era del cliente anterior — fuera
+  window._kmRutaReal = null; window._kmDesdeBase = false;   // v486: el km medido era del cliente anterior — fuera
   var inputs=document.querySelectorAll('#page-presupuesto input,#page-presupuesto textarea');
   for(var i=0;i<inputs.length;i++) inputs[i].value='';
   var tb=document.getElementById('tb');
@@ -4161,7 +4161,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v486';
+var APP_VERSION = 'v487';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -7573,7 +7573,7 @@ async function loadPresupuesto(id) {
   closeMgr();
   if (typeof ST === 'function') ST('presupuesto');
   showSyncStatus('📄 Presupuesto cargado');
-  window._kmRutaReal = null;   // v486: que el aviso de km no herede la ruta del cliente ANTERIOR
+  window._kmRutaReal = null; window._kmDesdeBase = false;   // v486: que el aviso de km no herede la ruta del cliente ANTERIOR
   try { var _avKm = document.getElementById('aviso-km-choque'); if (_avKm) _avKm.remove(); } catch (e) {}
   // v237: si este cliente ya tiene PDF generado previamente, reactivar botón WA
   setTimeout(_v237TryReactivarBtnWA, 800);
@@ -19078,7 +19078,8 @@ async function doResetWithCode() {
     try {
       var rec = ((document.getElementById('f_rec') || {}).value || '').trim();
       var ent = ((document.getElementById('f_ent') || {}).value || '').trim();
-      if (!rec || !ent || window._gruaTipo) return;
+      if (window._gruaTipo) return kmDeLaGrua();   // v487: la grúa mide sus km desde la BASE
+      if (!rec || !ent) return;
       if (window._ultimaRuta && window._ultimaRuta.geom && window._ultimaRuta.geom.length > 1) {
         return pintaRutaDelServicio();     // ya está calculada, solo hay que pintarla
       }
@@ -19106,6 +19107,26 @@ async function doResetWithCode() {
       window._ultimaRuta = { geom: r.geom || [], from: a, to: b, distancia: r.metros, duracion: r.segundos, rec: rec, ent: ent };   // v454: la ruta sabe de QUIÉN es
       await pintaRutaDelServicio();
     } catch (e) { console.warn('[Ruta] al abrir:', e && e.message); }
+  }
+
+  // ══ v487 · LOS KILÓMETROS DE LA GRÚA, DESDE LA BASE ═══════════════════════
+  // Asier, 21-ago: «se cobran los kilómetros desde Arrigorriaga, que es donde
+  // está la base, hasta donde se tenga que ir; si pasan de 15 se empiezan a
+  // cobrar como siempre». En la grúa hay UNA dirección (donde se pone), así que
+  // la ruta que vale es BASE → grúa, no recogida → entrega.
+  var BASE_AZKAR = 'Polígono Industrial Martiartu, 48480 Arrigorriaga, Bizkaia';
+  async function kmDeLaGrua() {
+    try {
+      var rec = ((document.getElementById('f_rec') || {}).value || '').trim();
+      if (!rec || typeof window.geoAzkar !== 'function') return;
+      var a = await window.geoAzkar(BASE_AZKAR);
+      var b = await window.geoAzkar(window.dirParaMapa ? window.dirParaMapa(rec) : rec);
+      if (!a || !b) return;
+      var r = await rutaEntre(a, b);
+      if (!r || !isFinite(r.metros)) return;
+      window._kmDesdeBase = true;
+      try { if (window.avisoKmChoque) window.avisoKmChoque(r.metros); } catch (e) {}
+    } catch (e) { /* sin ruta: sin aviso, nunca un invento */ }
   }
 
   // El camino entre dos puntos: primero el servidor (Google si hay clave), y si no OSRM.
@@ -19647,12 +19668,17 @@ async function doResetWithCode() {
       var box = document.getElementById('distancia-box');
       var viejo = document.getElementById('aviso-km-choque');
       if (!isFinite(km) || !(km > 0) || !box) { if (viejo) viejo.remove(); return; }
-      // v486 · NI EN LAS GRÚAS NI SIN ENTREGA (Asier, 21-ago: aviso fantasma de 449 km
-      // —los del cliente ANTERIOR— en una grúa de Cruces). En un servicio de grúa hay
-      // UNA sola dirección y la salida de 190 € lo cubre: ahí no existe desplazamiento.
-      // Y sin dirección de entrega tampoco hay ruta que cobrar: fuera el cartel.
+      // v486/v487 · NI KM FANTASMA NI KM MAL MEDIDOS (Asier, 21-ago: en una grúa de
+      // Cruces salían los 449 km del cliente ANTERIOR). En la GRÚA los km SÍ se cobran
+      // — regla suya: «desde Arrigorriaga, que es donde está la base, hasta donde se
+      // tenga que ir; si pasan de 15 se cobran como siempre» — pero medidos DESDE LA
+      // BASE (kmDeLaGrua), nunca heredados de otra ficha. Sin grúa y sin dirección de
+      // entrega, no hay ruta que cobrar: fuera el cartel.
       var _entV = (document.getElementById('f_ent') || {}).value || '';
-      if (window._gruaTipo || !_entV.trim()) { if (viejo) viejo.remove(); return; }
+      if (window._gruaTipo) {
+        if (!window._kmDesdeBase) { if (viejo) viejo.remove(); return; }
+      } else if (!_entV.trim()) { if (viejo) viejo.remove(); return; }
+      var _deDonde = window._gruaTipo ? 'desde la base de Arrigorriaga hasta la grúa' : 'de recogida a entrega';
       var gratis = (typeof KM_GRATIS !== 'undefined' && KM_GRATIS > 0) ? KM_GRATIS : 15;
       var fila = filaKm(), texto = '';
       // ══════════════════════════════════════════════════════════════════════════
@@ -19670,7 +19696,7 @@ async function doResetWithCode() {
       if (!fila && km > gratis) {
         var _tar = (typeof precioKmDeLaFicha === 'function') ? precioKmDeLaFicha(km) : 2.40;
         var _imp = Math.round(km) * _tar;
-        texto = '⛔ <b>FALTA EL DESPLAZAMIENTO:</b> de recogida a entrega hay <b>' + km.toFixed(1)
+        texto = '⛔ <b>FALTA EL DESPLAZAMIENTO:</b> ' + _deDonde + ' hay <b>' + km.toFixed(1)
           + ' km</b> y el presupuesto <b>no cobra ni uno</b>. A tarifa de esta ficha serían <b>'
           + Math.round(km) + ' km × ' + _tar.toFixed(2) + ' €/km = ' + _imp.toFixed(2) + ' €</b>.'
           + ' <button onclick="ponerLineaKmAhora()" style="margin-left:8px;padding:7px 14px;background:#c0392b;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:800;cursor:pointer">Poner los kilómetros</button>';
@@ -19683,12 +19709,12 @@ async function doResetWithCode() {
         if (u > 0 && p > 0 && !esGratis) {
           if (km <= gratis) {
             texto = '⚠️ <b>LOS KILÓMETROS NO CUADRAN:</b> la línea del presupuesto cobra <b>' + u + ' km ('
-              + (u * p).toFixed(2) + ' €)</b>, pero de recogida a entrega hay <b>' + km.toFixed(1)
+              + (u * p).toFixed(2) + ' €)</b>, pero ' + _deDonde + ' hay <b>' + km.toFixed(1)
               + ' km</b> — y hasta ' + gratis + ' km <b>no se cobran</b>. Puede venir de otras direcciones de antes o de una línea puesta a mano. '
               + '<u>Revísalo ANTES de enviar</u>: toca la dirección para que recalcule, o corrige la línea.';
           } else if (Math.abs(u - km) > Math.max(2, km * 0.25)) {
             texto = '⚠️ <b>LOS KILÓMETROS NO CUADRAN:</b> la línea cobra <b>' + u + ' km (' + (u * p).toFixed(2)
-              + ' €)</b> y de recogida a entrega hay <b>' + km.toFixed(1) + ' km</b>. '
+              + ' €)</b> y ' + _deDonde + ' hay <b>' + km.toFixed(1) + ' km</b>. '
               + '<u>Revísalo ANTES de enviar</u>: toca la dirección para que recalcule, o corrige la línea.';
           }
         }
