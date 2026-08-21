@@ -4160,7 +4160,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v484';
+var APP_VERSION = 'v485';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -16317,6 +16317,16 @@ async function doResetWithCode() {
           // lanzan la app/Chrome y la página se queda donde está.
           var _esIntent = _mapsHref && _mapsHref.indexOf('intent:') === 0;
           if (_mapsHref) _nav += '<a href="' + _mapsHref + '"' + (_esIntent ? '' : ' target="_blank" rel="noopener"') + ' style="display:inline-block;margin:6px 0 0 0;padding:9px 15px;background:#2376C5;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">🗺️ Ir con Google Maps' + (data.datos.maps_url_intent ? ' (todas las paradas)' : '') + '</a>';
+          // v485: los TRAMOS de uno en uno — enlaces de un solo destino, que abren la
+          // app de Maps a la primera en cualquier móvil. Al salir se toca el Tramo 1,
+          // tras la primera entrega el Tramo 2, y así hasta el final.
+          if (Array.isArray(data.datos.tramos)) {
+            for (var _ti = 0; _ti < data.datos.tramos.length; _ti++) {
+              var _tr = data.datos.tramos[_ti] || {};
+              if (!_tr.url) continue;
+              _nav += '<br><a href="' + _tr.url + '" target="_blank" rel="noopener" style="display:inline-block;margin:6px 0 0 0;padding:8px 13px;background:#1B4F8A;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;font-size:13px;">🚚 ' + String(_tr.label || ('Tramo ' + (_ti + 1))).replace(/</g, '&lt;') + '</a>';
+            }
+          }
           addMsg('bot', _nav);
         }
         // v455: Botón de ALARMA (poner_alarma) — abre el reloj del móvil con la
