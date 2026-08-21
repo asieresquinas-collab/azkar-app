@@ -4160,7 +4160,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v483';
+var APP_VERSION = 'v484';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -16311,7 +16311,12 @@ async function doResetWithCode() {
           // app de Maps, si intercepta el enlace directo, se come las paradas intermedias
           // y deja solo el primer tramo. Desde el Maps web, «Iniciar» pasa la ruta entera.
           var _mapsHref = (data.datos.maps_url_intent && /Android/i.test(navigator.userAgent)) ? data.datos.maps_url_intent : data.datos.maps_url;
-          if (_mapsHref) _nav += '<a href="' + _mapsHref + '" target="_blank" rel="noopener" style="display:inline-block;margin:6px 0 0 0;padding:9px 15px;background:#2376C5;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">🗺️ Ir con Google Maps' + (data.datos.maps_url_intent ? ' (todas las paradas)' : '') + '</a>';
+          // v484: los enlaces intent:// NO pueden ir con target="_blank" — Chrome los
+          // bloquea EN SILENCIO en pestaña nueva (Asier, 21-ago 9:10: «no me abre el
+          // enlace»). En la misma pestaña funcionan (igual que el botón del WhatsApp):
+          // lanzan la app/Chrome y la página se queda donde está.
+          var _esIntent = _mapsHref && _mapsHref.indexOf('intent:') === 0;
+          if (_mapsHref) _nav += '<a href="' + _mapsHref + '"' + (_esIntent ? '' : ' target="_blank" rel="noopener"') + ' style="display:inline-block;margin:6px 0 0 0;padding:9px 15px;background:#2376C5;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">🗺️ Ir con Google Maps' + (data.datos.maps_url_intent ? ' (todas las paradas)' : '') + '</a>';
           addMsg('bot', _nav);
         }
         // v455: Botón de ALARMA (poner_alarma) — abre el reloj del móvil con la
