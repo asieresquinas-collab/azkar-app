@@ -2266,6 +2266,7 @@ function _comercialActual(){
 
 function RF(){
   if(!confirm('¿Limpiar todos los datos del presupuesto?')) return;
+  window._kmRutaReal = null;   // v486: el km medido era del cliente anterior — fuera
   var inputs=document.querySelectorAll('#page-presupuesto input,#page-presupuesto textarea');
   for(var i=0;i<inputs.length;i++) inputs[i].value='';
   var tb=document.getElementById('tb');
@@ -4160,7 +4161,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v485';
+var APP_VERSION = 'v486';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -7572,6 +7573,8 @@ async function loadPresupuesto(id) {
   closeMgr();
   if (typeof ST === 'function') ST('presupuesto');
   showSyncStatus('📄 Presupuesto cargado');
+  window._kmRutaReal = null;   // v486: que el aviso de km no herede la ruta del cliente ANTERIOR
+  try { var _avKm = document.getElementById('aviso-km-choque'); if (_avKm) _avKm.remove(); } catch (e) {}
   // v237: si este cliente ya tiene PDF generado previamente, reactivar botón WA
   setTimeout(_v237TryReactivarBtnWA, 800);
 }
@@ -19644,6 +19647,12 @@ async function doResetWithCode() {
       var box = document.getElementById('distancia-box');
       var viejo = document.getElementById('aviso-km-choque');
       if (!isFinite(km) || !(km > 0) || !box) { if (viejo) viejo.remove(); return; }
+      // v486 · NI EN LAS GRÚAS NI SIN ENTREGA (Asier, 21-ago: aviso fantasma de 449 km
+      // —los del cliente ANTERIOR— en una grúa de Cruces). En un servicio de grúa hay
+      // UNA sola dirección y la salida de 190 € lo cubre: ahí no existe desplazamiento.
+      // Y sin dirección de entrega tampoco hay ruta que cobrar: fuera el cartel.
+      var _entV = (document.getElementById('f_ent') || {}).value || '';
+      if (window._gruaTipo || !_entV.trim()) { if (viejo) viejo.remove(); return; }
       var gratis = (typeof KM_GRATIS !== 'undefined' && KM_GRATIS > 0) ? KM_GRATIS : 15;
       var fila = filaKm(), texto = '';
       // ══════════════════════════════════════════════════════════════════════════
