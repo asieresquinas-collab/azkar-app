@@ -4161,7 +4161,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v487';
+var APP_VERSION = 'v488';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -19674,10 +19674,10 @@ async function doResetWithCode() {
       // tenga que ir; si pasan de 15 se cobran como siempre» — pero medidos DESDE LA
       // BASE (kmDeLaGrua), nunca heredados de otra ficha. Sin grúa y sin dirección de
       // entrega, no hay ruta que cobrar: fuera el cartel.
-      var _entV = (document.getElementById('f_ent') || {}).value || '';
-      if (window._gruaTipo) {
-        if (!window._kmDesdeBase) { if (viejo) viejo.remove(); return; }
-      } else if (!_entV.trim()) { if (viejo) viejo.remove(); return; }
+      // v488: el candado de «sin entrega no hay ruta» sobraba y tapaba el cartel de
+      // verdad (el km fantasma ya se corta reseteando la medida al cambiar de ficha).
+      // Aquí solo queda lo de la grúa: sin medir DESDE LA BASE no se dice nada.
+      if (window._gruaTipo && !window._kmDesdeBase) { if (viejo) viejo.remove(); return; }
       var _deDonde = window._gruaTipo ? 'desde la base de Arrigorriaga hasta la grúa' : 'de recogida a entrega';
       var gratis = (typeof KM_GRATIS !== 'undefined' && KM_GRATIS > 0) ? KM_GRATIS : 15;
       var fila = filaKm(), texto = '';
