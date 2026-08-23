@@ -1067,13 +1067,15 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v491 · backend 2.7.414), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v492 · backend 2.7.416), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🧾 YA LEO TUS FACTURAS DE VERDAD (STEL Order) (backend 2.7.414):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Pregúntame en el chat <strong>«¿cuánto llevamos facturado este mes?»</strong> o <strong>«¿cuánto IVA toca pagar?»</strong> y te lo saco de <strong>STEL Order</strong>, de las facturas de verdad: base, IVA y total. 🛑 Nunca sumando presupuestos — un presupuesto NO es una factura.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Si alguna factura no he podido leerla, <strong>te lo digo</strong>. Un total que esconde lo que falta es un total mentiroso, y esto es dinero y es Hacienda.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Dime <strong>«haz el sondeo de las facturas»</strong> y leo cuarenta de las tuyas para aprender cómo son: series, numeración, IVA, y <strong>lo que no me cuadra</strong>. Ese informe no lleva nombres ni NIF de clientes.</div></div>
-      <div class='ayuda-warn'>🛑 <strong>De momento solo MIRO</strong>: todavía no puedo crear ni cambiar facturas. Y cuando pueda, el <strong>número lo pondrá siempre StelOrder</strong>, por orden — yo no me lo invento nunca, ni te digo cuál será el siguiente. Una factura mal <strong>no se borra: se rectifica</strong>.</div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Dime <strong>«¿está facturado el 6557?»</strong> y te digo qué facturas hay de esa ficha, si el <strong>nombre y el CIF</strong> cuadran con la ficha de la app, si falta la segunda factura — y <strong>lo que no he podido comprobar</strong>. (Tus facturas llevan el número de ficha debajo del título; por ahí se atan las dos cosas.)</div></div>
+      <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Dime <strong>«prepárame la factura de la reserva del 6557»</strong> (o «la del servicio») y te <strong>monto el borrador</strong>: cliente, CIF, importe, la línea que toca (reserva / mudanza / grúa), transferencia, al contado, IVA veintiuno. Si <strong>falta algo</strong> —el CIF, los conceptos, la señal— <strong>no monto nada: te lo pido</strong>.</div></div>
+      <div class='ayuda-warn'>🛑 <strong>Un borrador NO es una factura.</strong> No se crea nada en StelOrder ni se le manda nada al cliente hasta que tú lo revises y digas que sí. El <strong>número lo pone siempre StelOrder</strong>, por orden — yo no me lo invento nunca. Y una factura emitida <strong>no se borra: se rectifica</strong>; por eso prefiero pedirte un dato antes que tener que hacer una rectificativa después.</div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📬 ME ACUERDO DE LO QUE PASA EN EL CORREO DE info@ (backend 2.7.412):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Las respuestas de las empresas a las que la automatización les ofrece nuestros servicios llegan a <strong>info@azkarmudanzas.com</strong>. Cada <strong>diez minutos</strong> miro ese buzón y cada correo nuevo lo <strong>leo, lo entiendo y lo apunto</strong>: quién escribe, de qué va en una línea, de qué tipo es y —si es respuesta a nuestra oferta— si han dicho que <strong>sí</strong>, que <strong>no</strong> o que ya veremos.</div></div>
@@ -4174,7 +4176,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v491';
+var APP_VERSION = 'v492';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
