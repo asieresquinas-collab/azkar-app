@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v512 · backend 2.7.437), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v513 · backend 2.7.438), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1075,6 +1075,17 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>📦 LOS METROS CÚBICOS, SUMADOS DE LA FICHA (backend 2.7.438):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Pregúntame <strong>«¿cuántos metros cúbicos hay a Guareña?»</strong> o <strong>«¿cuánto ocupa la mudanza del 6546?»</strong> y ya no te los digo a ojo: <strong>sumo los muebles de la ficha uno a uno</strong>, y te los doy <strong>parada por parada</strong> (las líneas «A GUAREÑA:» que pones tú en el presupuesto).</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>🛑 <strong>Y lo que no sé medir, te lo digo con su nombre.</strong> Por ejemplo «cama estructura» o «maceta + pie» no están en la tabla: entonces te digo el total de lo que sé sumar <strong>y que el de verdad es más</strong>. Un total redondo que se ha comido tres muebles es peor que no darte ninguno.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Para arreglarlo, <strong>me lo enseñas tú una vez</strong>: «una cama estructura ocupa cero coma seis». Lo apunto y ya cuenta en <strong>todas</strong> las fichas.</div></div>
+      <div class='ayuda-tip'>De <strong>KILOS</strong> no tengo tabla, y ya no me los invento: si me los preguntas te digo que no los sé y te doy los metros cúbicos. Y no doy por hecho lo que aguanta un vehículo — el camión lleva <strong>400 kg</strong>.</div>
+
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>📁 LOS INFORMES EN PDF, YA EN LA CARPETA DEL CLIENTE (backend 2.7.438):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando te haga un informe en PDF de un cliente (un plan de carga, un estudio del servicio), dime <strong>«guárdamelo en la carpeta del cliente»</strong> y ahora <strong>se guarda de verdad</strong>, con el número delante: <strong>6546_Plan_de_carga.pdf</strong>. Antes solo sabía mandártelo por correo — y te decía que sí sin haberlo hecho.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Busca la carpeta en las cuatro fases (Captación, En Marcha, Pagado y Pagado Anual). 🛑 Si hay <strong>dos carpetas</strong> que puedan ser, <strong>para y no guarda nada</strong>, antes que meterlo en la del cliente equivocado — y te lo dice.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y si por lo que sea <strong>no se puede guardar</strong>, te lo digo claro: «<strong>EN LA CARPETA NO ESTÁ</strong>». Se acabó el «hecho ✅» cuando no está hecho.</div></div>
 
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>🗺️ ARREGLADO DE VERDAD: el botón de la ruta entera no abría (v512 · backend 2.7.437):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En una ruta con varias paradas, el botón de arriba —<strong>«Ir con Google Maps»</strong>— no abría, y se veía de <strong>otro azul</strong>. Tenías buen ojo. Llevaba un enlace especial de Android que <strong>dentro de la app se queda muerto</strong>; los de los <strong>tramos</strong> sí abren, porque son enlaces normales.</div></div>
@@ -4287,7 +4298,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v512';
+var APP_VERSION = 'v513';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
