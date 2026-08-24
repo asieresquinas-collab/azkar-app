@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v511 · backend 2.7.436), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v512 · backend 2.7.437), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1076,9 +1076,11 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
 
-      <p style='font-weight:700;color:#c0392b;margin-top:16px'>🗺️ ARREGLADO: el botón de la ruta entera no abría (v511):</p>
-      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En una ruta con varias paradas, el botón de arriba —<strong>«Ir con Google Maps»</strong>— no abría, y se veía de <strong>otro azul</strong>. Tenías buen ojo: era por eso. Llevaba un enlace especial de Android que <strong>dentro de la app no funciona</strong>; los de los <strong>tramos</strong> sí, porque son enlaces normales.</div></div>
-      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ya es un enlace <strong>normal</strong>, igual que los tramos, así que abre. Y si alguna vez Google Maps se come las paradas de en medio, para eso siguen estando los <strong>tramos de uno en uno</strong>, que no fallan nunca.</div></div>
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>🗺️ ARREGLADO DE VERDAD: el botón de la ruta entera no abría (v512 · backend 2.7.437):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En una ruta con varias paradas, el botón de arriba —<strong>«Ir con Google Maps»</strong>— no abría, y se veía de <strong>otro azul</strong>. Tenías buen ojo. Llevaba un enlace especial de Android que <strong>dentro de la app se queda muerto</strong>; los de los <strong>tramos</strong> sí abren, porque son enlaces normales.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>La primera vez lo arreglé solo en la app, y como el móvil todavía tenía guardada la versión de antes, para ti <strong>seguía sin funcionar</strong>. Ahora lo he quitado también <strong>por el lado del servidor</strong>: ese enlace raro ya no se manda. Así arregla el botón <strong>aunque el móvil tarde en ponerse al día</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y de propina: al tocarlo, si el navegador no abre la ventana nueva, el mapa se abre <strong>en la misma pantalla</strong>. Vuelves con el botón de atrás. Nunca más un toque que no hace nada.</div></div>
+      <div class='ayuda-tip'>Si alguna vez Google Maps se come una parada de en medio, para eso siguen estando los <strong>tramos de uno en uno</strong>, que no fallan nunca.</div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🔢 TU CUPO DE CONSULTAS, CONTADO (backend 2.7.436):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El plan <strong>Lite</strong> de STEL Order deja <strong>300 consultas al día</strong> y 60 por minuto (antes te dije 200: me equivoqué, lo he mirado en el manual del programa).</div></div>
@@ -4285,7 +4287,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v511';
+var APP_VERSION = 'v512';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -16470,9 +16472,9 @@ async function doResetWithCode() {
           var _dst = String(data.datos.destino || 'el destino').replace(/</g, '&lt;');
           var _nav = '🧭 <b>Ruta a ' + _dst + '</b><br>';
           if (data.datos.sygic_url) _nav += '<a href="' + data.datos.sygic_url + '" style="display:inline-block;margin:6px 6px 0 0;padding:9px 15px;background:#1a7a3f;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">🚚 Ir con Sygic (camión)</a>';
-          // v483: con VARIAS paradas, en Android se abre por Chrome (maps_url_intent) — la
-          // app de Maps, si intercepta el enlace directo, se come las paradas intermedias
-          // y deja solo el primer tramo. Desde el Maps web, «Iniciar» pasa la ruta entera.
+          // (v483 abría la ruta por Chrome con un enlace «intent://» para que la app
+          //  de Maps no se comiera las paradas de en medio. Aquello es justo lo que
+          //  dejó el botón muerto dentro de la app: retirado en v511/v512.)
           // ══════════════════════════════════════════════════════════════════
           // 🛑 v511 · EL BOTÓN DE LA RUTA ENTERA NO ABRÍA (Asier, 24-ago-2026:
           //    «le doy y no me abre… ve que el azul es diferente, será por algo»).
@@ -16485,9 +16487,24 @@ async function doResetWithCode() {
           //    que los tramos. Si algún día la app de Maps se come las paradas de
           //    en medio, para eso están los tramos de uno en uno, que no fallan.
           // ══════════════════════════════════════════════════════════════════
-          var _mapsHref = data.datos.maps_url || '';
-          var _esIntent = false;
-          if (_mapsHref) _nav += '<a href="' + _mapsHref + '" target="_blank" rel="noopener" style="display:inline-block;margin:6px 0 0 0;padding:9px 15px;background:#2376C5;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">🗺️ Ir con Google Maps' + (data.datos.tramos && data.datos.tramos.length ? ' (toda la ruta)' : '') + '</a>';
+          // ══════════════════════════════════════════════════════════════════
+          // 🛑 v512 · Y ESTA VEZ, SIN DEPENDER DE NADA. Asier: «sigue sin
+          //    funcionar». Además de quitar el «intent://» (eso va por el
+          //    servidor, 2.7.437), aquí se hace dos cosas:
+          //    1) si por lo que sea llegara un «intent://», se TIRA a la basura
+          //       y se usa el enlace normal — nunca más un botón muerto;
+          //    2) el toque no se fía solo del enlace: abre con window.open y,
+          //       si el navegador de dentro de la app lo bloquea, se va al
+          //       mapa en la misma pantalla (como el botón del WhatsApp, que
+          //       ese sí abre siempre).
+          // ══════════════════════════════════════════════════════════════════
+          var _mapsHref = String(data.datos.maps_url || '');
+          if (_mapsHref.indexOf('intent:') === 0) _mapsHref = '';
+          if (!_mapsHref && data.datos.tramos && data.datos.tramos.length && data.datos.tramos[0].url) _mapsHref = String(data.datos.tramos[0].url);
+          if (_mapsHref) {
+            window._rutaEnteraUrl = _mapsHref;
+            _nav += '<a href="' + _mapsHref + '" target="_blank" rel="noopener" onclick="return _abrirRutaEntera(event);" style="display:inline-block;margin:6px 0 0 0;padding:9px 15px;background:#2376C5;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">🗺️ Ir con Google Maps' + (data.datos.tramos && data.datos.tramos.length ? ' (toda la ruta)' : '') + '</a>';
+          }
           // v485: los TRAMOS de uno en uno — enlaces de un solo destino, que abren la
           // app de Maps a la primera en cualquier móvil. Al salir se toca el Tramo 1,
           // tras la primera entrega el Tramo 2, y así hasta el final.
@@ -17053,6 +17070,22 @@ async function doResetWithCode() {
     } else {
       window.open('https://wa.me/' + num + '?text=' + textoEnc, '_blank');
     }
+  };
+  // ══════════════════════════════════════════════════════════════════════════
+  // 🛑 v512 · ABRIR LA RUTA ENTERA PASE LO QUE PASE (Asier, 24-ago: «sigue sin
+  //    funcionar»). Dentro de la app, un enlace con «ventana nueva» puede
+  //    quedarse en nada sin avisar. Así que al tocarlo: primero se intenta la
+  //    ventana nueva; si el navegador no la abre, se va al mapa en la misma
+  //    pantalla (la app se queda donde estaba y vuelves con «atrás»).
+  // ══════════════════════════════════════════════════════════════════════════
+  window._abrirRutaEntera = function(ev) {
+    var u = String(window._rutaEnteraUrl || '');
+    if (!u) return true; // no sabemos nada: que el enlace haga lo suyo
+    try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (e) {}
+    var w = null;
+    try { w = window.open(u, '_blank', 'noopener'); } catch (e) { w = null; }
+    if (!w) { try { window.location.href = u; } catch (e2) {} }
+    return false;
   };
   function chatMarkdown(t) {
     // Convertir markdown básico a HTML para mensajes del bot
