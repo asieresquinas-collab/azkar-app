@@ -1080,7 +1080,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v522 · backend 2.7.441), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v523 · backend 2.7.441), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1088,6 +1088,10 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🏠 LA FOTO DEL PDF, BIEN CERCA (app v523):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>La foto del mapa que va en el PDF salía <strong>a vista de barrio</strong>. Ahora se pide <strong>bien cerca</strong>: se ve <strong>el tejado y el portal de la casa</strong>, con su chincheta, como en el mapa de la pantalla.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Y al reabrir una ficha guardada, las <strong>entregas de más</strong> también recuperan su foto para el PDF (antes solo la recogida y la primera entrega).</div></div>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🔎 LOS MAPAS, MÁS PEQUEÑOS Y CENTRADOS (app v521):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con cuatro paradas eran <strong>ocho marcos enormes</strong> y la ficha se hacía interminable: las direcciones se quedaban perdidas entre mapa y mapa. Ahora los mapas son <strong>más bajos</strong> y van <strong>centrados</strong>, con un ancho máximo, así que la dirección se queda <strong>en el medio</strong>.</div></div>
@@ -1111,7 +1115,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y arreglado lo de la cuarta parada: <strong>ninguna se queda muda</strong>. En cuanto pides el mapa pone «⏳ Comprobando esta dirección…» y después el verde o el rojo.</div></div>
       <div class='ayuda-tip'>Con <strong>una sola entrega</strong> el papel se queda igual que siempre: los dos mapitas uno al lado del otro.</div>
 
-      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📍 EL MAPA, HASTA LA PUERTA (app v522 · backend 2.7.441):</p>
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📍 EL MAPA, HASTA LA PUERTA (app v523 · backend 2.7.441):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con «C. Castillo de Hornachos, 1, 06006 Badajoz» el mapa se plantaba en el <strong>castillo de Hornachos</strong>, en la sierra, a sesenta kilómetros. Eran dos cosas: a <strong>toda</strong> dirección con número se le pegaba «Bizkaia» (aunque pusiera Badajoz), y se buscaba <strong>la frase entera de corrido</strong>.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, si la dirección <strong>ya dice de dónde es</strong> —otra provincia, otra ciudad, o un código postal que no empieza por 48— se busca <strong>tal cual</strong>. Y la dirección se <strong>parte en piezas</strong> (calle y número · pueblo · código postal), que es como se encuentra un <strong>portal</strong> y no un monumento.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Y lo más importante: debajo de cada mapa te digo lo que he entendido.</strong> Si he clavado el portal, en verde: «📍 Portal clavado: …». Si solo he llegado a la calle o al pueblo, <strong>en rojo</strong>: «🛑 Esto NO es el portal exacto». Un mapa equivocado y callado parece que ha acertado — y con eso salen los chicos a la carretera.</div></div>
@@ -4363,7 +4367,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v522';
+var APP_VERSION = 'v523';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -19046,7 +19050,7 @@ async function doResetWithCode() {
      ══════════════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
-  var TILE = 256, ANCHO = 3, ALTO = 2, ZOOM = 16;   // 768 × 512 px de mapa
+  var TILE = 256, ANCHO = 3, ALTO = 2, ZOOM = 18;   // 768 × 512 px de mapa · v523: más cerca, que se vea la casa
 
   function _x(lon, z) { return (lon + 180) / 360 * Math.pow(2, z); }
   function _y(lat, z) {
@@ -19316,7 +19320,11 @@ async function doResetWithCode() {
       if (!base) return null;
       var cab = (typeof apiHeaders === 'function' ? apiHeaders() : {});
       try { var t = localStorage.getItem('azkar_token'); if (t) cab['Authorization'] = 'Bearer ' + t; } catch (e) {}
-      var r = await fetch(base + '/api/geo/mapa?lat=' + lat + '&lon=' + lon + '&z=17&tam=640x320&tipo=hybrid', { headers: cab });
+      // 🛑 v523 · BIEN CERCA, QUE SE VEA SU CASA (Asier, 24-ago-2026: «se debería
+      //    ver esta imagen en el PDF, bien cerca, que se vea su casa»). Con z=17 la
+      //    foto salía a vista de barrio; con z=19 se ve el tejado y el portal, como
+      //    en el marco de la pantalla.
+      var r = await fetch(base + '/api/geo/mapa?lat=' + lat + '&lon=' + lon + '&z=19&tam=640x320&tipo=hybrid', { headers: cab });
       if (!r.ok) return null;
       var tipo = r.headers && r.headers.get ? (r.headers.get('Content-Type') || '') : '';
       if (tipo.indexOf('image') < 0) return null;    // no hay clave: contesta JSON
@@ -19336,8 +19344,13 @@ async function doResetWithCode() {
   // Al abrir una ficha guardada, se rehacen las dos fotos por si vienen vacías.
   window.fotosMapaRefrescar = function () {
     try {
-      ['recogida', 'entrega'].forEach(function (p) {
-        var campo = document.getElementById(p === 'recogida' ? 'f_rec' : 'f_ent');
+      // v523 · también las entregas de más (entrega2, entrega3…), que al reabrir la
+      //        ficha se quedaban sin su foto para el PDF.
+      var _pares = [['recogida', 'f_rec'], ['entrega', 'f_ent']];
+      for (var _i = 2; _i <= 9; _i++) if (document.getElementById('f_ent' + _i)) _pares.push(['entrega' + _i, 'f_ent' + _i]);
+      _pares.forEach(function (par) {
+        var p = par[0];
+        var campo = document.getElementById(par[1]);
         var img = document.getElementById('sv-main-' + p + '-png');
         if (campo && campo.value && img && !img.getAttribute('src')) { _ultima[p] = null; fotoMapaPara(p, campo.value); }
       });
