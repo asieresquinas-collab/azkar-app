@@ -1067,7 +1067,18 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v492 · backend 2.7.416), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v494 · backend 2.7.420), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>👁️ ANTES DE HACER LA FACTURA, TE MANDO UN CLON EN PDF (backend 2.7.420):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando me digas <strong>«prepárame la factura de la reserva del 6557»</strong> (o «la del servicio»), además de contártelo te dejo un <strong>PDF con la pinta exacta que va a tener esa factura</strong>: el cliente, su CIF, las líneas con su referencia, la base, el IVA y el total. Te doy el <strong>enlace</strong> para que lo abras en el móvil y lo veas tú mismo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>El PDF se guarda en la <strong>carpeta de ese cliente</strong> en Drive, con el nombre <strong>BORRADOR-FACTURA-6557-RESERVA.pdf</strong> (o -SERVICIO.pdf), para que no se te pierda y para que quede claro de quién es.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Arriba del todo lleva un <strong>aviso en rojo</strong>: «BORRADOR — esta factura todavía NO existe y al cliente NO se le ha mandado nada». Y donde iría el número de factura <strong>no hay ningún número inventado</strong>: pone que lo pone StelOrder al crearla, por orden.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si el PDF no se puede montar o no se puede guardar en la carpeta, <strong>te lo digo</strong> en vez de darlo por hecho. Y si no quieres papel esa vez, dime <strong>«sin PDF»</strong> y te lo cuento y ya está.</div></div>
+      <div class='ayuda-warn'>🛑 <strong>Un clon NO es una factura.</strong> No se crea nada en StelOrder, no se manda ningún correo y no se toca el WhatsApp de nadie hasta que tú veas el PDF y digas que sí.</div>
+
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>🏠 ARREGLADO: el piso del cliente anterior ya no se queda pegado (v493):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En el presupuesto, en Direcciones, el <strong>cuadradito del piso</strong> (recogida y entrega) se quedaba con lo del cliente anterior y tenías que andar borrándolo tú. Ya no: al abrir otra ficha o al empezar una nueva, <strong>el piso se vacía siempre</strong> antes de poner lo que toque.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Si la ficha nueva trae piso, se pone el suyo. Si no trae, se queda <strong>en blanco</strong> — nunca con el del anterior. Esto es lo que en un presupuesto tú podías repasar, pero <strong>en una factura no</strong>, y ahí no se puede fallar.</div></div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🧾 YA LEO TUS FACTURAS DE VERDAD (STEL Order) (backend 2.7.414):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Pregúntame en el chat <strong>«¿cuánto llevamos facturado este mes?»</strong> o <strong>«¿cuánto IVA toca pagar?»</strong> y te lo saco de <strong>STEL Order</strong>, de las facturas de verdad: base, IVA y total. 🛑 Nunca sumando presupuestos — un presupuesto NO es una factura.</div></div>
@@ -4178,7 +4189,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v493';
+var APP_VERSION = 'v494';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
