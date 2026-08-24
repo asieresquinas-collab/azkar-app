@@ -1067,7 +1067,14 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v495 · backend 2.7.421), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v496 · backend 2.7.422), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🔘 EL BOTÓN DE LA FACTURA, SIN NECESIDAD DE AZKARIN (backend 2.7.422):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Entra en <strong>👷 EQUIPO</strong> (con tu enlace de oficina) y ve a <strong>PARTES FIRMADOS — PENDIENTES DE REVISAR Y FACTURAR</strong>. Cada parte tiene ahora dos botones: <strong>🧾 Factura de la RESERVA</strong> y <strong>🧾 Factura del SERVICIO</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Tocas uno y ahí mismo, debajo, te sale el borrador: el <strong>aviso en rojo</strong> de que esa factura todavía no existe, el cliente, la ficha, el total, por dónde se le mandaría cuando tú des el OK, lo que hay que repasar, y el botón <strong>«Ver cómo va a quedar la factura»</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Esto no pasa por Azkarin.</strong> El botón llama directamente al preparador de facturas, así que <strong>funciona aunque la inteligencia artificial esté caída</strong>, sin cupo o parada. Es el mismo borrador que te doy por el chat, ni más ni menos.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si <strong>falta algún dato</strong> (el CIF, la señal, un concepto sin precio), el botón <strong>no monta nada</strong>: te dice qué falta. Y si algo se cae, te lo dice — nunca un «ya está» a ciegas.</div></div>
+      <div class='ayuda-warn'>🛑 <strong>Sigue sin crearse nada.</strong> El botón NO crea la factura en STEL Order, NO le manda nada al cliente y NO se inventa el número. Solo te enseña cómo quedaría. Los botones salen solo en los partes <strong>pendientes</strong>: uno ya marcado como revisado no los enseña, para no facturar dos veces. Y esto es <strong>solo con el enlace de oficina</strong>: con el de los chicos no se abre.</div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>👁️ ANTES DE HACER LA FACTURA TE LA ENSEÑO, COMO EL PERMISO (app v495 · backend 2.7.421):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando me digas <strong>«prepárame la factura de la reserva del 6557»</strong> (o «la del servicio»), te <strong>enseño en el chat</strong> cómo va a quedar, <strong>igual que te enseño el permiso de aparcamiento</strong>: sale un recuadro con un botón <strong>«Ver cómo va a quedar la factura»</strong> y lo abres ahí mismo. No tienes que ir a buscarlo a ninguna carpeta.</div></div>
@@ -4189,7 +4196,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v495';
+var APP_VERSION = 'v496';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
