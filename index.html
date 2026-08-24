@@ -134,6 +134,11 @@
 #tb{page-break-inside:auto!important}
 #page-presupuesto .sfoot{display:none!important}
 #sv-ruta-png{max-height:140px!important;object-fit:cover!important;object-position:center 45%!important}
+/* 🛑 v519 · CON VARIAS PARADAS, EL MAPA ENTERO. El recorte de arriba está pensado para
+   una ruta de dos puntos; con cuatro paradas repartidas por España cortaba por arriba y
+   por abajo, y en el papel se veía la B y punto: la A (Castro) y las de Extremadura se
+   quedaban fuera. Con varias entregas se enseña el mapa COMPLETO, sin recortar. */
+#sv-ruta-png.ruta-varias{max-height:none!important;object-fit:contain!important;object-position:center center!important}
 #mapas-pdf-fila{display:flex!important;gap:8px!important;margin:4px 0!important}
 #mapas-pdf-fila>div{flex:1;min-width:0}
 #mapas-pdf-fila img{width:100%;display:block;max-height:106px!important;object-fit:cover!important;border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px}
@@ -1067,7 +1072,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v518 · backend 2.7.441), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v519 · backend 2.7.441), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1076,13 +1081,18 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
 
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>🔒 LOS TRAMOS SON COSA DE LA EMPRESA (app v519):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Tenías razón: el cuadro de <strong>«Los tramos del viaje»</strong> se estaba colando en el <strong>PDF del cliente</strong>, con la frase de que el desplazamiento lo pones tú y con la <strong>ida entera</strong> (878 km) al lado de los kilómetros que sí cobras (449 km). Un cliente que lee los dos números discute, y con razón.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ya <strong>no sale en el PDF</strong>. Lo ves en pantalla, marcado con <strong>🔒 SOLO INTERNO</strong>, para planificar el viaje. El cuadro de los <strong>kilómetros que se cobran</strong> sí sigue saliendo: eso es del cliente.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y de paso: el mapa del <strong>RECORRIDO</strong> salía <strong>recortado</strong> y solo se veía la B — la A de Castro y las de Extremadura se quedaban fuera. Con varias paradas ahora se enseña <strong>entero</strong>.</div></div>
+
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🗺️ EN EL PDF, UN MAPA POR PARADA Y CON SU NOMBRE (app v518):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Tenías razón: <strong>la recogida el primer mapa, la entrega 1 el segundo, la 2 el tercero y la 3 el cuarto</strong>. En el PDF salían amontonados y sin decir cuál era cuál, y encima el par de abajo repetía dos.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, cuando hay <strong>varias entregas</strong>, va <strong>un mapa debajo de cada dirección</strong> con su rótulo: <strong>RECOGIDA (A)</strong>, <strong>ENTREGA 1 (B)</strong>, <strong>ENTREGA 2 (C)</strong>, <strong>ENTREGA 3 (D)</strong> — las mismas letras que en el mapa del recorrido.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y arreglado lo de la cuarta parada: <strong>ninguna se queda muda</strong>. En cuanto pides el mapa pone «⏳ Comprobando esta dirección…» y después el verde o el rojo.</div></div>
       <div class='ayuda-tip'>Con <strong>una sola entrega</strong> el papel se queda igual que siempre: los dos mapitas uno al lado del otro.</div>
 
-      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📍 EL MAPA, HASTA LA PUERTA (app v518 · backend 2.7.441):</p>
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📍 EL MAPA, HASTA LA PUERTA (app v519 · backend 2.7.441):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con «C. Castillo de Hornachos, 1, 06006 Badajoz» el mapa se plantaba en el <strong>castillo de Hornachos</strong>, en la sierra, a sesenta kilómetros. Eran dos cosas: a <strong>toda</strong> dirección con número se le pegaba «Bizkaia» (aunque pusiera Badajoz), y se buscaba <strong>la frase entera de corrido</strong>.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, si la dirección <strong>ya dice de dónde es</strong> —otra provincia, otra ciudad, o un código postal que no empieza por 48— se busca <strong>tal cual</strong>. Y la dirección se <strong>parte en piezas</strong> (calle y número · pueblo · código postal), que es como se encuentra un <strong>portal</strong> y no un monumento.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Y lo más importante: debajo de cada mapa te digo lo que he entendido.</strong> Si he clavado el portal, en verde: «📍 Portal clavado: …». Si solo he llegado a la calle o al pueblo, <strong>en rojo</strong>: «🛑 Esto NO es el portal exacto». Un mapa equivocado y callado parece que ha acertado — y con eso salen los chicos a la carretera.</div></div>
@@ -4334,7 +4344,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v518';
+var APP_VERSION = 'v519';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -19563,6 +19573,8 @@ async function doResetWithCode() {
       _ultimo = huella;
       // Mientras se bajan los trozos del mapa, el hueco dice qué está pasando.
       if (esp && (!img || !img.getAttribute('src'))) esp.style.display = '';
+      // v519 · con varias paradas el mapa va ENTERO en el papel (sin el recorte de dos puntos)
+      try { if (img) { if (_multi) img.classList.add('ruta-varias'); else img.classList.remove('ruta-varias'); } } catch (e) {}
       var png = await pintarRuta(r.geom, r.distancia, r.duracion, r.marcas);
       if (img) {
         if (png) { img.src = png; img.classList.remove('sin-foto'); }
@@ -20025,6 +20037,17 @@ async function doResetWithCode() {
     if (c) return c;
     c = document.createElement('div');
     c.id = 'tramos-box';
+    // ══════════════════════════════════════════════════════════════════════
+    // 🛑 v519 · ESTO NO SALE EN EL PDF DEL CLIENTE. Asier, 24-ago-2026, viendo
+    //    el presupuesto de Javier: «pone que el precio del desplazamiento lo
+    //    pones tú… esto debería ser privado para la empresa, ¿no?». Pues sí, y
+    //    de las dos maneras: esa frase es para él, y además aquí abajo pone la
+    //    IDA ENTERA (878 km) mientras el presupuesto cobra el tramo que él haya
+    //    decidido (449 km). Un cliente leyendo los dos números discute, y con
+    //    razón. Los tramos son para PLANIFICAR, no para enseñar.
+    //    La clase «no-pdf» es la de siempre: se ve en pantalla y no se imprime.
+    // ══════════════════════════════════════════════════════════════════════
+    c.className = 'no-pdf';
     c.style.cssText = 'margin:6px 0 10px 0;padding:8px 11px;border:1.5px solid #D8DCE3;border-left:4px solid #2376C5;border-radius:5px;background:#f7fafd;font-size:12px;color:#33475b;display:none';
     var ancla = el('distancia-box') || (el('f_ent') ? el('f_ent').closest('.fg') : null);
     if (ancla && ancla.parentElement) ancla.parentElement.insertBefore(c, ancla.nextSibling);
@@ -20039,7 +20062,7 @@ async function doResetWithCode() {
     if (p.length < 3) { c.style.display = 'none'; c.innerHTML = ''; window._rutaEntera = null; return; }
     var tok = ++_tramoTok;
     c.style.display = 'block';
-    c.innerHTML = '<b>🚚 Los tramos del viaje</b><br>⏳ Midiéndolos…';
+    c.innerHTML = '<b>🚚 Los tramos del viaje</b> <span style="font-size:10px;font-weight:700;color:#7b8794">🔒 solo interno</span><br>⏳ Midiéndolos…';
     if (typeof window._geocodeDir !== 'function' || typeof window._calcRutaEntre !== 'function') {
       c.innerHTML = '<b>🚚 El viaje tiene ' + p.length + ' paradas</b><br>' + p.map(function (x, k) { return (k + 1) + '. ' + x; }).join('<br>');
       return;
@@ -20083,7 +20106,8 @@ async function doResetWithCode() {
         function corto(t) { var z = String(t || '').split(',').map(function (x) { return x.trim(); }); return z.slice(0, 2).join(', '); }
         function fin() {
           if (tok !== _tramoTok) return;
-          var h = '<b>🚚 Los tramos del viaje (' + p.length + ' paradas)</b><br>';
+          var h = '<b>🚚 Los tramos del viaje (' + p.length + ' paradas)</b>'
+            + '<span style="float:right;font-size:10px;font-weight:700;color:#7b8794;background:#eef1f5;border-radius:3px;padding:1px 6px">🔒 SOLO INTERNO</span><br>';
           trozos.forEach(function (t, idx) {
             h += (idx + 1) + '. ' + corto(t.de) + ' → ' + corto(t.a) + ': ' +
               (t.km == null ? '<span style="color:#c0392b">no he podido medirlo</span>'
@@ -20095,7 +20119,7 @@ async function doResetWithCode() {
             (minutos ? ' · ' + (minutos >= 60 ? Math.floor(minutos / 60) + 'h ' + (minutos % 60) + 'min' : minutos + ' min') : '') +
             (sinMedir ? ' <span style="color:#c0392b">(y falta algún tramo por medir, o sea que es MÁS)</span>' : '') +
             '</span>' +
-            '<span style="font-size:10.5px;color:#7b8794">Esto es informativo: el <b>desplazamiento que se cobra</b> lo pones tú, como siempre.</span>';
+            '<span style="font-size:10.5px;color:#7b8794">Esto es <b>solo para ti</b>: no sale en el PDF del cliente. El <b>desplazamiento que se cobra</b> lo pones tú, como siempre.</span>';
           c.innerHTML = h;
           // v516 · Y EL MAPA, CON TODAS LAS PARADAS MARCADAS (Asier: «este mapa que me
           //        pone la ruta no me las marca»). Se le pasa el dibujo entero y dónde
