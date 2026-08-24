@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v502 · backend 2.7.428), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v503 · backend 2.7.429), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1075,6 +1075,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🔎 «¿POR QUÉ DIGO ESTO?» — TE ENSEÑO DÓNDE HE MIRADO (backend 2.7.429):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cada cliente de la lista tiene un desplegable: <strong>«¿Por qué digo esto? Dónde he mirado»</strong>. Lo abres y te digo, sitio por sitio, qué he encontrado.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Sale: qué hay en <strong>su carpeta del Drive</strong> (o que no existe, o que no he podido mirarla), cuántas facturas hay en <strong>STEL Order por su número de ficha</strong>, qué ha dado el <strong>cotejo por importe</strong> de la señal y a nombre de quién están esas facturas, de qué <strong>día</strong> es el servicio, y la <strong>conclusión</strong>: cuántas le cuento.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>El borrador que sale al darle al botón lleva lo mismo, y además <strong>de dónde he sacado la señal</strong> y si hay <strong>justificante de pago</strong> en su carpeta.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>🛑 Y donde <strong>no he podido mirar, lo digo</strong>. Si vuelvo a equivocarme, vas a ver <strong>en qué sitio</strong> me equivoco en vez de tener que adivinarlo.</div></div>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>📂 LAS FACTURAS LAS BUSCO EN LA CARPETA DEL CLIENTE (backend 2.7.428):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Los papeles de verdad están en <strong>la carpeta de cada cliente</strong> en Drive: ahí es donde está su <strong>FACTURA-000XX.pdf</strong>. Eso es lo que miro <strong>primero</strong>, y lo que manda por encima de lo que diga el programa.</div></div>
@@ -4234,7 +4240,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v502';
+var APP_VERSION = 'v503';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
