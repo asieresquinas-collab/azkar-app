@@ -2282,6 +2282,7 @@ function _comercialActual(){
 function RF(){
   if(!confirm('¿Limpiar todos los datos del presupuesto?')) return;
   window._kmRutaReal = null; window._kmDesdeBase = false;   // v486: el km medido era del cliente anterior — fuera
+  try { if (window.limpiarPisos) window.limpiarPisos(); } catch (e) {}   // v493: y el PISO del cliente anterior, también fuera
   var inputs=document.querySelectorAll('#page-presupuesto input,#page-presupuesto textarea');
   for(var i=0;i<inputs.length;i++) inputs[i].value='';
   var tb=document.getElementById('tb');
@@ -3820,6 +3821,7 @@ function LD(){
     window._salidaNueva = !!data._salidaNueva;
     window._gruaTipo = data._grua || '';        // v417: la grúa se apunta en la ficha, no en el nombre de la línea
     window._ultimaRuta = null;                 // v454: la ruta del cliente anterior no vale para esta ficha
+    try { if (window.limpiarPisos) window.limpiarPisos(); } catch (e) {}   // v493: ni su PISO
     try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423: esta ficha se queda con SU precio de km
     try { if (window.repartirDirecciones) window.repartirDirecciones(data); } catch (e) {}   // v433
     if(typeof AR_SALIDA==='function') AR_SALIDA(_salGuardada, _salNombre);
@@ -4176,7 +4178,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v492';
+var APP_VERSION = 'v493';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -5529,6 +5531,7 @@ function restoreFormData(data) {
   // la marca de la grúa en la primera. Por eso al abrirlo de la lista volvía a salir azul.
   window._gruaTipo = data._grua || '';
   window._ultimaRuta = null;                   // v454: la ruta del cliente anterior no vale para esta ficha
+  try { if (window.limpiarPisos) window.limpiarPisos(); } catch (e) {}   // v493: ni su PISO
   try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423
   try { if (window.repartirDirecciones) window.repartirDirecciones(data); } catch (e) {}   // v433
   if (typeof AR_SALIDA === 'function') AR_SALIDA(_salFicha, _salNombreF);
@@ -19277,8 +19280,24 @@ async function doResetWithCode() {
 
   // Al abrir una ficha: solo se reparte si se guardó repartida. Una ficha vieja se
   // queda EXACTAMENTE como estaba — que es la norma de siempre.
+  // 🛑 v493 · EL PISO DEL CLIENTE ANTERIOR. Asier, 24-ago: «de un cliente a otro no lo
+  // restablece; el cuadradito de piso no se resetea y tengo que andar cambiándolo yo…
+  // eso en el presupuesto yo puedo revisarlo, pero en una FACTURA no puedo».
+  // Tiene toda la razón, y por eso el cuadradito se VACÍA SIEMPRE ANTES de nada. Antes
+  // se vaciaba en el «else», o sea: solo si se llegaba hasta ahí. Ahora se vacía primero
+  // y después se rellena lo que traiga ESTA ficha — si algo falla por el camino, el
+  // campo se queda VACÍO, que es un fallo que se ve, y no con el piso del cliente de
+  // antes, que es un fallo que acaba impreso en una factura.
+  function limpiarPisos() {
+    ['rec', 'ent'].forEach(function (p) {
+      var pta = document.getElementById('f_' + p + '_pta');
+      if (pta) pta.value = '';
+    });
+  }
+
   function repartirDirecciones(data) {
     monta();
+    limpiarPisos();          // primero vaciar SIEMPRE
     ['rec', 'ent'].forEach(function (p) {
       var inp = document.getElementById('f_' + p);
       var pta = document.getElementById('f_' + p + '_pta');
@@ -19286,14 +19305,14 @@ async function doResetWithCode() {
       if (data && data['f_' + p + '_pta']) {
         inp.value = data['f_' + p + '_calle'] || inp.value;
         pta.value = data['f_' + p + '_pta'];
-      } else {
-        pta.value = '';       // ficha antigua: todo sigue en el campo de siempre
       }
+      // ficha antigua: se queda vacío, que ya lo hemos vaciado arriba
     });
     try { if (typeof SY === 'function') SY(); } catch (e) {}
   }
 
   window.dirCompleta = dirCompleta;
+  window.limpiarPisos = limpiarPisos;
   window.repartirDirecciones = repartirDirecciones;
   window.repartirTexto = reparte;
 
