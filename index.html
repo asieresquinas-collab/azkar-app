@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v517 · backend 2.7.441), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v518 · backend 2.7.441), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1076,7 +1076,13 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
 
-      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📍 EL MAPA, HASTA LA PUERTA (app v517 · backend 2.7.441):</p>
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🗺️ EN EL PDF, UN MAPA POR PARADA Y CON SU NOMBRE (app v518):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Tenías razón: <strong>la recogida el primer mapa, la entrega 1 el segundo, la 2 el tercero y la 3 el cuarto</strong>. En el PDF salían amontonados y sin decir cuál era cuál, y encima el par de abajo repetía dos.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, cuando hay <strong>varias entregas</strong>, va <strong>un mapa debajo de cada dirección</strong> con su rótulo: <strong>RECOGIDA (A)</strong>, <strong>ENTREGA 1 (B)</strong>, <strong>ENTREGA 2 (C)</strong>, <strong>ENTREGA 3 (D)</strong> — las mismas letras que en el mapa del recorrido.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y arreglado lo de la cuarta parada: <strong>ninguna se queda muda</strong>. En cuanto pides el mapa pone «⏳ Comprobando esta dirección…» y después el verde o el rojo.</div></div>
+      <div class='ayuda-tip'>Con <strong>una sola entrega</strong> el papel se queda igual que siempre: los dos mapitas uno al lado del otro.</div>
+
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📍 EL MAPA, HASTA LA PUERTA (app v518 · backend 2.7.441):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con «C. Castillo de Hornachos, 1, 06006 Badajoz» el mapa se plantaba en el <strong>castillo de Hornachos</strong>, en la sierra, a sesenta kilómetros. Eran dos cosas: a <strong>toda</strong> dirección con número se le pegaba «Bizkaia» (aunque pusiera Badajoz), y se buscaba <strong>la frase entera de corrido</strong>.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, si la dirección <strong>ya dice de dónde es</strong> —otra provincia, otra ciudad, o un código postal que no empieza por 48— se busca <strong>tal cual</strong>. Y la dirección se <strong>parte en piezas</strong> (calle y número · pueblo · código postal), que es como se encuentra un <strong>portal</strong> y no un monumento.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Y lo más importante: debajo de cada mapa te digo lo que he entendido.</strong> Si he clavado el portal, en verde: «📍 Portal clavado: …». Si solo he llegado a la calle o al pueblo, <strong>en rojo</strong>: «🛑 Esto NO es el portal exacto». Un mapa equivocado y callado parece que ha acertado — y con eso salen los chicos a la carretera.</div></div>
@@ -4328,7 +4334,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v517';
+var APP_VERSION = 'v518';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8846,10 +8852,65 @@ function buildCompleteHTML(pageIds) {
     //  facturación vacía no pinta nada. Todo se DEVUELVE después: hacer un PDF
     //  nunca toca la pantalla ni la ficha.
     // ══════════════════════════════════════════════════════════════════════════
-    var v447Sav = { fila: null, ocultados: [] };
+    var v447Sav = { fila: null, ocultados: [], bloques: [] };
+    // ══════════════════════════════════════════════════════════════════════════
+    // 🛑 v518 · CADA MAPA, DEBAJO DE SU DIRECCIÓN Y CON SU NOMBRE
+    //    Asier, 24-ago-2026, con el PDF del 6546 delante: «la recogida el primer
+    //    mapa, la primera entrega el segundo, la 3 el tercero y el 4 el cuarto,
+    //    ¿verdad?». Pues sí — y no era así: los mapas salían amontonados debajo
+    //    de la entrega 2 y de la 3, sin decir cuál era cuál, y encima el par de
+    //    abajo (RECOGIDA / ENTREGA) los repetía. Un plano sin nombre en una
+    //    mudanza de cuatro paradas no vale para nada.
+    //    Con VARIAS entregas: un mapa por parada, ancho, DEBAJO de su dirección y
+    //    con su rótulo — RECOGIDA, ENTREGA 1, ENTREGA 2, ENTREGA 3.
+    //    Con UNA sola entrega, todo se queda EXACTAMENTE como estaba: los dos
+    //    mapitas uno al lado del otro, que es como le gusta.
+    // ══════════════════════════════════════════════════════════════════════════
+    var _paradasPdf = [];
+    try {
+      if (el.querySelector('#sv-main-recogida-png')) _paradasPdf.push({ p: 'recogida', tit: 'RECOGIDA' });
+      if (el.querySelector('#sv-main-entrega-png')) _paradasPdf.push({ p: 'entrega', tit: 'ENTREGA' });
+      for (var _ip = 2; _ip <= 9; _ip++) {
+        if (el.querySelector('#sv-main-entrega' + _ip + '-png')) _paradasPdf.push({ p: 'entrega' + _ip, tit: 'ENTREGA ' + _ip });
+      }
+      if (_paradasPdf.length > 2 && _paradasPdf[1]) _paradasPdf[1].tit = 'ENTREGA 1';
+    } catch (e) { _paradasPdf = []; }
+
+    if (_paradasPdf.length > 2) {
+      try {
+        var _chincheta = "<svg width='9' height='11' viewBox='0 0 24 30' style='vertical-align:-1px' xmlns='http://www.w3.org/2000/svg'><path d='M12 1 C6 1 2 5.5 2 11 C2 18 12 29 12 29 C12 29 22 18 22 11 C22 5.5 18 1 12 1 Z' fill='#E85C0D'/><circle cx='12' cy='11' r='4' fill='#fff'/></svg> ";
+        _paradasPdf.forEach(function (par, _k) {
+          var cont = el.querySelector('#sv-main-' + par.p);
+          var foto = el.querySelector('#sv-main-' + par.p + '-png');
+          if (!cont) return;
+          // El marco de pantalla se esconde SIEMPRE: en el papel manda el bloque
+          // rotulado de abajo. Si un mapa no ha salido, mejor un hueco que un mapa
+          // sin nombre que nadie sabe de qué parada es.
+          if ((' ' + cont.className + ' ').indexOf(' no-pdf ') < 0) { cont.className += ' no-pdf'; v447Sav.ocultados.push(cont); }
+          if (!foto || !foto.getAttribute('src')) return;
+          var caja = document.createElement('div');
+          caja.className = 'mapa-pdf-parada';
+          caja.style.cssText = 'margin:4px 0 8px 0;page-break-inside:avoid;break-inside:avoid;';
+          var cab = document.createElement('div');
+          cab.style.cssText = 'font-size:8.5px;font-weight:800;letter-spacing:1px;color:#1B4F8A;background:#D6E4F7;padding:2px 8px;border-radius:3px 3px 0 0;';
+          cab.innerHTML = _chincheta + par.tit + ' (' + 'ABCDEFGHIJ'.charAt(_k) + ')';
+          var im = document.createElement('img');
+          im.setAttribute('src', foto.getAttribute('src'));
+          im.style.cssText = 'width:100%;display:block;border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px;';
+          caja.appendChild(cab); caja.appendChild(im);
+          cont.parentNode.insertBefore(caja, cont.nextSibling);
+          v447Sav.bloques.push(caja);
+          if ((' ' + cont.className + ' ').indexOf(' no-pdf ') < 0) { cont.className += ' no-pdf'; v447Sav.ocultados.push(cont); }
+        });
+      } catch (e) {}
+    }
+
     try {
       var _fRec = el.querySelector('#sv-main-recogida-png'), _fEnt = el.querySelector('#sv-main-entrega-png');
-      if (_fRec && _fEnt && _fRec.getAttribute('src') && _fEnt.getAttribute('src')) {
+      // 🛑 v518 · con varias entregas ya va un mapa debajo de cada dirección: el par
+      //    de abajo repetiría dos de ellos y encima sin decir cuáles. Así que solo
+      //    se monta cuando hay UNA entrega, que es como estaba desde la v447.
+      if (_paradasPdf.length <= 2 && _fRec && _fEnt && _fRec.getAttribute('src') && _fEnt.getAttribute('src')) {
         var _filaM = document.createElement('div');
         _filaM.id = 'mapas-pdf-fila';
         _filaM.style.cssText = 'display:flex;gap:8px;margin:4px 0;';
@@ -8901,6 +8962,8 @@ function buildCompleteHTML(pageIds) {
     // v447: devolver los mapas a su sitio y descubrir lo escondido
     try {
       if (v447Sav.fila && v447Sav.fila.parentNode) v447Sav.fila.parentNode.removeChild(v447Sav.fila);
+      // v518 · y los mapas por parada, fuera de la pantalla: eran solo para el papel
+      (v447Sav.bloques || []).forEach(function (b) { if (b && b.parentNode) b.parentNode.removeChild(b); });
       v447Sav.ocultados.forEach(function (c) { c.className = c.className.replace(/\s*no-pdf/, ''); });
       if (v447Sav.obsCont) v447Sav.obsCont.removeAttribute('id');
     } catch (e) {}
@@ -11771,6 +11834,9 @@ function txCreatePresupuesto() {
     mapFrame.src = 'https://maps.google.com/maps?q=' + encoded + '&t=k&z=18&output=embed';
     streetFrame.src = 'https://maps.google.com/maps?q=' + encoded + '&layer=c&z=18&output=embed';
     container.style.display = 'block';
+    // 🛑 v518 · el cartelito se pone YA, diciendo que se está comprobando. Así ninguna
+    //    parada se queda muda mientras se busca (Asier: «en la 4 no pone nada»).
+    try { if (window.diQueSeEstaMirando) window.diQueSeEstaMirando(prefix); } catch (e) {}
     // Y en cuanto se sepa el PUNTO exacto (lo busca el buscador de siempre), se vuelven a
     // apuntar los dos marcos a esas coordenadas: ahí ya no hay interpretación posible.
     try { if (window.afinarMapasConElPunto) window.afinarMapasConElPunto(prefix, address); } catch (e) {}
@@ -19119,10 +19185,44 @@ async function doResetWithCode() {
   }
   function _escQ(t) { return String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+  // v518 · «estoy mirándolo». Se pone en cuanto se pide el mapa, para que ninguna
+  // parada se quede en blanco mientras se busca la dirección.
+  function diQueSeEstaMirando(prefijo) {
+    try {
+      var cont = document.getElementById('sv-main-' + prefijo);
+      if (!cont) return;
+      var caja = document.getElementById('sv-main-' + prefijo + '-quees');
+      if (caja && /Portal clavado|NO es el portal|No he encontrado/.test(caja.innerHTML)) return;  // ya hay veredicto
+      if (!caja) {
+        caja = document.createElement('div');
+        caja.id = 'sv-main-' + prefijo + '-quees';
+        caja.className = 'no-pdf';
+        caja.style.cssText = 'font-size:11px;line-height:1.45;margin-top:4px;padding:5px 8px;border-radius:4px';
+        var pie = cont.querySelector('p');
+        if (pie) cont.insertBefore(caja, pie); else cont.appendChild(caja);
+      }
+      caja.style.background = '#F4F6F9'; caja.style.color = '#5b6b7c'; caja.style.border = '1px solid #D8DCE3';
+      caja.innerHTML = '⏳ Comprobando esta dirección en el mapa…';
+    } catch (e) {}
+  }
+  window.diQueSeEstaMirando = diQueSeEstaMirando;
+
   async function afinarMapasConElPunto(prefijo, direccion) {
     try {
       var dir = String(direccion || '').trim();
-      if (!dir || _afinado[prefijo] === dir) return;
+      if (!dir) return;
+      // 🛑 v518 · «hasta la 3ª entrega pone verde; en la 4ª no pone nada» (Asier,
+      //    24-ago). Era esto: si esta dirección YA se había afinado, se salía de
+      //    aquí sin pintar el cartelito, y esa parada se quedaba MUDA. Un mapa sin
+      //    su cartelito no se puede comprobar — que es justo lo que no puede pasar.
+      //    Ahora, si ya está afinada, se vuelve a pintar lo que se guardó y punto.
+      if (_afinado[prefijo] === dir) {
+        try {
+          var _cy = document.getElementById('sv-main-' + prefijo);
+          _diQueHaEntendido(prefijo, JSON.parse((_cy && _cy.getAttribute('data-entendido')) || 'null'));
+        } catch (e) {}
+        return;
+      }
       var cont = document.getElementById('sv-main-' + prefijo);
       // v454: coordenadas de OTRA dirección (cliente anterior) no valen
       if (cont && (cont.getAttribute('data-dir') || '') !== dir) { cont.removeAttribute('data-lat'); cont.removeAttribute('data-lon'); }
