@@ -1072,7 +1072,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v519 · backend 2.7.441), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v520 · backend 2.7.441), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1080,6 +1080,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>💰 LOS KILÓMETROS QUE SE COBRAN, CON VARIAS ENTREGAS (app v520):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Otra que viste bien: el cuadro de los kilómetros cobraba <strong>solo hasta la PRIMERA entrega</strong> (449 km de los 877,9 que son en realidad). Ahora te <strong>avisa en naranja</strong>, con los <strong>dos números delante</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>🛑 <strong>Pero no te lo cambio yo.</strong> El precio lo pones tú. Tienes un botón: <strong>«Cobrar la ida entera (877,9 km)»</strong> — y otro para volver a los de la primera entrega si prefieres.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Lo que decidas <strong>se guarda en esa ficha</strong>: mañana, al abrirla, sigue cobrando lo mismo. Y a otro cliente <strong>no se le pega</strong> tu decisión.</div></div>
+      <div class='ayuda-tip'>El aviso y los botones son <strong>solo de pantalla</strong>: en el PDF del cliente no salen.</div>
 
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>🔒 LOS TRAMOS SON COSA DE LA EMPRESA (app v519):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Tenías razón: el cuadro de <strong>«Los tramos del viaje»</strong> se estaba colando en el <strong>PDF del cliente</strong>, con la frase de que el desplazamiento lo pones tú y con la <strong>ida entera</strong> (878 km) al lado de los kilómetros que sí cobras (449 km). Un cliente que lee los dos números discute, y con razón.</div></div>
@@ -1092,7 +1098,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y arreglado lo de la cuarta parada: <strong>ninguna se queda muda</strong>. En cuanto pides el mapa pone «⏳ Comprobando esta dirección…» y después el verde o el rojo.</div></div>
       <div class='ayuda-tip'>Con <strong>una sola entrega</strong> el papel se queda igual que siempre: los dos mapitas uno al lado del otro.</div>
 
-      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📍 EL MAPA, HASTA LA PUERTA (app v519 · backend 2.7.441):</p>
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📍 EL MAPA, HASTA LA PUERTA (app v520 · backend 2.7.441):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con «C. Castillo de Hornachos, 1, 06006 Badajoz» el mapa se plantaba en el <strong>castillo de Hornachos</strong>, en la sierra, a sesenta kilómetros. Eran dos cosas: a <strong>toda</strong> dirección con número se le pegaba «Bizkaia» (aunque pusiera Badajoz), y se buscaba <strong>la frase entera de corrido</strong>.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, si la dirección <strong>ya dice de dónde es</strong> —otra provincia, otra ciudad, o un código postal que no empieza por 48— se busca <strong>tal cual</strong>. Y la dirección se <strong>parte en piezas</strong> (calle y número · pueblo · código postal), que es como se encuentra un <strong>portal</strong> y no un monumento.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Y lo más importante: debajo de cada mapa te digo lo que he entendido.</strong> Si he clavado el portal, en verde: «📍 Portal clavado: …». Si solo he llegado a la calle o al pueblo, <strong>en rojo</strong>: «🛑 Esto NO es el portal exacto». Un mapa equivocado y callado parece que ha acertado — y con eso salen los chicos a la carretera.</div></div>
@@ -4344,7 +4350,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v519';
+var APP_VERSION = 'v520';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -12379,6 +12385,23 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis, idaYVuelta) {
 // ══════════════════════════════════════════════════════════════════════════════
 function pintarDistanciaYKm() {
   var kmBase = parseFloat(window._kmRutaBase);
+  // ══════════════════════════════════════════════════════════════════════════
+  // 🛑 v520 · CON VARIAS ENTREGAS, ESTOS KM SON SOLO HASTA LA PRIMERA.
+  //    Asier, 24-ago-2026, con el presupuesto de Javier: «aquí pone el precio,
+  //    pero de los km de la primera parada; tendría que actualizarlo y poner los
+  //    km totales con su precio, ¿verdad?».
+  //    Verdad — pero ESTO ES DINERO, y el precio lo pone ÉL. Así que NO se cambia
+  //    solo: se le AVISA con los dos números delante y hay un botón para pasar a
+  //    la ida entera (y otro para volver). Lo que decida se guarda en la ficha,
+  //    para que al abrirla mañana siga cobrando lo mismo.
+  // ══════════════════════════════════════════════════════════════════════════
+  try {
+    var _re520 = window._rutaEntera;
+    var _firma520 = (typeof window.paradasDelServicio === 'function') ? window.paradasDelServicio().join(' || ') : '';
+    if (window._kmEnteroOn && _re520 && _re520.distancia > 0 && (!_firma520 || _re520.firma === _firma520)) {
+      kmBase = Math.round(_re520.distancia / 100) / 10;
+    }
+  } catch (e) {}
   if (!(kmBase > 0)) return;
   var elKm = document.getElementById('dist-km');
   var costeEl = document.getElementById('dist-coste');
@@ -12420,6 +12443,9 @@ function pintarDistanciaYKm() {
       ? ('Cambio de muebles: ' + kmBase.toFixed(1) + ' km de ida y vuelta hacen ' + km + ' km — no pasa de ' + KM_GRATIS + ' km → sin cargo por desplazamiento')
       : (KM_GRATIS + ' km o menos → sin cargo por desplazamiento');
   }
+
+  // v520 · y el aviso de la ida entera, con su botón (solo pantalla)
+  try { if (window.avisoKmDeLaRutaEntera) window.avisoKmDeLaRutaEntera(rutaEl, kmNum); } catch (e) {}
 
   // Guardar en campo oculto para usar en presupuesto
   var hiddenDist = document.getElementById('f_distancia');
@@ -20135,6 +20161,17 @@ async function doResetWithCode() {
                 duracion: minutos * 60
               };
               if (typeof window.pintaRutaDelServicio === 'function') window.pintaRutaDelServicio();
+              // v520 · y en cuanto se sabe la ida entera, el aviso de los kilómetros.
+              // 🛑 La caja de km NO se repinta porque sí: repintarla reescribe la línea
+              //    del presupuesto, y ahí hay dinero. Solo se repinta si Asier YA ha
+              //    dicho que cobra la ida entera; si no, se pone únicamente el aviso.
+              try {
+                if (window._kmEnteroOn && typeof window._pintarDistanciaYKm === 'function') window._pintarDistanciaYKm();
+                else {
+                  var _rEl520 = document.getElementById('dist-ruta');
+                  if (_rEl520) avisoKmDeLaRutaEntera(_rEl520, Math.round(parseFloat(window._kmRutaBase) * 10) / 10);
+                }
+              } catch (e520) {}
             }
           } catch (eM) {}
         }
@@ -20152,6 +20189,9 @@ async function doResetWithCode() {
     try {
       var extra = sufijosExtra();
       data.f_entregas_n = extra.length;
+      // v520 · si Asier ha decidido cobrar la ida entera, se guarda EN LA FICHA:
+      // mañana, al abrirla, tiene que seguir cobrando lo mismo que hoy.
+      data.f_km_entero = window._kmEnteroOn ? 1 : 0;
       extra.forEach(function (s) {
         var calle = el('f_' + s), pta = el('f_' + s + '_pta'), asc = el('asc_' + s);
         data['f_' + s] = dc(s);
@@ -20173,6 +20213,7 @@ async function doResetWithCode() {
         var sv = el('sv-main-entrega' + k);
         if (sv && sv.parentElement) sv.parentElement.removeChild(sv);
       }
+      window._kmEnteroOn = !!(data && parseInt(data.f_km_entero, 10));   // v520: lo que decidió en ESTA ficha
       var n = parseInt((data && data.f_entregas_n) || 0, 10) || 0;
       if (n > MAX) n = MAX;
       for (var i = 2; i <= n + 1; i++) {
@@ -20208,7 +20249,58 @@ async function doResetWithCode() {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // 🛑 v520 · EL AVISO DE LOS KILÓMETROS DE VERDAD
+  //    Con varias entregas, la caja de km cobra SOLO hasta la primera (449 km de
+  //    877,9). Eso no se cambia solo —el precio lo pone Asier—, pero tampoco se
+  //    calla: aquí van los dos números y un botón para pasar de uno a otro.
+  //    Es solo de pantalla: al cliente no le llega ni el aviso ni el botón.
+  // ══════════════════════════════════════════════════════════════════════════
+  function avisoKmDeLaRutaEntera(rutaEl, kmActual) {
+    if (!rutaEl) return;
+    var p = paradas();
+    var viejo = document.getElementById('aviso-km-entero');
+    if (viejo && viejo.parentNode) viejo.parentNode.removeChild(viejo);
+    if (p.length < 3) return;                       // una sola entrega: nada que decidir
+    var re = window._rutaEntera;
+    var caja = document.createElement('div');
+    caja.id = 'aviso-km-entero';
+    caja.className = 'no-pdf';
+    caja.style.cssText = 'margin-top:6px;padding:7px 10px;border-radius:5px;font-size:11.5px;line-height:1.5';
+    if (!re || !(re.distancia > 0) || re.firma !== p.join(' || ')) {
+      caja.style.cssText += ';background:#F4F6F9;color:#5b6b7c;border:1px solid #D8DCE3';
+      caja.innerHTML = '⏳ Estoy midiendo los tramos del viaje. En cuanto acabe te digo si estos kilómetros son los del viaje entero o solo los de la primera parada.';
+      rutaEl.appendChild(caja);
+      return;
+    }
+    var kmEntero = Math.round(re.distancia / 100) / 10;
+    var _n = function (x) { return x.toFixed(1).replace('.', ','); };
+    var kmPrimera = Math.round(parseFloat(window._kmRutaBase) * 10) / 10;
+    if (window._kmEnteroOn) {
+      caja.style.cssText += ';background:#E8F5EE;color:#1a7a3f;border:1px solid #b9dfc9';
+      caja.innerHTML = '✅ <b>Estás cobrando la IDA ENTERA</b>: ' + _n(kmEntero) + ' km, las ' + p.length + ' paradas. ' +
+        '<button type="button" id="btn-km-primera" style="margin-left:6px;background:none;border:1px solid #b9dfc9;color:#1a7a3f;border-radius:5px;padding:3px 9px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">Volver a cobrar solo hasta la 1ª entrega (' + _n(kmPrimera) + ' km)</button>';
+    } else {
+      caja.style.cssText += ';background:#FEF0E7;color:#a35a1c;border:1px solid #f0cdaf';
+      caja.innerHTML = '🛑 <b>OJO: aquí solo van los kilómetros hasta la PRIMERA entrega</b> (' + _n(kmActual) + ' km). ' +
+        'Esta mudanza tiene <b>' + p.length + ' paradas</b> y la ida entera son <b>' + _n(kmEntero) + ' km</b>. ' +
+        '<button type="button" id="btn-km-entero" style="margin-left:6px;background:#1B4F8A;color:#fff;border:none;border-radius:5px;padding:4px 10px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer">Cobrar la ida entera (' + _n(kmEntero) + ' km)</button>' +
+        '<br><span style="font-size:10.5px;color:#7b8794">Lo decides tú: yo no te cambio el precio por mi cuenta.</span>';
+    }
+    rutaEl.appendChild(caja);
+    var b1 = document.getElementById('btn-km-entero');
+    if (b1) b1.onclick = function () { _ponKmEntero(true); };
+    var b2 = document.getElementById('btn-km-primera');
+    if (b2) b2.onclick = function () { _ponKmEntero(false); };
+  }
+  function _ponKmEntero(si) {
+    window._kmEnteroOn = !!si;
+    try { if (typeof window._pintarDistanciaYKm === 'function') window._pintarDistanciaYKm(); } catch (e) {}
+    try { if (typeof window.scheduleSave === 'function') window.scheduleSave(); } catch (e) {}
+  }
+
   window.entregasDelServicio = entregas;
+  window.avisoKmDeLaRutaEntera = avisoKmDeLaRutaEntera;
   window.paradasDelServicio = paradas;
   window.entregasGuardar = guardar;
   window.entregasRestaurar = restaurar;
