@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v510 · backend 2.7.436), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v511 · backend 2.7.436), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1075,6 +1075,10 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>🗺️ ARREGLADO: el botón de la ruta entera no abría (v511):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En una ruta con varias paradas, el botón de arriba —<strong>«Ir con Google Maps»</strong>— no abría, y se veía de <strong>otro azul</strong>. Tenías buen ojo: era por eso. Llevaba un enlace especial de Android que <strong>dentro de la app no funciona</strong>; los de los <strong>tramos</strong> sí, porque son enlaces normales.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ya es un enlace <strong>normal</strong>, igual que los tramos, así que abre. Y si alguna vez Google Maps se come las paradas de en medio, para eso siguen estando los <strong>tramos de uno en uno</strong>, que no fallan nunca.</div></div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🔢 TU CUPO DE CONSULTAS, CONTADO (backend 2.7.436):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El plan <strong>Lite</strong> de STEL Order deja <strong>300 consultas al día</strong> y 60 por minuto (antes te dije 200: me equivoqué, lo he mirado en el manual del programa).</div></div>
@@ -4281,7 +4285,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v510';
+var APP_VERSION = 'v511';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -16469,13 +16473,21 @@ async function doResetWithCode() {
           // v483: con VARIAS paradas, en Android se abre por Chrome (maps_url_intent) — la
           // app de Maps, si intercepta el enlace directo, se come las paradas intermedias
           // y deja solo el primer tramo. Desde el Maps web, «Iniciar» pasa la ruta entera.
-          var _mapsHref = (data.datos.maps_url_intent && /Android/i.test(navigator.userAgent)) ? data.datos.maps_url_intent : data.datos.maps_url;
-          // v484: los enlaces intent:// NO pueden ir con target="_blank" — Chrome los
-          // bloquea EN SILENCIO en pestaña nueva (Asier, 21-ago 9:10: «no me abre el
-          // enlace»). En la misma pestaña funcionan (igual que el botón del WhatsApp):
-          // lanzan la app/Chrome y la página se queda donde está.
-          var _esIntent = _mapsHref && _mapsHref.indexOf('intent:') === 0;
-          if (_mapsHref) _nav += '<a href="' + _mapsHref + '"' + (_esIntent ? '' : ' target="_blank" rel="noopener"') + ' style="display:inline-block;margin:6px 0 0 0;padding:9px 15px;background:#2376C5;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">🗺️ Ir con Google Maps' + (data.datos.maps_url_intent ? ' (todas las paradas)' : '') + '</a>';
+          // ══════════════════════════════════════════════════════════════════
+          // 🛑 v511 · EL BOTÓN DE LA RUTA ENTERA NO ABRÍA (Asier, 24-ago-2026:
+          //    «le doy y no me abre… ve que el azul es diferente, será por algo»).
+          //    Ojo bueno: ERA por eso. Ese botón llevaba un enlace «intent://» de
+          //    Android, que dentro de la app (que es un navegador metido en la
+          //    aplicación) NO se abre — por eso salía de otro azul, porque iba sin
+          //    target y sin ser un enlace normal. Los botones de los TRAMOS sí
+          //    abren porque son enlaces https de toda la vida.
+          //    Así que el botón de arriba pasa a ser un enlace https NORMAL, igual
+          //    que los tramos. Si algún día la app de Maps se come las paradas de
+          //    en medio, para eso están los tramos de uno en uno, que no fallan.
+          // ══════════════════════════════════════════════════════════════════
+          var _mapsHref = data.datos.maps_url || '';
+          var _esIntent = false;
+          if (_mapsHref) _nav += '<a href="' + _mapsHref + '" target="_blank" rel="noopener" style="display:inline-block;margin:6px 0 0 0;padding:9px 15px;background:#2376C5;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">🗺️ Ir con Google Maps' + (data.datos.tramos && data.datos.tramos.length ? ' (toda la ruta)' : '') + '</a>';
           // v485: los TRAMOS de uno en uno — enlaces de un solo destino, que abren la
           // app de Maps a la primera en cualquier móvil. Al salir se toca el Tramo 1,
           // tras la primera entrega el Tramo 2, y así hasta el final.
