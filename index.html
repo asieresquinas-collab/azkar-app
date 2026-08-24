@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v505 · backend 2.7.431), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v506 · backend 2.7.432), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1075,6 +1075,11 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>0️⃣ ARREGLADO: los ceros de delante (00322, no 322) (backend 2.7.432):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Tus facturas empiezan por <strong>00322</strong>, con ceros. Ahora el número lo busco <strong>en todos los campos</strong> donde puede venir y comparo <strong>sin los ceros de delante</strong>, así que «00322» y «322» son el mismo número.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>🛑 Con cuidado de no cazar de más: <strong>no miro el importe ni la fecha</strong>, para que un total de 322 € o un día 22 de marzo no se hagan pasar por el número de una factura.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y en el «¿por qué digo esto?» te digo ahora <strong>cuántas facturas he leído y de qué número a qué número</strong>. Si la que buscas no entra en ese rango, se ve al momento.</div></div>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🔗 EL ENGANCHE BUENO: EL NÚMERO DE LA PROPIA FACTURA (backend 2.7.431):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El papel de su carpeta se llama <strong>FACTURA-00322-Ate_Construcciones_2022.PDF</strong>, y ese <strong>00322 es el número de STEL Order</strong> — porque las facturas se hacen ahí. Así que ya no adivino nada: cojo el número del papel y busco <strong>esa</strong> factura.</div></div>
@@ -4251,7 +4256,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v505';
+var APP_VERSION = 'v506';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
