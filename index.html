@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v514 · backend 2.7.439), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v515 · backend 2.7.440), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1075,6 +1075,13 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>📍 YA PUEDES PONER TODAS LAS DIRECCIONES DE ENTREGA (app v515):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Debajo de la dirección de entrega tienes <strong>«➕ Otra dirección de entrega»</strong>. Le das y aparece la <strong>entrega 2</strong>, con su <strong>calle</strong>, su <strong>piso</strong> y su <strong>ascensor</strong>, igual que la primera. Otra vez y tienes la 3. Y con el botón de la papelera quitas la que sobre.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Salen solas en <strong>el presupuesto</strong>, en <strong>el contrato</strong>, en <strong>el parte de los chicos</strong> (en pantalla y en papel) y cada una con su <strong>mapa y su Street View</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y la <strong>ruta ya no hay que dictársela</strong> a Azkarin: dile «<strong>dime la ruta de Javier</strong>» y coge las paradas de la ficha, en orden, él solo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Debajo te sale un cuadro con <strong>los tramos del viaje</strong> —Castro → Madrid, Madrid → Guareña, Guareña → Badajoz— con sus kilómetros y su tiempo, y la ida entera sumada.</div></div>
+      <div class='ayuda-tip'>🛑 <strong>Lo de siempre no cambia:</strong> una ficha con una sola entrega se ve y se guarda igual que ayer, y <strong>los kilómetros que se cobran los sigues poniendo tú</strong> — los tramos son solo para que lo veas.</div>
 
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>🛑 LOS INFORMES YA NO SE INVENTAN LA CARGA (backend 2.7.439):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En el plan de carga de Javier te metí <strong>50 cajas de enseres</strong> que no existen. Me las asumí. Tenías razón en pararlo: ese PDF va a la carpeta del cliente y con él se carga el camión.</div></div>
@@ -2379,6 +2386,8 @@ function SY(){
   // v433: la dirección completa = calle y número + piso/puerta (los dos campos)
   var _dc = function (p) { return (typeof window.dirCompleta === 'function') ? window.dirCompleta(p) : G('f_' + p); };
   S('c_rec', _dc('rec')); S('c_ent', _dc('ent'));
+  // v515 · si la mudanza tiene más de una entrega, van debajo, en el contrato y en el parte
+  try { if (window.entregasRefrescarPapel) window.entregasRefrescarPapel(); } catch (e) {}
   S('c_dom', G('f_fac') || _dc('rec'));
   S('c_ref',G('f_ref'));
   var fs=G('f_fserv');
@@ -3867,6 +3876,8 @@ function GD(){
       });
     }
   } catch (e) {}
+  // v515 · LAS ENTREGAS DE MÁS (Asier, 24-ago: «no puedo poner las 3 direcciones»).
+  try { if (typeof window.entregasGuardar === 'function') window.entregasGuardar(data); } catch (e) {}
   try { var _tk = tarifaKmParaGuardar(); if (_tk > 0) data._kmTarifa = _tk; } catch (e) {}   /* v423: con qué precio de km se hizo ESTA ficha */
   data.rows=[];
   var rows=document.querySelectorAll(".cr");
@@ -3950,6 +3961,7 @@ function LD(){
     try { if (window.limpiarPisos) window.limpiarPisos(); } catch (e) {}   // v493: ni su PISO
     try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423: esta ficha se queda con SU precio de km
     try { if (window.repartirDirecciones) window.repartirDirecciones(data); } catch (e) {}   // v433
+    try { if (window.entregasRestaurar) window.entregasRestaurar(data); } catch (e) {}   // v515: las entregas de más
     if(typeof AR_SALIDA==='function') AR_SALIDA(_salGuardada, _salNombre);
     // v194: Restaurar ascensor
     if(typeof setAscensor==='function'){setAscensor('rec',data.asc_rec||'');setAscensor('ent',data.asc_ent||'');}
@@ -4304,7 +4316,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v514';
+var APP_VERSION = 'v515';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -5575,6 +5587,8 @@ function collectFormData() {
       });
     }
   } catch (e) {}
+  // v515 · LAS ENTREGAS DE MÁS (Asier, 24-ago: «no puedo poner las 3 direcciones»).
+  try { if (typeof window.entregasGuardar === 'function') window.entregasGuardar(data); } catch (e) {}
   try { var _tk = tarifaKmParaGuardar(); if (_tk > 0) data._kmTarifa = _tk; } catch (e) {}   /* v423: con qué precio de km se hizo ESTA ficha */
 
   data.timestamp = Date.now();
@@ -5660,6 +5674,7 @@ function restoreFormData(data) {
   try { if (window.limpiarPisos) window.limpiarPisos(); } catch (e) {}   // v493: ni su PISO
   try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423
   try { if (window.repartirDirecciones) window.repartirDirecciones(data); } catch (e) {}   // v433
+    try { if (window.entregasRestaurar) window.entregasRestaurar(data); } catch (e) {}   // v515: las entregas de más
   if (typeof AR_SALIDA === 'function') AR_SALIDA(_salFicha, _salNombreF);
   if (typeof CA === 'function') CA();
   if (typeof SY === 'function') SY();
@@ -9567,6 +9582,10 @@ window.addEventListener('DOMContentLoaded', function() {
       saveNow();
     }, 1000);
   }
+  // v515 · los campos que se crean SOBRE LA MARCHA (las entregas de más) no pasan
+  // por el querySelectorAll de abajo, que corre una sola vez al arrancar. Así que
+  // el guardado automático se deja a mano para que ellos también lo llamen.
+  window.scheduleSave = debouncedAutoSave;
   // Escuchar cambios en TODOS los campos del presupuesto Y dossier
   document.querySelectorAll('#page-presupuesto input, #page-presupuesto textarea, #page-presupuesto select, #page-dossier input, #page-dossier textarea, #page-dossier select').forEach(el => {
     el.addEventListener('input', debouncedAutoSave);
@@ -9667,8 +9686,11 @@ async function IMPRIMIR_PARTE() {
   // Fill parte fields
   document.getElementById('pt_nom').textContent = nom ? nom.value || '—' : '—';
   document.getElementById('pt_fecha').textContent = fserv ? fserv.value || '—' : '—';
-  document.getElementById('pt_rec').textContent = rec ? rec.value || '—' : '—';
-  document.getElementById('pt_ent').textContent = ent ? ent.value || '—' : '—';
+  document.getElementById('pt_rec').textContent = (window.dirCompleta ? window.dirCompleta('rec') : (rec ? rec.value : '')) || '—';
+  // v515 · la dirección ENTERA (con el piso, que antes se quedaba fuera del parte)
+  //        y debajo, las entregas de más si las hay.
+  document.getElementById('pt_ent').textContent = (window.dirCompleta ? window.dirCompleta('ent') : (ent ? ent.value : '')) || '—';
+  try { if (window.entregasRefrescarPapel) window.entregasRefrescarPapel(); } catch (e) {}
   document.getElementById('pt_obs').textContent = obs ? obs.value || '—' : '—';
   document.getElementById('pt_ref').textContent = ref ? ref.value || '—' : '—';
 
@@ -9717,8 +9739,11 @@ async function PRINT_PARTE() {
   // Fill parte fields
   document.getElementById('pt_nom').textContent = nom ? nom.value || '—' : '—';
   document.getElementById('pt_fecha').textContent = fserv ? fserv.value || '—' : '—';
-  document.getElementById('pt_rec').textContent = rec ? rec.value || '—' : '—';
-  document.getElementById('pt_ent').textContent = ent ? ent.value || '—' : '—';
+  document.getElementById('pt_rec').textContent = (window.dirCompleta ? window.dirCompleta('rec') : (rec ? rec.value : '')) || '—';
+  // v515 · la dirección ENTERA (con el piso, que antes se quedaba fuera del parte)
+  //        y debajo, las entregas de más si las hay.
+  document.getElementById('pt_ent').textContent = (window.dirCompleta ? window.dirCompleta('ent') : (ent ? ent.value : '')) || '—';
+  try { if (window.entregasRefrescarPapel) window.entregasRefrescarPapel(); } catch (e) {}
   document.getElementById('pt_obs').textContent = obs ? obs.value || '—' : '—';
   document.getElementById('pt_ref').textContent = ref ? ref.value || '—' : '—';
 
@@ -9935,8 +9960,11 @@ async function firmarParteCliente() {
   var fserv = document.getElementById('f_fserv'), rec = document.getElementById('f_rec'), ent = document.getElementById('f_ent'), obs = document.getElementById('f_obs');
   document.getElementById('pt_nom').textContent = clientName || '—';
   document.getElementById('pt_fecha').textContent = fserv ? fserv.value || '—' : '—';
-  document.getElementById('pt_rec').textContent = rec ? rec.value || '—' : '—';
-  document.getElementById('pt_ent').textContent = ent ? ent.value || '—' : '—';
+  document.getElementById('pt_rec').textContent = (window.dirCompleta ? window.dirCompleta('rec') : (rec ? rec.value : '')) || '—';
+  // v515 · la dirección ENTERA (con el piso, que antes se quedaba fuera del parte)
+  //        y debajo, las entregas de más si las hay.
+  document.getElementById('pt_ent').textContent = (window.dirCompleta ? window.dirCompleta('ent') : (ent ? ent.value : '')) || '—';
+  try { if (window.entregasRefrescarPapel) window.entregasRefrescarPapel(); } catch (e) {}
   document.getElementById('pt_obs').textContent = obs ? obs.value || '—' : '—';
   document.getElementById('pt_ref').textContent = number;
   var rowsDiv = document.getElementById('pt_rows'); rowsDiv.innerHTML = '';
@@ -10195,8 +10223,11 @@ async function confirmarParteEdit() {
 
   document.getElementById('pt_nom').textContent = nom ? nom.value || '—' : '—';
   document.getElementById('pt_fecha').textContent = fserv ? fserv.value || '—' : '—';
-  document.getElementById('pt_rec').textContent = rec ? rec.value || '—' : '—';
-  document.getElementById('pt_ent').textContent = ent ? ent.value || '—' : '—';
+  document.getElementById('pt_rec').textContent = (window.dirCompleta ? window.dirCompleta('rec') : (rec ? rec.value : '')) || '—';
+  // v515 · la dirección ENTERA (con el piso, que antes se quedaba fuera del parte)
+  //        y debajo, las entregas de más si las hay.
+  document.getElementById('pt_ent').textContent = (window.dirCompleta ? window.dirCompleta('ent') : (ent ? ent.value : '')) || '—';
+  try { if (window.entregasRefrescarPapel) window.entregasRefrescarPapel(); } catch (e) {}
   document.getElementById('pt_obs').textContent = obs ? obs.value || '—' : '—';
   document.getElementById('pt_ref').textContent = ref ? ref.value || '—' : '—';
 
@@ -11686,6 +11717,9 @@ function txCreatePresupuesto() {
   }
 
   window.loadStreetView = loadStreetView;
+  // v515 · para las ENTREGAS de más (entrega2, entrega3…) hace falta poder crear sus
+  // marcos igual que los de siempre. Es la misma función de siempre, sin tocar.
+  window._crearSvContainer = createSvContainer;
   function loadStreetView(address, prefix) {
     const container = document.getElementById('sv-main-' + prefix);
     if (!container) return;
@@ -12772,6 +12806,14 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
 
   // Exponer para uso externo (transcripción)
   window._calcDistancia = calcularDistancia;
+  // v515 · LOS TRAMOS DE UNA MUDANZA CON VARIAS ENTREGAS. Para poder medir
+  // Castro → Madrid → Guareña → Badajoz tramo a tramo hacen falta estas dos, que
+  // son las MISMAS de siempre (con su caché y su respaldo por servidor). Aquí solo
+  // se dejan a mano: NO se toca ni una línea del cálculo de kilómetros de siempre,
+  // que es el que pone el DESPLAZAMIENTO en el presupuesto y no se juega con eso.
+  window._geocodeDir = geocode;
+  window._calcRutaEntre = calcRoute;
+  window._esperarUnPoco = esperar;
 
   // Insertar el box después del campo de entrega
   var fEntField = document.getElementById('f_ent');
@@ -19515,6 +19557,372 @@ async function doResetWithCode() {
   window.limpiarPisos = limpiarPisos;
   window.repartirDirecciones = repartirDirecciones;
   window.repartirTexto = reparte;
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
+  else monta();
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════════════════════
+     MÁS DE UNA ENTREGA  ·  v515 · 24-ago-2026
+     Asier, con la mudanza de Javier delante (Castro → Madrid → Guareña → Badajoz):
+     «oye, me estoy dando cuenta de que NO PUEDO PONER LAS 3 DIRECCIONES».
+     Y era verdad: la ficha tenía UNA recogida y UNA entrega, y punto.
+     Ahora, debajo de la entrega, hay un botón «➕ Otra dirección de entrega». Cada
+     entrega tiene lo mismo que la primera: calle, piso/puerta y ascensor. Y de ahí
+     salen solas: el contrato, el parte, los mapas, los tramos de kilómetros y la
+     ruta de Google Maps.
+     🛑 Las fichas de siempre NO cambian: una ficha con una sola entrega se ve y se
+     guarda EXACTAMENTE igual que ayer. Lo de varias solo aparece si él lo pide.
+     🛑 Y los KILÓMETROS del presupuesto no se tocan: el cálculo de siempre
+     (recogida → primera entrega) se queda como está, porque es el que pone el
+     DESPLAZAMIENTO y con el dinero no se juega. Los tramos de más se enseñan
+     APARTE, para que Asier decida qué cobra — los precios los pone él.
+     ══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  var MAX = 8;
+  var _timers = {};
+
+  function el(id) { return document.getElementById(id); }
+  function dc(p) { return (typeof window.dirCompleta === 'function') ? window.dirCompleta(p) : ((el('f_' + p) || {}).value || ''); }
+
+  // Los sufijos de las entregas de más que hay puestas AHORA MISMO: ['ent2','ent3'…]
+  function sufijosExtra() {
+    var out = [];
+    for (var i = 2; i <= MAX; i++) if (el('f_ent' + i)) out.push('ent' + i);
+    return out;
+  }
+  function cuantasExtra() { return sufijosExtra().length; }
+
+  // TODAS las entregas en orden, con su dirección entera. La primera es la de siempre.
+  function entregas() {
+    var out = [];
+    var d1 = String(dc('ent') || '').trim();
+    out.push({ suf: 'ent', n: 1, dir: d1, calle: String((el('f_ent') || {}).value || '').trim() });
+    sufijosExtra().forEach(function (s, k) {
+      out.push({ suf: s, n: k + 2, dir: String(dc(s) || '').trim(), calle: String((el('f_' + s) || {}).value || '').trim() });
+    });
+    return out;
+  }
+
+  // Las paradas del servicio, en orden y sin huecos: recogida + entregas escritas.
+  function paradas() {
+    var p = [];
+    var r = String(dc('rec') || '').trim();
+    if (r) p.push(r);
+    entregas().forEach(function (e) { if (e.dir) p.push(e.dir); });
+    return p;
+  }
+
+  // ── Pintar una entrega de más ───────────────────────────────────────────────
+  function bloque(i) {
+    if (el('f_ent' + i)) return el('f_ent' + i).closest('.fg');
+    var base = el('f_ent') ? el('f_ent').closest('.fg') : null;
+    if (!base) return null;
+    var fg = document.createElement('div');
+    fg.className = 'fg g1';
+    fg.setAttribute('data-entrega-extra', String(i));
+    var fi = document.createElement('div');
+    fi.className = 'fi';
+    var lab = document.createElement('label');
+    lab.textContent = 'Dirección de entrega ' + i;
+    fi.appendChild(lab);
+
+    var fila = document.createElement('div');
+    fila.style.cssText = 'display:flex;gap:7px;align-items:flex-start';
+    var calle = document.createElement('input');
+    calle.type = 'text'; calle.id = 'f_ent' + i;
+    calle.placeholder = 'Calle, número y ciudad';
+    calle.style.cssText = 'flex:1 1 auto;min-width:0';
+    var pta = document.createElement('input');
+    pta.type = 'text'; pta.id = 'f_ent' + i + '_pta';
+    pta.placeholder = 'Piso, puerta…';
+    pta.title = 'Piso, mano, escalera… Esto NO se le manda al mapa, pero sí sale en el presupuesto y en el parte.';
+    pta.style.cssText = 'flex:0 0 34%;min-width:0;border:1.5px solid #D8DCE3;border-radius:0 0 3px 3px;padding:8px 10px;font-family:inherit;font-size:13px;background:#fff;outline:none';
+    fila.appendChild(calle); fila.appendChild(pta);
+    fi.appendChild(fila);
+
+    var pie = document.createElement('div');
+    pie.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap';
+    var labAsc = document.createElement('label');
+    labAsc.style.cssText = 'font-size:11px;color:#555;margin:0';
+    labAsc.textContent = 'Ascensor:';
+    var asc = document.createElement('button');
+    asc.type = 'button'; asc.id = 'asc_ent' + i;
+    asc.setAttribute('data-val', '');
+    asc.style.cssText = 'padding:2px 10px;border-radius:4px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #ccc;background:#f5f5f5;color:#888;min-width:110px';
+    asc.textContent = 'Sin definir';
+    asc.onclick = function () { try { toggleAscensor('ent' + i); } catch (e) {} guardarYa(); };
+    var quita = document.createElement('button');
+    quita.type = 'button'; quita.className = 'no-pdf'; quita.id = 'ent-quita-' + i;
+    quita.textContent = '🗑️ Quitar esta entrega';
+    quita.style.cssText = 'background:none;border:1px solid #e3d0d0;color:#a05252;border-radius:5px;padding:3px 8px;font-family:inherit;font-size:10.5px;cursor:pointer';
+    quita.onclick = function () { quitarDesde(i); };
+    pie.appendChild(labAsc); pie.appendChild(asc); pie.appendChild(quita);
+    fi.appendChild(pie);
+    fg.appendChild(fi);
+
+    // Va detrás de la entrega anterior (o de su mapa, si ya lo tiene)
+    var anterior = (i === 2) ? base : (el('f_ent' + (i - 1)) ? el('f_ent' + (i - 1)).closest('.fg') : base);
+    var mapaAnterior = el('sv-main-' + (i === 2 ? 'entrega' : 'entrega' + (i - 1)));
+    var tras = mapaAnterior || anterior;
+    // el cuadro de los kilómetros va SIEMPRE el último, así que si está, nos ponemos antes
+    tras.parentElement.insertBefore(fg, tras.nextSibling);
+
+    // su Street View + mapa, igual que los de siempre
+    try {
+      if (typeof window._crearSvContainer === 'function' && !el('sv-main-entrega' + i)) {
+        var sv = window._crearSvContainer('entrega' + i);
+        fg.parentElement.insertBefore(sv, fg.nextSibling);
+        var cap = sv.querySelector('p');
+        if (cap) cap.textContent = 'Street View + Mapa de la entrega ' + i + ' (haz clic para navegar)';
+      }
+    } catch (e) {}
+
+    function alEscribir() {
+      guardarYa();
+      clearTimeout(_timers[i]);
+      _timers[i] = setTimeout(function () {
+        try { if (typeof window.loadStreetView === 'function') window.loadStreetView(calle.value, 'entrega' + i); } catch (e) {}
+        tramos();
+      }, 1500);
+    }
+    calle.addEventListener('input', alEscribir);
+    calle.addEventListener('blur', function () { try { window.loadStreetView(calle.value, 'entrega' + i); } catch (e) {} tramos(); });
+    pta.addEventListener('input', guardarYa);
+    return fg;
+  }
+
+  function guardarYa() {
+    try { if (typeof SY === 'function') SY(); } catch (e) {}
+    refrescarPapel();
+    try { if (typeof window.scheduleSave === 'function') window.scheduleSave(); } catch (e) {}
+  }
+
+  function anadir() {
+    var i = cuantasExtra() + 2;
+    if (i > MAX) return;
+    bloque(i);
+    colocarBoton();
+    refrescarPapel();
+    var nuevo = el('f_ent' + i);
+    if (nuevo) nuevo.focus();
+    guardarYa();
+  }
+
+  // Quitar la de en medio dejaría huecos, así que se quitan de la última hacia atrás,
+  // igual que se ponen. Se avisa antes: aquí se borra una dirección escrita.
+  function quitarDesde(i) {
+    var dir = String((el('f_ent' + i) || {}).value || '').trim();
+    if (dir && !confirm('¿Quito la entrega ' + i + '?\n\n' + dir)) return;
+    var ultima = cuantasExtra() + 1;
+    for (var k = ultima; k >= i; k--) {
+      var fg = el('f_ent' + k) ? el('f_ent' + k).closest('.fg') : null;
+      if (fg && fg.parentElement) fg.parentElement.removeChild(fg);
+      var sv = el('sv-main-entrega' + k);
+      if (sv && sv.parentElement) sv.parentElement.removeChild(sv);
+    }
+    colocarBoton();
+    refrescarPapel();
+    guardarYa();
+  }
+
+  function colocarBoton() {
+    var b = el('btn-otra-entrega');
+    if (!b) {
+      b = document.createElement('button');
+      b.type = 'button'; b.id = 'btn-otra-entrega'; b.className = 'no-pdf';
+      b.style.cssText = 'margin:2px 0 8px 0;background:#eef4fb;border:1px dashed #2376C5;color:#1B4F8A;border-radius:6px;padding:6px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer';
+      b.onclick = anadir;
+    }
+    b.textContent = cuantasExtra() ? '➕ Otra dirección de entrega (van ' + (cuantasExtra() + 1) + ')' : '➕ Otra dirección de entrega';
+    var n = cuantasExtra();
+    var ancla = n ? (el('sv-main-entrega' + (n + 1)) || (el('f_ent' + (n + 1)) ? el('f_ent' + (n + 1)).closest('.fg') : null))
+      : (el('sv-main-entrega') || (el('f_ent') ? el('f_ent').closest('.fg') : null));
+    if (ancla && ancla.parentElement) ancla.parentElement.insertBefore(b, ancla.nextSibling);
+  }
+
+  // ── El papel: contrato y parte de trabajo ───────────────────────────────────
+  // Las entregas de más se pintan DEBAJO de la de siempre, en su misma caja. Así
+  // el contrato y el parte que firma el cliente las llevan sin tocar sus plantillas.
+  function lineasEn(idBase, marca) {
+    var base = el(idBase);
+    if (!base || !base.parentElement) return;
+    var viejas = base.parentElement.querySelectorAll('[data-' + marca + ']');
+    for (var v = 0; v < viejas.length; v++) viejas[v].parentElement.removeChild(viejas[v]);
+    var lista = entregas().filter(function (e) { return e.n > 1 && e.dir; });
+    if (!lista.length) { base.setAttribute('data-solo-una', '1'); return; }
+    base.removeAttribute('data-solo-una');
+    var tras = base;
+    lista.forEach(function (e) {
+      var d = document.createElement('div');
+      d.setAttribute('data-' + marca, String(e.n));
+      d.className = base.className;
+      d.style.marginTop = '3px';
+      d.textContent = '↳ Entrega ' + e.n + ': ' + e.dir;
+      tras.parentElement.insertBefore(d, tras.nextSibling);
+      tras = d;
+    });
+  }
+  function refrescarPapel() {
+    try { lineasEn('c_ent', 'entrega-contrato'); } catch (e) {}
+    try { lineasEn('pt_ent', 'entrega-parte'); } catch (e) {}
+  }
+
+  // ── Los tramos de kilómetros (APARTE del cálculo de siempre) ────────────────
+  function cajaTramos() {
+    var c = el('tramos-box');
+    if (c) return c;
+    c = document.createElement('div');
+    c.id = 'tramos-box';
+    c.style.cssText = 'margin:6px 0 10px 0;padding:8px 11px;border:1.5px solid #D8DCE3;border-left:4px solid #2376C5;border-radius:5px;background:#f7fafd;font-size:12px;color:#33475b;display:none';
+    var ancla = el('distancia-box') || (el('f_ent') ? el('f_ent').closest('.fg') : null);
+    if (ancla && ancla.parentElement) ancla.parentElement.insertBefore(c, ancla.nextSibling);
+    return c;
+  }
+
+  var _tramoTok = 0;
+  function tramos() {
+    var c = cajaTramos();
+    if (!c) return;
+    var p = paradas();
+    if (p.length < 3) { c.style.display = 'none'; c.innerHTML = ''; return; }
+    var tok = ++_tramoTok;
+    c.style.display = 'block';
+    c.innerHTML = '<b>🚚 Los tramos del viaje</b><br>⏳ Midiéndolos…';
+    if (typeof window._geocodeDir !== 'function' || typeof window._calcRutaEntre !== 'function') {
+      c.innerHTML = '<b>🚚 El viaje tiene ' + p.length + ' paradas</b><br>' + p.map(function (x, k) { return (k + 1) + '. ' + x; }).join('<br>');
+      return;
+    }
+    (function () {
+      var coords = [], i = 0;
+      function siguiente() {
+        if (tok !== _tramoTok) return;
+        if (i >= p.length) return pintar(coords);
+        window._geocodeDir(p[i]).then(function (co) {
+          coords.push(co); i++;
+          return window._esperarUnPoco ? window._esperarUnPoco(1100) : null;
+        }).then(siguiente).catch(function () { coords.push(null); i++; siguiente(); });
+      }
+      function pintar(cs) {
+        if (tok !== _tramoTok) return;
+        var faltan = [];
+        cs.forEach(function (co, k) { if (!co) faltan.push(p[k]); });
+        if (faltan.length) {
+          c.innerHTML = '<b>🚚 Los tramos del viaje</b><br>🛑 No he encontrado en el mapa: ' +
+            faltan.map(function (x) { return '«' + x + '»' ; }).join(', ') +
+            '.<br>Escribe también el pueblo o la ciudad. <b>No te pongo kilómetros a ojo.</b>';
+          return;
+        }
+        var trozos = [], k = 0, total = 0, minutos = 0;
+        function tramo() {
+          if (tok !== _tramoTok) return;
+          if (k >= cs.length - 1) return fin();
+          window._calcRutaEntre(cs[k], cs[k + 1]).then(function (r) {
+            if (!r) { trozos.push({ de: p[k], a: p[k + 1], km: null }); }
+            else {
+              var km = r.distancia / 1000; total += km; minutos += Math.round(r.duracion / 60);
+              trozos.push({ de: p[k], a: p[k + 1], km: km, min: Math.round(r.duracion / 60) });
+            }
+            k++; tramo();
+          }).catch(function () { trozos.push({ de: p[k], a: p[k + 1], km: null }); k++; tramo(); });
+        }
+        function corto(t) { var z = String(t || '').split(',').map(function (x) { return x.trim(); }); return z.slice(0, 2).join(', '); }
+        function fin() {
+          if (tok !== _tramoTok) return;
+          var h = '<b>🚚 Los tramos del viaje (' + p.length + ' paradas)</b><br>';
+          trozos.forEach(function (t, idx) {
+            h += (idx + 1) + '. ' + corto(t.de) + ' → ' + corto(t.a) + ': ' +
+              (t.km == null ? '<span style="color:#c0392b">no he podido medirlo</span>'
+                : '<b>' + t.km.toFixed(1).replace('.', ',') + ' km</b>' + (t.min ? ' · ' + (t.min >= 60 ? Math.floor(t.min / 60) + 'h ' + (t.min % 60) + 'min' : t.min + ' min') : '')) + '<br>';
+          });
+          var sinMedir = trozos.some(function (t) { return t.km == null; });
+          h += '<span style="border-top:1px solid #dbe3ec;display:block;margin-top:4px;padding-top:4px">' +
+            'Ida entera: <b>' + total.toFixed(1).replace('.', ',') + ' km</b>' +
+            (minutos ? ' · ' + (minutos >= 60 ? Math.floor(minutos / 60) + 'h ' + (minutos % 60) + 'min' : minutos + ' min') : '') +
+            (sinMedir ? ' <span style="color:#c0392b">(y falta algún tramo por medir, o sea que es MÁS)</span>' : '') +
+            '</span>' +
+            '<span style="font-size:10.5px;color:#7b8794">Esto es informativo: el <b>desplazamiento que se cobra</b> lo pones tú, como siempre.</span>';
+          c.innerHTML = h;
+        }
+        tramo();
+      }
+      siguiente();
+    })();
+  }
+
+  // ── Guardar y recuperar en la ficha ─────────────────────────────────────────
+  // 🛑 Se guarda SIEMPRE cuántas entregas de más hay (aunque sean 0). Si no, al
+  // quitar una, la de antes se quedaría pegada en la nube para siempre.
+  function guardar(data) {
+    if (!data) return data;
+    try {
+      var extra = sufijosExtra();
+      data.f_entregas_n = extra.length;
+      extra.forEach(function (s) {
+        var calle = el('f_' + s), pta = el('f_' + s + '_pta'), asc = el('asc_' + s);
+        data['f_' + s] = dc(s);
+        data['f_' + s + '_calle'] = String((calle && calle.value) || '');
+        data['f_' + s + '_pta'] = String((pta && pta.value) || '');
+        data['asc_' + s] = (asc && asc.getAttribute('data-val')) || '';
+      });
+    } catch (e) {}
+    return data;
+  }
+
+  function restaurar(data) {
+    try {
+      // primero fuera TODAS las de antes — el cliente de antes no se queda pegado
+      var hay = cuantasExtra();
+      for (var k = hay + 1; k >= 2; k--) {
+        var fg = el('f_ent' + k) ? el('f_ent' + k).closest('.fg') : null;
+        if (fg && fg.parentElement) fg.parentElement.removeChild(fg);
+        var sv = el('sv-main-entrega' + k);
+        if (sv && sv.parentElement) sv.parentElement.removeChild(sv);
+      }
+      var n = parseInt((data && data.f_entregas_n) || 0, 10) || 0;
+      if (n > MAX) n = MAX;
+      for (var i = 2; i <= n + 1; i++) {
+        var s = 'ent' + i;
+        if (!data || (!data['f_' + s] && !data['f_' + s + '_calle'])) continue;
+        bloque(i);
+        var calle = el('f_' + s), pta = el('f_' + s + '_pta');
+        if (calle) calle.value = data['f_' + s + '_calle'] || data['f_' + s] || '';
+        if (pta) pta.value = data['f_' + s + '_pta'] || '';
+        try { if (typeof setAscensor === 'function') setAscensor(s, data['asc_' + s] || ''); } catch (e) {}
+        try { if (typeof window.loadStreetView === 'function' && calle && calle.value) window.loadStreetView(calle.value, 'entrega' + i); } catch (e) {}
+      }
+      colocarBoton();
+      refrescarPapel();
+      setTimeout(tramos, 400);
+      try { if (typeof SY === 'function') SY(); } catch (e) {}
+    } catch (e) {}
+  }
+
+  function monta() {
+    if (!el('f_ent')) return;
+    colocarBoton();
+    refrescarPapel();
+    var f1 = el('f_ent');
+    if (f1 && !f1.getAttribute('data-tramos')) {
+      f1.setAttribute('data-tramos', '1');
+      f1.addEventListener('blur', function () { setTimeout(tramos, 100); });
+    }
+    var fr = el('f_rec');
+    if (fr && !fr.getAttribute('data-tramos')) {
+      fr.setAttribute('data-tramos', '1');
+      fr.addEventListener('blur', function () { setTimeout(tramos, 100); });
+    }
+  }
+
+  window.entregasDelServicio = entregas;
+  window.paradasDelServicio = paradas;
+  window.entregasGuardar = guardar;
+  window.entregasRestaurar = restaurar;
+  window.entregasRefrescarPapel = refrescarPapel;
+  window.entregasTramos = tramos;
+  window.entregasAnadir = anadir;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
   else monta();
