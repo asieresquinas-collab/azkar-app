@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v499 · backend 2.7.425), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v500 · backend 2.7.426), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1075,6 +1075,13 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#00897B;margin-top:16px'>🔎 LA SEÑAL LA BUSCO TAMBIÉN EN STEL ORDER (backend 2.7.426):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Si la ficha de la app <strong>no tiene la señal apuntada</strong>, la busco en <strong>STEL Order</strong>: si ya le hiciste la factura de la reserva, lo que le cobraste está ahí escrito, y ese es el dato bueno.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Así, la <strong>factura del SERVICIO</strong> resta la reserva <strong>de verdad</strong>, la que se le cobró — no lo que pusiera o dejara de poner alguien en la ficha. Y te digo siempre <strong>de dónde he sacado el número</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 Si la ficha y STEL Order <strong>no cuadran</strong>, te digo lo que pone cada uno y <strong>uso lo de STEL Order</strong>, que es lo que se cobró. Míralo tú de todas formas.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>🛑 Y si pides otra vez la factura de la reserva de alguien que <strong>ya la tiene</strong>, lo primero que te sale es <strong>«LA RESERVA DE ESTE CLIENTE YA ESTÁ FACTURADA»</strong>, con su número y su fecha. Hacerla dos veces es cobrarle dos veces.</div></div>
+      <div class='ayuda-tip'>En la lista, quien no tiene señal en la ficha pero sí factura ya no sale en rojo: pone «señal en STEL Order». El rojo se queda para los que no la tienen en ningún sitio — esos sí hay que apuntarlos.</div>
 
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>🧾🧾 LAS DOS FACTURAS, Y EL QUE PAGA TODO DE GOLPE (backend 2.7.425):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cada cliente de esa lista dice ahora <strong>qué le falta</strong>: <strong>sin ninguna factura</strong> (y si el servicio ya está hecho, te digo que le faltan <strong>las dos</strong>), <strong>A MEDIO FACTURAR</strong> (tiene una y hacen falta las dos), o <strong>ya tiene sus dos</strong>.</div></div>
@@ -4215,7 +4222,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v499';
+var APP_VERSION = 'v500';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
