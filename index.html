@@ -1067,14 +1067,20 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v498 · backend 2.7.424), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v499 · backend 2.7.425), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Por eso, en <strong>👷 EQUIPO</strong>, arriba del todo, tienes <strong>💶 RESERVAS COBRADAS — PENDIENTES DE FACTURAR</strong>. Salen las fichas que has puesto <strong>EN MARCHA</strong> (que es lo que haces al recibir el justificante) y que todavía no están pagadas del todo, las últimas primero, cada una con su botón.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
-      <div class='ayuda-tip'>Las que ya tienen factura no las escondo: las aparto en un desplegable («Ver las que ya tienen factura») y salen marcadas, para que puedas mirarlas si hace falta.</div>
+      <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>🧾🧾 LAS DOS FACTURAS, Y EL QUE PAGA TODO DE GOLPE (backend 2.7.425):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cada cliente de esa lista dice ahora <strong>qué le falta</strong>: <strong>sin ninguna factura</strong> (y si el servicio ya está hecho, te digo que le faltan <strong>las dos</strong>), <strong>A MEDIO FACTURAR</strong> (tiene una y hacen falta las dos), o <strong>ya tiene sus dos</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Cuando el servicio <strong>ya se ha hecho</strong>, en esa fila sale también el botón de <strong>Factura del SERVICIO</strong>, para que puedas cerrar las dos sin ir a buscarlo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>El que paga todo de golpe.</strong> Si lo apuntado como señal es prácticamente <strong>todo el presupuesto</strong>, ese cliente no ha pagado el 50%: ha pagado el servicio entero. Te lo aviso en la lista y lo primero de todo en el borrador, porque hacerle una «reserva» por ese importe y luego otra del servicio sería <strong>cobrarle dos veces</strong>. Lo decides tú.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Y he limpiado la lista: solo salen fichas de cliente de verdad (3 o 4 cifras). Las copias de seguridad y las refs raras ya no la ensucian.</div></div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🔘 EL BOTÓN DE LA FACTURA, SIN NECESIDAD DE AZKARIN (backend 2.7.422):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Entra en <strong>👷 EQUIPO</strong> (con tu enlace de oficina) y ve a <strong>PARTES FIRMADOS — PENDIENTES DE REVISAR Y FACTURAR</strong>. Cada parte tiene ahora dos botones: <strong>🧾 Factura de la RESERVA</strong> y <strong>🧾 Factura del SERVICIO</strong>.</div></div>
@@ -4209,7 +4215,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v498';
+var APP_VERSION = 'v499';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
