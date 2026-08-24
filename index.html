@@ -139,6 +139,10 @@
    por abajo, y en el papel se veía la B y punto: la A (Castro) y las de Extremadura se
    quedaban fuera. Con varias entregas se enseña el mapa COMPLETO, sin recortar. */
 #sv-ruta-png.ruta-varias{max-height:none!important;object-fit:contain!important;object-position:center center!important}
+/* v521 · los mapas de cada parada, más pequeños y CENTRADOS en el papel (Asier:
+   «ocupan mucho y no dejan la dirección en el centro»). */
+.mapa-pdf-parada{max-width:62%!important;margin:4px auto 8px auto!important}
+.mapa-pdf-parada img{max-height:96px!important;object-fit:cover!important}
 #mapas-pdf-fila{display:flex!important;gap:8px!important;margin:4px 0!important}
 #mapas-pdf-fila>div{flex:1;min-width:0}
 #mapas-pdf-fila img{width:100%;display:block;max-height:106px!important;object-fit:cover!important;border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px}
@@ -1072,7 +1076,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v520 · backend 2.7.441), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v521 · backend 2.7.441), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1080,6 +1084,10 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🔎 LOS MAPAS, MÁS PEQUEÑOS Y CENTRADOS (app v521):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con cuatro paradas eran <strong>ocho marcos enormes</strong> y la ficha se hacía interminable: las direcciones se quedaban perdidas entre mapa y mapa. Ahora los mapas son <strong>más bajos</strong> y van <strong>centrados</strong>, con un ancho máximo, así que la dirección se queda <strong>en el medio</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>En el <strong>PDF</strong> igual: cada mapa de parada va centrado, a poco más de la mitad de ancho y con tope de alto. Antes, con cuatro paradas, se iba la hoja entera en mapas.</div></div>
 
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>💰 LOS KILÓMETROS QUE SE COBRAN, CON VARIAS ENTREGAS (app v520):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Otra que viste bien: el cuadro de los kilómetros cobraba <strong>solo hasta la PRIMERA entrega</strong> (449 km de los 877,9 que son en realidad). Ahora te <strong>avisa en naranja</strong>, con los <strong>dos números delante</strong>.</div></div>
@@ -1098,7 +1106,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y arreglado lo de la cuarta parada: <strong>ninguna se queda muda</strong>. En cuanto pides el mapa pone «⏳ Comprobando esta dirección…» y después el verde o el rojo.</div></div>
       <div class='ayuda-tip'>Con <strong>una sola entrega</strong> el papel se queda igual que siempre: los dos mapitas uno al lado del otro.</div>
 
-      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📍 EL MAPA, HASTA LA PUERTA (app v520 · backend 2.7.441):</p>
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📍 EL MAPA, HASTA LA PUERTA (app v521 · backend 2.7.441):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con «C. Castillo de Hornachos, 1, 06006 Badajoz» el mapa se plantaba en el <strong>castillo de Hornachos</strong>, en la sierra, a sesenta kilómetros. Eran dos cosas: a <strong>toda</strong> dirección con número se le pegaba «Bizkaia» (aunque pusiera Badajoz), y se buscaba <strong>la frase entera de corrido</strong>.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, si la dirección <strong>ya dice de dónde es</strong> —otra provincia, otra ciudad, o un código postal que no empieza por 48— se busca <strong>tal cual</strong>. Y la dirección se <strong>parte en piezas</strong> (calle y número · pueblo · código postal), que es como se encuentra un <strong>portal</strong> y no un monumento.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Y lo más importante: debajo de cada mapa te digo lo que he entendido.</strong> Si he clavado el portal, en verde: «📍 Portal clavado: …». Si solo he llegado a la calle o al pueblo, <strong>en rojo</strong>: «🛑 Esto NO es el portal exacto». Un mapa equivocado y callado parece que ha acertado — y con eso salen los chicos a la carretera.</div></div>
@@ -4350,7 +4358,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v520';
+var APP_VERSION = 'v521';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8906,13 +8914,15 @@ function buildCompleteHTML(pageIds) {
           if (!foto || !foto.getAttribute('src')) return;
           var caja = document.createElement('div');
           caja.className = 'mapa-pdf-parada';
-          caja.style.cssText = 'margin:4px 0 8px 0;page-break-inside:avoid;break-inside:avoid;';
+          // v521 · en el papel también: más pequeños y centrados, que con cuatro
+          //        paradas la hoja se iba entera en mapas.
+          caja.style.cssText = 'margin:4px auto 8px auto;max-width:62%;page-break-inside:avoid;break-inside:avoid;';
           var cab = document.createElement('div');
           cab.style.cssText = 'font-size:8.5px;font-weight:800;letter-spacing:1px;color:#1B4F8A;background:#D6E4F7;padding:2px 8px;border-radius:3px 3px 0 0;';
           cab.innerHTML = _chincheta + par.tit + ' (' + 'ABCDEFGHIJ'.charAt(_k) + ')';
           var im = document.createElement('img');
           im.setAttribute('src', foto.getAttribute('src'));
-          im.style.cssText = 'width:100%;display:block;border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px;';
+          im.style.cssText = 'width:100%;display:block;max-height:96px;object-fit:cover;border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px;';
           caja.appendChild(cab); caja.appendChild(im);
           cont.parentNode.insertBefore(caja, cont.nextSibling);
           v447Sav.bloques.push(caja);
@@ -11772,7 +11782,11 @@ function txCreatePresupuesto() {
     container.id = 'sv-main-' + prefix;
     container.style.cssText = 'margin-top:6px;display:none;';
     const flex = document.createElement('div');
-    flex.style.cssText = 'display:flex;gap:6px;';
+    // 🛑 v521 · MÁS PEQUEÑOS Y CENTRADOS (Asier, 24-ago-2026: «los mapas hazlos más
+    //    pequeños y más centrados, ocupan mucho y no dejan la dirección en el centro»).
+    //    Con cuatro paradas eran ocho marcos de 220 px: la ficha se hacía interminable
+    //    y las direcciones quedaban perdidas entre mapa y mapa.
+    flex.style.cssText = 'display:flex;gap:6px;max-width:560px;margin:0 auto;';
     // v424 · Asier: «el mapa, cuando le doy a imprimir, no sale, sale como en blanco».
     // Y es que un <iframe> de Google Maps NO se imprime: cuando el PDF se monta en el
     // servidor, ese marco se vuelve a cargar desde cero, sin sesión y sin JavaScript, y
@@ -11784,12 +11798,12 @@ function txCreatePresupuesto() {
     const streetFrame = document.createElement('iframe');
     streetFrame.id = 'sv-main-' + prefix + '-street';
     streetFrame.className = 'no-pdf';
-    streetFrame.style.cssText = 'width:50%;height:220px;border:2px solid #1a5276;border-radius:4px;';
+    streetFrame.style.cssText = 'width:50%;height:130px;border:2px solid #1a5276;border-radius:4px;';
     streetFrame.allowFullscreen = true;
     const mapFrame = document.createElement('iframe');
     mapFrame.id = 'sv-main-' + prefix + '-map';
     mapFrame.className = 'no-pdf';
-    mapFrame.style.cssText = 'width:50%;height:220px;border:2px solid #1a5276;border-radius:4px;';
+    mapFrame.style.cssText = 'width:50%;height:130px;border:2px solid #1a5276;border-radius:4px;';
     mapFrame.allowFullscreen = true;
     flex.appendChild(streetFrame);
     flex.appendChild(mapFrame);
@@ -11798,7 +11812,7 @@ function txCreatePresupuesto() {
     foto.id = 'sv-main-' + prefix + '-png';
     foto.className = 'solo-pdf sin-foto';   // v427: nace escondida hasta que HAYA foto
     foto.alt = '';
-    foto.style.cssText = 'width:100%;max-height:230px;object-fit:cover;border:2px solid #1a5276;border-radius:4px;';
+    foto.style.cssText = 'display:block;width:100%;max-width:560px;margin:0 auto;max-height:150px;object-fit:cover;border:2px solid #1a5276;border-radius:4px;';
     container.appendChild(foto);
     const caption = document.createElement('p');
     caption.className = 'no-pdf';   // v447: en el papel el mapa habla solo
