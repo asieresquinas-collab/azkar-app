@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v515 · backend 2.7.440), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v516 · backend 2.7.440), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1075,6 +1075,11 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🗺️ Y EL MAPA DEL RECORRIDO YA MARCA TODAS LAS PARADAS (app v516):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El mapa de <strong>RECORRIDO DEL SERVICIO</strong> —el que va en el presupuesto del cliente— pintaba solo de la recogida a la <strong>primera</strong> entrega. Ahora, si hay varias, dibuja <strong>el viaje entero</strong> y marca <strong>cada parada con su letra</strong>: <strong>A</strong> donde se carga (verde), las de en medio en azul, y la última en naranja.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Debajo pone cuántas entregas son y los kilómetros de <strong>la ida entera</strong>. Y el botón <strong>«Abrir el recorrido entero en Google Maps»</strong> lleva ya todas las paradas dentro.</div></div>
+      <div class='ayuda-tip'>🛑 <strong>El aviso de kilómetros del presupuesto no ha cambiado</strong>: sigue mirando la ruta de siempre (recogida → primera entrega), no el total. Con el dinero no se juega.</div>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>📍 YA PUEDES PONER TODAS LAS DIRECCIONES DE ENTREGA (app v515):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Debajo de la dirección de entrega tienes <strong>«➕ Otra dirección de entrega»</strong>. Le das y aparece la <strong>entrega 2</strong>, con su <strong>calle</strong>, su <strong>piso</strong> y su <strong>ascensor</strong>, igual que la primera. Otra vez y tienes la 3. Y con el botón de la papelera quitas la que sobre.</div></div>
@@ -3958,6 +3963,7 @@ function LD(){
     window._salidaNueva = !!data._salidaNueva;
     window._gruaTipo = data._grua || '';        // v417: la grúa se apunta en la ficha, no en el nombre de la línea
     window._ultimaRuta = null;                 // v454: la ruta del cliente anterior no vale para esta ficha
+    window._rutaEntera = null;                 // v516: ni el recorrido entero de sus paradas
     try { if (window.limpiarPisos) window.limpiarPisos(); } catch (e) {}   // v493: ni su PISO
     try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423: esta ficha se queda con SU precio de km
     try { if (window.repartirDirecciones) window.repartirDirecciones(data); } catch (e) {}   // v433
@@ -4316,7 +4322,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v515';
+var APP_VERSION = 'v516';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -5671,6 +5677,7 @@ function restoreFormData(data) {
   // la marca de la grúa en la primera. Por eso al abrirlo de la lista volvía a salir azul.
   window._gruaTipo = data._grua || '';
   window._ultimaRuta = null;                   // v454: la ruta del cliente anterior no vale para esta ficha
+  window._rutaEntera = null;                   // v516: ni el recorrido entero de sus paradas
   try { if (window.limpiarPisos) window.limpiarPisos(); } catch (e) {}   // v493: ni su PISO
   try { fijarTarifaKmDeFicha(data._kmTarifa); } catch (e) {}   // v423
   try { if (window.repartirDirecciones) window.repartirDirecciones(data); } catch (e) {}   // v433
@@ -19134,8 +19141,10 @@ async function doResetWithCode() {
     return m >= 60 ? (Math.floor(m / 60) + ' h ' + (m % 60) + ' min') : (m + ' min');
   }
 
-  // Dibuja el camino entero, con los dos extremos marcados.
-  async function pintarRuta(geom, distancia, duracion) {
+  // Dibuja el camino entero, con los extremos marcados.
+  // v516 · «marcas» son las paradas de una mudanza con VARIAS entregas: A, B, C, D…
+  // Si no se pasan, se marcan los dos extremos de siempre (A y B), igual que antes.
+  async function pintarRuta(geom, distancia, duracion, marcas) {
     if (!geom || geom.length < 2) return null;
     // 1) El recuadro que hay que abarcar
     var laMin = 90, laMax = -90, loMin = 180, loMax = -180;
@@ -19188,8 +19197,19 @@ async function doResetWithCode() {
       g.fillText(letra, q[0], q[1] + 1);
       g.textAlign = 'start'; g.textBaseline = 'alphabetic';
     };
-    chincheta(geom[0], '#1a7a3f', 'A');
-    chincheta(geom[geom.length - 1], '#E85C0D', 'B');
+    // v516 · CON VARIAS ENTREGAS SE MARCAN TODAS (Asier, 24-ago: «este mapa que me
+    //        pone la ruta no me las marca»). Verde donde se carga, azul las entregas
+    //        de en medio y naranja la última, para que se vea el orden de un vistazo.
+    var LETRAS = 'ABCDEFGHIJ';
+    if (Array.isArray(marcas) && marcas.length >= 2) {
+      marcas.forEach(function (m, k) {
+        var col = (k === 0) ? '#1a7a3f' : (k === marcas.length - 1 ? '#E85C0D' : '#1B4F8A');
+        chincheta(m, col, LETRAS[k] || String(k + 1));
+      });
+    } else {
+      chincheta(geom[0], '#1a7a3f', 'A');
+      chincheta(geom[geom.length - 1], '#E85C0D', 'B');
+    }
 
     // 5) Los kilómetros y el tiempo, escritos
     var etiqueta = _txtKm(distancia) + '  ·  ' + _txtMin(duracion) + ' en coche';
@@ -19244,6 +19264,24 @@ async function doResetWithCode() {
       var rec = (document.getElementById('f_rec') || {}).value || '';
       var ent = (document.getElementById('f_ent') || {}).value || '';
       var r = window._ultimaRuta;
+      // ══════════════════════════════════════════════════════════════════════
+      // 🛑 v516 · EL MAPA CON TODAS LAS PARADAS. Asier, 24-ago-2026, viendo el
+      //    recorrido de Javier: «este mapa de aquí que me pone la ruta NO ME LAS
+      //    MARCA». Y era verdad: el mapa seguía siendo el de siempre, de la
+      //    recogida a la PRIMERA entrega, aunque la ficha ya tuviera tres.
+      //    Ahora, si hay más de una entrega, se pinta el recorrido ENTERO, con
+      //    todas las paradas marcadas A, B, C, D… en su orden.
+      //    🛑 Los KILÓMETROS QUE SE COBRAN no se tocan: el aviso de kilómetros
+      //    sigue mirando la ruta de siempre (recogida → primera entrega), no el
+      //    total. El total es informativo, como los tramos.
+      // ══════════════════════════════════════════════════════════════════════
+      var _paradasHoy = (typeof window.paradasDelServicio === 'function') ? window.paradasDelServicio() : [];
+      var _firmaHoy = _paradasHoy.join(' || ');
+      var _re = window._rutaEntera;
+      var _multi = (_paradasHoy.length > 2 && _re && _re.firma === _firmaHoy && _re.geom && _re.geom.length > 1) ? _re : null;
+      if (_multi) {
+        r = { geom: _multi.geom, distancia: _multi.distancia, duracion: _multi.duracion, rec: rec, ent: ent, marcas: _multi.marcas, paradas: _multi.paradas };
+      }
       // v454 · LA RUTA RANCIA (ficha 6524, Usansolo): al cambiar de presupuesto, la
       // ruta del cliente ANTERIOR seguía en memoria y se pintaba con sus calles y sus
       // kilómetros. Si la ruta guardada no es de ESTAS direcciones, a la basura.
@@ -19292,21 +19330,45 @@ async function doResetWithCode() {
       }
       // Sí hay ruta: fuera el aviso y vuelve el mapa
       var avV = document.getElementById('sv-ruta-aviso'); if (avV) avV.remove();
-      var huella = rec + '|' + ent + '|' + Math.round(r.distancia || 0);
-      try { if (window.avisoKmChoque) window.avisoKmChoque(r.distancia); } catch (e) {}   // v447: ¿la línea cobra unos km que no son?
+      var huella = (_multi ? _firmaHoy : (rec + '|' + ent)) + '|' + Math.round(r.distancia || 0);
+      // 🛑 v516 · el aviso de kilómetros mira SIEMPRE la ruta de siempre (recogida →
+      //    primera entrega), NUNCA el total de todas las paradas. Con el dinero no se juega.
+      try {
+        var _rKm = window._ultimaRuta;
+        if (window.avisoKmChoque && _rKm && _rKm.distancia != null) window.avisoKmChoque(_rKm.distancia);
+      } catch (e) {}   // v447: ¿la línea cobra unos km que no son?
       caja.style.display = 'block';
 
       // v435 · El botón para navegar de verdad (solo pantalla; al cliente no le llega).
       var lim = function (t) { return (typeof window.dirParaMapa === 'function' ? window.dirParaMapa(t) : t); };
       var enlace = document.getElementById('sv-ruta-maps');
       if (enlace) {
-        enlace.href = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(lim(rec))
-          + '&destination=' + encodeURIComponent(lim(ent)) + '&travelmode=driving';
+        if (_multi) {
+          // v516 · con varias paradas, el enlace las lleva TODAS (las de en medio como
+          // «waypoints», que es el formato que entiende el móvil).
+          var _pl = _paradasHoy.map(lim);
+          enlace.href = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(_pl[0])
+            + '&destination=' + encodeURIComponent(_pl[_pl.length - 1])
+            + (_pl.length > 2 ? '&waypoints=' + _pl.slice(1, -1).map(encodeURIComponent).join('%7C') : '')
+            + '&travelmode=driving';
+          enlace.textContent = '🗺️ Abrir el recorrido entero en Google Maps';
+        } else {
+          enlace.href = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(lim(rec))
+            + '&destination=' + encodeURIComponent(lim(ent)) + '&travelmode=driving';
+          enlace.textContent = '🗺️ Abrir el recorrido en Google Maps';
+        }
         enlace.parentElement.style.display = '';
       }
 
       var pie = document.getElementById('sv-ruta-pie');
-      if (pie) pie.textContent = 'De la recogida (A) a la entrega (B) · ' + _txtKm(r.distancia) + ' · ' + _txtMin(r.duracion) + ' en coche (sin tráfico)';
+      if (pie) {
+        var _LET = 'ABCDEFGHIJ';
+        pie.textContent = _multi
+          ? ('Recogida (A) y ' + (_paradasHoy.length - 1) + ' entregas (B' +
+             (_paradasHoy.length > 2 ? ' a ' + (_LET[_paradasHoy.length - 1] || '?') : '') + ') · ' +
+             _txtKm(r.distancia) + ' · ' + _txtMin(r.duracion) + ' en coche, la ida entera (sin tráfico)')
+          : ('De la recogida (A) a la entrega (B) · ' + _txtKm(r.distancia) + ' · ' + _txtMin(r.duracion) + ' en coche (sin tráfico)');
+      }
 
       var img = document.getElementById('sv-ruta-png');
       var esp = document.getElementById('sv-ruta-espera');
@@ -19314,7 +19376,7 @@ async function doResetWithCode() {
       _ultimo = huella;
       // Mientras se bajan los trozos del mapa, el hueco dice qué está pasando.
       if (esp && (!img || !img.getAttribute('src'))) esp.style.display = '';
-      var png = await pintarRuta(r.geom, r.distancia, r.duracion);
+      var png = await pintarRuta(r.geom, r.distancia, r.duracion, r.marcas);
       if (img) {
         if (png) { img.src = png; img.classList.remove('sin-foto'); }
         else { img.removeAttribute('src'); img.classList.add('sin-foto'); }
@@ -19787,7 +19849,7 @@ async function doResetWithCode() {
     var c = cajaTramos();
     if (!c) return;
     var p = paradas();
-    if (p.length < 3) { c.style.display = 'none'; c.innerHTML = ''; return; }
+    if (p.length < 3) { c.style.display = 'none'; c.innerHTML = ''; window._rutaEntera = null; return; }
     var tok = ++_tramoTok;
     c.style.display = 'block';
     c.innerHTML = '<b>🚚 Los tramos del viaje</b><br>⏳ Midiéndolos…';
@@ -19815,7 +19877,7 @@ async function doResetWithCode() {
             '.<br>Escribe también el pueblo o la ciudad. <b>No te pongo kilómetros a ojo.</b>';
           return;
         }
-        var trozos = [], k = 0, total = 0, minutos = 0;
+        var trozos = [], k = 0, total = 0, minutos = 0, dibujo = [];
         function tramo() {
           if (tok !== _tramoTok) return;
           if (k >= cs.length - 1) return fin();
@@ -19824,6 +19886,9 @@ async function doResetWithCode() {
             else {
               var km = r.distancia / 1000; total += km; minutos += Math.round(r.duracion / 60);
               trozos.push({ de: p[k], a: p[k + 1], km: km, min: Math.round(r.duracion / 60) });
+              // v516 · el DIBUJO de cada tramo, para que el mapa del recorrido enseñe
+              // el viaje entero con todas las paradas marcadas, no solo la primera.
+              if (Array.isArray(r.geom) && r.geom.length) dibujo = dibujo.concat(r.geom);
             }
             k++; tramo();
           }).catch(function () { trozos.push({ de: p[k], a: p[k + 1], km: null }); k++; tramo(); });
@@ -19845,6 +19910,22 @@ async function doResetWithCode() {
             '</span>' +
             '<span style="font-size:10.5px;color:#7b8794">Esto es informativo: el <b>desplazamiento que se cobra</b> lo pones tú, como siempre.</span>';
           c.innerHTML = h;
+          // v516 · Y EL MAPA, CON TODAS LAS PARADAS MARCADAS (Asier: «este mapa que me
+          //        pone la ruta no me las marca»). Se le pasa el dibujo entero y dónde
+          //        está cada parada; el mapa del recorrido lo pinta con A, B, C, D…
+          try {
+            if (dibujo.length > 1 && !sinMedir) {
+              window._rutaEntera = {
+                firma: p.join(' || '),
+                paradas: p.slice(),
+                marcas: cs.map(function (co) { return [co.lat, co.lon]; }),
+                geom: dibujo,
+                distancia: Math.round(total * 1000),
+                duracion: minutos * 60
+              };
+              if (typeof window.pintaRutaDelServicio === 'function') window.pintaRutaDelServicio();
+            }
+          } catch (eM) {}
         }
         tramo();
       }
