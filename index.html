@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v509 · backend 2.7.435), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v510 · backend 2.7.436), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1076,10 +1076,19 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
 
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🔢 TU CUPO DE CONSULTAS, CONTADO (backend 2.7.436):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El plan <strong>Lite</strong> de STEL Order deja <strong>300 consultas al día</strong> y 60 por minuto (antes te dije 200: me equivoqué, lo he mirado en el manual del programa).</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora las <strong>cuento</strong>. Pregúntame <strong>«¿cuántas consultas llevamos de STEL Order?»</strong> y te digo cuántas van hoy y cuántas quedan. 🛑 De antes del 24 de agosto no hay dato, porque no las contaba — y te lo digo en vez de inventarme una cifra.</div></div>
+
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📆 NO DOY POR HECHO LO QUE NO SÉ (backend 2.7.436):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Antes ponía <strong>«Servicio HECHO»</strong> solo porque la fecha había pasado. Eso es falso: un servicio se aplaza, se cambia o se queda a medias. Ahora pongo <strong>«El día del servicio YA PASÓ»</strong>, que es lo único que sé de verdad.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Y el aviso es: <strong>«REVÍSALO: tiene 1 factura y el día ya pasó. Si el trabajo está hecho, le falta la del SERVICIO. Si no se ha hecho, déjalo»</strong>. Lo decides tú, que eres el que sabe si se hizo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y los avisos del programa te los cuento <strong>en español</strong>: se acabaron los errores en inglés con códigos raros ocupando media pantalla.</div></div>
+
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🎯 YA LAS ENCUENTRA, Y SIN GASTARTE EL CUPO (backend 2.7.435):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando el papel de su carpeta y la factura de STEL Order son la misma, te sale en verde: <strong>«🔗 Y esas mismas están en STEL Order: 00323»</strong>, con su fecha.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>🛑 <strong>Se acabó el susto de mentira.</strong> Si un cliente tiene su factura de la RESERVA y el servicio <strong>todavía no se ha hecho</strong>, eso es lo normal: sale en verde, «la del SERVICIO, cuando se haga el trabajo». El <strong>rojo</strong> se queda para los servicios <strong>ya hechos</strong> con una sola factura — eso sí es dinero parado.</div></div>
-      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Tu cupo:</strong> STEL Order solo deja <strong>200 consultas al día</strong>. Lo que leo se guarda <strong>media hora</strong>, así que abrir la pantalla diez veces seguidas cuesta <strong>una</strong> lectura, no diez. Y en el «¿por qué digo esto?» te digo <strong>cuántas consultas ha costado</strong> ese vistazo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Tu cupo:</strong> STEL Order (plan Lite) deja <strong>300 consultas al día</strong> y 60 por minuto. Lo que leo se guarda <strong>media hora</strong>, así que abrir la pantalla diez veces seguidas cuesta <strong>una</strong> lectura, no diez. Y en el «¿por qué digo esto?» te digo <strong>cuántas consultas ha costado</strong> ese vistazo.</div></div>
 
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>🔽 ARREGLADO: te leía las PRIMERAS, no las últimas (backend 2.7.434):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Aquí estaba el fallo gordo: STEL Order me daba <strong>las facturas más viejas</strong> —de la 1 a la 273— y yo ordenaba de la más nueva a la más vieja… <strong>lo que ya me había llegado</strong>. Por eso la 323 de Begoña no aparecía nunca.</div></div>
@@ -4272,7 +4281,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v509';
+var APP_VERSION = 'v510';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
