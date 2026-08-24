@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v513 · backend 2.7.438), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v514 · backend 2.7.439), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1075,6 +1075,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>🛑 LOS INFORMES YA NO SE INVENTAN LA CARGA (backend 2.7.439):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En el plan de carga de Javier te metí <strong>50 cajas de enseres</strong> que no existen. Me las asumí. Tenías razón en pararlo: ese PDF va a la carpeta del cliente y con él se carga el camión.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, antes de hacer el informe, <strong>comparo lo que voy a escribir con los artículos de la ficha</strong>. Si digo algo que <strong>no está</strong>, o <strong>más cantidad de la que hay</strong>, 🛑 <strong>el informe NI SE HACE</strong> — y te digo qué me he inventado.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Si de verdad van cosas que no están apuntadas porque me lo has dicho tú, las escribo poniendo al lado <strong>«(no está en la ficha)»</strong>, para que se vea de un vistazo qué está comprobado y qué no.</div></div>
+      <div class='ayuda-tip'>Y la norma vale para <strong>todo</strong>, no solo para las cajas: muebles, cantidades, fechas, kilos y precios. Lo que no he comprobado, <strong>te lo pregunto</strong> o te digo que no lo sé.</div>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>📦 LOS METROS CÚBICOS, SUMADOS DE LA FICHA (backend 2.7.438):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Pregúntame <strong>«¿cuántos metros cúbicos hay a Guareña?»</strong> o <strong>«¿cuánto ocupa la mudanza del 6546?»</strong> y ya no te los digo a ojo: <strong>sumo los muebles de la ficha uno a uno</strong>, y te los doy <strong>parada por parada</strong> (las líneas «A GUAREÑA:» que pones tú en el presupuesto).</div></div>
@@ -4298,7 +4304,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v513';
+var APP_VERSION = 'v514';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
