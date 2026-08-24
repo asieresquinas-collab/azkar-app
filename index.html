@@ -141,8 +141,12 @@
 #sv-ruta-png.ruta-varias{max-height:none!important;object-fit:contain!important;object-position:center center!important}
 /* v521 · los mapas de cada parada, más pequeños y CENTRADOS en el papel (Asier:
    «ocupan mucho y no dejan la dirección en el centro»). */
-.mapa-pdf-parada{max-width:62%!important;margin:4px auto 8px auto!important}
-.mapa-pdf-parada img{max-height:96px!important;object-fit:cover!important}
+.mapa-pdf-parada{max-width:52%!important;margin:3px auto 9px auto!important;page-break-before:avoid!important;break-before:avoid!important;page-break-inside:avoid!important;break-inside:avoid!important}
+.mapa-pdf-parada img{max-height:74px!important;object-fit:cover!important}
+/* 🛑 v521 · CADA DIRECCIÓN CON SU MAPA, SIN PARTIRSE ENTRE HOJAS. En la prueba con las
+   cuatro paradas, la ENTREGA 3 se quedaba al final de una hoja y su mapa se iba a la
+   siguiente. Un plano suelto en otra página no dice de quién es. */
+.fg.g1{page-break-inside:avoid!important;break-inside:avoid!important}
 #mapas-pdf-fila{display:flex!important;gap:8px!important;margin:4px 0!important}
 #mapas-pdf-fila>div{flex:1;min-width:0}
 #mapas-pdf-fila img{width:100%;display:block;max-height:106px!important;object-fit:cover!important;border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px}
@@ -1087,7 +1091,8 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🔎 LOS MAPAS, MÁS PEQUEÑOS Y CENTRADOS (app v521):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con cuatro paradas eran <strong>ocho marcos enormes</strong> y la ficha se hacía interminable: las direcciones se quedaban perdidas entre mapa y mapa. Ahora los mapas son <strong>más bajos</strong> y van <strong>centrados</strong>, con un ancho máximo, así que la dirección se queda <strong>en el medio</strong>.</div></div>
-      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>En el <strong>PDF</strong> igual: cada mapa de parada va centrado, a poco más de la mitad de ancho y con tope de alto. Antes, con cuatro paradas, se iba la hoja entera en mapas.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>En el <strong>PDF</strong> igual: cada mapa de parada va centrado, a poco más de <strong>media hoja</strong> de ancho y con tope de alto. Antes, con cuatro paradas, se iba la hoja entera en mapas.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y <strong>el mapa no se separa nunca de su dirección</strong> al cambiar de hoja: un plano suelto en otra página no dice de quién es. Lo he montado y lo he mirado hoja por hoja: las cuatro paradas entran en la primera.</div></div>
 
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>💰 LOS KILÓMETROS QUE SE COBRAN, CON VARIAS ENTREGAS (app v520):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Otra que viste bien: el cuadro de los kilómetros cobraba <strong>solo hasta la PRIMERA entrega</strong> (449 km de los 877,9 que son en realidad). Ahora te <strong>avisa en naranja</strong>, con los <strong>dos números delante</strong>.</div></div>
@@ -8916,13 +8921,13 @@ function buildCompleteHTML(pageIds) {
           caja.className = 'mapa-pdf-parada';
           // v521 · en el papel también: más pequeños y centrados, que con cuatro
           //        paradas la hoja se iba entera en mapas.
-          caja.style.cssText = 'margin:4px auto 8px auto;max-width:62%;page-break-inside:avoid;break-inside:avoid;';
+          caja.style.cssText = 'margin:3px auto 9px auto;max-width:52%;page-break-before:avoid;break-before:avoid;page-break-inside:avoid;break-inside:avoid;';
           var cab = document.createElement('div');
           cab.style.cssText = 'font-size:8.5px;font-weight:800;letter-spacing:1px;color:#1B4F8A;background:#D6E4F7;padding:2px 8px;border-radius:3px 3px 0 0;';
           cab.innerHTML = _chincheta + par.tit + ' (' + 'ABCDEFGHIJ'.charAt(_k) + ')';
           var im = document.createElement('img');
           im.setAttribute('src', foto.getAttribute('src'));
-          im.style.cssText = 'width:100%;display:block;max-height:96px;object-fit:cover;border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px;';
+          im.style.cssText = 'width:100%;display:block;max-height:74px;object-fit:cover;border:2px solid #1a5276;border-top:none;border-radius:0 0 4px 4px;';
           caja.appendChild(cab); caja.appendChild(im);
           cont.parentNode.insertBefore(caja, cont.nextSibling);
           v447Sav.bloques.push(caja);
@@ -11786,7 +11791,7 @@ function txCreatePresupuesto() {
     //    pequeños y más centrados, ocupan mucho y no dejan la dirección en el centro»).
     //    Con cuatro paradas eran ocho marcos de 220 px: la ficha se hacía interminable
     //    y las direcciones quedaban perdidas entre mapa y mapa.
-    flex.style.cssText = 'display:flex;gap:6px;max-width:560px;margin:0 auto;';
+    flex.style.cssText = 'display:flex;gap:6px;max-width:340px;margin:0 auto;';
     // v424 · Asier: «el mapa, cuando le doy a imprimir, no sale, sale como en blanco».
     // Y es que un <iframe> de Google Maps NO se imprime: cuando el PDF se monta en el
     // servidor, ese marco se vuelve a cargar desde cero, sin sesión y sin JavaScript, y
@@ -11798,12 +11803,12 @@ function txCreatePresupuesto() {
     const streetFrame = document.createElement('iframe');
     streetFrame.id = 'sv-main-' + prefix + '-street';
     streetFrame.className = 'no-pdf';
-    streetFrame.style.cssText = 'width:50%;height:130px;border:2px solid #1a5276;border-radius:4px;';
+    streetFrame.style.cssText = 'width:50%;height:110px;border:2px solid #1a5276;border-radius:4px;';
     streetFrame.allowFullscreen = true;
     const mapFrame = document.createElement('iframe');
     mapFrame.id = 'sv-main-' + prefix + '-map';
     mapFrame.className = 'no-pdf';
-    mapFrame.style.cssText = 'width:50%;height:130px;border:2px solid #1a5276;border-radius:4px;';
+    mapFrame.style.cssText = 'width:50%;height:110px;border:2px solid #1a5276;border-radius:4px;';
     mapFrame.allowFullscreen = true;
     flex.appendChild(streetFrame);
     flex.appendChild(mapFrame);
@@ -11812,7 +11817,7 @@ function txCreatePresupuesto() {
     foto.id = 'sv-main-' + prefix + '-png';
     foto.className = 'solo-pdf sin-foto';   // v427: nace escondida hasta que HAYA foto
     foto.alt = '';
-    foto.style.cssText = 'display:block;width:100%;max-width:560px;margin:0 auto;max-height:150px;object-fit:cover;border:2px solid #1a5276;border-radius:4px;';
+    foto.style.cssText = 'display:block;width:100%;max-width:340px;margin:0 auto;max-height:110px;object-fit:cover;border:2px solid #1a5276;border-radius:4px;';
     container.appendChild(foto);
     const caption = document.createElement('p');
     caption.className = 'no-pdf';   // v447: en el papel el mapa habla solo
