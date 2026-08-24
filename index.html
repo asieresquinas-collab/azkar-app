@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v501 · backend 2.7.427), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v502 · backend 2.7.428), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1075,6 +1075,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>📂 LAS FACTURAS LAS BUSCO EN LA CARPETA DEL CLIENTE (backend 2.7.428):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Los papeles de verdad están en <strong>la carpeta de cada cliente</strong> en Drive: ahí es donde está su <strong>FACTURA-000XX.pdf</strong>. Eso es lo que miro <strong>primero</strong>, y lo que manda por encima de lo que diga el programa.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>En la lista te enseño <strong>qué facturas hay en su carpeta</strong>, con su nombre. Y al preparar un borrador, si en esa carpeta ya hay facturas, lo primero que te sale es <strong>«EN SU CARPETA YA HAY N FACTURA(S)»</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Las fichas que no son clientes ya no dan guerra.</strong> Si una ficha no tiene ni carpeta en el Drive ni señal apuntada, no puede faltarle ninguna factura: la aparto en su propio desplegable («no parecen clientes»).</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Y si no puedo leer las carpetas del Drive, <strong>te lo digo</strong> y voy solo con el programa, avisándote de que no te fíes.</div></div>
 
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>🛑 ARREGLADO: facturas que SÍ estaban y yo decía que no (backend 2.7.427):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>La lista te decía «sin ninguna factura» de clientes que <strong>sí la tenían</strong> — como Ate Construcciones, con su FAC00322. Era fallo mío: el <strong>número de ficha</strong> que sale en tu papel debajo de «FACTURA ORDINARIA» no siempre viaja en el mismo sitio, y yo miraba solo uno. Ahora lo busco <strong>en todos</strong>, y hasta dentro del texto.</div></div>
@@ -4228,7 +4234,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v501';
+var APP_VERSION = 'v502';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
