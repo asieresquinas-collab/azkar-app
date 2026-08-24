@@ -128,6 +128,12 @@
 #distancia-box{margin-top:10mm!important;page-break-inside:avoid!important}
 /* ========== v447 · ENCUADRE: cada cosa en su hoja, sin blancos ========== */
 #cw-detalle{page-break-before:always!important}
+/* 🛑 v527 · CON VARIAS ENTREGAS, SIN HOJAS A MEDIO LLENAR. El salto obligatorio de
+   arriba quedaba bien con UNA entrega (los datos caben en la primera hoja y el
+   detalle estrena la segunda). Con cuatro paradas los datos se comen hoja y media
+   y ese salto dejaba MEDIA HOJA EN BLANCO (lo vio Asier en el PDF del 6546).
+   Si la ficha va marcada como «varias entregas», el detalle sigue de corrido. */
+#page-presupuesto[data-pdf-varias] #cw-detalle{page-break-before:auto!important}
 #bloque-obs{page-break-inside:avoid!important}
 /* la tabla PUEDE partirse entre hojas (cada fila sigue entera); sin esto una tabla
    larga se va en bloque a la hoja siguiente y deja la anterior en blanco */
@@ -1080,7 +1086,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v526 · backend 2.7.442), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v527 · backend 2.7.442), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1089,7 +1095,11 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
 
-      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🏠 LA CASITA DE AZKAR ENCIMA DE LA CASA (app v526 · backend 2.7.442):</p>
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>📄 SIN HOJAS A MEDIO LLENAR EN EL PDF (app v527):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En el PDF del 6546 viste una hoja <strong>medio en blanco</strong>. Era el salto que obliga al detalle del servicio a <strong>estrenar hoja</strong>: con una entrega queda bien, pero con cuatro paradas los datos se comen hoja y media y el salto dejaba el hueco.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, cuando la ficha tiene <strong>varias entregas</strong>, el detalle <strong>sigue de corrido</strong> y las hojas salen llenas. Con <strong>una</strong> entrega, todo se queda como siempre.</div></div>
+
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🏠 LA CASITA DE AZKAR ENCIMA DE LA CASA (app v527 · backend 2.7.442):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Idea tuya: en la foto del mapa, en vez de la chincheta de siempre, hay <strong>un globito blanco con una casita</strong> — <strong>con los colores del logo de Azkar</strong>: tejado naranja y casa azul — y su rabito apuntando <strong>al tejado</strong>. Dibujada a mano, así sale igual en todos los móviles.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>La chincheta roja de Google <strong>ya no se pide</strong>, para que no salgan dos marcas en el mismo punto.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y arreglado lo que viste en el PDF del 6546: la casita salía <strong>enana</strong> (la foto de Google viene al doble de resolución y no crecía con ella) y la foto de reserva <strong>no centraba la casa</strong> — por eso en la recogida salía el mar y la casa arrinconada. Ahora la casa va <strong>siempre en el centro</strong> y la casita <strong>a su tamaño</strong>, en las dos fotos.</div></div>
@@ -1120,7 +1130,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y arreglado lo de la cuarta parada: <strong>ninguna se queda muda</strong>. En cuanto pides el mapa pone «⏳ Comprobando esta dirección…» y después el verde o el rojo.</div></div>
       <div class='ayuda-tip'>Con <strong>una sola entrega</strong> el papel se queda igual que siempre: los dos mapitas uno al lado del otro.</div>
 
-      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📍 EL MAPA, HASTA LA PUERTA (app v526 · backend 2.7.442):</p>
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📍 EL MAPA, HASTA LA PUERTA (app v527 · backend 2.7.442):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con «C. Castillo de Hornachos, 1, 06006 Badajoz» el mapa se plantaba en el <strong>castillo de Hornachos</strong>, en la sierra, a sesenta kilómetros. Eran dos cosas: a <strong>toda</strong> dirección con número se le pegaba «Bizkaia» (aunque pusiera Badajoz), y se buscaba <strong>la frase entera de corrido</strong>.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, si la dirección <strong>ya dice de dónde es</strong> —otra provincia, otra ciudad, o un código postal que no empieza por 48— se busca <strong>tal cual</strong>. Y la dirección se <strong>parte en piezas</strong> (calle y número · pueblo · código postal), que es como se encuentra un <strong>portal</strong> y no un monumento.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Y lo más importante: debajo de cada mapa te digo lo que he entendido.</strong> Si he clavado el portal, en verde: «📍 Portal clavado: …». Si solo he llegado a la calle o al pueblo, <strong>en rojo</strong>: «🛑 Esto NO es el portal exacto». Un mapa equivocado y callado parece que ha acertado — y con eso salen los chicos a la carretera.</div></div>
@@ -4372,7 +4382,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v526';
+var APP_VERSION = 'v527';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8916,6 +8926,12 @@ function buildCompleteHTML(pageIds) {
 
     if (_paradasPdf.length > 2) {
       try {
+        // v527 · la marca que le dice al papel «esta ficha tiene varias entregas»:
+        // con ella el detalle sigue de corrido y no deja media hoja en blanco.
+        el.setAttribute('data-pdf-varias', '1');
+        v447Sav.marcaVarias = el;
+      } catch (eMv) {}
+      try {
         var _chincheta = "<svg width='9' height='11' viewBox='0 0 24 30' style='vertical-align:-1px' xmlns='http://www.w3.org/2000/svg'><path d='M12 1 C6 1 2 5.5 2 11 C2 18 12 29 12 29 C12 29 22 18 22 11 C22 5.5 18 1 12 1 Z' fill='#E85C0D'/><circle cx='12' cy='11' r='4' fill='#fff'/></svg> ";
         _paradasPdf.forEach(function (par, _k) {
           var cont = el.querySelector('#sv-main-' + par.p);
@@ -9004,6 +9020,7 @@ function buildCompleteHTML(pageIds) {
       if (v447Sav.fila && v447Sav.fila.parentNode) v447Sav.fila.parentNode.removeChild(v447Sav.fila);
       // v518 · y los mapas por parada, fuera de la pantalla: eran solo para el papel
       (v447Sav.bloques || []).forEach(function (b) { if (b && b.parentNode) b.parentNode.removeChild(b); });
+      if (v447Sav.marcaVarias) v447Sav.marcaVarias.removeAttribute('data-pdf-varias');   // v527
       v447Sav.ocultados.forEach(function (c) { c.className = c.className.replace(/\s*no-pdf/, ''); });
       if (v447Sav.obsCont) v447Sav.obsCont.removeAttribute('id');
     } catch (e) {}
