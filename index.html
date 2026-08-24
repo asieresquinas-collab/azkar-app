@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v507 · backend 2.7.433), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v508 · backend 2.7.434), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1075,6 +1075,11 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>🔽 ARREGLADO: te leía las PRIMERAS, no las últimas (backend 2.7.434):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Aquí estaba el fallo gordo: STEL Order me daba <strong>las facturas más viejas</strong> —de la 1 a la 273— y yo ordenaba de la más nueva a la más vieja… <strong>lo que ya me había llegado</strong>. Por eso la 323 de Begoña no aparecía nunca.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora se las pido <strong>expresamente ordenadas de la más nueva a la más vieja</strong>, y además tal cual, y <strong>junto las dos</strong>: así entran las nuevas y siguen estando las viejas.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 Y si el programa <strong>no me deja ordenarlas</strong>, no me lo invento: te lo digo, para que sepas que por eso puede faltar alguna reciente.</div></div>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>📚 AHORA LEO TODAS TUS FACTURAS, NO DOSCIENTAS (backend 2.7.433):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Antes pedía las <strong>200 más recientes</strong>, así que una factura un poco vieja se caía de la lista y yo decía que no la encontraba. Ahora las leo <strong>todas</strong>, por tandas, hasta que no queda ninguna.</div></div>
@@ -4262,7 +4267,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v507';
+var APP_VERSION = 'v508';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
