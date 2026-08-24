@@ -1067,14 +1067,14 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v494 · backend 2.7.420), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v495 · backend 2.7.421), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
-      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>👁️ ANTES DE HACER LA FACTURA, TE MANDO UN CLON EN PDF (backend 2.7.420):</p>
-      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando me digas <strong>«prepárame la factura de la reserva del 6557»</strong> (o «la del servicio»), además de contártelo te dejo un <strong>PDF con la pinta exacta que va a tener esa factura</strong>: el cliente, su CIF, las líneas con su referencia, la base, el IVA y el total. Te doy el <strong>enlace</strong> para que lo abras en el móvil y lo veas tú mismo.</div></div>
-      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>El PDF se guarda en la <strong>carpeta de ese cliente</strong> en Drive, con el nombre <strong>BORRADOR-FACTURA-6557-RESERVA.pdf</strong> (o -SERVICIO.pdf), para que no se te pierda y para que quede claro de quién es.</div></div>
-      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Arriba del todo lleva un <strong>aviso en rojo</strong>: «BORRADOR — esta factura todavía NO existe y al cliente NO se le ha mandado nada». Y donde iría el número de factura <strong>no hay ningún número inventado</strong>: pone que lo pone StelOrder al crearla, por orden.</div></div>
-      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si el PDF no se puede montar o no se puede guardar en la carpeta, <strong>te lo digo</strong> en vez de darlo por hecho. Y si no quieres papel esa vez, dime <strong>«sin PDF»</strong> y te lo cuento y ya está.</div></div>
-      <div class='ayuda-warn'>🛑 <strong>Un clon NO es una factura.</strong> No se crea nada en StelOrder, no se manda ningún correo y no se toca el WhatsApp de nadie hasta que tú veas el PDF y digas que sí.</div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>👁️ ANTES DE HACER LA FACTURA TE LA ENSEÑO, COMO EL PERMISO (app v495 · backend 2.7.421):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando me digas <strong>«prepárame la factura de la reserva del 6557»</strong> (o «la del servicio»), te <strong>enseño en el chat</strong> cómo va a quedar, <strong>igual que te enseño el permiso de aparcamiento</strong>: sale un recuadro con un botón <strong>«Ver cómo va a quedar la factura»</strong> y lo abres ahí mismo. No tienes que ir a buscarlo a ninguna carpeta.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>El papel es <strong>la factura tal cual</strong>: el cliente, su CIF, el número de ficha, las líneas con su referencia, la base, el IVA y el total. Arriba del todo, un <strong>aviso en rojo</strong>: «BORRADOR — esta factura todavía NO existe y al cliente NO se le ha mandado nada». Y donde iría el número de factura <strong>no hay ningún número inventado</strong>: pone que lo pone StelOrder al crearla, por orden.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>El borrador NO se guarda en la carpeta del cliente.</strong> En esa carpeta están tus facturas de <strong>verdad</strong> y un borrador al lado se acaba confundiendo. A la carpeta va la factura <strong>cuando sea factura</strong>. El borrador se puede abrir un rato; si lo quieres ver más tarde, me lo vuelves a pedir y te lo enseño otra vez.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si el papel no se puede montar, <strong>te lo digo</strong> en vez de darlo por hecho. Y si esa vez no quieres papel, dime <strong>«sin PDF»</strong> y te lo cuento y ya está.</div></div>
+      <div class='ayuda-warn'>🛑 <strong>Un clon NO es una factura.</strong> No se crea nada en StelOrder, no se manda ningún correo y no se toca el WhatsApp de nadie hasta que tú veas el papel y digas que sí.</div>
 
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>🏠 ARREGLADO: el piso del cliente anterior ya no se queda pegado (v493):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En el presupuesto, en Direcciones, el <strong>cuadradito del piso</strong> (recogida y entrega) se quedaba con lo del cliente anterior y tenías que andar borrándolo tú. Ya no: al abrir otra ficha o al empezar una nueva, <strong>el piso se vacía siempre</strong> antes de poner lo que toque.</div></div>
@@ -4189,7 +4189,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v494';
+var APP_VERSION = 'v495';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -16226,7 +16226,42 @@ async function doResetWithCode() {
             addMsg('bot', '❌ Error al abrir el presupuesto: ' + (e.message || 'desconocido'));
           }
         }
-        if (data.datos && data.datos.borrador) {
+        // ══════════════════════════════════════════════════════════════════
+        // 🛑 v495 · EL CLON DE LA FACTURA, A LA VISTA (Asier, 24-ago-2026):
+        //    «no, eso no puede ser: me lo tiene que ENSEÑAR Azkarin, si no
+        //     puede haber lío — COMO ME MANDA LO DEL PERMISO DE APARCAMIENTO».
+        //    Antes el borrador se dejaba en la carpeta del cliente y él tenía
+        //    que ir a buscarlo. Ahora se le abre AQUÍ, en el chat, igual que el
+        //    permiso. Va ANTES del bloque del permiso y ese se salta cuando
+        //    esto es un clon de factura, porque los dos traen "borrador" y si
+        //    no, el clon saldría pintado como "documento oficial" — que es
+        //    justo el lío que no puede pasar.
+        // ══════════════════════════════════════════════════════════════════
+        if (data.datos && data.datos.documento === 'clon_factura') {
+          try {
+            var cf = data.datos.borrador || {};
+            var cfNom = (cf.cliente && cf.cliente.nombre) || '';
+            var cfTipo = (cf.tipo === 'servicio') ? 'DEL SERVICIO' : 'DE LA RESERVA';
+            var cfTot = (cf.total !== undefined && cf.total !== null) ? (Number(cf.total).toFixed(2).replace('.', ',') + ' €') : '';
+            var cfEsc = function (t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+            var cfBoton = '';
+            if (data.datos.pdf_base64) {
+              var cfBlob = new Blob([Uint8Array.from(atob(data.datos.pdf_base64), function (c) { return c.charCodeAt(0); })], { type: 'application/pdf' });
+              cfBoton = '<a href="' + URL.createObjectURL(cfBlob) + '" target="_blank" style="display:inline-block;background:#1B4F8A;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;">📄 Ver cómo va a quedar la factura</a>';
+            } else if (data.datos.pdf_url) {
+              cfBoton = '<a href="' + cfEsc(data.datos.pdf_url) + '" target="_blank" style="display:inline-block;background:#1B4F8A;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:13px;">📄 Ver cómo va a quedar la factura</a>';
+            }
+            addMsg('bot',
+              '<div style="background:#fff5f5;border:2px solid #c0392b;border-radius:8px;padding:12px;margin-top:8px;">' +
+              '<b style="color:#c0392b;">🛑 BORRADOR — ESTA FACTURA TODAVÍA NO EXISTE</b><br>' +
+              '<span style="font-size:12px;color:#555;">No se ha creado en STEL Order y al cliente NO se le ha mandado nada.</span><br><br>' +
+              '<b>🧾 Factura ' + cfTipo + ' — ' + cfEsc(cfNom) + '</b>' + (cfTot ? '<br><span style="font-size:12px;color:#555;">Ficha ' + cfEsc(data.datos.ficha || cf.titulo || '') + ' · Total ' + cfEsc(cfTot) + '</span>' : '') +
+              (cfBoton ? '<br><br>' + cfBoton : '<br><br><span style="font-size:12px;color:#c0392b;">No he podido montar el papel — te lo cuento en texto.</span>') +
+              '<br><span style="font-size:11px;color:#666;margin-top:4px;display:inline-block;">Míralo y, si está bien, dime que la haga. El número de factura y el TicketBAI los pone STEL Order al emitirla.</span>' +
+              '</div>');
+          } catch (e) { console.warn('[Chatbot] Error mostrando el clon de la factura:', e); }
+        }
+        if (data.datos && data.datos.borrador && data.datos.documento !== 'clon_factura') {
           try {
           var b = data.datos.borrador;
           // PDF del documento oficial (convertido con LibreOffice, formato 100% fiel)
