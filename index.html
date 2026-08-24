@@ -1067,7 +1067,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v516 · backend 2.7.440), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v517 · backend 2.7.441), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1075,6 +1075,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Antes de montar nada te aviso de dos cosas.</strong> Si esa ficha <strong>ya tiene factura</strong> en STEL Order, te sale en rojo lo primero de todo: «ESTE CLIENTE YA TIENE N FACTURA(S)», con sus números. Y te digo si hay <strong>justificante de pago</strong> en su carpeta o si <strong>no lo encuentro</strong>, para que compruebes que ha pagado de verdad.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
+
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📍 EL MAPA, HASTA LA PUERTA (app v517 · backend 2.7.441):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con «C. Castillo de Hornachos, 1, 06006 Badajoz» el mapa se plantaba en el <strong>castillo de Hornachos</strong>, en la sierra, a sesenta kilómetros. Eran dos cosas: a <strong>toda</strong> dirección con número se le pegaba «Bizkaia» (aunque pusiera Badajoz), y se buscaba <strong>la frase entera de corrido</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, si la dirección <strong>ya dice de dónde es</strong> —otra provincia, otra ciudad, o un código postal que no empieza por 48— se busca <strong>tal cual</strong>. Y la dirección se <strong>parte en piezas</strong> (calle y número · pueblo · código postal), que es como se encuentra un <strong>portal</strong> y no un monumento.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Y lo más importante: debajo de cada mapa te digo lo que he entendido.</strong> Si he clavado el portal, en verde: «📍 Portal clavado: …». Si solo he llegado a la calle o al pueblo, <strong>en rojo</strong>: «🛑 Esto NO es el portal exacto». Un mapa equivocado y callado parece que ha acertado — y con eso salen los chicos a la carretera.</div></div>
+      <div class='ayuda-tip'>Ese cartelito es <strong>solo para ti</strong>: al cliente no le llega en el PDF.</div>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🗺️ Y EL MAPA DEL RECORRIDO YA MARCA TODAS LAS PARADAS (app v516):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El mapa de <strong>RECORRIDO DEL SERVICIO</strong> —el que va en el presupuesto del cliente— pintaba solo de la recogida a la <strong>primera</strong> entrega. Ahora, si hay varias, dibuja <strong>el viaje entero</strong> y marca <strong>cada parada con su letra</strong>: <strong>A</strong> donde se carga (verde), las de en medio en azul, y la última en naranja.</div></div>
@@ -4322,7 +4328,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v516';
+var APP_VERSION = 'v517';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -11743,7 +11749,13 @@ function txCreatePresupuesto() {
     let fullAddress = window.dirParaMapa ? window.dirParaMapa(address) : address.trim();
     // v406: misma regla que la calculadora de km — un nombre suelto (Sevilla, Cádiz) se
     // busca tal cual; una calle sin pueblo se asume de Bizkaia, que es lo normal aquí.
-    if (/\d/.test(fullAddress) || /^(calle|c\/|c\.|avda\.?|avenida|av\.|plaza|pza\.?|paseo|p[ºo]\.?|camino|cno\.?|carretera|ctra\.?|ronda|barrio|b[ºo]\.?|pol[ií]gono|urb\.?|urbanizaci[oó]n)\b/i.test(fullAddress.trim())) {
+    // 🛑 v517 · si la dirección YA dice de dónde es (otra provincia, otra ciudad, o un
+    // código postal que no es de Bizkaia), se manda TAL CUAL. Pegarle «, Bizkaia» a
+    // «C. Don Juan Durán 20 Guareña, Badajoz» es lo que hacía que el mapa se fuera
+    // a cualquier sitio (Asier, 24-ago).
+    if (window.esDeOtraProvincia && window.esDeOtraProvincia(fullAddress)) {
+      fullAddress += ', España';
+    } else if (/\d/.test(fullAddress) || /^(calle|c\/|c\.|avda\.?|avenida|av\.|plaza|pza\.?|paseo|p[ºo]\.?|camino|cno\.?|carretera|ctra\.?|ronda|barrio|b[ºo]\.?|pol[ií]gono|urb\.?|urbanizaci[oó]n)\b/i.test(fullAddress.trim())) {
       fullAddress += ', Bizkaia, España';
     } else {
       fullAddress += ', España';
@@ -12456,6 +12468,27 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
     'cataluna','cataluña','extremadura','aragon','aragón','portugal','francia'
   ].join('|') + ')\\b', 'i');
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // 🛑 v517 · ¿ESTA DIRECCIÓN ES DE FUERA? (Asier, 24-ago-2026: «no me lleva a
+  //    las direcciones exactas; que lleve el mapa hasta la puerta de su casa»).
+  //    El mapa de la ficha le pegaba «, Bizkaia, España» a CUALQUIER dirección
+  //    que llevara un número. O sea que a Google le llegaba «C. Don Juan Durán
+  //    20 Guareña, Badajoz, BIZKAIA, España» — y con eso, claro, te deja caer
+  //    donde puede. Ahora, si la dirección ya dice de dónde es —porque nombra
+  //    otra provincia o ciudad, o porque lleva un código postal que no es de
+  //    Bizkaia (los de aquí empiezan por 48)— se manda TAL CUAL, sin añadirle
+  //    nada. Lo de Bizkaia se sigue poniendo solo cuando NO se dice el pueblo,
+  //    que es lo normal en el trabajo del día a día.
+  // ══════════════════════════════════════════════════════════════════════════
+  function esDeOtraProvincia(txt) {
+    var s = String(txt || '');
+    if (RE_OTRA_PROVINCIA.test(s)) return true;
+    var cp = (s.match(/\b(\d{5})\b/) || [])[1];
+    if (cp && cp.slice(0, 2) !== '48') return true;
+    return false;
+  }
+  window.esDeOtraProvincia = esDeOtraProvincia;
+
   function _norm(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
   function esDeBizkaia(r) {
     var a = (r && r.address) || {};
@@ -12540,7 +12573,9 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
             return 'RECHAZADA';
           }
           window._geoUltimoMotivo = '';
-          return { lat: d.lat, lon: d.lon, display: d.formateada, bizkaia: !!d.bizkaia, fuente: d.fuente, exactitud: d.exactitud };
+          // v517 · «portal» dice si Google ha encontrado el NÚMERO de la casa. Sin eso,
+          //        el punto es la calle o el pueblo — y eso hay que decirlo, no disimularlo.
+          return { lat: d.lat, lon: d.lon, display: d.formateada, bizkaia: !!d.bizkaia, fuente: d.fuente, exactitud: d.exactitud, portal: !!d.portal };
         }
         // El servidor la ha mirado y NO la da por buena: dice por qué.
         if (d && d.motivo) { window._geoUltimoMotivo = d.motivo; return 'RECHAZADA'; }
@@ -19038,6 +19073,52 @@ async function doResetWithCode() {
   // Cuando ya se sabe el punto exacto, los marcos se apuntan a las COORDENADAS.
   // Ahí ya no hay interpretación: es ese portal y no otro.
   var _afinado = {};
+  // ══════════════════════════════════════════════════════════════════════════
+  // 🛑 v517 · DECIR QUÉ HA ENTENDIDO, Y AVISAR SI NO ES EL PORTAL
+  //    Asier, 24-ago-2026: «no me lleva a las direcciones exactas; arréglamelo,
+  //    que lleve el mapa hasta la puerta de su casa». Y con la entrega 3 de
+  //    Javier —«C. Castillo de Hornachos, 1, 06006 Badajoz»— el mapa se plantó
+  //    en el CASTILLO de Hornachos, en la sierra, a 60 km del portal.
+  //    El problema de fondo: un mapa que se equivoca lo hace CALLADO, y parece
+  //    que ha acertado. Así que ahora, debajo de cada mapa, se escribe lo que
+  //    ha entendido el buscador, tal cual, y:
+  //     · si ha clavado el PORTAL (Google dice ROOFTOP y trae el número) → verde;
+  //     · si solo ha llegado a la calle o al pueblo → 🛑 EN ROJO, diciéndolo.
+  //    Un mapa sin este cartelito era una promesa que no se podía comprobar.
+  // ══════════════════════════════════════════════════════════════════════════
+  function _diQueHaEntendido(prefijo, p) {
+    try {
+      var cont = document.getElementById('sv-main-' + prefijo);
+      if (!cont) return;
+      var id = 'sv-main-' + prefijo + '-quees';
+      var caja = document.getElementById(id);
+      if (!caja) {
+        caja = document.createElement('div');
+        caja.id = id;
+        caja.className = 'no-pdf';   // esto es para Asier, al cliente no le llega
+        caja.style.cssText = 'font-size:11px;line-height:1.45;margin-top:4px;padding:5px 8px;border-radius:4px';
+        var pie = cont.querySelector('p');
+        if (pie) cont.insertBefore(caja, pie); else cont.appendChild(caja);
+      }
+      if (!p) {
+        caja.style.background = '#FEE7E4'; caja.style.color = '#a3281c'; caja.style.border = '1px solid #f0b8b0';
+        caja.innerHTML = '🛑 <b>No he encontrado esta dirección en el mapa.</b> El mapa de arriba es lo que ha sacado Google por su cuenta: <b>no te fíes</b>. Escribe calle, número y pueblo (o el código postal).';
+        return;
+      }
+      var loQueEs = String(p.d || p.display || '').trim();
+      var exacta = /ROOFTOP|RANGE_INTERPOLATED/i.test(String(p.e || p.exactitud || '')) || (p.portal === true);
+      if (exacta) {
+        caja.style.background = '#E8F5EE'; caja.style.color = '#1a7a3f'; caja.style.border = '1px solid #b9dfc9';
+        caja.innerHTML = '📍 <b>Portal clavado:</b> ' + _escQ(loQueEs);
+      } else {
+        caja.style.background = '#FEF0E7'; caja.style.color = '#a35a1c'; caja.style.border = '1px solid #f0cdaf';
+        caja.innerHTML = '🛑 <b>Esto NO es el portal exacto.</b> Lo más parecido que encuentro es: <b>' + _escQ(loQueEs) + '</b>.<br>'
+          + 'El mapa está ahí, pero <b>revísalo</b>: pon la calle bien escrita, el número, y el pueblo o el código postal.';
+      }
+    } catch (e) {}
+  }
+  function _escQ(t) { return String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
   async function afinarMapasConElPunto(prefijo, direccion) {
     try {
       var dir = String(direccion || '').trim();
@@ -19050,9 +19131,15 @@ async function doResetWithCode() {
       if (!(isFinite(lat) && isFinite(lon))) {
         if (typeof window.geoAzkar !== 'function') return;
         var p = await window.geoAzkar(dir);
-        if (!p) return;                      // no se ha encontrado: se deja la búsqueda por texto
+        if (!p) { _diQueHaEntendido(prefijo, null); return; }   // v517: no se ha encontrado, y SE DICE
         lat = p.lat; lon = p.lon;
-        if (cont) { cont.setAttribute('data-lat', lat); cont.setAttribute('data-lon', lon); cont.setAttribute('data-dir', dir); }
+        if (cont) {
+          cont.setAttribute('data-lat', lat); cont.setAttribute('data-lon', lon); cont.setAttribute('data-dir', dir);
+          try { cont.setAttribute('data-entendido', JSON.stringify({ d: p.display || '', e: p.exactitud || '', portal: !!p.portal })); } catch (e) {}
+        }
+        _diQueHaEntendido(prefijo, p);
+      } else {
+        try { _diQueHaEntendido(prefijo, JSON.parse(cont.getAttribute('data-entendido') || 'null')); } catch (e) {}
       }
       _afinado[prefijo] = dir;
       var mapa = document.getElementById('sv-main-' + prefijo + '-map');
