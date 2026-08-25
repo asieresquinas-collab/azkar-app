@@ -1086,7 +1086,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v528 · backend 2.7.443), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v529 · backend 2.7.443), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>💶 LAS RESERVAS COBRADAS QUE ESPERAN FACTURA (backend 2.7.424):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Mandas el presupuesto, el cliente reserva pagando el <strong>50%</strong> y te manda el <strong>justificante</strong>. <strong>Ese</strong> es el momento de hacerle la factura de la reserva — no cuando se apunta en el calendario ni cuando se firma el parte.</div></div>
@@ -1095,10 +1095,11 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
 
-      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📲 EL BOTÓN DE WHATSAPP, ARREGLADO (app v528 · backend 2.7.443):</p>
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📲 EL BOTÓN DE WHATSAPP, ARREGLADO — Y ABRE EL BUSINESS (app v529 · backend 2.7.443):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Escribiste «whasap» y Azkarin se quedó <strong>sin la herramienta del botón</strong> — y encima te dijo «toca este botón» sin haberlo fabricado. Ya entiende <strong>wasap, whasap, watsap y guasap</strong>, y tiene prohibido prometer botones que no existen.</div></div>
-      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>El botón verde marcaba el número <strong>sin el +34</strong> (así WhatsApp no abre nada) y usaba un enlace de Android que dentro de la app <strong>se muere en silencio</strong>. Ahora pone el 34 él solo y, si en segundo y medio no se ha abierto el Business, <strong>abre por el enlace normal de WhatsApp</strong>, que no falla.</div></div>
-      <div class='ayuda-tip'>Si el número del cliente es extranjero, guárdalo en la ficha con su prefijo (+33, +351…): el 34 solo se pone cuando el número viene pelado con 9 cifras.</div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>El botón verde marcaba el número <strong>sin el +34</strong> (así WhatsApp no abre nada). Ahora pone el 34 él solo. Si el número del cliente es extranjero, guárdalo en la ficha con su prefijo (+33, +351…).</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y lo del Business: el enlace de antes abría <strong>tu WhatsApp personal</strong>. Ahora, al tocar el botón, el móvil <strong>te pregunta con cuál abrir</strong> — eliges <strong>WhatsApp Business</strong>. Si marcas <strong>«Siempre»</strong>, no te lo vuelve a preguntar y el botón irá directo al Business.</div></div>
+      <div class='ayuda-tip'>Si un día no pregunta y abre el que no es: mantén pulsado el icono de WhatsApp → Información → «Abrir de forma predeterminada» → Borrar valores predeterminados. La próxima vez vuelve a preguntar.</div>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>📄 SIN HOJAS A MEDIO LLENAR EN EL PDF (app v527):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En el PDF del 6546 viste una hoja <strong>medio en blanco</strong>. Era el salto que obliga al detalle del servicio a <strong>estrenar hoja</strong>: con una entrega queda bien, pero con cuatro paradas los datos se comen hoja y media y el salto dejaba el hueco.</div></div>
@@ -4387,7 +4388,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v528';
+var APP_VERSION = 'v529';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17314,7 +17315,7 @@ async function doResetWithCode() {
     } catch (e) {}
   }, 1500);
 
-  // Abre WhatsApp Business (mismo método que el botón del presupuesto) con fallback
+  // Abre WhatsApp para contestar a un cliente — pensado para que salga el BUSINESS
   window._waEnviar = function(num, textoEnc) {
     num = String(num).replace(/[^0-9]/g, '');
     // 🛑 v528 · EL 34 QUE FALTABA. Si el número viene de la ficha va con 9 cifras
@@ -17323,11 +17324,22 @@ async function doResetWithCode() {
     if (num.length === 9) num = '34' + num;
     var isAndroid = /android/i.test(navigator.userAgent);
     if (isAndroid) {
-      window.location.href = 'intent://send?phone=' + num + '&text=' + textoEnc + '#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=' + encodeURIComponent('https://wa.me/' + num + '?text=' + textoEnc) + ';end';
-      // v528 · y si el navegador de dentro de la app se traga el intent en silencio
-      //        (la lección de la ruta, v511), a los dos segundos se abre por el
-      //        enlace normal de WhatsApp, que ese no falla — el móvil ya elige
-      //        entre el Business y el normal.
+      // 🛑 v529 · POR QUÉ EL ESQUEMA Y NO EL INTENT NI EL wa.me (Asier, 25-ago:
+      //    «me ha abierto el wasap normal y ese es el mío personal, tiene que ser
+      //    el Business de la empresa»):
+      //    · el intent:// apuntando al Business muere en silencio dentro de la app
+      //      (la misma trampa que la ruta, v511/512);
+      //    · el enlace wa.me abre el WhatsApp que el móvil tenga por defecto — en
+      //      el móvil de Asier, el personal;
+      //    · el esquema whatsapp:// lo tienen registrado LAS DOS aplicaciones, así
+      //      que Android PREGUNTA con cuál abrir y Asier elige el Business (y si
+      //      marca «Siempre», no vuelve a preguntar).
+      //    Tiene que ser lo PRIMERO que se haga al tocar: Android solo deja abrir
+      //    otra aplicación «recién tocado el botón»; desde un temporizador ya no.
+      window.location.href = 'whatsapp://send?phone=' + num + '&text=' + textoEnc;
+      // v529 · salvavidas: si a los dos segundos seguimos aquí (el esquema no ha
+      //        abierto nada), se va por el enlace normal de WhatsApp — abrirá el
+      //        que sea, pero mejor eso que un toque muerto.
       try {
         setTimeout(function () {
           if (document.visibilityState === 'visible') {
@@ -17335,7 +17347,7 @@ async function doResetWithCode() {
             try { w = window.open('https://wa.me/' + num + '?text=' + textoEnc, '_blank', 'noopener'); } catch (e) { w = null; }
             if (!w) { try { window.location.href = 'https://wa.me/' + num + '?text=' + textoEnc; } catch (e2) {} }
           }
-        }, 1600);
+        }, 1800);
       } catch (e) {}
     } else {
       window.open('https://wa.me/' + num + '?text=' + textoEnc, '_blank');
