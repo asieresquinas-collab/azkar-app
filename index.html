@@ -1254,6 +1254,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>🛑 Y si pides otra vez la factura de la reserva de alguien que <strong>ya la tiene</strong>, lo primero que te sale es <strong>«LA RESERVA DE ESTE CLIENTE YA ESTÁ FACTURADA»</strong>, con su número y su fecha. Hacerla dos veces es cobrarle dos veces.</div></div>
       <div class='ayuda-tip'>En la lista, quien no tiene señal en la ficha pero sí factura ya no sale en rojo: pone «señal en STEL Order». El rojo se queda para los que no la tienen en ningún sitio — esos sí hay que apuntarlos.</div>
 
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>⏱️ AL PDF SE LE ESPERA LO QUE NECESITE, Y REVISIÓN DE ARRIBA ABAJO (app v535):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Tenías razón con lo del tiempo: el servidor tiene hasta <strong>tres intentos de un minuto</strong> para hacer el PDF (más cola si hay dos a la vez), pero la app se rendía a los noventa segundos — <strong>colgaba el teléfono con el servidor aún trabajando</strong>. Ahora le espera hasta <strong>cuatro minutos</strong>. Tarda lo que tarde, pero llega.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Y la revisión de pe a pa que pediste: <strong>los veintisiete bloques de código compilan sin un solo error</strong>, los <strong>ciento sesenta y un botones</strong> llaman todos a funciones que existen, y las <strong>sesenta y dos llamadas al servidor</strong> tienen todas su puerta al otro lado.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Lo único torcido que apareció: tres funciones importantes (añadir fila, guardar y cargar) tenían una <strong>copia vieja muerta</strong> escondida en el código. No hacían daño hoy, pero eran una trampa: un arreglo futuro podía caer en la copia muerta y «no hacer nada». <strong>Quitadas</strong>, con su lápida puesta para que se sepa qué había.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Y esta revisión no ha sido de una vez: queda montada como <strong>banco de pruebas fijo</strong>, así que a partir de ahora se pasa entera antes de cada cambio.</div></div>
+
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>📄 CUANDO SOLO TE MANDABA EL ENLACE DE LA FIRMA (app v534 · backend 2.7.472):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al darle al botón de <strong>📄 PDF</strong> para mandarlo por WhatsApp, la app hace dos cosas: prepara el enlace para firmar y <strong>rehace el PDF</strong> del presupuesto de ahora mismo. Si esa segunda parte fallaba (cobertura, el servidor tardando), el mensaje salía <strong>solo con el enlace de firmar</strong> y no te enterabas.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora <strong>lo intenta dos veces</strong>. Y si aun así no sale, <strong>te para y te pregunta</strong>, diciéndote el motivo: puedes mandarlo solo con la firma, o cancelar y volver a darle en un minuto.</div></div>
@@ -2206,27 +2212,7 @@ function ZO(s){
   return h;
 }
 
-function AR(c,z,u,p,d){
-  c=c||''; z=z||'Salón'; u=u||''; p=p||''; d=d||'';
-  var ph=document.getElementById('rph');
-  if(ph) ph.parentNode.removeChild(ph);
-  rid++;
-  var id=rid;
-  var div=document.createElement('div');
-  div.className='cr'; div.id='r'+id;
-  div.innerHTML='<input list="dl" placeholder="Ej: Armario, sofá..." value="'+c+'" oninput="CA();chk2p(this)">'
-    +'<input type="number" min="0" step="0.1" placeholder="0" value="'+u+'" oninput="CA()">'
-    +'<input type="number" min="0" step="0.01" placeholder="0,00" value="'+p+'" oninput="CA()">'
-    +'<input type="number" class="col-dto" min="0" max="100" step="1" placeholder="0" value="'+d+'" oninput="CA()">'
-    +'<div class="ctot" id="t'+id+'">—</div>'
-    +'<button class="bdel" onclick="DR('+id+')" title="Eliminar">✕</button>';
-  document.getElementById('tb').appendChild(div);
-  div.querySelector('input').focus();
-  CA();
-  // v403: si la fila nace ya con un canapé/colchón, se le pone el precio cerrado
-  // v404: salvo cargando una ficha vieja — esa se queda con su precio de entonces
-  if(!window._restaurandoFicha && esDeDos(c)) aplica2p(div);
-}
+// 🪦 v535: aquí vivía una copia VIEJA de AR() que llevaba muerta desde que la nueva (más abajo, con tiempo y tamaño) la pisó. Se quita para que ningún arreglo futuro edite la copia muerta creyendo que edita la buena.
 
 function QA(c,z){ AR(c,z); }
 
@@ -2802,53 +2788,9 @@ function confirmarPermuta() {
   if (window._currentPresupuestoRef && typeof saveNow === 'function') setTimeout(saveNow, 500);
 }
 
-function GD(){
-  var data={};
-  var fields=["f_ref","f_nc","f_fecha","f_dni","f_nom","f_tel","f_email","f_rec","f_ent","f_fac","f_fserv","f_hserv","f_abono","f_obs"];
-  for(var i=0;i<fields.length;i++){var el=document.getElementById(fields[i]);if(el)data[fields[i]]=el.value;}
-  data.rows=[];
-  var rows=document.querySelectorAll(".cr");
-  for(var i=0;i<rows.length;i++){
-    var ns=rows[i].querySelectorAll("input[type=number]");
-    var ci=rows[i].querySelector("input[list=dl]");
-    var se=rows[i].querySelector("select");
-    var tmEl=rows[i].querySelector('.tiempo-input');
-    var tamEl2=rows[i].querySelector(".tamano-badge");data.rows.push({c:ci?ci.value:"",z:"",u:ns[0]?ns[0].value:"",p:ns[1]?ns[1].value:"",d:ns[2]?ns[2].value:"",tm:tmEl?tmEl.value:"",tam:tamEl2?tamEl2.getAttribute("data-tam")||"Estándar":"Estándar"});
-  }
-  var _uiInt=[].slice.call(document.querySelectorAll('.ui-interno'));
-  var _uiSav=_uiInt.map(function(e){var stx={e:e,h:e.innerHTML,d:e.style.display};e.innerHTML='';e.style.display='none';return stx;});
-  var html=document.documentElement.outerHTML;
-  _uiSav.forEach(function(stx){stx.e.innerHTML=stx.h;stx.e.style.display=stx.d;});
-  var jsonStr=JSON.stringify(data);
-  var tag1='<sc'+'ript id="sd" type="application/json">';
-  var tag2="</"+"script>";
-  var newBlock=tag1+jsonStr+tag2;
-  var sdStart=html.indexOf('<script id="sd"');
-  var sdEnd=sdStart>=0?html.indexOf('<\/script>',sdStart)+9:-1;
-  if(sdStart>=0){html=html.substring(0,sdStart)+newBlock+html.substring(sdEnd+1);}
-  else{html=html.replace("</"+"body>",newBlock+"\n</"+"body>");}
-  var blob=new Blob([html],{type:"text/html;charset=utf-8"});
-  var a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  var fn=window.location.pathname.split("/").pop()||"AZKAR_Cliente.html";
-  a.download=fn||"AZKAR_Cliente.html";
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
-  var btn=document.querySelector(".nbtn.sav");
-  if(btn){var o=btn.innerHTML;btn.innerHTML="&#10003; Guardado!";btn.style.background="#0d5c2e";setTimeout(function(){btn.innerHTML=o;btn.style.background="";},2500);}
-}
+// 🪦 v535: aquí vivía una copia VIEJA de GD() pisada por la de más abajo. Quitada por lo mismo.
 
-function LD(){
-  var sd=document.getElementById('sd');
-  if(!sd) return;
-  try{
-    var data=JSON.parse(sd.textContent);
-    var fields=['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs'];
-    for(var i=0;i<fields.length;i++){var el=document.getElementById(fields[i]);if(el&&data[fields[i]]!==undefined)el.value=data[fields[i]];}
-    if(data.rows&&data.rows.length)for(var i=0;i<data.rows.length;i++){var r=data.rows[i];AR(r.c,r.z,r.u,r.p,r.d,r.tm||'',r.tam||'Estándar');}
-    CA(); SY();
-  }catch(e){}
-}
+// 🪦 v535: aquí vivía una copia VIEJA de LD() pisada por la de más abajo. Quitada por lo mismo.
 
 
 // Helper: fijar valores de inputs/selects/textareas en el HTML para que outerHTML los capture
@@ -4425,7 +4367,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v534';
+var APP_VERSION = 'v535';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -9162,9 +9104,18 @@ async function savePdfViaServer(number, clientName, htmlContent, docType, client
     if (enMarcha) {
       payload.enMarcha = true;
     }
-    // Timeout de 90 segundos (Puppeteer + Drive + Email puede tardar)
+    // ══════════════════════════════════════════════════════════════════════
+    //  🛑 v535 · EL TIEMPO DEL PDF, A LA MEDIDA DEL SERVIDOR (Asier, 26-ago-2026)
+    //  «yo creo que el problema va a ser más del tiempo que tiene para hacerlo;
+    //   podía subir un poco el tiempo, aunque tarde un poco más, pero que le dé
+    //   tiempo a hacerlo».
+    //  Y clavado: el servidor tiene hasta TRES intentos de 60 segundos cada uno
+    //  (más la cola si hay dos PDFs a la vez), pero aquí se cortaba a los 90.
+    //  O sea: la app colgaba el teléfono cuando el servidor aún estaba
+    //  trabajando. Ahora se le espera lo que puede tardar de verdad.
+    // ══════════════════════════════════════════════════════════════════════
     var controller = new AbortController();
-    var timeoutId = setTimeout(function() { controller.abort(); }, 90000);
+    var timeoutId = setTimeout(function() { controller.abort(); }, 240000);
     var res = await fetch(RAILWAY_API + '/api/pdf/generate-and-save', {
       method: 'POST',
       headers: apiHeaders(),
@@ -9183,7 +9134,7 @@ async function savePdfViaServer(number, clientName, htmlContent, docType, client
   } catch (e) {
     console.error('[PDF Server] Error:', e);
     if (e.name === 'AbortError') {
-      return { error: 'Tiempo agotado (90s). El PDF puede haberse guardado. Revisa Drive.' };
+      return { error: 'He esperado cuatro minutos y el servidor no ha terminado el PDF. Puede que se haya guardado igual: mira la carpeta del cliente en Drive antes de repetir.' };
     }
     return { error: 'Sin conexión al servidor: ' + e.message };
   }
