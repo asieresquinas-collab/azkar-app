@@ -1254,6 +1254,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>🛑 Y si pides otra vez la factura de la reserva de alguien que <strong>ya la tiene</strong>, lo primero que te sale es <strong>«LA RESERVA DE ESTE CLIENTE YA ESTÁ FACTURADA»</strong>, con su número y su fecha. Hacerla dos veces es cobrarle dos veces.</div></div>
       <div class='ayuda-tip'>En la lista, quien no tiene señal en la ficha pero sí factura ya no sale en rojo: pone «señal en STEL Order». El rojo se queda para los que no la tienen en ningún sitio — esos sí hay que apuntarlos.</div>
 
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>💶 EL JUSTIFICANTE SE COTEJA SOLO (backend 2.7.475 · app v537):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando compartas con Azkarin un WhatsApp que traiga el <strong>justificante de la reserva</strong> en PDF, además de guardarlo en la carpeta del cliente, el sistema <strong>lee el importe de la transferencia</strong> y lo <strong>coteja con la reserva</strong>: la señal apuntada en la ficha o, si no la hay, el cincuenta por ciento del presupuesto.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Si <strong>cuadra</strong>: apunta la señal en la ficha y te deja montado el <strong>borrador de la factura de la RESERVA</strong>. Te llega el aviso con los dos números — solo falta tu OK.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Si <strong>no cuadra</strong> (pagó otra cantidad): <strong>no toca nada</strong> y te avisa con los dos números, para que decidas tú. Y si el papel no se puede leer, te lo dice tal cual — nunca se inventa un importe.</div></div>
+      <div class='ayuda-tip'>La factura en STEL Order sigue haciéndola tú: el sistema te lo deja todo cotejado y montado, pero ahí no crea nada sin tu palabra.</div>
+
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>🚚 EN MARCHA SOLA: CUANDO ESTÁ TODO, SE PONE (backend 2.7.473 · app v536):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Tu regla sigue mandando: <strong>sin justificante, ni EN MARCHA ni calendario</strong>. Lo que cambia es quién vigila: ahora, cada vez que llega una pieza —el cliente <strong>firma</strong>, entra un <strong>justificante</strong> por WhatsApp, o se le pone la <strong>fecha</strong>— el sistema mira si están las otras dos.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Con <strong>las tres piezas</strong>, el cliente pasa a <strong>EN MARCHA él solo</strong>, con el trabajo entero: la ficha, su carpeta de Drive a «2 EN MARCHA» y el evento del calendario. Te llega el aviso con las tres piezas a la vista, y queda apuntado en la Libreta.</div></div>
@@ -4373,7 +4379,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v536';
+var APP_VERSION = 'v537';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
