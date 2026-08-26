@@ -1254,6 +1254,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>🛑 Y si pides otra vez la factura de la reserva de alguien que <strong>ya la tiene</strong>, lo primero que te sale es <strong>«LA RESERVA DE ESTE CLIENTE YA ESTÁ FACTURADA»</strong>, con su número y su fecha. Hacerla dos veces es cobrarle dos veces.</div></div>
       <div class='ayuda-tip'>En la lista, quien no tiene señal en la ficha pero sí factura ya no sale en rojo: pone «señal en STEL Order». El rojo se queda para los que no la tienen en ningún sitio — esos sí hay que apuntarlos.</div>
 
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>🧑‍💼 EL ALTA DEL CLIENTE EN STEL ORDER, A UN BOTÓN (backend 2.7.477 · app v539):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando el borrador de una factura te diga que el cliente <strong>no está dado de alta en STEL Order</strong>, ya no tienes que irte a STEL Order: sale un botón verde — <strong>«Darlo de alta (con los datos de la ficha)»</strong> — y lo crea con el nombre, el DNI/CIF y el teléfono de la ficha. Te pide confirmación antes, no crea duplicados si ya existe, y al terminar rehace el borrador solo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>También se lo puedes decir a Azkarin: «dale de alta en STEL Order al 6582». Solo lo hace si se lo pides tú.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 Esta es la <strong>única</strong> cosa que se escribe en STEL Order. Las <strong>facturas</strong> siguen creándolas tú — eso no se toca sin tu OK expreso, y hay una prueba vigilando que ni pueda existir el código que lo haga.</div></div>
+      <div class='ayuda-tip'>De propina: fuera el aviso pesado de «puede que falte alguna factura reciente» cuando en realidad se han leído todas, y arreglado un emoji que salía como «U0001F6D1» en letras.</div>
+
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>💶 EL JUSTIFICANTE SE COTEJA SOLO (backend 2.7.475 · app v537):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando compartas con Azkarin un WhatsApp que traiga el <strong>justificante de la reserva</strong> — en <strong>PDF</strong> o en <strong>captura de pantalla</strong> (v538) — además de guardarlo en la carpeta del cliente, el sistema <strong>lee el importe de la transferencia</strong> y lo <strong>coteja con la reserva</strong>: la señal apuntada en la ficha o, si no la hay, el cincuenta por ciento del presupuesto. Con las capturas, el ojo distingue primero cuál de las fotos es el justificante: los muebles no cuentan, y por mirar sofás no te llegan avisos.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Si <strong>cuadra</strong>: apunta la señal en la ficha y te deja montado el <strong>borrador de la factura de la RESERVA</strong>. Te llega el aviso con los dos números — solo falta tu OK.</div></div>
@@ -4379,7 +4385,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v538';
+var APP_VERSION = 'v539';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
