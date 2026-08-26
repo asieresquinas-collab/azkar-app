@@ -1254,6 +1254,13 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>🛑 Y si pides otra vez la factura de la reserva de alguien que <strong>ya la tiene</strong>, lo primero que te sale es <strong>«LA RESERVA DE ESTE CLIENTE YA ESTÁ FACTURADA»</strong>, con su número y su fecha. Hacerla dos veces es cobrarle dos veces.</div></div>
       <div class='ayuda-tip'>En la lista, quien no tiene señal en la ficha pero sí factura ya no sale en rojo: pone «señal en STEL Order». El rojo se queda para los que no la tienen en ningún sitio — esos sí hay que apuntarlos.</div>
 
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>📄 CUANDO SOLO TE MANDABA EL ENLACE DE LA FIRMA (app v534 · backend 2.7.472):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al darle al botón de <strong>📄 PDF</strong> para mandarlo por WhatsApp, la app hace dos cosas: prepara el enlace para firmar y <strong>rehace el PDF</strong> del presupuesto de ahora mismo. Si esa segunda parte fallaba (cobertura, el servidor tardando), el mensaje salía <strong>solo con el enlace de firmar</strong> y no te enterabas.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora <strong>lo intenta dos veces</strong>. Y si aun así no sale, <strong>te para y te pregunta</strong>, diciéndote el motivo: puedes mandarlo solo con la firma, o cancelar y volver a darle en un minuto.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Ojo, que esto es importante: aunque vaya solo el enlace de firmar, <strong>el cliente ve el presupuesto entero en esa página</strong> antes de firmar. Lo que le falta es el PDF para guardárselo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Sigue en pie lo de siempre: <strong>nunca se manda un enlace viejo</strong>. Si el PDF no es el de ahora mismo, no se manda — eso fue lo de la clienta que firmó sin sus datos.</div></div>
+      <div class='ayuda-tip'>Si te vuelve a pasar, dime el motivo que te salga en el aviso: ahora el servidor sí dice por qué.</div>
+
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>🚗 LOS KILÓMETROS NO SE PIERDEN NUNCA (backend 2.7.471 · app v533):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando le digas a Azkarin <strong>«deja solo estos artículos»</strong> (porque el cliente ha quitado muebles), ya <strong>no</strong> se lleva por delante el <strong>Desplazamiento</strong>, la <strong>Salida</strong> ni el <strong>Servicio base</strong>. Eso no son muebles del cliente: es lo que cuesta ir, y se cobra igual. Te lo dice en la respuesta: «no he tocado el desplazamiento».</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>La tarjeta de confirmar ahora pone <strong>«DEJAR SOLO estos MUEBLES»</strong> y avisa de que el desplazamiento no se toca, para que lo veas antes de darle.</div></div>
@@ -4418,7 +4425,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v533';
+var APP_VERSION = 'v534';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8311,6 +8318,7 @@ function apiHeaders(extra) {
 // v122: Variable global para enlace PDF pendiente de enviar por WhatsApp
 var _whatsappPdfLink = null;
 var _pdfLinkFrescoWA = null;   // v438: el PDF rehecho en ESTE envío (si no, no se manda enlace de PDF)
+var _motivoPdfWA = '';         // v534: POR QUÉ no salió el PDF — antes se perdía en la consola
 var _whatsappClientName = '';
 var _whatsappClientNum = ''; var _whatsappFirmaUrl = '';
 
@@ -8448,14 +8456,37 @@ async function _crearFirmaParaWA() {
     // Se rehace aquí con el MISMO documento que se acaba de mandar a firmar, así los
     // dos enlaces enseñan lo mismo. Y de paso, la carpeta del cliente en Drive queda
     // con el presupuesto bueno. Si el PDF falla, se manda solo el de firmar.
-    _pdfLinkFrescoWA = null;
-    try {
-      showSyncStatus('⏳ Actualizando también el PDF de la carpeta...', 0);
-      var pr = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO', '', d.url);
-      if (pr && pr.success && pr.drive) {
-        _pdfLinkFrescoWA = pr.drive.pdfProxyLink || pr.drive.webViewLink || null;
+    // ══════════════════════════════════════════════════════════════════════
+    //  🛑 v534 · SI EL PDF NO SALE, SE REINTENTA Y SE DICE (Asier, 26-ago-2026)
+    //  «le di a generar PDF para compartir por WhatsApp y solamente me manda lo
+    //   de la firma, no le manda el presupuesto; me ha pasado TRES veces y no se
+    //   lo puedo mandar».
+    //  Por qué pasaba: aquí se rehace el PDF con Puppeteer (hasta 90 s) justo
+    //  después de haber mandado el presupuesto entero a /api/firma/crear. Desde
+    //  el móvil, con cobertura de la calle, esa segunda llamada se cae a veces —
+    //  y el fallo se lo comía un console.warn. El mensaje salía con el enlace de
+    //  firmar y nada más, y Asier no se enteraba de por qué.
+    //  Ahora: se intenta DOS veces, y si aun así no sale, se guarda el motivo
+    //  para preguntárselo a él en vez de mandarle medio mensaje sin avisar.
+    // ══════════════════════════════════════════════════════════════════════
+    _pdfLinkFrescoWA = null; _motivoPdfWA = '';
+    for (var _int = 1; _int <= 2 && !_pdfLinkFrescoWA; _int++) {
+      try {
+        showSyncStatus(_int === 1 ? '⏳ Actualizando también el PDF de la carpeta...' : '⏳ El PDF no ha salido a la primera, lo intento otra vez...', 0);
+        var pr = await savePdfViaServer(number, clientName, completeHTML, 'PRESUPUESTO_COMPLETO', '', d.url);
+        if (pr && pr.success && pr.drive) {
+          _pdfLinkFrescoWA = pr.drive.pdfProxyLink || pr.drive.webViewLink || null;
+          // v534/2.7.472: el servidor dice ahora POR QUÉ no hay enlace (antes se callaba)
+          if (!_pdfLinkFrescoWA) _motivoPdfWA = String(pr.drive_error || pr.drive.details || pr.drive.error || 'el servidor no me ha dado el enlace del PDF');
+        } else {
+          _motivoPdfWA = (pr && pr.error) ? String(pr.error) : 'el servidor no ha contestado bien al generar el PDF';
+        }
+      } catch (ePdf) {
+        _motivoPdfWA = ePdf && ePdf.message ? ePdf.message : 'error al generar el PDF';
+        console.warn('[Firma WA] no he podido rehacer el PDF (intento ' + _int + '):', _motivoPdfWA);
       }
-    } catch (ePdf) { console.warn('[Firma WA] no he podido rehacer el PDF:', ePdf.message); }
+    }
+    if (_pdfLinkFrescoWA) _motivoPdfWA = '';
 
     return d.url;
   } catch (e) { console.error('[Firma WA] error creando sesión:', e); return ''; }
@@ -8510,8 +8541,23 @@ async function enviarPresupuestoWhatsApp() {
     // AHORA, no se manda. Antes que un enlace viejo, ninguno — en la página de firma se
     // ve el presupuesto entero de todas formas.
     _whatsappPdfLink = _pdfLinkFrescoWA || null;
+    // ══════════════════════════════════════════════════════════════════════
+    //  🛑 v534 · NO SE MANDA MEDIO MENSAJE A ESCONDIDAS (Asier, 26-ago-2026)
+    //  Le pasó tres veces: solo salía el enlace de firmar, sin el presupuesto, y
+    //  sin decirle por qué. Antes que eso, se para y se le pregunta a él.
+    // ══════════════════════════════════════════════════════════════════════
+    if (!_whatsappPdfLink) {
+      showSyncStatus('', 1);
+      var _segM = 'No he podido rehacer el PDF del presupuesto'
+        + (_motivoPdfWA ? ':\n\n' + _motivoPdfWA : '.')
+        + '\n\nSi sigo, al cliente le llega SOLO el enlace para firmar (ahí ve el presupuesto entero de todas formas, pero no lleva el PDF).\n\n¿Lo mando así?\n\nAceptar = mandarlo solo con la firma.\nCancelar = no mandar nada (vuelve a darle en un minuto).';
+      if (!confirm(_segM)) {
+        showSyncStatus('Envío parado. El PDF no ha salido: prueba otra vez en un momento.', 7000);
+        return;
+      }
+    }
     _v237SaveWaLink(_curRefWA, _whatsappPdfLink || _fu, _whatsappClientName, _fu);
-    showSyncStatus('✅ Listo para enviar, con los datos de ahora', 1800);
+    showSyncStatus(_whatsappPdfLink ? '✅ Listo para enviar, con el presupuesto y la firma' : '⚠ Va solo el enlace de firmar (sin PDF)', 2500);
   }
 
   var num = tel.replace(/[\s\-\(\)\.]/g, '');
