@@ -1086,7 +1086,11 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v530 · backend 2.7.452), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v531 · backend 2.7.454), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🔕 LA APP SE ABRE LIMPIA (app v531):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Ya <strong>no sale</strong> el cartel de «¿Repasamos lo que tienes hoy?» cada vez que abres la app. Se acabó el repaso de dos en dos sin pedirlo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>El repaso <strong>sigue existiendo</strong> para cuando TÚ lo quieras: abre Azkarin y dile <strong>«repásame lo de hoy»</strong>. Igual que antes, pero cuando te venga bien.</div></div>
 
       <p style='font-weight:700;color:#E85C0D;margin-top:16px'>👷 EL MODO ENCARGADO — EL PRESUPUESTO EN TRES MINUTOS (backend 2.7.451/452):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Compartes el WhatsApp de un cliente <strong>con archivos</strong> (Compartir → Azkarin) y <strong>no tienes que decir nada más</strong>. El estudio se hace <strong>solo</strong> y te llega un aviso al móvil: <strong>«Estudio hecho: Ana — faltan 3 cosas, 1 aviso de precio»</strong>. No hay que acordarse de ninguna frase.</div></div>
@@ -4126,8 +4130,13 @@ window.addEventListener('DOMContentLoaded',function(){
   LD();
   var fd=document.getElementById('f_fecha');
   if(fd&&!fd.value) fd.value=new Date().toISOString().slice(0,10);
-  // v355: al abrir, Azkarin PREGUNTA si repasar lo de hoy (nada de banners/alertas automáticas)
-  setTimeout(function(){ azkarinPreguntarRepaso(); }, 3000);
+  // 🛑 v531 · FUERA EL «¿REPASAMOS LO DE HOY?» AL ABRIR (Asier, 25-ago-2026:
+  //    «cada vez que abro la aplicación me sale un mensaje de Azkarin de que si
+  //     quiero ver lo que hay que hacer hoy… querría quitarlo por favor»).
+  //    La app se abre limpia: ni cartel, ni pregunta, ni repaso de dos en dos.
+  //    El repaso NO se ha borrado — sigue estando cuando ÉL lo pide: le dice a
+  //    Azkarin «repásame lo de hoy» y arranca igual que antes (v355).
+  //    Para volver a encenderlo algún día: azkarinPreguntarRepaso() sigue viva.
 });
 
 // ── v259: alertas proactivas al cargar → sistema buzón ──
@@ -4395,7 +4404,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v530';
+var APP_VERSION = 'v531';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
