@@ -1254,6 +1254,13 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>🛑 Y si pides otra vez la factura de la reserva de alguien que <strong>ya la tiene</strong>, lo primero que te sale es <strong>«LA RESERVA DE ESTE CLIENTE YA ESTÁ FACTURADA»</strong>, con su número y su fecha. Hacerla dos veces es cobrarle dos veces.</div></div>
       <div class='ayuda-tip'>En la lista, quien no tiene señal en la ficha pero sí factura ya no sale en rojo: pone «señal en STEL Order». El rojo se queda para los que no la tienen en ningún sitio — esos sí hay que apuntarlos.</div>
 
+      <p style='font-weight:700;color:#c0392b;margin-top:16px'>🧾 EL BOTÓN GRANDE: CREAR LA FACTURA DE VERDAD (backend 2.7.483 · app v540):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Lo pediste con estas palabras: «¿tengo que hacer algo más que darle al botón?». Ya no. Debajo del borrador, cuando está listo y el cliente dado de alta, sale el botón rojo <strong>«CREARLA EN STEL ORDER de verdad»</strong>. Te pregunta DOS veces (es TicketBAI y no se borra), y la crea: su línea, su importe exacto, la ficha debajo del título, el vencimiento del día, la <strong>reserva PAGADA</strong> y el <strong>resto sin pagar</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Va con <strong>ocho candados</strong>: no crea si falta algo, ni sin el alta del cliente, ni una reserva que YA esté facturada, ni otra con el mismo importe sin que la mires; y un doble toque del botón <strong>no puede</strong> emitir dos (candado de quince minutos).</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Al terminar <strong>lo comprueba releyendo STEL Order</strong>: solo te dice «creada» si la factura APARECE, con su número FAC de verdad. Si STEL Order dice que sí pero no se deja ver, te manda <strong>mirar el panel antes de darle otra vez</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Al cliente <strong>no se le manda nada</strong> desde ahí: mandársela sigue siendo cosa tuya. Y el PDF oficial, de momento, se baja de tu panel (su API no los sirve — la reclamación está en marcha).</div></div>
+      <div class='ayuda-tip'>La primera hazla mirando: la reserva de Adriana (6582). Botón azul → borrador → botón rojo → dos confirmaciones → te dice el número FAC comprobado.</div>
+
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>🧑‍💼 EL ALTA DEL CLIENTE EN STEL ORDER, A UN BOTÓN (backend 2.7.477 · app v539):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando el borrador de una factura te diga que el cliente <strong>no está dado de alta en STEL Order</strong>, ya no tienes que irte a STEL Order: sale un botón verde — <strong>«Darlo de alta (con los datos de la ficha)»</strong> — y lo crea con el nombre, el DNI/CIF y el teléfono de la ficha. Te pide confirmación antes, no crea duplicados si ya existe, y al terminar rehace el borrador solo.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>También se lo puedes decir a Azkarin: «dale de alta en STEL Order al 6582». Solo lo hace si se lo pides tú.</div></div>
@@ -4385,7 +4392,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v539';
+var APP_VERSION = 'v540';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
