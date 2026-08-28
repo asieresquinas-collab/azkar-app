@@ -1,6 +1,7 @@
 'use strict';
 const fs=require('fs');
-const h=fs.readFileSync('require('path').join(__dirname,'..','index.html')','utf8');
+const path=require('path');
+const h=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
 let bien=0,mal=0; const c=(n,x,d)=>{ if(x){bien++;console.log('  ✅ '+n);} else {mal++;console.log('  ❌ '+n+(d?'  →  '+d:''));} };
 
 // se toman las líneas REALES del fichero: las dos del principio y las cuatro de las casillas
