@@ -4424,7 +4424,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v544';
+var APP_VERSION = 'v545';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -5732,6 +5732,16 @@ function collectFormData() {
 
 function restoreFormData(data) {
   if (!data) return;
+  // ── v545 · ¿ES LA MISMA FICHA QUE HABÍA ABIERTA? ────────────────────────────
+  //  Asier, 28-ago: «he hecho un presupuesto que no tiene nada que ver ni con la
+  //  plataforma ni con las orugas y se me han marcado las dos, las tenía
+  //  premarcadas en el contrato». Y era esto: las casillas se leían como
+  //  «lo que diga la ficha O lo que quedara puesto de antes», así que al abrir
+  //  la ficha siguiente se pegaban las del cliente anterior. En una ficha
+  //  DISTINTA manda la ficha y solo la ficha; lo de antes solo cuenta cuando se
+  //  recarga la MISMA (una sincronización a media faena, sin haber guardado aún).
+  var _refAntes = String(((document.getElementById('f_ref') || {}).value) || '').trim();
+  var _mismaFicha = !!_refAntes && _refAntes === String(data.f_ref || '').trim();
   // v126: diagnóstico (direcciones limpiadas por RGPD)
   console.log('[restoreFormData] campos=' + Object.keys(data).length);
   // FIX anti-acumulación: limpiar SIEMPRE las filas antes de restaurar, para que los enseres
@@ -5811,19 +5821,19 @@ function restoreFormData(data) {
     if (entVal) setTimeout(function() { window.loadStreetView(entVal, 'entrega'); }, 500);
   }
   // v140: Mostrar/ocultar cláusula guardamuebles según flag y actualizar toggle
-  var isGuarda = data._guardamuebles || window._currentGuardamuebles;
+  var isGuarda = (data._guardamuebles === true) || (_mismaFicha && window._currentGuardamuebles);
   window._currentGuardamuebles = !!isGuarda;
   if (typeof updateGuardamueblesUI === 'function') updateGuardamueblesUI(!!isGuarda);
   // v376: cláusula plataforma elevadora según flag
-  var isPlat = data._plataforma || window._currentPlataforma;
+  var isPlat = (data._plataforma === true) || (_mismaFicha && window._currentPlataforma);
   window._currentPlataforma = !!isPlat;
   if (typeof updatePlataformaUI === 'function') updatePlataformaUI(!!isPlat);
   // v543: la casilla de la oruga salvaescaleras
-  var isOru = data._oruga || window._currentOruga;
+  var isOru = (data._oruga === true) || (_mismaFicha && window._currentOruga);
   window._currentOruga = !!isOru;
   if (typeof updateOrugaUI === 'function') updateOrugaUI(!!isOru);
   // v473: la casilla del cambio de muebles
-  var isPerm = data._permuta || window._currentPermuta;
+  var isPerm = (data._permuta === true) || (_mismaFicha && window._currentPermuta);
   window._currentPermuta = !!isPerm;
   if (typeof updatePermutaUI === 'function') updatePermutaUI(!!isPerm);
   // v155: Comprobar si hay oferta de autónomo adjudicada para este presupuesto
