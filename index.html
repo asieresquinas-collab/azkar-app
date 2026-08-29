@@ -1112,6 +1112,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si alguna de esas dos cosas <strong>no la he podido mirar</strong>, te lo digo. Un «no tiene factura» dicho a ciegas es justo lo que hace que se facture dos veces.</div></div>
       <div class='ayuda-tip'>Las que ya tienen SUS DOS facturas las aparto en un desplegable. Las que tienen solo una NO las escondo: siguen arriba, marcadas.</div>
 
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🏠 LA DIRECCIÓN DEL CLIENTE SE PONE SOLA (backend 2.7.520):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Una factura tiene que llevar el <strong>domicilio del cliente</strong>, y en STEL Order muchos clientes viejos no lo tienen puesto. <strong>Tú no tienes que entrar ahí a ponérselo.</strong> Al montar la factura —y al hacer el 🧪 ENSAYO, que es el mismo camino— se le completa solo, cogido de <strong>la ficha de la app</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Lo coge de la casilla de <strong>DIRECCIÓN DE FACTURACIÓN</strong> de la ficha (no de la de recoger, que en una mudanza son distintas), y lo manda partido en <strong>calle · código postal · ciudad · provincia</strong>, más el teléfono y el correo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Solo rellena lo que esté vacío.</strong> Lo que tú hayas puesto a mano en STEL Order no se toca nunca; y el nombre, el DNI/CIF y cualquier cosa de dinero no se pueden cambiar por ahí de ninguna manera.</div></div>
+      <div class='ayuda-tip'>Si el ensayo te sigue diciendo que falta la dirección, es que <strong>en la ficha de la app</strong> esa casilla está vacía: la rellenas ahí y vuelves a darle al ensayo. Nunca hace falta que entres en STEL Order.</div>
+
       <p style='font-weight:700;color:#c0392b;margin-top:16px'>📲 EL BOTÓN DE WHATSAPP, ARREGLADO — Y ABRE EL BUSINESS (app v529 · backend 2.7.443):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Escribiste «whasap» y Azkarin se quedó <strong>sin la herramienta del botón</strong> — y encima te dijo «toca este botón» sin haberlo fabricado. Ya entiende <strong>wasap, whasap, watsap y guasap</strong>, y tiene prohibido prometer botones que no existen.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>El botón verde marcaba el número <strong>sin el +34</strong> (así WhatsApp no abre nada). Ahora pone el 34 él solo. Si el número del cliente es extranjero, guárdalo en la ficha con su prefijo (+33, +351…).</div></div>
@@ -4424,7 +4430,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v545';
+var APP_VERSION = 'v546';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
