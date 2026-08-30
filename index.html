@@ -1770,6 +1770,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>⏱️ <strong>Tiempo para rematar (v554).</strong> Cuando Azkarin ya tiene los datos y solo le falta contártelos, esa última pasada tenía <strong>30 segundos</strong> fijos — poco para un informe de una semana de llamadas, y por eso salían turnos vacíos. Ahora se lleva <strong>el tiempo que le quede al turno</strong> (hasta 90 s). Y si aun así falla, te dice <strong>el motivo de verdad</strong> en vez de un «el motor tardó» genérico.</div></div>
       <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>📅 <strong>«Las llamadas de esta semana» (v555).</strong> El informe de llamadas ya entiende <strong>una semana entera</strong> (antes solo sabía de horas y, pidiéndole la semana, hacía las últimas 24 h en silencio — de ahí aquel «0 llamadas»). Ahora acepta fechas o días, llega hasta <strong>7 días</strong>, y el informe <strong>dice siempre qué periodo ha mirado</strong>.</div></div>
       <div class='ayuda-step'><div class='step-num'>9</div><div class='step-text'>🪤 <strong>Si promete y no hace (v556).</strong> Cuando el modelo dice «voy ahora mismo», «lanzo el informe» o «la llamo ya» <strong>sin ejecutar nada</strong>, el sistema le da un toque y le <strong>obliga</strong> a lanzar la herramienta, hasta tres veces. Esa red ya existía pero no reconocía esas formas de prometer; ahora sí.</div></div>
+      <div class='ayuda-step'><div class='step-num'>10</div><div class='step-text'>🧠 <strong>Turnos en blanco (v557).</strong> Los modelos que <strong>piensan</strong> gastan de la misma bolsa la reflexión y la respuesta: si la bolsa es pequeña, piensan mucho y te contestan <strong>vacío</strong>. A los GLM 5.x se les ha dado bolsa de sobra. Y si aun así llega un turno vacío, Azkarin te dice <strong>el motivo exacto</strong> que da el proveedor (por ejemplo «se ha quedado sin tokens de salida») en vez de un mensaje genérico.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Las etiquetas ⚡ y 🧠:</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cada respuesta de Azkarin lleva una etiqueta: <strong>⚡ = modelo gratis</strong> (Ollama/gemma4) y <strong>🧠 = Gemini</strong> (de pago). Así ves de un vistazo qué motor contestó.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Qué Gemini trabaja en cada cosa (v463):</p>
@@ -4444,7 +4445,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v556';
+var APP_VERSION = 'v557';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
