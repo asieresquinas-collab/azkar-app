@@ -1764,6 +1764,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Escribe <strong>/model</strong> en el chat de Azkarin. Es el centro de mando de la IA: enciendes/apagas el modo AUTO y eliges qué modelo trabaja.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>MODO AUTO (recomendado):</strong> la charla ligera la contesta un modelo <strong>gratis</strong> de Ollama (gemma4) y lo pesado (presupuestos, llamadas, calendario...) lo coge <strong>Gemini</strong>, cambiando solo. No tienes que hacer nada.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>MODO PRUEBA</strong> (con AUTO apagado): Azkarin trabaja SOLO con el modelo que elijas, sin Gemini de reserva. Sirve para probar modelos. Los modelos gratis fallan más en tareas con herramientas, por eso el modo AUTO deja esas para Gemini.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>🛑 <strong>El chivato del modelo que no trabaja (v550):</strong> probando modelos nuevos pasa esto — el modelo te escribe «voy a lanzar tal herramienta» o incluso te escribe la llamada entera como texto… y no ejecuta nada. Ahora, si en el turno <strong>no se ha ejecutado ninguna herramienta</strong> y aun así dice que la está lanzando, al final del mensaje te sale un aviso en rojo diciéndotelo, con la salida: <strong>/gemini</strong> para volver al de siempre. Le pasó al <strong>glm-5.3-flash</strong> el 29 de agosto, tres veces seguidas.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Las etiquetas ⚡ y 🧠:</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cada respuesta de Azkarin lleva una etiqueta: <strong>⚡ = modelo gratis</strong> (Ollama/gemma4) y <strong>🧠 = Gemini</strong> (de pago). Así ves de un vistazo qué motor contestó.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Qué Gemini trabaja en cada cosa (v463):</p>
@@ -4438,7 +4439,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v549';
+var APP_VERSION = 'v550';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
