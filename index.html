@@ -1772,6 +1772,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>9</div><div class='step-text'>🪤 <strong>Si promete y no hace (v556).</strong> Cuando el modelo dice «voy ahora mismo», «lanzo el informe» o «la llamo ya» <strong>sin ejecutar nada</strong>, el sistema le da un toque y le <strong>obliga</strong> a lanzar la herramienta, hasta tres veces. Esa red ya existía pero no reconocía esas formas de prometer; ahora sí.</div></div>
       <div class='ayuda-step'><div class='step-num'>10</div><div class='step-text'>🧠 <strong>Turnos en blanco (v557).</strong> Los modelos que <strong>piensan</strong> gastan de la misma bolsa la reflexión y la respuesta: si la bolsa es pequeña, piensan mucho y te contestan <strong>vacío</strong>. A los GLM 5.x se les ha dado bolsa de sobra. Y si aun así llega un turno vacío, Azkarin te dice <strong>el motivo exacto</strong> que da el proveedor (por ejemplo «se ha quedado sin tokens de salida») en vez de un mensaje genérico.</div></div>
       <div class='ayuda-step'><div class='step-num'>11</div><div class='step-text'>🔁 <strong>Tocar Gemini es querer Gemini (v558).</strong> Hay <strong>dos interruptores</strong>: <strong>/gemini</strong> elige QUÉ Gemini trabaja, y <strong>/model</strong> elige si el chat va con Gemini o con un modelo de prueba. Antes se podía tocar el primero y seguir hablando con el de prueba sin enterarse. Ahora, cualquier cosa que toques en <strong>/gemini</strong> —incluido el reparto— <strong>devuelve el chat a Gemini</strong> y te lo dice.</div></div>
+      <div class='ayuda-step'><div class='step-num'>12</div><div class='step-text'>📄 <strong>Respuestas largas enteras (v559).</strong> El informe de una semana de llamadas se cortaba a mitad. Ahora el hueco para escribir <strong>crece con los datos</strong>: mucho dato dentro, mucho sitio fuera. Y si aun así se corta, Azkarin <strong>la repite una vez con el triple de sitio</strong> en vez de dejarte media respuesta.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Las etiquetas ⚡ y 🧠:</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cada respuesta de Azkarin lleva una etiqueta: <strong>⚡ = modelo gratis</strong> (Ollama/gemma4) y <strong>🧠 = Gemini</strong> (de pago). Así ves de un vistazo qué motor contestó.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Qué Gemini trabaja en cada cosa (v463):</p>
@@ -4446,7 +4447,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v558';
+var APP_VERSION = 'v559';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
