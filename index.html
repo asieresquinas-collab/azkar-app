@@ -1092,13 +1092,20 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v562 · backend 2.7.574), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v563 · backend 2.7.575), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📇 GUARDAR AL CLIENTE EN LA AGENDA DEL MÓVIL (app v562):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al lado del botón verde de WhatsApp hay uno <strong>azul con una fichita</strong>. Le das y se abre la agenda del móvil con el contacto <strong>ya escrito</strong>: nombre <strong>«6655 Ariane»</strong> (el número de la ficha delante, como lo pones tú) y su teléfono. Solo tienes que darle a guardar.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>También está en <strong>MIS PRESUPUESTOS</strong>: cada ficha de la lista lleva su 📇, así que puedes guardar el contacto <strong>sin abrir el presupuesto</strong>. Solo sale en las fichas que tienen teléfono.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>El teléfono se guarda con el <strong>+34</strong> puesto para que el móvil lo reconozca cuando te llamen. Un número de fuera de España se deja tal y como esté escrito.</div></div>
       <div class='ayuda-tip'>En el ordenador no hay agenda que abrir: se descarga la <strong>tarjeta de contacto (.vcf)</strong> y al abrirla se guarda.</div>
+
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>📇 Y QUE SE GUARDE SOLO, SIN DARLE A NADA (app v563 · backend 2.7.575):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Con el permiso puesto (se da <strong>una sola vez</strong>), el cliente se guarda <strong>solo</strong> en tu agenda de Google en cuanto llevas <strong>25 segundos sin tocar la ficha</strong>. De ahí baja al móvil como cualquier contacto. Tú no le das a nada.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Se espera esos 25 segundos <strong>a propósito</strong>: la ficha se guarda con cada letra que escribes, y si no se esperara te saldría un contacto llamado «Ari» a medio escribir.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>🛑 <strong>Tu agenda no se toca.</strong> Si ese teléfono ya lo tienes guardado, se queda <strong>exactamente</strong> como está. Solo se corrigen los contactos que ha puesto la app, y solo si tú cambias el nombre en la ficha.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Para los clientes de antes: en <strong>MIS PRESUPUESTOS</strong>, abajo, el botón <strong>«📇 Mis clientes, a la agenda»</strong>. Primero te enseña cuántos faltan y cómo quedarían, y solo los guarda si tú dices que sí.</div></div>
+      <div class='ayuda-warn'>Esto necesita que le des permiso a tu agenda una vez. Si no lo has hecho, la app no dice nada y no pasa nada: sigues teniendo el botón 📇 de un toque.</div>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🧹 LA FICHA NUEVA NACE EN BLANCO DE VERDAD (app v561):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Lo que pasaba: al empezar un presupuesto nuevo salía <strong>la ubicación ya puesta</strong>, con su mapa, sus kilómetros y hasta el aviso rojo del desplazamiento, sin haber escrito nada.</div></div>
@@ -4497,7 +4504,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v562';
+var APP_VERSION = 'v563';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -6265,6 +6272,7 @@ function createManagerPanel() {
       <div id="mgr-list" style="flex:1;overflow-y:auto;padding:16px;"></div>
       <div style="padding:12px 24px;background:#f5f7fa;border-top:1px solid #e0e4ea;">
         <button onclick="openFirebaseConfig()" style="background:none;border:1px solid #2376C5;color:#2376C5;padding:7px 14px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;">⚙️ Configurar Firebase Sync</button>
+        <button onclick="agendaTodosMisClientes(this)" title="Mira cuáles de tus clientes NO están todavía en tu agenda y los guarda. Los que ya tienes no se tocan." style="background:none;border:1px solid #1B4F8A;color:#1B4F8A;padding:7px 14px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;margin-left:8px;">📇 Mis clientes, a la agenda</button>
       </div>
     </div>
   `;
@@ -8732,6 +8740,123 @@ function _vcardDe(nombreAgenda, tel, email) {
   return l.join('\r\n') + '\r\n';
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  \U0001F4C7 Y QUE SE GUARDE SOLO  ·  v563 (1-sep-2026)
+//
+//  Lo de arriba es UN toque. Esto es NINGUNO: al darle a «💾 Guardar» la ficha, el
+//  cliente se crea solo en su agenda de Google, y de ahí baja al móvil sin hacer nada.
+//
+//  🛑 Por qué al GUARDAR y no mientras escribe: si se hiciera con cada letra, se
+//  guardaría un contacto llamado «Ari» a medio escribir — y un contacto suyo NO se
+//  pisa nunca, así que el malo se quedaría para siempre. Al guardar, el nombre ya
+//  está entero.
+//  🛑 Si ese teléfono ya está en su agenda, no se toca. Y si esto no está autorizado,
+//  se calla: nunca un aviso por algo que él no ha pedido en ese momento.
+// ══════════════════════════════════════════════════════════════════════════════
+var _agendaLista = null;            // ¿está autorizado? se pregunta una vez por sesión
+var _agendaHechos = {};             // lo que ya se ha mandado en esta sesión
+
+function _agendaCabeceras() {
+  var h = { 'Content-Type': 'application/json' };
+  try {
+    var k = (typeof AZKAR_API_KEY !== 'undefined' ? AZKAR_API_KEY : localStorage.getItem('azkar_api_key'));
+    if (k) h['x-api-key'] = k;
+    var t = localStorage.getItem('azkar_token');
+    if (t) h['Authorization'] = 'Bearer ' + t;
+  } catch (e) {}
+  return h;
+}
+function _agendaApi() { return (typeof RAILWAY_API !== 'undefined' ? RAILWAY_API : 'https://azkar-presupuestos-production.up.railway.app'); }
+
+async function agendaEstado() {
+  if (_agendaLista !== null) return _agendaLista;
+  try {
+    var r = await fetch(_agendaApi() + '/api/contactos/estado', { headers: _agendaCabeceras() });
+    var d = await r.json();
+    _agendaLista = d || { listo: false };
+  } catch (e) { _agendaLista = { listo: false, motivo: 'Sin conexión con el servidor.' }; }
+  return _agendaLista;
+}
+
+// Se llama al guardar la ficha. No molesta NUNCA: si no puede, se calla.
+async function agendaGuardarSolo(datos) {
+  try {
+    var nom = String((datos && datos.f_nom) || '').trim();
+    var tel = String((datos && datos.f_tel) || '').trim();
+    var ref = String((datos && (datos.f_ref || datos.f_nc)) || '').trim();
+    if (!nom || tel.replace(/\D/g, '').length < 6) return;
+    var huella = ref + '|' + nom + '|' + tel.replace(/\D/g, '');
+    if (_agendaHechos[huella]) return;
+    var e = await agendaEstado();
+    if (!e || !e.listo) return;                 // sin permiso, ni se intenta
+    _agendaHechos[huella] = true;
+    var r = await fetch(_agendaApi() + '/api/contactos/guardar', {
+      method: 'POST', headers: _agendaCabeceras(),
+      body: JSON.stringify({ ref: ref, nombre: nom, telefono: tel, email: String((datos && datos.f_email) || '').trim() })
+    });
+    var d = await r.json();
+    if (d && d.ok && d.creado && typeof showSyncStatus === 'function') {
+      showSyncStatus('📇 «' + d.nombre + '» guardado en tu agenda', 4000);
+    }
+  } catch (e) { /* la agenda nunca puede estropear un guardado */ }
+}
+
+// 🛑 EL RATO DE CALMA. La ficha se guarda sola con cada letra que escribe; si el
+// contacto se creara ahí, se guardaría «Ari» a medio escribir. Así que se espera a
+// que lleve 25 segundos sin tocar nada, y entonces se manda. Y si después corrige el
+// nombre, el contacto que puso la app se corrige solo (los suyos no se tocan nunca).
+var _agendaTimer = null;
+function agendaProgramar() {
+  try {
+    clearTimeout(_agendaTimer);
+    _agendaTimer = setTimeout(function () {
+      try { agendaGuardarSolo(typeof collectFormData === 'function' ? collectFormData() : null); } catch (e) {}
+    }, 25000);
+  } catch (e) {}
+}
+
+// El botón de «y los que ya tengo»: mira primero, y solo escribe si él dice que sí.
+async function agendaTodosMisClientes(btn) {
+  var txt = btn ? btn.textContent : '';
+  try {
+    var e = await agendaEstado();
+    if (!e || !e.listo) {
+      alert('📇 Todavía no puedo escribir en tu agenda.\n\n' + (e && e.motivo ? e.motivo : '') +
+        (e && e.que_hacer ? '\n\n' + e.que_hacer : ''));
+      return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Mirando…'; }
+    var todos = (typeof getAllPresupuestos === 'function') ? await getAllPresupuestos() : [];
+    var fichas = (todos || []).map(function (p) {
+      return { ref: p.f_ref || p.f_nc || '', nombre: p.f_nom || '', telefono: p.f_tel || '', email: p.f_email || '' };
+    });
+    var r = await fetch(_agendaApi() + '/api/contactos/guardar-muchos', {
+      method: 'POST', headers: _agendaCabeceras(), body: JSON.stringify({ fichas: fichas })
+    });
+    var d = await r.json();
+    if (btn) { btn.disabled = false; btn.textContent = txt; }
+    if (!d || !d.ok) { alert('❌ ' + ((d && d.motivo) || 'Sin respuesta.')); return; }
+    if (!d.se_guardarian) { alert('✅ Ya tienes en la agenda todos los clientes con teléfono (' + d.ya_los_tenias + ').'); return; }
+    var lista = (d.nuevos || []).slice(0, 15).map(function (x) { return '· ' + x.quedaria; }).join('\n');
+    if (!confirm('📇 Se guardarían ' + d.se_guardarian + ' contactos nuevos en tu agenda (en la cuenta ' + (e.cuenta || '') + '):\n\n' +
+      lista + ((d.nuevos || []).length > 15 ? '\n…' : '') +
+      '\n\nLos ' + d.ya_los_tenias + ' que ya tenías NO se tocan.\n\n¿Los guardo?')) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Guardándolos…'; }
+    var r2 = await fetch(_agendaApi() + '/api/contactos/guardar-muchos', {
+      method: 'POST', headers: _agendaCabeceras(), body: JSON.stringify({ fichas: fichas, guardar: true })
+    });
+    var d2 = await r2.json();
+    if (btn) { btn.disabled = false; btn.textContent = txt; }
+    alert(d2 && d2.ok
+      ? ('✅ ' + d2.guardados + ' guardados en tu agenda.\n' + d2.ya_los_tenias + ' ya los tenías (sin tocar).' +
+        (d2.no_he_podido ? '\n' + d2.no_he_podido + ' no he podido.' : ''))
+      : ('❌ ' + ((d2 && d2.motivo) || 'Sin respuesta.')));
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = txt; }
+    alert('No he podido: ' + (err && err.message ? err.message : err));
+  }
+}
+
 function guardarEnAgenda() {
   var tel = ((document.getElementById('f_tel') || {}).value || '').trim();
   var nom = ((document.getElementById('f_nom') || {}).value || '').trim();
@@ -9953,6 +10078,8 @@ window.addEventListener('DOMContentLoaded', function() {
         // Si falla savePresupuestoFull, al menos guardar en IndexedDB
         savePresupuesto(data).catch(() => {});
       });
+      // v563 · y el cliente, a su agenda del móvil (cuando lleve un rato sin tocar nada)
+      try { if (typeof agendaProgramar === 'function') agendaProgramar(); } catch (e) {}
       return data;
     }
     return null;
