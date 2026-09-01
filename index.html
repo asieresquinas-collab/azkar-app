@@ -1092,7 +1092,13 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v531 · backend 2.7.454), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v561 · backend 2.7.574), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🧹 LA FICHA NUEVA NACE EN BLANCO DE VERDAD (app v561):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Lo que pasaba: al empezar un presupuesto nuevo salía <strong>la ubicación ya puesta</strong>, con su mapa, sus kilómetros y hasta el aviso rojo del desplazamiento, sin haber escrito nada.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Por qué: la calle sí se vaciaba, pero el <strong>cuadradito del piso</strong> (el de al lado, «Piso, puerta…») se quedaba con el del cliente anterior. La dirección quedaba en <strong>«, 6d»</strong>, y el mapa buscaba eso y se enganchaba a lo más parecido que encontraba en Bilbao.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Ya está arreglado, y de raíz: <strong>«Nuevo presupuesto» y «↺ Limpiar» hacen ahora exactamente lo mismo</strong>. Antes eran dos códigos distintos y uno se había quedado atrás. Con una ficha nueva se van también las <strong>entregas de más</strong>, el <strong>ascensor</strong>, la <strong>ruta ya medida</strong>, la <strong>grúa</strong>, la <strong>tarifa de km</strong> y el tipo de mudanza y la forma de pago del cliente anterior.</div></div>
+      <div class='ayuda-tip'>Si alguna vez ves una dirección o un kilometraje que tú no has escrito, dale a <strong>↺ Limpiar</strong> y empieza otra vez: ahora las dos puertas dejan la ficha igual de vacía.</div>
 
       <p style='font-weight:700;color:#1a7a3f;margin-top:16px'>🔕 LA APP SE ABRE LIMPIA (app v531):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Ya <strong>no sale</strong> el cartel de «¿Repasamos lo que tienes hoy?» cada vez que abres la app. Se acabó el repaso de dos en dos sin pedirlo.</div></div>
@@ -2558,12 +2564,43 @@ function _comercialActual(){
   }catch(e){ return ''; }
 }
 
-function RF(){
-  if(!confirm('¿Limpiar todos los datos del presupuesto?')) return;
+// ═════════════════════════════════════════════════════════════════════════════
+//  \U0001F6D1 v561 · LA FICHA NUEVA NACÍA CON LA DIRECCIÓN DEL CLIENTE DE ANTES
+//
+//  Asier, 1-sep-2026: «cada vez que hago un presupuesto me sale como que tiene la
+//  ubicación… como que se precarga en la recogida y en la entrega».
+//
+//  QUÉ PASABA (comprobado en el código, no de oídas): la app tenía DOS puertas para
+//  empezar una ficha en blanco y NO limpiaban lo mismo.
+//    · «↺ Limpiar» (RF) vaciaba TODOS los campos de la página y además soltaba el
+//      piso, el ascensor, la ruta medida, la grúa, la tarifa de km…
+//    · «Nuevo presupuesto» (newPresupuesto) vaciaba solo una LISTA de campos escrita
+//      a mano, y en esa lista NO estaba el cuadradito del PISO (f_rec_pta /
+//      f_ent_pta), ni las entregas de más, ni el ascensor, ni la ruta, ni la grúa.
+//
+//  Por eso la calle salía vacía pero el piso seguía siendo el del cliente anterior
+//  («6d»), la dirección que se le manda al mapa quedaba «, 6d», Google se enganchaba
+//  a lo más parecido (Euskadi Pl., Bilbao) y de ahí salían solos el mapa, los 1.8 km
+//  y el aviso rojo del desplazamiento en una ficha que aún no tenía nada escrito.
+//
+//  \U0001F6D1 EL ARREGLO DE VERDAD no es añadir el piso a la lista: es que las dos puertas
+//  llamen a la MISMA función, para que no puedan volver a separarse. Desde v420 se
+//  le habían ido añadiendo cosas solo a «Limpiar».
+// ═════════════════════════════════════════════════════════════════════════════
+function dejarLaFichaEnBlanco(){
   window._kmRutaReal = null; window._kmDesdeBase = false;   // v486: el km medido era del cliente anterior — fuera
+  window._ultimaRuta = null;                                // v561: ni la ruta
+  window._rutaEntera = null;                                // v561: ni el recorrido entero de sus paradas
   try { if (window.limpiarPisos) window.limpiarPisos(); } catch (e) {}   // v493: y el PISO del cliente anterior, también fuera
   var inputs=document.querySelectorAll('#page-presupuesto input,#page-presupuesto textarea');
   for(var i=0;i<inputs.length;i++) inputs[i].value='';
+  // v561: las entregas de MÁS del cliente anterior también se van (con {} se quitan todas)
+  try { if (window.entregasRestaurar) window.entregasRestaurar({}); } catch (e) {}
+  // v561: y las dos listas desplegables, que no son <input> y se quedaban puestas
+  try {
+    var _st=document.getElementById('f_tipo'); if(_st) _st.selectedIndex=0;
+    var _sp=document.getElementById('f_pago'); if(_sp) _sp.selectedIndex=0;
+  } catch (e) {}
   var tb=document.getElementById('tb');
   if(tb){
     tb.innerHTML='';
@@ -2572,6 +2609,7 @@ function RF(){
     d.textContent='Pulsa "+ Añadir concepto" para comenzar';
     tb.appendChild(d);
   }
+  try { document.querySelectorAll('#tbl .tr').forEach(function(tr){ tr.remove(); }); } catch (e) {}
   rid=0; CA(); SY();
   // v128: Reset tracking al limpiar
   window._currentPresupuestoRef = null;
@@ -2610,6 +2648,12 @@ function RF(){
   actualizarBannerPromo();
   // v194: Reset ascensores
   if (typeof setAscensor === 'function') { setAscensor('rec', ''); setAscensor('ent', ''); }
+}
+
+// «↺ Limpiar»: pregunta y deja la ficha en blanco. El trabajo lo hace la de arriba.
+function RF(){
+  if(!confirm('¿Limpiar todos los datos del presupuesto?')) return;
+  dejarLaFichaEnBlanco();
 }
 
 // v144b: Tamaño artículo — badge compacto
@@ -4447,7 +4491,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v560';
+var APP_VERSION = 'v561';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -7894,36 +7938,13 @@ async function loadPresupuesto(id) {
 }
 
 async function newPresupuesto() {
-  // Reset form
-  const fields = ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs'];
-  fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  // v377: el comercial = quien está usando la app (Asier/Toni). Antes se quedaba PEGADO el
-  // del presupuesto anterior (f_com no estaba en la lista de reset) — p.ej. 'Azkarin' de una
-  // ficha que hizo el bot. Ahora se pone solo el del usuario logueado.
-  var _fcN=document.getElementById('f_com'); if(_fcN) _fcN.value=_comercialActual();
-  document.querySelectorAll('#tbl .tr').forEach(tr => tr.remove());
-  // Limpiar tabla de conceptos
-  var tbReset = document.getElementById('tb');
-  if (tbReset) tbReset.querySelectorAll('.cr').forEach(function(r) { r.remove(); });
-  rid = 0;
-  window._currentEnMarcha = false;
-  window._currentEnMarchaDate = null;
-  window._currentPagado = false;
-  window._currentPagadoDate = null;
-  window._currentGuardamuebles = false;
-  window._currentPlataforma = false;
-  window._currentOruga = false;
-  window._currentPermuta = false;
-  window._kmRutaBase = 0;
-  window._currentArchivado2026 = false;
-  updateGuardamueblesUI(false);
-  if (typeof updatePlataformaUI === 'function') updatePlataformaUI(false);
-  if (typeof updateOrugaUI === 'function') updateOrugaUI(false);
-  if (typeof updatePermutaUI === 'function') updatePermutaUI(false);
-  // FIX promo: resetear PROMO 20% al crear nuevo presupuesto (antes solo lo hacía "Limpiar"/RF;
-  // sin esto, el descuento del cliente anterior se quedaba activado en el nuevo sin avisar)
-  window._promoManual = false;
-  if (typeof actualizarBannerPromo === 'function') actualizarBannerPromo();
+  // \U0001F6D1 v561 · UNA SOLA MANERA DE DEJAR LA FICHA EN BLANCO.
+  // Antes aquí había una LISTA de campos escrita a mano que se había quedado corta:
+  // no vaciaba el piso/puerta (por eso la entrega salía «, 6d» con el piso del cliente
+  // anterior y el mapa se enganchaba a una dirección que Asier no había escrito), ni
+  // las entregas de más, ni el ascensor, ni la ruta ya medida, ni la grúa, ni la
+  // tarifa de km. Todo eso solo lo hacía «↺ Limpiar». Ahora las dos hacen lo mismo.
+  dejarLaFichaEnBlanco();
   // v130: Reset tracking y permitir auto-save
   window._currentPresupuestoRef = null;
   window._lastSavedTimestamp = 0;
