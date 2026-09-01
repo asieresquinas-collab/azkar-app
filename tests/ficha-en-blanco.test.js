@@ -112,6 +112,24 @@ let r2 = correr('3º izquierda', '5B');
 c('D1 · el de recogida', r2.els.f_rec_pta.value === '');
 c('D2 · el de entrega', r2.els.f_ent_pta.value === '');
 
+// ── El vaciado del piso, a solas ─────────────────────────────────────────────
+// En la ficha entera el piso se vacía por DOS caminos (la llamada a limpiarPisos
+// y el barrido de todos los campos de la página). Aquí se prueba el primero SOLO,
+// para que si algún día se rompe se vea aquí y no dentro de meses en una factura.
+console.log('\n══ D2 · 🛑 EL VACIADO DEL PISO, PROBADO A SOLAS ══');
+(function () {
+  const { els, doc } = montarDom('6d', '4ºC');
+  const lp = new Function('document', SRC_PISOS + '; return limpiarPisos;')(doc);
+  lp();
+  c('D2.1 · 🛑 limpiarPisos() vacía la recogida por su cuenta', els.f_rec_pta.value === '', JSON.stringify(els.f_rec_pta.value));
+  c('D2.2 · 🛑 y la entrega', els.f_ent_pta.value === '', JSON.stringify(els.f_ent_pta.value));
+})();
+c('D2.3 · y la ficha en blanco lo llama de verdad',
+  /window\.limpiarPisos\) window\.limpiarPisos\(\);/.test(SRC_BLANCO));
+c('D2.4 · 🛑 además del barrido de TODOS los campos de la página (el segundo cinturón)',
+  /querySelectorAll\('#page-presupuesto input,#page-presupuesto textarea'\)/.test(SRC_BLANCO)
+  && /inputs\[i\]\.value\s*=\s*''/.test(SRC_BLANCO));
+
 console.log('\n══ E · 🛑 UNA SOLA PUERTA, PARA QUE NO VUELVAN A SEPARARSE ══');
 c('E1 · «Limpiar» llama a la función común',
   /function RF\(\)\{\s*if\(!confirm\([^)]*\)\) return;\s*dejarLaFichaEnBlanco\(\);\s*\}/.test(H));
