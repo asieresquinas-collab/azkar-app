@@ -1092,7 +1092,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v565 · backend 2.7.587), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v566 · backend 2.7.588), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📝 LA FICHA SE MONTA SOLA DESDE LA LLAMADA — TÚ SOLO LA REVISAS (app v565 · backend 2.7.587):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando nadie puede abrir una ficha (Asier conduciendo, Antonio fuera), a los 10 minutos de colgar Azkarin la abre él: teléfono, <strong>muebles</strong> (solo los que sonaron en la llamada), <strong>direcciones</strong>, <strong>fecha</strong> y las <strong>cuentas de Óscar</strong> con la tarifa. Sale en MIS PRESUPUESTOS con la etiqueta <strong>📝 BORRADOR</strong> y arriba en el repaso del día.</div></div>
@@ -1100,6 +1100,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Al abrir un borrador sale un <strong>cartel naranja</strong>: quién cogió la llamada, las cuentas, <strong>qué falta por preguntar</strong> (fecha, dirección, ascensor…), qué hay que revisar y qué <strong>no se apuntó</strong> por no sonar en la llamada. En cuanto cambiéis algo y se guarde, deja de ser borrador y queda <strong>revisado por vosotros</strong>. Solo abrirla no cuenta.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>El <strong>nombre</strong> solo se escribe si el cliente se presentó con sus palabras («soy Raquel», «me llamo…», o contestando a «¿su nombre?»). «De parte de Fulano» no es el cliente: la ficha nace sin nombre y lo dice.</div></div>
       <div class='ayuda-tip'>🛑 El precio que pone Óscar es una propuesta con el catálogo: <strong>lo decides tú</strong>. Enviar al cliente sigue siendo cosa vuestra. Nada se manda solo.</div>
+      <div class='ayuda-tip'>🔢 <strong>El número de cliente no baila</strong> (app v566): al darle a «+ NUEVO» la ficha se apunta en la nube al instante, vacía y con quién la abrió. Así, si Antonio empieza una ficha desde un WhatsApp mientras Asier habla por teléfono con otro cliente, cada uno tiene su número y nadie (ni el vigía, ni Azkarin, ni otro «+ NUEVO») puede coger el mismo, aunque se tarde en escribir.</div>
       <div class='ayuda-tip'>Las fichas <strong>archivadas</strong> (fusionadas con otra, o de un número nuestro) ya <strong>no salen</strong> en la lista. No están borradas: siguen en la nube y se recuperan desde el panel de oficina o pidiéndoselo a Azkarin.</div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📞 EL TELÉFONO SE PONE SOLO EN LA FICHA QUE ABRES DURANTE LA LLAMADA (backend 2.7.586):</p>
@@ -2617,6 +2618,7 @@ function _comercialActual(){
 //  le habían ido añadiendo cosas solo a «Limpiar».
 // ═════════════════════════════════════════════════════════════════════════════
 function dejarLaFichaEnBlanco(){
+  window._fichaRecienAbierta = false;   // v566
   window._currentBorrador = false; window._tocadoPorPersona = false;   // v565: sin cartel de borrador
   try { if (typeof pintarBorradorAviso === 'function') pintarBorradorAviso(null); } catch (e) {}
   window._kmRutaReal = null; window._kmDesdeBase = false;   // v486: el km medido era del cliente anterior — fuera
@@ -4522,7 +4524,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v565';
+var APP_VERSION = 'v566';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8013,6 +8015,13 @@ async function newPresupuesto() {
       // Guardar info de Drive para usarla al guardar (needsCreate, folderId)
       window._driveInfo = driveInfo;
       showSyncStatus('📝 Nuevo presupuesto — Nº cliente: ' + driveInfo.nextNumber);
+      // v566 · EL NÚMERO SE QUEDA COGIDO EN EL MOMENTO. Asier: «Antonio coge un WhatsApp y
+      // empieza la ficha mientras yo hablo por teléfono con otro: ¿no le bailará el número?».
+      // Antes el número solo se apuntaba en la nube al escribir la primera letra, y la reserva
+      // del servidor dura 10 minutos: si se tardaba más, otra ficha (el vigía, Azkarin, otro
+      // «+ NUEVO») podía coger el mismo. Ahora se guarda al instante, vacía, con quién la abrió.
+      window._fichaRecienAbierta = true;
+      try { saveNow(); } catch (eRes) { console.warn('[Azkar v566] no pude apuntar la ficha nueva:', eRes && eRes.message); }
     } else {
       showSyncStatus('⚠ No se pudo obtener nº de Drive, ponlo manualmente', 4000);
     }
@@ -10109,6 +10118,12 @@ window.addEventListener('DOMContentLoaded', function() {
       const data = collectFormData();
       data.id = ref.value;
       data.timestamp = Date.now();
+      // v566 · la ficha recién abierta lleva quién y cuándo, para que nadie la tome por libre
+      if (window._fichaRecienAbierta) {
+        data._abiertaTs = Date.now();
+        data._abiertaPor = (typeof _comercialActual === 'function' && _comercialActual()) || 'persona';
+        window._fichaRecienAbierta = false;
+      }
       // v565 · si era un BORRADOR de Azkarin y una persona lo ha tocado, queda REVISADO por ella.
       if (window._currentBorrador && window._tocadoPorPersona) {
         data._borrador = false;

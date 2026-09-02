@@ -41,7 +41,7 @@ c('B1 · al cargar se apunta si es borrador y que NADIE lo ha tocado aún', /win
 c('B2 · el guardado automático (que salta al escribir) marca que alguien lo tocó', /function debouncedAutoSave\(\) \{\s*if \(window\._presupuestoLoading\) return;\s*window\._tocadoPorPersona = true;/.test(H));
 c('B3 · 🛑 al guardar, SOLO si era borrador Y alguien lo tocó, queda revisado por esa persona', /if \(window\._currentBorrador && window\._tocadoPorPersona\) \{\s*data\._borrador = false;\s*data\._revisadoPor = \(typeof _comercialActual === 'function' && _comercialActual\(\)\) \|\| 'persona';\s*data\._revisadoTs = Date\.now\(\);/.test(H));
 c('B4 · y el cartel se quita', /window\._currentBorrador = false;\s*try \{ pintarBorradorAviso\(null\); \}/.test(H));
-c('B5 · la ficha en blanco arranca sin cartel', /function dejarLaFichaEnBlanco\(\)\{\s*window\._currentBorrador = false; window\._tocadoPorPersona = false;/.test(H));
+c('B5 · la ficha en blanco arranca sin cartel', /function dejarLaFichaEnBlanco\(\)\{[\s\S]{0,120}window\._currentBorrador = false; window\._tocadoPorPersona = false;/.test(H));
 // El «false» tiene que llegar a la nube: el guardado filtra los vacíos ('' / null / undefined), no los false.
 c('B6 · 🛑 el guardado a la nube NO filtra un «false» (si lo filtrara, el borrador nunca dejaría de serlo)', /if \(data\[key\] !== undefined && data\[key\] !== null && data\[key\] !== ''\) \{\s*fbData\[key\] = data\[key\];/.test(H));
 
@@ -51,6 +51,12 @@ c('C2 · junto al nombre', /\(p\.f_nom \|\| 'Sin nombre'\) \+ borradorLabel \+ p
 c('C3 · 🛑 las fichas ARCHIVADAS no se listan', /const current = all\.filter\(p => !p\._isVersion && !p\._archivada\)/.test(H));
 c('C4 · pero no se borran: la nota lo dice', /no están\s*\/\/ borradas/.test(H) || /no están[\s\S]{0,80}borradas/.test(H));
 c('C5 · el cartel tiene su sitio arriba de la ficha', /<div id='page-presupuesto' class='page' style='display:none'><div id='borradorAviso'/.test(H));
+
+console.log('\n══ C2 · 🛑 EL NÚMERO DE CLIENTE NO BAILA (v566) ══');
+c('C2.1 · al darle a «+ NUEVO», la ficha se apunta en la nube al instante', /window\._fichaRecienAbierta = true;\s*try \{ saveNow\(\); \}/.test(H));
+c('C2.2 · y lleva quién la abrió y cuándo', /if \(window\._fichaRecienAbierta\) \{\s*data\._abiertaTs = Date\.now\(\);\s*data\._abiertaPor = /.test(H));
+c('C2.3 · la ficha en blanco no arrastra la marca', /function dejarLaFichaEnBlanco\(\)\{[\s\S]{0,200}window\._fichaRecienAbierta = false;/.test(H));
+c('C2.4 · la Ayuda lo cuenta', /El número de cliente no baila/.test(H));
 
 console.log('\n══ D · TODO COMPILA Y LA VERSIÓN VA A LA PAR ══');
 let rotos = 0;
@@ -63,9 +69,9 @@ c('D1 · todos los <script> compilan', rotos === 0);
 const V = (H.match(/var APP_VERSION = 'v(\d+)'/) || [])[1];
 const SW = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
 const VJ = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8'));
-c('D2 · la app va por v565 o más', Number(V) >= 565, 'v' + V);
+c('D2 · la app va por v565 o más', Number(V) >= 566, 'v' + V);
 c('D3 · y sw.js y version.json dicen lo mismo', SW.indexOf("azkar-pwa-v" + V) >= 0 && VJ.version === 'v' + V);
-c('D4 · la Ayuda lo cuenta', /BORRADOR DE AZKARIN|📝 BORRADOR/.test(H) && /app v565/.test(H));
+c('D4 · la Ayuda lo cuenta', /BORRADOR DE AZKARIN|📝 BORRADOR/.test(H) && /app v566/.test(H));
 
 console.log('\n──────────────────────────────────────────────');
 console.log('  ' + bien + ' bien · ' + mal + ' mal');
