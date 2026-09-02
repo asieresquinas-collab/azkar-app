@@ -1092,7 +1092,14 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v566 · backend 2.7.588), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v567 · backend 2.7.590), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🧹 LOS CLIENTES NO SE CRUZAN (app v567):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al abrir OTRO cliente desde MIS PRESUPUESTOS se suelta <strong>todo</strong> lo del anterior: los kilómetros medidos, el mapa, el recorrido, los avisos de ZBE, las fotos, la oferta del autónomo y las listas de distancia y operarios. Antes, al encender «cambio de muebles» en el nuevo, entraba la línea de desplazamiento <strong>con los km del cliente de antes</strong>. Y si un cálculo (km, mapa, fotos) llega tarde, ya no se pinta en la ficha equivocada.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Los <strong>interruptores</strong> del contrato (plataforma, oruga, guardamuebles, cambio de muebles), la línea de km, la grúa, «Publicar para autónomos» y la reserva del número de «+ NUEVO» <strong>ahora guardan de verdad</strong>. Estaban llamando a un guardado que no existía fuera de su sitio y no pasaba nada. El botón «⏹ Parar» de la voz de Azkarin, igual.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Lo que <strong>desmarcas o borras</strong> se queda desmarcado o borrado: las casillas se guardan siempre (sí/no) y un email, una hora o un piso que vacíes se <strong>borra también en la nube</strong>. Antes la nube se quedaba con lo viejo y a los 60 segundos volvía solo. El «6d» que se pegaba al cambiar de calle dentro del mismo cliente, arreglado.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>En el email, la firma, la liquidación y los permisos <strong>siempre manda la ficha</strong>; los datos de una llamada analizada en «NUEVA LLAMADA» solo se usan si la ficha no los tiene y el modal está abierto para esa misma ficha. Y «FECHA ABIERTA» se ve al reabrir la ficha y el campo vuelve a ser calendario al pasar a otro cliente.</div></div>
+      <div class='ayuda-tip'>🛑 Nada se borra: quitar un piso o un email de una ficha es cosa tuya y solo afecta a esa ficha. Lo demás (EN MARCHA, PAGADO, archivados) se toca solo desde sus botones y solo al cliente que tocas, aunque tengas otro abierto.</div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📝 LA FICHA SE MONTA SOLA DESDE LA LLAMADA — TÚ SOLO LA REVISAS (app v565 · backend 2.7.587):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando nadie puede abrir una ficha (Asier conduciendo, Antonio fuera), a los 10 minutos de colgar Azkarin la abre él: teléfono, <strong>muebles</strong> (solo los que sonaron en la llamada), <strong>direcciones</strong>, <strong>fecha</strong> y las <strong>cuentas de Óscar</strong> con la tarifa. Sale en MIS PRESUPUESTOS con la etiqueta <strong>📝 BORRADOR</strong> y arriba en el repaso del día.</div></div>
@@ -2464,11 +2471,17 @@ function updateFechaModificacion(){
 }
 
 // v110: Botón "Fecha abierta" para servicios sin fecha concreta
-function toggleFechaAbierta(){
+// v567 · EL CAMPO DE LA FECHA, EN UNO DE SUS DOS ESTADOS. Antes esto estaba repetido
+// (el botón por un lado, la restauración por otro) y se descuadraban: al abrir una ficha
+// con FECHA ABIERTA se metía ese texto en un <input type="date">, que lo tira y se queda
+// en blanco; y al dejar la ficha en blanco o abrir OTRO cliente, el campo se quedaba como
+// texto bloqueado y no se podía escribir la fecha del nuevo. Ahora hay UNA función:
+// ponerFechaAbiertaUI(true) → texto «FECHA ABIERTA» bloqueado; (false) → calendario editable.
+function ponerFechaAbiertaUI(on){
   var fserv = document.getElementById('f_fserv');
   var btn = document.getElementById('btn-fecha-abierta');
   if(!fserv) return;
-  if(fserv.type === 'date'){
+  if(on){
     // Cambiar a texto y poner "FECHA ABIERTA"
     fserv.type = 'text';
     fserv.value = 'FECHA ABIERTA';
@@ -2477,35 +2490,43 @@ function toggleFechaAbierta(){
     fserv.style.color = '#856404';
     fserv.style.fontWeight = '700';
     fserv.style.textAlign = 'center';
-    btn.textContent = '📅 PONER FECHA';
-    btn.style.background = '#27ae60';
+    if(btn){ btn.textContent = '📅 PONER FECHA'; btn.style.background = '#27ae60'; }
   } else {
-    // Volver a date
+    // Volver a date (si lo que había era el texto, se vacía; una fecha de verdad se queda)
+    if(fserv.value === 'FECHA ABIERTA') fserv.value = '';
     fserv.type = 'date';
-    fserv.value = '';
     fserv.readOnly = false;
     fserv.style.background = '';
     fserv.style.color = '';
     fserv.style.fontWeight = '';
     fserv.style.textAlign = '';
-    btn.textContent = '📅 ABIERTA';
-    btn.style.background = '#f39c12';
+    if(btn){ btn.textContent = '📅 ABIERTA'; btn.style.background = '#f39c12'; }
+  }
+}
+
+// v110: Botón "Fecha abierta" para servicios sin fecha concreta
+function toggleFechaAbierta(){
+  var fserv = document.getElementById('f_fserv');
+  if(!fserv) return;
+  if(fserv.type === 'date'){
+    ponerFechaAbiertaUI(true);
+  } else {
+    ponerFechaAbiertaUI(false);
+    fserv.value = '';
   }
   if(typeof SY === 'function') SY();
 }
 
-// Restaurar estado "fecha abierta" al cargar presupuesto
+// Restaurar estado "fecha abierta" al cargar presupuesto.
+// v567: también hace el camino de vuelta — si la ficha trae una fecha normal (o ninguna)
+// y el campo se había quedado como texto por el cliente anterior, vuelve a ser calendario.
 function restoreFechaAbierta(){
   var fserv = document.getElementById('f_fserv');
-  if(fserv && fserv.value === 'FECHA ABIERTA'){
-    fserv.type = 'text';
-    fserv.readOnly = true;
-    fserv.style.background = '#fff3cd';
-    fserv.style.color = '#856404';
-    fserv.style.fontWeight = '700';
-    fserv.style.textAlign = 'center';
-    var btn = document.getElementById('btn-fecha-abierta');
-    if(btn){ btn.textContent = '📅 PONER FECHA'; btn.style.background = '#27ae60'; }
+  if(!fserv) return;
+  if(fserv.value === 'FECHA ABIERTA'){
+    ponerFechaAbiertaUI(true);
+  } else if(fserv.type !== 'date'){
+    ponerFechaAbiertaUI(false);
   }
 }
 
@@ -2617,16 +2638,40 @@ function _comercialActual(){
 //  llamen a la MISMA función, para que no puedan volver a separarse. Desde v420 se
 //  le habían ido añadiendo cosas solo a «Limpiar».
 // ═════════════════════════════════════════════════════════════════════════════
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  🛑 v567 · LO QUE SE PEGABA DE UN CLIENTE AL SIGUIENTE (auditoría de sep-2026)
+//
+//  Al abrir OTRO cliente desde MIS PRESUPUESTOS (loadPresupuesto) solo se vaciaban los
+//  campos de texto. Se quedaban en memoria y en pantalla cosas del cliente ANTERIOR:
+//    · los km ya medidos (_kmRutaBase / _kmTiempoStr): al encender «cambio de muebles»
+//      en el nuevo entraba «Desplazamiento (… km ida y vuelta)» con los km del de antes;
+//    · quién encendió la cláusula de la grúa, la oferta del autónomo (y su botón),
+//      la carpeta de Drive pendiente de crear, la caja de la distancia, los mapas,
+//      el recorrido, los carteles de ZBE, la etiqueta «⧉ Variante» y el cartel de
+//      «NO HA SIDO ACEPTADO», la galería de fotos, las listas de distancia y operarios,
+//      y los campos escondidos de «NUEVA LLAMADA» (tx-*), que encima tenían PRIORIDAD
+//      sobre la ficha al mandar el email, la firma y los permisos.
+//  Ahora TODO eso se suelta en dos funciones que llaman las DOS puertas (ficha en
+//  blanco y abrir otro cliente), para que no puedan volver a separarse.
+// ═════════════════════════════════════════════════════════════════════════════
+
 function dejarLaFichaEnBlanco(){
   window._fichaRecienAbierta = false;   // v566
   window._currentBorrador = false; window._tocadoPorPersona = false;   // v565: sin cartel de borrador
   try { if (typeof pintarBorradorAviso === 'function') pintarBorradorAviso(null); } catch (e) {}
-  window._kmRutaReal = null; window._kmDesdeBase = false;   // v486: el km medido era del cliente anterior — fuera
-  window._ultimaRuta = null;                                // v561: ni la ruta
-  window._rutaEntera = null;                                // v561: ni el recorrido entero de sus paradas
+  soltarEstadoDeRuta();   // v567: km, ruta, tiempo, grúa, autónomo, Drive — todo del cliente anterior, fuera
+  window._camposCargados = null;   // v567: una ficha nueva no tenía nada: nunca se manda a borrar nada de ella
   try { if (window.limpiarPisos) window.limpiarPisos(); } catch (e) {}   // v493: y el PISO del cliente anterior, también fuera
+  // v567: el campo de la fecha vuelve a ser calendario editable (si el anterior era FECHA ABIERTA se quedaba bloqueado)
+  try { if (typeof ponerFechaAbiertaUI === 'function') ponerFechaAbiertaUI(false); } catch (e) {}
   var inputs=document.querySelectorAll('#page-presupuesto input,#page-presupuesto textarea');
   for(var i=0;i<inputs.length;i++) inputs[i].value='';
+  // v567: las listas de distancia y operarios (no son <input>) vuelven a lo de siempre
+  try {
+    var _td=document.getElementById('t_distancia'); if(_td) _td.value='bilbao';
+    var _no=document.getElementById('num-operarios'); if(_no) _no.value='2';
+  } catch (e) {}
   // v561: las entregas de MÁS del cliente anterior también se van (con {} se quitan todas)
   try { if (window.entregasRestaurar) window.entregasRestaurar({}); } catch (e) {}
   // v561: y las dos listas desplegables, que no son <input> y se quedaban puestas
@@ -2681,6 +2726,102 @@ function dejarLaFichaEnBlanco(){
   actualizarBannerPromo();
   // v194: Reset ascensores
   if (typeof setAscensor === 'function') { setAscensor('rec', ''); setAscensor('ent', ''); }
+  // v567: y todo lo que se VEÍA del cliente anterior (mapas, km, ZBE, fotos, carteles, tx-*)
+  limpiarPantallaDeCliente();
+  try { if (typeof CT === 'function') CT(); } catch (e) {}   // v567: el tiempo, con la distancia y los operarios de siempre
+}
+
+// v567 · Las ayudas que usa dejarLaFichaEnBlanco viven AQUÍ, justo detrás, para que el banco
+// de pruebas de la ficha en blanco (tests/ficha-en-blanco.test.js) las coja junto con la
+// función (se declaran con «function», así que en la página valen igual aunque estén después).
+
+// Todo el estado de RUTA/KM en memoria. Se llama desde dejarLaFichaEnBlanco y loadPresupuesto.
+function soltarEstadoDeRuta(){
+  window._kmRutaReal = null; window._kmDesdeBase = false;   // v486: el km medido era del cliente anterior — fuera
+  window._ultimaRuta = null;                                // v561: ni la ruta
+  window._rutaEntera = null;                                // v561: ni el recorrido entero de sus paradas
+  window._kmRutaBase = 0;                                   // v567: ni los km base (los del «ida y vuelta»)
+  window._kmTiempoStr = '';                                 // v567: ni el tiempo del viaje
+  window._kmEnteroOn = false;                               // v567: ni la elección «cobrar la ida entera» (es de SU ficha)
+  window._gruaEncendioClausula = false;                     // v420/v567: y quién encendió la cláusula de la grúa
+  try { if (typeof _precioAutonomoData !== 'undefined') _precioAutonomoData = null; } catch (e) {}   // v567: la oferta del autónomo era del otro
+  window._driveInfo = null;                                 // v567: la carpeta de Drive pendiente era del otro
+}
+
+// Lo que se VE en pantalla del cliente anterior. Se llama desde las dos puertas.
+function limpiarPantallaDeCliente(){
+  function _el(id){ return document.getElementById(id); }
+  function _esconde(id){ var e=_el(id); if(e) e.style.display='none'; }
+  function _vacia(id){ var e=_el(id); if(e){ e.textContent=''; } }
+  function _quita(id){ var e=_el(id); if(e && e.parentNode) e.parentNode.removeChild(e); }
+  try {
+    // la caja de la distancia y sus chivatos
+    _esconde('distancia-box'); ['dist-km','dist-tiempo','dist-coste','dist-ruta'].forEach(_vacia);
+    _quita('dist-sitios'); _quita('aviso-km-entero'); _quita('aviso-km-choque');
+    // los mapas de cada dirección (marcos, foto y coordenadas apuntadas) y el del recorrido
+    var _pref=['recogida','entrega']; for(var i=2;i<=9;i++) _pref.push('entrega'+i);
+    _pref.forEach(function(p){
+      var c=_el('sv-main-'+p); if(c){ c.style.display='none'; c.removeAttribute('data-lat'); c.removeAttribute('data-lon'); c.removeAttribute('data-dir'); }
+      var img=_el('sv-main-'+p+'-png'); if(img){ img.removeAttribute('src'); img.classList.add('sin-foto'); }
+      ['-street','-map'].forEach(function(s){ var f=_el('sv-main-'+p+s); if(f && f.getAttribute('src')) f.src='about:blank'; });   // un iframe no se vacía quitándole el src: se le manda a una página en blanco
+    });
+    _esconde('sv-ruta'); var _rp=_el('sv-ruta-png'); if(_rp){ _rp.removeAttribute('src'); _rp.classList.add('sin-foto'); } _vacia('sv-ruta-pie'); _quita('sv-ruta-aviso');
+    // los carteles de ZBE
+    ['zbe-f-recogida','zbe-f-entrega'].forEach(function(id){ var z=_el(id); if(z){ z.innerHTML=''; z.style.display='none'; } });
+    // el botón de aplicar el precio del autónomo
+    _esconde('btn-aplicar-autonomo');
+    // la galería de fotos del cliente
+    var g=_el('fc-grid'); if(g) g.innerHTML='';
+    var fm=_el('fc-msg'); if(fm) fm.textContent='';
+    // la etiqueta «⧉ Variante B» y el cartel de «NO HA SIDO ACEPTADO» se repintan con el número que haya
+    try { if (window._dupPintaEtiqueta) window._dupPintaEtiqueta(); } catch (e) {}
+    try { if (window._cartelNoElegidaPinta) window._cartelNoElegidaPinta(); } catch (e) {}
+    // los campos escondidos de «NUEVA LLAMADA»
+    vaciarCamposDeLlamada();
+  } catch (e) { console.warn('[v567] limpiarPantallaDeCliente:', e && e.message); }
+}
+
+// Los campos del modal «NUEVA LLAMADA» (tx-*) se rellenan al analizar una llamada y no se
+// vaciaban NUNCA: la dirección de una llamada de hace días salía en el email/firma de otro.
+function vaciarCamposDeLlamada(){
+  ['tx-recogida','tx-entrega','tx-fecha','tx-nombre','tx-telefono','tx-email','tx-dni','tx-obs'].forEach(function(id){
+    var e=document.getElementById(id); if(e) e.value='';
+  });
+  window._txParaRef = null;
+}
+
+// v567 · SIEMPRE MANDA LA FICHA. Los tx-* solo valen si la ficha no tiene el dato Y el
+// modal de la llamada está abierto para esta misma ficha (el número no ha cambiado).
+function datoDeLaFicha(campo){
+  var mapa = { rec: ['f_rec','tx-recogida'], ent: ['f_ent','tx-entrega'], fserv: ['f_fserv','tx-fecha'] };
+  var par = mapa[campo]; if (!par) return '';
+  var f = String(((document.getElementById(par[0]) || {}).value) || '');
+  if (f.trim()) return f;
+  var modal = document.getElementById('transcription-modal');
+  var abierto = !!(modal && modal.style.display === 'block');
+  if (!abierto) return '';
+  var ref = String(((document.getElementById('f_ref') || {}).value) || '').trim();
+  if (window._txParaRef != null && String(window._txParaRef) !== ref) return '';
+  return String(((document.getElementById(par[1]) || {}).value) || '');
+}
+
+// v567 · EL SELLO DE LA FICHA ABIERTA: lo que se compara antes de pintar el resultado de
+// un cálculo que tardó (km, fotos, mapas). Si al volver el sello es otro, no se pinta.
+function selloDeFicha(){
+  var r = document.getElementById('f_ref');
+  return String(window._currentPresupuestoRef || (r && r.value) || '').trim();
+}
+
+// v567 · Los botones del gestor (EN MARCHA, PAGADO, archivar, volver…) tocaban las banderas
+// de la ficha ABIERTA aunque el cliente tocado fuera OTRO. Con las banderas guardándose
+// siempre (true/false), eso marcaría al cliente equivocado. Solo se tocan si es el abierto.
+function estadoALaFichaAbierta(ref, cambios){
+  try {
+    var abierta = selloDeFicha();
+    if (!abierta || String(ref) !== abierta) return false;
+    Object.keys(cambios || {}).forEach(function(k){ window[k] = cambios[k]; });
+    return true;
+  } catch (e) { return false; }
 }
 
 // «↺ Limpiar»: pregunta y deja la ficha en blanco. El trabajo lo hace la de arriba.
@@ -3031,9 +3172,11 @@ async function PA(){
     if ((clientEmail && clientEmail.includes('@')) || (_telFirma && _telFirma.trim().length >= 6)) {
       try {
         var clientTel = _telFirma;
-        var clientRec = (document.getElementById('tx-recogida') || {}).value || (document.getElementById('f_rec') || {}).value || '';
-        var clientEnt = (document.getElementById('tx-entrega') || {}).value || (document.getElementById('f_ent') || {}).value || '';
-        var clientFecha = (document.getElementById('tx-fecha') || {}).value || (document.getElementById('f_fserv') || {}).value || '';
+        // v567: SIEMPRE manda la ficha; los campos escondidos de la llamada (tx-*) mandaban antes
+        // y colaban la dirección de una llamada de hace días en la firma de otro cliente.
+        var clientRec = datoDeLaFicha('rec');
+        var clientEnt = datoDeLaFicha('ent');
+        var clientFecha = datoDeLaFicha('fserv');
         var clientHora = (document.getElementById('f_hserv') || {}).value || '';
         if (clientHora) clientFecha += ' ' + clientHora + 'h';
         var clientTotal = document.getElementById('t_t') ? document.getElementById('t_t').textContent : '';
@@ -3187,9 +3330,10 @@ async function generarLiquidacion(){
   // Recoger datos del formulario
   var clientDni = (document.getElementById('f_dni')||{}).value||'';
   var clientTel = (document.getElementById('f_tel')||{}).value||'';
-  var dirRec = (document.getElementById('tx-recogida')||{}).value||(document.getElementById('f_rec')||{}).value||'';
-  var dirEnt = (document.getElementById('tx-entrega')||{}).value||(document.getElementById('f_ent')||{}).value||'';
-  var fechaServ = (document.getElementById('tx-fecha')||{}).value||(document.getElementById('f_fserv')||{}).value||'';
+  // v567: SIEMPRE manda la ficha; los tx-* de la llamada solo si la ficha no lo tiene y el modal está abierto para ella
+  var dirRec = datoDeLaFicha('rec');
+  var dirEnt = datoDeLaFicha('ent');
+  var fechaServ = datoDeLaFicha('fserv');
   var horaServ = (document.getElementById('f_hserv')||{}).value||'';
   var abono = parseFloat((document.getElementById('f_abono')||{}).value)||0;
 
@@ -4070,11 +4214,13 @@ function GD(){
     if (typeof window.dirCompleta === 'function') {
       ['rec', 'ent'].forEach(function (p) {
         var pta = document.getElementById('f_' + p + '_pta');
-        if (pta && String(pta.value || '').trim()) {
-          data['f_' + p] = window.dirCompleta(p);
-          data['f_' + p + '_calle'] = (document.getElementById('f_' + p) || {}).value || '';
-          data['f_' + p + '_pta'] = pta.value;
-        }
+        var calle = document.getElementById('f_' + p);
+        if (!pta || !calle) return;
+        // v567: calle y piso van SIEMPRE (también vacíos), igual que en collectFormData
+        var hayPiso = !!String(pta.value || '').trim();
+        data['f_' + p] = hayPiso ? window.dirCompleta(p) : (calle.value || '');
+        data['f_' + p + '_calle'] = calle.value || '';
+        data['f_' + p + '_pta'] = hayPiso ? pta.value : '';
       });
     }
   } catch (e) {}
@@ -4509,6 +4655,7 @@ async function forceSync() {
     window._currentPresupuestoRef = id;
     window._lastSavedTimestamp = ts;
     window._initialLoadDone = true;
+    restoreFechaAbierta();   // v567: como en loadPresupuesto (FECHA ABIERTA / calendario)
 
     // Guardar en IndexedDB
     try { await savePresupuesto(data); } catch(e) {}
@@ -4524,7 +4671,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v566';
+var APP_VERSION = 'v567';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -5391,30 +5538,17 @@ async function autoRepair() {
             const localTs = local.timestamp || 0;
             const cloudTs = cloud.timestamp || 0;
             if (localTs > cloudTs) {
-              // Local más reciente → subir a Firebase (preservar flags)
+              // Local más reciente → subir a Firebase (los flags de la nube solo rellenan los que local no trae)
+              // v567: un false explícito ya no se pisa con el true del otro lado (ver onSnapshot)
               const toUpload = { ...local };
-              if (cloud._enMarcha && !toUpload._enMarcha) toUpload._enMarcha = cloud._enMarcha;
-              if (cloud._enMarchaDate && !toUpload._enMarchaDate) toUpload._enMarchaDate = cloud._enMarchaDate;
-              if (cloud._pagadoFinalizado && !toUpload._pagadoFinalizado) toUpload._pagadoFinalizado = cloud._pagadoFinalizado;
-              if (cloud._pagadoFinalizadoDate && !toUpload._pagadoFinalizadoDate) toUpload._pagadoFinalizadoDate = cloud._pagadoFinalizadoDate;
-              if (cloud._guardamuebles && !toUpload._guardamuebles) toUpload._guardamuebles = cloud._guardamuebles;
-              if (cloud._plataforma && !toUpload._plataforma) toUpload._plataforma = cloud._plataforma;
-              if (cloud._oruga && !toUpload._oruga) toUpload._oruga = cloud._oruga;
-              if (cloud._archivado2026 && !toUpload._archivado2026) toUpload._archivado2026 = cloud._archivado2026;
+              rellenaFlagsQueFaltan(toUpload, cloud);
               await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', activeRef), toUpload, { merge: true });
               fixes++;
               console.log('[AutoRepair] Subido presupuesto activo', activeRef);
             } else if (cloudTs > localTs) {
-              // Firebase más reciente → bajar a local (preservar flags)
+              // Firebase más reciente → bajar a local (los flags locales solo rellenan los que la nube no trae)
               const merged = { ...cloud, id: activeRef };
-              if (local._enMarcha && !merged._enMarcha) merged._enMarcha = local._enMarcha;
-              if (local._enMarchaDate && !merged._enMarchaDate) merged._enMarchaDate = local._enMarchaDate;
-              if (local._pagadoFinalizado && !merged._pagadoFinalizado) merged._pagadoFinalizado = local._pagadoFinalizado;
-              if (local._pagadoFinalizadoDate && !merged._pagadoFinalizadoDate) merged._pagadoFinalizadoDate = local._pagadoFinalizadoDate;
-              if (local._guardamuebles && !merged._guardamuebles) merged._guardamuebles = local._guardamuebles;
-              if (local._plataforma && !merged._plataforma) merged._plataforma = local._plataforma;
-              if (local._oruga && !merged._oruga) merged._oruga = local._oruga;
-              if (local._archivado2026 && !merged._archivado2026) merged._archivado2026 = local._archivado2026;
+              rellenaFlagsQueFaltan(merged, local);
               await savePresupuesto(merged);
               fixes++;
               console.log('[AutoRepair] Bajado presupuesto activo', activeRef);
@@ -5487,6 +5621,33 @@ async function autoRepair() {
   return fixes;
 }
 
+// v567 · Los flags de estado: el otro lado solo RELLENA los que faltan (undefined). Un
+// false explícito es una decisión del usuario y no se pisa con un true viejo.
+function rellenaFlagsQueFaltan(destino, origen) {
+  if (!destino || !origen) return destino;
+  ['_enMarcha','_enMarchaDate','_pagadoFinalizado','_pagadoFinalizadoDate','_guardamuebles','_plataforma','_oruga','_permuta','_archivado2026'].forEach(function (k) {
+    if (destino[k] === undefined && origen[k] !== undefined) destino[k] = origen[k];
+  });
+  return destino;
+}
+
+// v567 · Tras cada guardado bueno, los campos que subieron con valor se apuntan como
+// «cargados» de esta ficha. Así, si el email se escribe hoy y se borra dentro de un rato
+// (misma sesión, sin reabrir), el borrado también llega a la nube.
+function actualizarCamposCargados(ref, data) {
+  if (!data) return;
+  var cc = window._camposCargados;
+  if (!cc || String(cc.ref) !== String(ref)) cc = { ref: String(ref), campos: {} };
+  Object.keys(data).forEach(function (k) {
+    var v = data[k];
+    if (k === 'rows' || k === 'id' || k === 'timestamp') return;
+    if (v === undefined || v === null || v === '') { delete cc.campos[k]; return; }
+    if (typeof v === 'object') return;
+    cc.campos[k] = true;
+  });
+  window._camposCargados = cc;
+}
+
 // ══════════════════════════════════════════════════════════════
 //  v119: GUARDADO EN CADENA con confirmación (IndexedDB → Firebase → cola si falla)
 // ══════════════════════════════════════════════════════════════
@@ -5536,6 +5697,24 @@ async function savePresupuestoFull(data) {
           fbData[key] = data[key];
         }
       }
+      // 🛑 v567 · LO QUE EL USUARIO HA VACIADO A PROPÓSITO SE BORRA EN LA NUBE.
+      // Con «merge», un campo que no se manda se queda como estaba: Asier borraba el email
+      // (o el piso «6d», o la hora) y la nube lo conservaba; al reabrir, volvía. Aquí se
+      // miran los campos que VENÍAN con valor al cargar esta misma ficha (o que se han
+      // guardado con valor desde entonces) y ahora están vacíos: esos van como borrado
+      // (deleteField) o, si el SDK no lo trae, como '' explícito. Los campos que NUNCA
+      // tuvieron valor siguen sin mandarse (protección v126b).
+      try {
+        var _cc = window._camposCargados;
+        if (_cc && _cc.campos && String(_cc.ref) === String(ref)) {
+          var _borrar = (window._fb && typeof window._fb.deleteField === 'function') ? window._fb.deleteField : null;
+          Object.keys(_cc.campos).forEach(function (k) {
+            if (k === 'rows' || k === 'id' || k === 'timestamp') return;
+            if (!(k in data)) return;                       // este guardado no habla de ese campo: no se toca
+            if (data[k] === '' || data[k] === null || data[k] === undefined) fbData[k] = _borrar ? _borrar() : '';
+          });
+        }
+      } catch (eCC) { console.warn('[v567] campos vaciados:', eCC && eCC.message); }
       // Siempre incluir timestamp y id
       fbData.timestamp = data.timestamp || Date.now();
       if (data.id) fbData.id = data.id;
@@ -5547,6 +5726,8 @@ async function savePresupuestoFull(data) {
       console.log('[savePresupuestoFull] Guardando campos=' + Object.keys(fbData).length + ' ts=' + fbData.timestamp);
       await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), fbData, { merge: true });
       savedFB = true;
+      // v567: lo que acaba de subir CON valor cuenta como «cargado» — si luego se vacía, se borrará también
+      try { actualizarCamposCargados(ref, data); } catch (e) {}
     } catch(e) {
       console.warn('[Azkar] Firebase falló, añadiendo a cola:', e.message);
       queueOfflineOp({
@@ -5785,17 +5966,32 @@ function collectFormData() {
   // siempre; lo demás que se ponga en un apartado diferente que está al lado, así no
   // tenemos ese problema». En la ficha se guarda la dirección ENTERA (que es lo que ven
   // el cliente y los chicos), y aparte las dos piezas, para poder volver a repartirlas.
+  // 🛑 v567 · EL «6d» DENTRO DEL MISMO CLIENTE. Antes la calle y el piso solo se guardaban
+  // si el piso NO estaba vacío. Así que «Calle X 5» + «6d» → cambiar a «Calle Y 9» y
+  // borrar el piso → se guardaba f_rec=«Calle Y 9» pero f_rec_calle/f_rec_pta se quedaban
+  // con «Calle X 5»/«6d» en la nube, y al reabrir la ficha salía la calle VIEJA con el 6d.
+  // Ahora se guardan SIEMPRE los dos (vacío = vacío; a la nube va como borrado, ver
+  // savePresupuestoFull), y repartirDirecciones ya no pisa una calle nueva con la vieja.
   try {
     if (typeof window.dirCompleta === 'function') {
       ['rec', 'ent'].forEach(function (p) {
         var pta = document.getElementById('f_' + p + '_pta');
-        if (pta && String(pta.value || '').trim()) {
-          data['f_' + p] = window.dirCompleta(p);
-          data['f_' + p + '_calle'] = (document.getElementById('f_' + p) || {}).value || '';
-          data['f_' + p + '_pta'] = pta.value;
-        }
+        var calle = document.getElementById('f_' + p);
+        if (!pta || !calle) return;
+        var hayPiso = !!String(pta.value || '').trim();
+        data['f_' + p] = hayPiso ? window.dirCompleta(p) : (calle.value || '');
+        data['f_' + p + '_calle'] = calle.value || '';
+        data['f_' + p + '_pta'] = hayPiso ? pta.value : '';
       });
     }
+  } catch (e) {}
+  // v567: la distancia y los operarios (las dos listas de arriba) se guardan con la ficha,
+  // como ya hacía «💾 Guardar» (GD). Si no, cada cliente heredaba las del anterior.
+  try {
+    ['t_distancia', 'num-operarios'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) data[id] = el.value;
+    });
   } catch (e) {}
   // v515 · LAS ENTREGAS DE MÁS (Asier, 24-ago: «no puedo poner las 3 direcciones»).
   try { if (typeof window.entregasGuardar === 'function') window.entregasGuardar(data); } catch (e) {}
@@ -5812,21 +6008,15 @@ function collectFormData() {
     data._pagadoFinalizado = true;
     if (window._currentPagadoDate) data._pagadoFinalizadoDate = window._currentPagadoDate;
   }
-  if (window._currentGuardamuebles) {
-    data._guardamuebles = true;
-  }
-  if (window._currentPlataforma) {
-    data._plataforma = true;
-  }
-  if (window._currentOruga) {
-    data._oruga = true;   // v543: oruga salvaescaleras (cláusula 20ª)
-  }
-  if (window._currentPermuta) {
-    data._permuta = true;   // v473: cambio de muebles (los km van ida y vuelta)
-  }
-  if (window._currentArchivado2026) {
-    data._archivado2026 = true;
-  }
+  // 🛑 v567 · LAS CASILLAS SE GUARDAN SIEMPRE, MARCADAS O NO. Antes solo se escribían
+  // cuando estaban a true; al DESMARCAR la plataforma no se mandaba nada, la nube (con
+  // «merge») se quedaba con el true de antes, y a los 60 s el guardado automático la
+  // resucitaba desde IndexedDB. Asier desmarcaba y volvía marcada. Ahora va true/false.
+  data._guardamuebles = !!window._currentGuardamuebles;
+  data._plataforma = !!window._currentPlataforma;
+  data._oruga = !!window._currentOruga;        // v543: oruga salvaescaleras (cláusula 20ª)
+  data._permuta = !!window._currentPermuta;    // v473: cambio de muebles (los km van ida y vuelta)
+  data._archivado2026 = !!window._currentArchivado2026;
   return data;
 }
 
@@ -5850,11 +6040,25 @@ function restoreFormData(data) {
   document.querySelectorAll('#tb .cr').forEach(function(cr){ cr.remove(); });
   rid = 0;
   const fields = ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'];
+  // 🛑 v567 · FECHA ABIERTA: el campo tiene que ser de TEXTO antes de meterle «FECHA ABIERTA»
+  // (un <input type="date"> tira ese texto y se queda vacío). Y al revés: si esta ficha trae
+  // una fecha normal y el campo se quedó como texto por el cliente anterior, vuelve a calendario.
+  try { if (typeof ponerFechaAbiertaUI === 'function') ponerFechaAbiertaUI(data.f_fserv === 'FECHA ABIERTA'); } catch (e) {}
   // v123f: SIEMPRE limpiar todos los campos primero para evitar datos fantasma del cliente anterior
   fields.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = (data[id] !== undefined && data[id] !== null) ? data[id] : '';
   });
+  // v567: las listas de distancia y operarios, con lo que traiga la ficha (o lo de siempre)
+  try {
+    var _td = document.getElementById('t_distancia'); if (_td) _td.value = data.t_distancia || 'bilbao';
+    var _no = document.getElementById('num-operarios'); if (_no) _no.value = data['num-operarios'] || '2';
+  } catch (e) {}
+  // 🛑 v567 · LA FOTO DE LO QUE TRAÍA LA FICHA. Se apunta qué campos venían CON VALOR para
+  // que, si el usuario los vacía a propósito (borra el email, quita el piso), el guardado
+  // sepa que hay que BORRARLOS en la nube. Los que nunca tuvieron valor no se tocan (esa
+  // era la protección v126b contra pisar datos desde un formulario a medio cargar).
+  try { window._camposCargados = apuntarCamposCargados(data); } catch (e) {}
 
   // v404 (Asier, 9-ago-2026): «los que ya estaban hechos antes de esto NO los tienes que
   // modificar; mira que estén todos como estaban menos el que estoy probando yo ahora».
@@ -5881,8 +6085,12 @@ function restoreFormData(data) {
         AR(r.c, r.z, r.u, r.p, r.d, r.tm || '', r.tam || 'Estándar');
         window._dp2pRestore = ''; window._dp2pBase = '';
       });
-    } finally { window._restaurandoFicha = false; try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); if(window.gruaRepinta) setTimeout(window.gruaRepinta, 350); if(window.fotosMapaRefrescar) setTimeout(window.fotosMapaRefrescar, 900); if(window.rutaSoloParaElMapa) setTimeout(window.rutaSoloParaElMapa, 1400); }catch(e){} window._dp2pRestore = ''; window._dp2pBase = ''; }
+    } finally { window._restaurandoFicha = false; window._dp2pRestore = ''; window._dp2pBase = ''; }
   }
+  // v567: la galería de fotos, la grúa y los mapas se recargan SIEMPRE al abrir una ficha —
+  // antes solo si traía artículos, así que una ficha sin filas enseñaba las fotos y los
+  // mapas del cliente ANTERIOR.
+  try{ if(window.fcCargarFotos) setTimeout(window.fcCargarFotos, 300); if(window.gruaRepinta) setTimeout(window.gruaRepinta, 350); if(window.fotosMapaRefrescar) setTimeout(window.fotosMapaRefrescar, 900); if(window.rutaSoloParaElMapa) setTimeout(window.rutaSoloParaElMapa, 1400); }catch(e){}
 
   // v408: la protección la hace AR_SALIDA mirando la fecha del presupuesto. Aquí solo se
   // le pasa lo que traía guardado.
@@ -5936,11 +6144,38 @@ function restoreFormData(data) {
   var isPerm = (data._permuta === true) || (_mismaFicha && window._currentPermuta);
   window._currentPermuta = !!isPerm;
   if (typeof updatePermutaUI === 'function') updatePermutaUI(!!isPerm);
+  // v567: los estados de trabajo (EN MARCHA / PAGADO / ARCHIVADO) también se leen de la ficha
+  // por TODOS los caminos (antes solo por loadPresupuesto; una recarga desde otro dispositivo
+  // los dejaba en memoria como estaban, y como ahora las casillas se guardan siempre
+  // true/false, el siguiente guardado habría desarchivado la ficha).
+  if (data._enMarcha !== undefined) { window._currentEnMarcha = !!data._enMarcha; window._currentEnMarchaDate = data._enMarchaDate || null; }
+  if (data._pagadoFinalizado !== undefined) { window._currentPagado = !!data._pagadoFinalizado; window._currentPagadoDate = data._pagadoFinalizadoDate || null; }
+  if (data._archivado2026 !== undefined) window._currentArchivado2026 = !!data._archivado2026;
+  else if (!_mismaFicha) window._currentArchivado2026 = false;
   // v155: Comprobar si hay oferta de autónomo adjudicada para este presupuesto
   if (typeof comprobarOfertaAutonomo === 'function') setTimeout(comprobarOfertaAutonomo, 1000);
   // v188: Actualizar banner promo quincenal al cargar presupuesto
   actualizarBannerPromo();
   CA();
+  // v567: el campo de la fecha, en su estado (FECHA ABIERTA o calendario) por TODOS los caminos
+  try { if (typeof restoreFechaAbierta === 'function') restoreFechaAbierta(); } catch (e) {}
+  // v567: la etiqueta «⧉ Variante» y el cartel «NO ACEPTADO» se repintan con el número de ESTA ficha
+  try { if (window._dupPintaEtiqueta) window._dupPintaEtiqueta(); } catch (e) {}
+}
+
+// v567 · Qué campos venían con valor en la ficha cargada (para saber qué se ha VACIADO
+// después a propósito). Se guarda con el número de la ficha para no confundir dos clientes.
+function apuntarCamposCargados(data) {
+  var campos = {};
+  if (!data) return null;
+  Object.keys(data).forEach(function (k) {
+    var v = data[k];
+    if (k === 'rows' || k === 'id' || k === 'timestamp') return;
+    if (v === undefined || v === null || v === '') return;
+    if (typeof v === 'object') return;   // listas y objetos no son «campos vaciables»
+    campos[k] = true;
+  });
+  return { ref: String(data.f_ref || data.id || '').trim(), campos: campos };
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -6042,7 +6277,7 @@ async function initFirebase(config) {
   window._fbPendingConfig = config;
   try {
     const { initializeApp, getApps, getApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot } =
+    const { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, deleteField } =
       await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     
     // getApps() evita el error "Firebase App already exists" en los reintentos
@@ -6072,7 +6307,8 @@ async function initFirebase(config) {
     firebaseConfigured = true;
     
     // Store Firebase modules globally
-    window._fb = { collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, db: firestoreDB };
+    // v567: deleteField, para poder BORRAR en la nube un campo que el usuario ha vaciado (ver savePresupuestoFull)
+    window._fb = { collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, deleteField, db: firestoreDB };
 
     // v409 · Si estaba puesto el aviso de que no hay nube, se retira: ya la hay.
     try {
@@ -6101,27 +6337,24 @@ async function initFirebase(config) {
               // Preservar campos de estado: usar el más reciente (timestamp más alto)
               const fbTs = fbData.timestamp || 0;
               const localTs = localData.timestamp || 0;
+              // 🛑 v567 · SE ACABÓ EL «NUNCA DE TRUE A FALSE». Esa regla (v134) resucitaba una
+              // casilla que el usuario acababa de DESMARCAR: la nube decía false y aquí se le
+              // volvía a poner el true de IndexedDB. Ahora solo se rellena un dato que el otro
+              // lado NO TRAE (undefined); un false explícito es una decisión y se respeta. Y si
+              // el cambio es NUESTRO (la ficha abierta, con el sello del último guardado), no se
+              // mezcla nada: lo que subió es lo que hay.
+              const esNuestro = (change.doc.id === window._currentPresupuestoRef) && fbTs === (window._lastSavedTimestamp || 0);
+              const rellena = (destino, origen) => {
+                ['_enMarcha','_enMarchaDate','_pagadoFinalizado','_pagadoFinalizadoDate','_guardamuebles','_plataforma','_oruga','_permuta','_archivado2026'].forEach(k => {
+                  if (destino[k] === undefined && origen[k] !== undefined) destino[k] = origen[k];
+                });
+              };
               if (fbTs >= localTs) {
-                // Firebase es más reciente: usar Firebase pero preservar estados locales si Firebase no los tiene
-                if (!fbData._enMarcha && localData._enMarcha) fbData._enMarcha = localData._enMarcha;
-                if (!fbData._enMarchaDate && localData._enMarchaDate) fbData._enMarchaDate = localData._enMarchaDate;
-                if (!fbData._pagadoFinalizado && localData._pagadoFinalizado) fbData._pagadoFinalizado = localData._pagadoFinalizado;
-                if (!fbData._pagadoFinalizadoDate && localData._pagadoFinalizadoDate) fbData._pagadoFinalizadoDate = localData._pagadoFinalizadoDate;
-                if (!fbData._guardamuebles && localData._guardamuebles) fbData._guardamuebles = localData._guardamuebles;
-                if (!fbData._plataforma && localData._plataforma) fbData._plataforma = localData._plataforma;
-                if (!fbData._oruga && localData._oruga) fbData._oruga = localData._oruga;
-                if (!fbData._archivado2026 && localData._archivado2026) fbData._archivado2026 = localData._archivado2026;
+                // Firebase es más reciente: usar Firebase; lo local solo rellena lo que la nube no diga
+                if (!esNuestro) rellena(fbData, localData);
               } else {
-                // v134: Local es más reciente: mantener local, pero mergear estados de ambos lados
-                // Mergear TODOS los flags de estado (el que tenga true gana)
-                if (fbData._enMarcha && !localData._enMarcha) localData._enMarcha = fbData._enMarcha;
-                if (fbData._enMarchaDate && !localData._enMarchaDate) localData._enMarchaDate = fbData._enMarchaDate;
-                if (fbData._pagadoFinalizado && !localData._pagadoFinalizado) localData._pagadoFinalizado = fbData._pagadoFinalizado;
-                if (fbData._pagadoFinalizadoDate && !localData._pagadoFinalizadoDate) localData._pagadoFinalizadoDate = fbData._pagadoFinalizadoDate;
-                if (fbData._guardamuebles && !localData._guardamuebles) localData._guardamuebles = fbData._guardamuebles;
-                if (fbData._plataforma && !localData._plataforma) localData._plataforma = fbData._plataforma;
-                if (fbData._oruga && !localData._oruga) localData._oruga = fbData._oruga;
-                if (fbData._archivado2026 && !localData._archivado2026) localData._archivado2026 = fbData._archivado2026;
+                // v134: Local es más reciente: mantener local; la nube solo rellena lo que local no diga
+                rellena(localData, fbData);
                 // v134: SIEMPRE guardar localData mergeado en IndexedDB (antes hacía continue y se perdían estados)
                 await savePresupuesto(localData);
                 hasChanges = true;
@@ -6393,13 +6626,16 @@ async function openMgr() {
       // v565 · la ficha que montó Azkarin desde una llamada y nadie ha mirado todavía
       const borradorLabel = p._borrador ? '<span style="background:#FBEBD6;color:#8A4B05;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;">📝 BORRADOR</span>' : '';
       var searchData = [(p.f_nom||''),(p.f_tel||''),(p.f_ref||''),(p.f_rec||''),(p.f_ent||''),(p.f_email||''),(p.f_dni||'')].join(' ').toLowerCase();
+      // v567: el nombre y la dirección van a innerHTML tal cual: un «<» o un «&» en el nombre
+      // rompía la lista. Se escapan con el helper de siempre (_esc) más las comillas.
+      var _escMgr = function (t) { return _esc(t).replace(/"/g, '&quot;'); };
       return '<div data-search="' + searchData.replace(/"/g,'') + '" style="display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:' + (isVersion ? '4' : '8') + 'px;border:1px solid ' + borderColor + ';border-radius:8px;cursor:pointer;transition:.15s;background:' + bgColor + ';" onmouseover="this.style.background=\'' + hoverColor + '\'" onmouseout="this.style.background=\'' + bgColor + '\'" onclick="loadPresupuesto(\'' + p.id + '\')">'
         + '<div style="width:42px;height:42px;background:' + bgGrad + ';border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">' + (isPagado ? '💰' : (isEnMarcha ? '🚚' : (isFirmado ? '✓' : ref.slice(-4) || 'N/A'))) + '</div>'
         + '<div style="flex:1;min-width:0;">'
-        + '<div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.f_nom || 'Sin nombre') + borradorLabel + pagadoLabel + enMarchaLabel + firmadoLabel + versionLabel + '</div>'
+        + '<div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _escMgr(p.f_nom || 'Sin nombre') + borradorLabel + pagadoLabel + enMarchaLabel + firmadoLabel + versionLabel + '</div>'
         + '<div style="font-size:11px;color:#888;margin-top:1px;">' + (ref || 'Sin ref') + ' · ' + (p.f_fecha || 'Sin fecha') + dateLabel + '</div>'
         + '</div>'
-        + '<div style="text-align:right;font-size:11px;color:#888;">' + (p.f_rec ? (p.f_rec.length > 20 ? p.f_rec.substring(0,20)+'...' : p.f_rec) : '') + '</div>'
+        + '<div style="text-align:right;font-size:11px;color:#888;">' + _escMgr(p.f_rec ? (String(p.f_rec).length > 20 ? String(p.f_rec).substring(0,20)+'...' : p.f_rec) : '') + '</div>'
         + enMarchaBtn
         + pagadoBtn
         + pagadoAnualBtn
@@ -7922,9 +8158,12 @@ setTimeout(function() {
 
 async function loadPresupuesto(id) {
   // v123e: Cancelar cualquier auto-save pendiente antes de cargar otro cliente
-  if (typeof _saveTimeout !== 'undefined') clearTimeout(_saveTimeout);
+  // v567: de verdad — antes «typeof _saveTimeout» era siempre undefined (es un «let» del
+  // DOMContentLoaded) y el guardado de 1 s del cliente anterior podía caer sobre el nuevo.
+  try { if (typeof window.cancelarAutosavePendiente === 'function') window.cancelarAutosavePendiente(); } catch (e) {}
   // v123e: Marcar que NO necesita crear carpeta (ya existe para clientes guardados)
   if (window._driveInfo) window._driveInfo.needsCreate = false;
+  window._fichaRecienAbierta = false;   // v567: la ficha que se abre ya existe; la marca v566 era de la nueva
 
   // v124: SIEMPRE cargar de Firebase primero (fuente de verdad), fallback a IndexedDB si offline
   let data = null;
@@ -7951,6 +8190,14 @@ async function loadPresupuesto(id) {
   ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'].forEach(fid => {
     var el = document.getElementById(fid); if (el) el.value = '';
   });
+  // 🛑 v567 · TODO EL ESTADO DEL CLIENTE ANTERIOR, FUERA — igual que al dejar la ficha en
+  // blanco. Antes aquí solo se vaciaban los textos: los km medidos (_kmRutaBase), el tiempo,
+  // quién encendió la cláusula de la grúa, la oferta del autónomo, la carpeta de Drive, los
+  // mapas, la caja de la distancia, los carteles ZBE y las fotos seguían siendo del de antes.
+  // Caso real: abrir otro cliente y encender «cambio de muebles» metía la línea
+  // «Desplazamiento (… km ida y vuelta)» con los km del cliente ANTERIOR.
+  soltarEstadoDeRuta();
+  limpiarPantallaDeCliente();
   // Clear existing rows (rows have class 'cr' inside container 'tb')
   document.querySelectorAll('#tb .cr').forEach(cr => cr.remove());
   rid = 0;
@@ -8020,6 +8267,11 @@ async function newPresupuesto() {
       // Antes el número solo se apuntaba en la nube al escribir la primera letra, y la reserva
       // del servidor dura 10 minutos: si se tardaba más, otra ficha (el vigía, Azkarin, otro
       // «+ NUEVO») podía coger el mismo. Ahora se guarda al instante, vacía, con quién la abrió.
+      // v567: el número puesto por código no dispara «input»: se avisa a mano para que la
+      // etiqueta «⧉ Variante» y el cartel «NO ACEPTADO» se pinten con el número NUEVO.
+      try { refField.dispatchEvent(new Event('input', { bubbles: true })); } catch (eEv) {}
+      // v567: saveNow ya existe fuera de su closure (window.saveNow); antes esto era un
+      // ReferenceError que se tragaba el catch y el número NO se apuntaba en la nube.
       window._fichaRecienAbierta = true;
       try { saveNow(); } catch (eRes) { console.warn('[Azkar v566] no pude apuntar la ficha nueva:', eRes && eRes.message); }
     } else {
@@ -8091,8 +8343,8 @@ async function moverEnMarcha(ref) {
         }
       }
       // v124: Estados en variables globales (datos van a Firebase via setDoc merge)
-      window._currentEnMarcha = true;
-      window._currentEnMarchaDate = Date.now();
+      // v567: SOLO si el cliente tocado es el que está abierto en pantalla (si no, se marcaba al equivocado)
+      estadoALaFichaAbierta(ref, { _currentEnMarcha: true, _currentEnMarchaDate: Date.now() });
       showSyncStatus(data.ya_estaba
         ? ('✅ ' + ref + ' marcado como EN MARCHA. La carpeta ya estaba en "2 En Marcha" (movida a mano), así que no he tocado Drive.')
         : ('✅ Carpeta ' + (data.folderName || ref) + ' movida a "2 En Marcha"'), 6000);
@@ -8105,7 +8357,7 @@ async function moverEnMarcha(ref) {
           await savePresupuesto(pr);
           if (firebaseConfigured && window._fb) await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pr, { merge: true });
         }
-        window._currentEnMarcha = true; window._currentEnMarchaDate = Date.now();
+        estadoALaFichaAbierta(ref, { _currentEnMarcha: true, _currentEnMarchaDate: Date.now() });   // v567
       }, 'EN MARCHA');
     }
   } catch(e) {
@@ -8164,8 +8416,7 @@ async function moverPagadoFinalizado(ref) {
           await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
         }
       }
-      window._currentPagado = true;
-      window._currentPagadoDate = Date.now();
+      estadoALaFichaAbierta(ref, { _currentPagado: true, _currentPagadoDate: Date.now() });   // v567: solo si es la abierta
     };
     if (data.success) {
       await _marcarPagado();
@@ -8206,6 +8457,9 @@ async function moverPagadoAnual(ref) {
           await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
         }
       }
+      // v567: si es la ficha abierta, la memoria también lo sabe (si no, el siguiente guardado
+      // automático la desarchivaría, porque ahora las casillas se guardan siempre true/false)
+      estadoALaFichaAbierta(ref, { _currentArchivado2026: true });
       showSyncStatus(data.ya_estaba
         ? ('✅ ' + ref + ' archivado. La carpeta ya estaba en "2026 PAGADO" (movida a mano), así que no he tocado Drive.')
         : ('✅ Carpeta ' + (data.folderName || ref) + ' archivada en "2026 PAGADO"'), 6000);
@@ -8246,6 +8500,10 @@ async function moverGuardamueblesEnMarcha(ref) {
           await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
         }
       }
+      // v567: y la memoria de la ficha abierta, si es esta
+      if (estadoALaFichaAbierta(ref, { _currentPagado: false, _currentPagadoDate: null, _currentEnMarcha: true, _currentGuardamuebles: true })) {
+        try { if (typeof updateGuardamueblesUI === 'function') updateGuardamueblesUI(true); } catch (e) {}
+      }
       showSyncStatus('✅ Carpeta ' + (data.folderName || ref) + ' devuelta a "EN MARCHA" (guardamuebles)', 5000);
       openMgr();
     } else {
@@ -8275,7 +8533,7 @@ async function volverAEnMarcha(ref) {
         await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
       }
     }
-    window._currentPagado = false; window._currentEnMarcha = true;
+    estadoALaFichaAbierta(ref, { _currentPagado: false, _currentPagadoDate: null, _currentEnMarcha: true });   // v567: solo si es la abierta
     // 2) Intentar mover la carpeta de Drive (si existe). Si no, NO bloquea el cambio de estado.
     var aviso = '';
     try {
@@ -8309,7 +8567,7 @@ async function volverACaptacion(ref) {
         await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), pres, { merge: true });
       }
     }
-    window._currentPagado = false; window._currentEnMarcha = false;
+    estadoALaFichaAbierta(ref, { _currentPagado: false, _currentPagadoDate: null, _currentEnMarcha: false, _currentEnMarchaDate: null });   // v567: solo si es la abierta
     // 2) Intentar mover la carpeta de Drive (si existe). Si no, NO bloquea el cambio de estado.
     var aviso = '';
     try {
@@ -8540,9 +8798,10 @@ async function _crearFirmaParaWA() {
     if (!number) return '';
     var clientTel = (document.getElementById('f_tel') || {}).value || '';
     var clientEmail = (document.getElementById('f_email') || {}).value || '';
-    var clientRec = (document.getElementById('tx-recogida') || {}).value || (document.getElementById('f_rec') || {}).value || '';
-    var clientEnt = (document.getElementById('tx-entrega') || {}).value || (document.getElementById('f_ent') || {}).value || '';
-    var clientFecha = (document.getElementById('tx-fecha') || {}).value || (document.getElementById('f_fserv') || {}).value || '';
+    // v567: SIEMPRE manda la ficha (los tx-* de la llamada solo si la ficha no tiene el dato y el modal está abierto para ella)
+    var clientRec = datoDeLaFicha('rec');
+    var clientEnt = datoDeLaFicha('ent');
+    var clientFecha = datoDeLaFicha('fserv');
     var clientHora = (document.getElementById('f_hserv') || {}).value || '';
     if (clientHora) clientFecha += ' ' + clientHora + 'h';
     var clientTotal = document.getElementById('t_t') ? document.getElementById('t_t').textContent : '';
@@ -10049,6 +10308,8 @@ window.addEventListener('DOMContentLoaded', function() {
         }
         // Fallback a IndexedDB
         if (!existing) existing = await getPresupuesto(refEl.value);
+        // v567: si mientras se leía se ha cambiado de ficha, estos estados son de OTRA
+        if (existing && String(existing.id || existing.f_ref || '') !== String(refEl.value || '')) existing = null;
         if (existing) {
           window._currentEnMarcha = !!existing._enMarcha;
           window._currentEnMarchaDate = existing._enMarchaDate || null;
@@ -10072,20 +10333,21 @@ window.addEventListener('DOMContentLoaded', function() {
     const ref = document.getElementById('f_ref');
     if (ref && ref.value) {
       try {
-        // v134: SIEMPRE verificar estados desde IndexedDB antes de guardar
-        // (antes solo lo hacía si _currentEnMarcha === undefined, lo que causaba pérdida de estados)
-        const existing = await getPresupuesto(ref.value);
-        if (existing) {
-          // v134: Mergear — si IndexedDB tiene un flag true, mantenerlo (nunca pasar de true a false)
-          if (existing._enMarcha) { window._currentEnMarcha = true; window._currentEnMarchaDate = existing._enMarchaDate || window._currentEnMarchaDate; }
-          if (existing._pagadoFinalizado) { window._currentPagado = true; window._currentPagadoDate = existing._pagadoFinalizadoDate || window._currentPagadoDate; }
-          if (existing._guardamuebles) window._currentGuardamuebles = true;
-          if (existing._plataforma) window._currentPlataforma = true;
-          if (existing._permuta) window._currentPermuta = true;
-          if (existing._archivado2026) window._currentArchivado2026 = true;
+        // 🛑 v567 · SE QUITA LA RESURRECCIÓN DE CASILLAS. Aquí (v134) se leían los flags de
+        // IndexedDB y «si estaba a true, se mantenía»: al desmarcar la plataforma, a los 60 s
+        // volvía marcada sola. Lo que se ve en pantalla es la verdad; las fechas de EN MARCHA /
+        // PAGADO se cogen de la ficha guardada SOLO si faltan en memoria (no cambian el estado).
+        const refAlEmpezar = ref.value;
+        const existing = await getPresupuesto(refAlEmpezar);
+        // v567: mientras se leía, ¿se ha cambiado de ficha? Entonces esto ya no vale.
+        if (ref.value !== refAlEmpezar || window._presupuestoLoading) return;
+        if (existing && String(existing.id || existing.f_ref || '') === String(refAlEmpezar)) {
+          if (window._currentEnMarcha && !window._currentEnMarchaDate && existing._enMarchaDate) window._currentEnMarchaDate = existing._enMarchaDate;
+          if (window._currentPagado && !window._currentPagadoDate && existing._pagadoFinalizadoDate) window._currentPagadoDate = existing._pagadoFinalizadoDate;
         }
         const data = collectFormData();
-        data.id = ref.value;
+        if (data.f_ref !== refAlEmpezar) return;   // v567: la ficha cambió justo ahora — no se guarda lo de una con el número de otra
+        data.id = refAlEmpezar;
         await savePresupuestoFull(data);
       } catch(e) { console.warn('[Azkar] Auto-save error:', e); }
     }
@@ -10148,6 +10410,12 @@ window.addEventListener('DOMContentLoaded', function() {
     }
     return null;
   }
+  // 🛑 v567 · saveNow SE EXPONE. Vivía dentro de este DOMContentLoaded y desde fuera no
+  // existía: los interruptores de plataforma/oruga/guardamuebles/cambio de muebles, la
+  // línea de km, la grúa, «Publicar para autónomos» y la reserva del número (v566) hacían
+  // «typeof saveNow === 'function'» (false) o «saveNow()» (ReferenceError, tragado por un
+  // catch). O sea: NO guardaban. Ahora es window.saveNow y todos la encuentran.
+  window.saveNow = saveNow;
 
   window.addEventListener('beforeunload', () => {
     clearTimeout(_saveTimeout);
@@ -10177,6 +10445,12 @@ window.addEventListener('DOMContentLoaded', function() {
   // por el querySelectorAll de abajo, que corre una sola vez al arrancar. Así que
   // el guardado automático se deja a mano para que ellos también lo llamen.
   window.scheduleSave = debouncedAutoSave;
+  window.debouncedAutoSave = debouncedAutoSave;   // v567: con su nombre, para quien lo busque así
+  // v567 · loadPresupuesto hacía «typeof _saveTimeout !== 'undefined'» para cancelar el
+  // guardado pendiente antes de abrir otro cliente — y _saveTimeout es un «let» de aquí
+  // dentro, así que desde fuera SIEMPRE era undefined y nunca se cancelaba: el guardado
+  // de 1 s del cliente anterior podía caer sobre el nuevo. Ahora se cancela de verdad.
+  window.cancelarAutosavePendiente = function () { clearTimeout(_saveTimeout); _saveTimeout = null; };
   // Escuchar cambios en TODOS los campos del presupuesto Y dossier
   document.querySelectorAll('#page-presupuesto input, #page-presupuesto textarea, #page-presupuesto select, #page-dossier input, #page-dossier textarea, #page-dossier select').forEach(el => {
     el.addEventListener('input', debouncedAutoSave);
@@ -10240,6 +10514,13 @@ window.addEventListener('DOMContentLoaded', function() {
             data = await getPresupuesto(backupRef);
             if (data) console.log('[Azkar v130] Auto-restore de IndexedDB (fallback):', backupRef);
           }
+          // 🛑 v567 · MIENTRAS SE ESPERABA A LA NUBE (hasta 8 s), Asier ya podía haber abierto
+          // otra ficha o darle a «+ NUEVO». Se vuelve a mirar JUSTO ANTES de pintar: si el
+          // número ya no está vacío o hay otra ficha abierta, esto se aborta.
+          if (data && (ref.value || window._currentPresupuestoRef)) {
+            console.log('[Azkar v567] Auto-restore abortado: ya hay una ficha en pantalla (' + (ref.value || window._currentPresupuestoRef) + ')');
+            data = null;
+          }
           if (data) {
             window._presupuestoLoading = true;
             try { restoreFormData(data); } finally { window._presupuestoLoading = false; }
@@ -10247,13 +10528,16 @@ window.addEventListener('DOMContentLoaded', function() {
             window._currentPresupuestoRef = backupRef;
             window._lastSavedTimestamp = data.timestamp || Date.now();
             window._currentEnMarcha = !!data._enMarcha;
+            window._currentEnMarchaDate = data._enMarchaDate || null;
             window._currentPagado = !!data._pagadoFinalizado;
+            window._currentPagadoDate = data._pagadoFinalizadoDate || null;
             window._currentGuardamuebles = !!data._guardamuebles;
             window._currentPlataforma = !!data._plataforma;
-  window._currentOruga = !!data._oruga;
+            window._currentOruga = !!data._oruga;
             window._currentPermuta = !!data._permuta;
             if (typeof updatePermutaUI === 'function') updatePermutaUI(!!data._permuta);
             window._currentArchivado2026 = !!data._archivado2026;
+            restoreFechaAbierta();   // v567: como en loadPresupuesto
             showSyncStatus('♻️ Presupuesto restaurado (Nº ' + backupRef + ')');
           }
         }
@@ -12023,6 +12307,10 @@ const TX_API = 'https://azkar-presupuestos-production.up.railway.app';
 var txArticuloId = 0;
 
 function openTranscriptionModal() {
+  // v567: se abre LIMPIO y apuntando para qué ficha se abre. Los campos de la llamada
+  // anterior no valen para esta (colaban su dirección en el email/firma de otro cliente).
+  try { if (typeof vaciarCamposDeLlamada === 'function') vaciarCamposDeLlamada(); } catch (e) {}
+  window._txParaRef = String(((document.getElementById('f_ref') || {}).value) || '').trim();
   document.getElementById('transcription-modal').style.display = 'block';
   document.getElementById('tx-step1').style.display = 'block';
   document.getElementById('tx-step2').style.display = 'none';
@@ -12033,6 +12321,8 @@ function openTranscriptionModal() {
 
 function closeTranscriptionModal() {
   document.getElementById('transcription-modal').style.display = 'none';
+  // v567: al cerrar, los campos de la llamada se vacían (ya están en la ficha si se creó)
+  try { if (typeof vaciarCamposDeLlamada === 'function') vaciarCamposDeLlamada(); } catch (e) {}
 }
 
 async function analyzeTranscription() {
@@ -12140,6 +12430,19 @@ function txAddArticulo(concepto, zona, unidades, precio) {
 }
 
 function txCreatePresupuesto() {
+  // v567: lo de la llamada se COPIA ANTES de nada, porque la ficha nueva (newPresupuesto →
+  // dejarLaFichaEnBlanco) vacía los campos tx-* al nacer.
+  var fields = {
+    'f_nom': document.getElementById('tx-nombre').value,
+    'f_tel': document.getElementById('tx-telefono').value,
+    'f_email': document.getElementById('tx-email').value,
+    'f_dni': document.getElementById('tx-dni').value,
+    'f_rec': document.getElementById('tx-recogida').value,
+    'f_ent': document.getElementById('tx-entrega').value,
+    'f_fserv': document.getElementById('tx-fecha').value,
+    'f_obs': document.getElementById('tx-obs').value
+  };
+
   // Primero crear un nuevo presupuesto (con número de Drive)
   if (typeof newPresupuesto === 'function') {
     newPresupuesto();
@@ -12148,20 +12451,19 @@ function txCreatePresupuesto() {
   // Esperar a que se asigne el número y rellenar los campos
   setTimeout(function() {
     // Rellenar campos del presupuesto
-    var fields = {
-      'f_nom': document.getElementById('tx-nombre').value,
-      'f_tel': document.getElementById('tx-telefono').value,
-      'f_email': document.getElementById('tx-email').value,
-      'f_dni': document.getElementById('tx-dni').value,
-      'f_rec': document.getElementById('tx-recogida').value,
-      'f_ent': document.getElementById('tx-entrega').value,
-      'f_fserv': document.getElementById('tx-fecha').value,
-      'f_obs': document.getElementById('tx-obs').value
-    };
-
     Object.keys(fields).forEach(function(id) {
       var el = document.getElementById(id);
       if (el && fields[id]) el.value = fields[id];
+    });
+    // v567: poner el .value por código NO avisa a nadie. Antes se llamaba a
+    // populateFormFromTranscription, que no existe, así que ni mapas, ni km, ni ZBE se
+    // calculaban. Ahora se disparan los eventos de siempre en direcciones y fecha, y
+    // todo lo que escucha (mapas, distancia, ZBE, guardado automático) se entera.
+    ['f_rec', 'f_ent', 'f_fserv'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el || !fields[id]) return;
+      try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+      try { el.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
     });
 
     // Tipo de servicio
@@ -13347,6 +13649,13 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
     document.getElementById('dist-coste').textContent = '';
     document.getElementById('dist-ruta').textContent = 'Buscando las direcciones...';
 
+    // 🛑 v567 · EL SELLO DE LA FICHA. Esto tarda segundos (dos búsquedas + la ruta). Si
+    // mientras tanto se abre OTRO cliente, al volver se pintaban SUS km en la ficha nueva
+    // y se metía la línea de desplazamiento del cliente anterior. Se apunta de qué ficha
+    // se salió y, si al volver es otra, no se pinta ni se escribe nada.
+    var refAlEmpezar = (typeof selloDeFicha === 'function') ? selloDeFicha() : '';
+    var sigueSiendoLaMisma = function () { return (typeof selloDeFicha !== 'function') || selloDeFicha() === refAlEmpezar; };
+
     // Geocodificar UNA a UNA (Nominatim exige max 1 petición/segundo)
     geocode(addrRec).then(function(from) {
       return esperar(1100).then(function() {
@@ -13358,6 +13667,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
       .then(function(coords) {
         var from = coords[0];
         var to = coords[1];
+        if (!sigueSiendoLaMisma()) { console.log('[Distancia v567] ficha cambiada durante el cálculo: no se pinta'); return; }
 
         // v117: Guardar coordenadas en sv-main para que el backend las use en el PDF
         var svRec = document.getElementById('sv-main-recogida');
@@ -13380,6 +13690,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
         document.getElementById('dist-ruta').textContent = 'Calculando ruta...';
 
         return calcRoute(from, to).then(function(ruta) {
+          if (!sigueSiendoLaMisma()) { console.log('[Distancia v567] ficha cambiada durante la ruta: no se pinta'); return; }
           // v429: se guarda la ruta entera para el MAPA DE RECOGIDA → ENTREGA
           try { window._ultimaRuta = ruta ? { geom: ruta.geom || [], from: from, to: to, distancia: ruta.distancia, duracion: ruta.duracion, rec: ((document.getElementById('f_rec') || {}).value || '').trim(), ent: ((document.getElementById('f_ent') || {}).value || '').trim() } : null; } catch (e) {}   // v454
           try { if (window.pintaRutaDelServicio) setTimeout(window.pintaRutaDelServicio, 60); } catch (e) {}
@@ -13437,6 +13748,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
       })
       .catch(function(err) {
         console.error('[Distancia] Error:', err);
+        if (!sigueSiendoLaMisma()) return;   // v567: el fallo es de OTRA ficha; aquí no se pinta nada
         // v476 · 🛑 Si los kilómetros YA estaban calculados y puestos, un fallo posterior
         // (un adorno, un mapa que no carga) NO puede borrarlos de la pantalla ni dejar el
         // presupuesto sin desplazamiento. Se repinta lo bueno y se avisa aparte.
@@ -13566,10 +13878,8 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
   window.permDesdePresupuesto = function(tipo) {
     var dir, dirVal;
     if (tipo === 'entrega') {
-      // Buscar primero en dossier (tx-entrega), luego en presupuesto clásico (f_ent)
-      dir = document.getElementById('tx-entrega');
-      dirVal = (dir && dir.value) ? dir.value : '';
-      if (!dirVal) { dir = document.getElementById('f_ent'); dirVal = (dir && dir.value) ? dir.value : ''; }
+      // v567: SIEMPRE manda la ficha (f_ent); el campo de la llamada (tx-entrega) solo si la ficha no tiene nada
+      dirVal = (typeof datoDeLaFicha === 'function') ? datoDeLaFicha('ent') : (((document.getElementById('f_ent') || {}).value) || '');
       if (dirVal) {
         document.getElementById('perm_direccion').value = dirVal.toUpperCase();
       } else {
@@ -13577,10 +13887,8 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
         return;
       }
     } else {
-      // Buscar primero en dossier (tx-recogida), luego en presupuesto clásico (f_rec)
-      dir = document.getElementById('tx-recogida');
-      dirVal = (dir && dir.value) ? dir.value : '';
-      if (!dirVal) { dir = document.getElementById('f_rec'); dirVal = (dir && dir.value) ? dir.value : ''; }
+      // v567: SIEMPRE manda la ficha (f_rec); el campo de la llamada (tx-recogida) solo si la ficha no tiene nada
+      dirVal = (typeof datoDeLaFicha === 'function') ? datoDeLaFicha('rec') : (((document.getElementById('f_rec') || {}).value) || '');
       if (dirVal) {
         document.getElementById('perm_direccion').value = dirVal.toUpperCase();
       } else {
@@ -13588,11 +13896,9 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
         return;
       }
     }
-    // Fecha de servicio: buscar en dossier (tx-fecha) o presupuesto clásico (f_fserv)
-    var fserv = document.getElementById('tx-fecha');
-    var fechaVal = (fserv && fserv.value) ? fserv.value : '';
-    if (!fechaVal) { fserv = document.getElementById('f_fserv'); fechaVal = (fserv && fserv.value) ? fserv.value : ''; }
-    if (fechaVal) {
+    // Fecha de servicio: v567, SIEMPRE la de la ficha (f_fserv); la de la llamada solo si la ficha no tiene
+    var fechaVal = (typeof datoDeLaFicha === 'function') ? datoDeLaFicha('fserv') : (((document.getElementById('f_fserv') || {}).value) || '');
+    if (fechaVal && fechaVal !== 'FECHA ABIERTA') {
       document.getElementById('perm_fecha').value = fechaVal;
       document.getElementById('perm_fecha_fin').value = fechaVal;
       permCalcPlazos();
@@ -13603,10 +13909,10 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
 
   // Crear dos permisos (recogida + entrega) de golpe
   window.permCrearDoble = function() {
-    // Buscar direcciones: primero dossier (tx-), luego presupuesto clásico (f_)
-    var recVal = (document.getElementById('tx-recogida') || {}).value || (document.getElementById('f_rec') || {}).value || '';
-    var entVal = (document.getElementById('tx-entrega') || {}).value || (document.getElementById('f_ent') || {}).value || '';
-    var fechaVal = (document.getElementById('tx-fecha') || {}).value || (document.getElementById('f_fserv') || {}).value || '';
+    // v567: SIEMPRE manda la ficha (f_*); los campos de la llamada (tx-*) solo si la ficha no tiene el dato
+    var recVal = (typeof datoDeLaFicha === 'function') ? datoDeLaFicha('rec') : (((document.getElementById('f_rec') || {}).value) || '');
+    var entVal = (typeof datoDeLaFicha === 'function') ? datoDeLaFicha('ent') : (((document.getElementById('f_ent') || {}).value) || '');
+    var fechaVal = (typeof datoDeLaFicha === 'function') ? datoDeLaFicha('fserv') : (((document.getElementById('f_fserv') || {}).value) || '');
 
     if (!recVal) { alert('No hay dirección de recogida en el presupuesto'); return; }
     if (!entVal) { alert('No hay dirección de entrega en el presupuesto'); return; }
@@ -15588,6 +15894,8 @@ async function comprobarOfertaAutonomo() {
   try {
     var res = await fetch(RAILWAY_API + '/api/autonomos/ofertas/' + ref, { headers: apiHeaders() });
     var data = await res.json();
+    // v567: si mientras se preguntaba se ha abierto otra ficha, esta oferta es de OTRO cliente
+    if (String(((document.getElementById('f_ref') || {}).value) || '') !== String(ref)) return;
     if (data.ok && data.oferta && data.oferta.estado === 'adjudicada' && data.oferta.precios && data.oferta.precios.length) {
       var adjToken = data.oferta.adjudicadoA;
       var precioAdj = data.oferta.precios.find(function(p) { return p.autonomoToken === adjToken; });
@@ -15610,6 +15918,14 @@ async function comprobarOfertaAutonomo() {
 
 function aplicarPrecioAutonomo() {
   if (!_precioAutonomoData) { alert('No hay precio de autónomo adjudicado'); return; }
+  // v567: el precio tiene que ser de ESTA ficha (el botón podía quedarse de la anterior)
+  var _refAhora = String(((document.getElementById('f_ref') || {}).value) || '').trim();
+  if (String(_precioAutonomoData.ref || '') !== _refAhora) {
+    alert('Ese precio de autónomo era del cliente ' + _precioAutonomoData.ref + ', no de esta ficha (' + (_refAhora || 'sin número') + '). No se aplica.');
+    var _btnA = document.getElementById('btn-aplicar-autonomo'); if (_btnA) _btnA.style.display = 'none';
+    _precioAutonomoData = null;
+    return;
+  }
   var precioBase = _precioAutonomoData.precio;
   var precioDoble = precioBase * 2;
   var detalle = '';
@@ -16372,6 +16688,10 @@ async function doResetWithCode() {
     _ttsSpeaking = false;
     window._ttsSpeaking = false; // v364: espejo para que el botón ⏹ (parar voz) sepa el estado real
   }
+  // v567 · el botón «⏹ Parar» de la voz vive en OTRO script y hacía «typeof chatSpeakStop»
+  // (false, porque esta función es de dentro de este closure): no paraba la voz web ni la
+  // cola de frases. Ahora está expuesta y el botón la encuentra.
+  window.chatSpeakStop = chatSpeakStop;
 
   // v314: voz NATIVA en la app (el TTS web no suena en el WebView de Android)
   async function _hablarNativo(text) {
@@ -18567,7 +18887,7 @@ async function doResetWithCode() {
   b.textContent = '\u23F9 Parar';
   b.style.cssText = 'display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:96px;z-index:100000;background:#c0392b;color:#fff;border:none;border-radius:22px;padding:11px 26px;font-size:15px;font-weight:800;box-shadow:0 4px 16px rgba(0,0,0,.35);cursor:pointer;font-family:inherit;';
   b.onclick = function(){
-    try { if (typeof chatSpeakStop === 'function') chatSpeakStop(); } catch(e){}
+    try { if (typeof window.chatSpeakStop === 'function') window.chatSpeakStop(); } catch(e){}   // v567: la de verdad (expuesta desde el chat)
     try { if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech) window.Capacitor.Plugins.TextToSpeech.stop(); } catch(e){}
     window._hablandoNativo = false; b.style.display='none';
   };
@@ -18853,13 +19173,17 @@ async function doResetWithCode() {
     var caja = document.getElementById('fc-box');
     if (!caja) return;
     if (!ref) { document.getElementById('fc-grid').innerHTML = '<div class="fc-vacio">Guarda el presupuesto primero: las fotos van a la carpeta del cliente y hace falta su número.</div>'; return; }
+    // v567: el sello de la ficha — si mientras se traen las fotos se abre otro cliente, no se pintan aquí
+    var refAlEmpezar = (typeof selloDeFicha === 'function') ? selloDeFicha() : ref;
+    var sigue = function () { return refFicha() === ref && ((typeof selloDeFicha !== 'function') || selloDeFicha() === refAlEmpezar); };
     try {
       var tok = await tokenEquipo();
       var r = await fetch(RAILWAY_API + '/api/equipo/' + tok + '/parte/' + ref + '/fotos-muebles', { cache: 'no-store' });
       var d = await r.json();
+      if (!sigue()) return;   // v567: son las fotos de OTRA ficha
       if (d && d.ok) pinta(d.fotos || [], tok, ref);
       else fcMsg((d && d.error) || 'No he podido traer las fotos.', '#b00');
-    } catch (e) { fcMsg(e.message || 'No he podido traer las fotos.', '#b00'); }
+    } catch (e) { if (sigue()) fcMsg(e.message || 'No he podido traer las fotos.', '#b00'); }
   }
   window.fcCargarFotos = cargar;
 
@@ -19638,6 +19962,9 @@ async function doResetWithCode() {
     if (!dir) { img.removeAttribute('src'); img.classList.add('sin-foto'); return; }
     if (_ultima[prefijo] === dir && img.getAttribute('src')) return;   // ya está hecha
     _ultima[prefijo] = dir;
+    // v567: el sello de la ficha — si al volver la foto ya es de OTRO cliente, no se pone
+    var refAlEmpezar = (typeof selloDeFicha === 'function') ? selloDeFicha() : '';
+    var sigue = function () { return (typeof selloDeFicha !== 'function') || selloDeFicha() === refAlEmpezar; };
     try {
       // Si la calculadora de km ya la encontró, se aprovechan sus coordenadas.
       var cont = document.getElementById('sv-main-' + prefijo);
@@ -19648,6 +19975,7 @@ async function doResetWithCode() {
       if (!(isFinite(lat) && isFinite(lon))) {
         if (typeof window.geoAzkar !== 'function') return;
         var p = await window.geoAzkar(dir);
+        if (!sigue()) return;   // v567: ficha cambiada mientras se buscaba
         if (!p) { img.removeAttribute('src'); img.classList.add('sin-foto'); return; }   // no se ha encontrado: mejor sin foto que con una foto de otro sitio
         lat = p.lat; lon = p.lon;
         if (cont) { cont.setAttribute('data-lat', lat); cont.setAttribute('data-lon', lon); cont.setAttribute('data-dir', dir); }
@@ -19656,6 +19984,7 @@ async function doResetWithCode() {
       // Si no hay clave o no contesta, se pinta la de OpenStreetMap como hasta ahora.
       var png = await fotoDeGoogle(lat, lon);
       if (!png) png = await pintarMapa(lat, lon);
+      if (!sigue()) { _ultima[prefijo] = null; return; }   // v567: la foto es de OTRA ficha: no se pone
       if (png) { img.src = png; img.classList.remove('sin-foto'); }
       else { img.removeAttribute('src'); img.classList.add('sin-foto'); }
     } catch (e) { console.warn('[MapaPDF]', e && e.message); }
@@ -20274,11 +20603,14 @@ async function doResetWithCode() {
     try {
       var rec = ((document.getElementById('f_rec') || {}).value || '').trim();
       if (!rec || typeof window.geoAzkar !== 'function') return;
+      // v567: el sello de la ficha — si se abre otro cliente mientras se mide, no se escribe nada
+      var refAlEmpezar = (typeof selloDeFicha === 'function') ? selloDeFicha() : '';
+      var sigue = function () { return (typeof selloDeFicha !== 'function') || selloDeFicha() === refAlEmpezar; };
       var a = await window.geoAzkar(BASE_AZKAR);
       var b = await window.geoAzkar(window.dirParaMapa ? window.dirParaMapa(rec) : rec);
-      if (!a || !b) return;
+      if (!a || !b || !sigue()) return;
       var r = await rutaEntre(a, b);
-      if (!r || !isFinite(r.metros)) return;
+      if (!r || !isFinite(r.metros) || !sigue()) return;
       window._kmDesdeBase = true;
       try { if (window.avisoKmChoque) window.avisoKmChoque(r.metros); } catch (e) {}
     } catch (e) { /* sin ruta: sin aviso, nunca un invento */ }
@@ -20384,7 +20716,13 @@ async function doResetWithCode() {
       extra.placeholder = c.tit;
       extra.title = 'Piso, mano, escalera, oficina… Esto NO se le manda al mapa, pero sí sale en el presupuesto y en el parte.';
       extra.style.cssText = 'flex:0 0 34%;min-width:0;border:1.5px solid #D8DCE3;border-radius:0 0 3px 3px;padding:8px 10px;font-family:inherit;font-size:13px;background:#fff;outline:none';
-      extra.oninput = function () { try { if (typeof SY === 'function') SY(); } catch (e) {} };
+      extra.oninput = function () {
+        try { if (typeof SY === 'function') SY(); } catch (e) {}
+        // v567: este campo nace después de que el guardado automático enganche los inputs de
+        // la página, así que se le avisa a mano (si no, quitar el piso no se guardaba hasta el
+        // siguiente cambio en otro campo o el guardado de los 60 s).
+        try { if (typeof window.scheduleSave === 'function') window.scheduleSave(); } catch (e) {}
+      };
       fila.appendChild(extra);
       hecho = true;
     });
@@ -20440,8 +20778,20 @@ async function doResetWithCode() {
       var pta = document.getElementById('f_' + p + '_pta');
       if (!inp || !pta) return;
       if (data && data['f_' + p + '_pta']) {
-        inp.value = data['f_' + p + '_calle'] || inp.value;
-        pta.value = data['f_' + p + '_pta'];
+        // 🛑 v567 · NUNCA PISAR UNA CALLE NUEVA CON LA VIEJA. Una ficha de antes podía traer
+        // f_rec=«Calle Y 9» (lo último escrito) y f_rec_calle/f_rec_pta=«Calle X 5»/«6d»
+        // (lo de un guardado anterior, que solo se actualizaba si había piso). Antes se
+        // pisaba f_rec con la calle vieja y se le pegaba el 6d. Ahora las piezas solo se
+        // usan si CUADRAN con la dirección entera guardada; si no, manda la entera y sin piso.
+        var entera = String(data['f_' + p] || '').trim();
+        var calle = String(data['f_' + p + '_calle'] || '').trim();
+        var cuadra = !entera || !calle || entera.indexOf(calle) === 0;
+        if (cuadra) {
+          inp.value = calle || inp.value;
+          pta.value = data['f_' + p + '_pta'];
+        } else {
+          console.warn('[v567] ' + p + ': las piezas de la dirección («' + calle + '» + «' + data['f_' + p + '_pta'] + '») no cuadran con la entera («' + entera + '»): manda la entera, sin piso.');
+        }
       }
       // ficha antigua: se queda vacío, que ya lo hemos vaciado arriba
     });
