@@ -504,11 +504,14 @@ console.log('\n══ K/L · EL BOTÓN «⏹ PARAR» Y EL GESTOR ══');
 console.log('\n══ M · VERSIÓN, AYUDA Y REGISTRO ══');
 const _v = parseInt((H.match(/var APP_VERSION\s*=\s*['"]v?(\d+)/) || [])[1] || '0', 10);
 c('M1 · la versión es la de este cambio o más nueva', _v >= 567, 'va por v' + _v);
+// v568 · la «x» de la lista ARCHIVA, no borra
+c('M5 · 🛑 la «x» de la lista ya no hace deleteDoc: archiva en la nube', !/async function delPresupuesto\(id\) \{[\s\S]{0,900}deleteDoc\(/.test(H) && /async function delPresupuesto\(id\) \{[\s\S]{0,700}_archivada: true, _archivadaTs: Date\.now\(\)/.test(H));
+c('M6 · y sin nube no la quita, para no perderla', /if \(!archivadaEnNube && firebaseConfigured\) \{ alert\(/.test(H));
 const _sw = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
 c('M2 · y la caché del sw.js va a la par', new RegExp('azkar-pwa-v' + _v).test(_sw));
 const _vj = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8'));
 c('M3 · y version.json', _vj.version === 'v' + _v && _vj.ts > 0);
-c('M4 · la Ayuda lo cuenta', /app v567/.test(H) && /no se cruzan/i.test(H));
+c('M4 · la Ayuda lo cuenta', /app v56[7-9]|app v5[7-9]\d/.test(H) && /no se cruzan/i.test(H));
 
 console.log('\n──────────────────────────────────────────────');
 console.log('  ' + bien + ' bien · ' + mal + ' mal');

@@ -1092,7 +1092,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v567 · backend 2.7.590), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v568 · backend 2.7.590), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🧹 LOS CLIENTES NO SE CRUZAN (app v567):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al abrir OTRO cliente desde MIS PRESUPUESTOS se suelta <strong>todo</strong> lo del anterior: los kilómetros medidos, el mapa, el recorrido, los avisos de ZBE, las fotos, la oferta del autónomo y las listas de distancia y operarios. Antes, al encender «cambio de muebles» en el nuevo, entraba la línea de desplazamiento <strong>con los km del cliente de antes</strong>. Y si un cálculo (km, mapa, fotos) llega tarde, ya no se pinta en la ficha equivocada.</div></div>
@@ -1107,6 +1107,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Al abrir un borrador sale un <strong>cartel naranja</strong>: quién cogió la llamada, las cuentas, <strong>qué falta por preguntar</strong> (fecha, dirección, ascensor…), qué hay que revisar y qué <strong>no se apuntó</strong> por no sonar en la llamada. En cuanto cambiéis algo y se guarde, deja de ser borrador y queda <strong>revisado por vosotros</strong>. Solo abrirla no cuenta.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>El <strong>nombre</strong> solo se escribe si el cliente se presentó con sus palabras («soy Raquel», «me llamo…», o contestando a «¿su nombre?»). «De parte de Fulano» no es el cliente: la ficha nace sin nombre y lo dice.</div></div>
       <div class='ayuda-tip'>🛑 El precio que pone Óscar es una propuesta con el catálogo: <strong>lo decides tú</strong>. Enviar al cliente sigue siendo cosa vuestra. Nada se manda solo.</div>
+      <div class='ayuda-tip'>🗂️ <strong>La «x» de la lista ya no borra</strong> (app v568): quita la ficha de la lista y la deja <strong>archivada</strong> en la nube, recuperable desde el panel de oficina o pidiéndoselo a Azkarin. Sin cobertura no la quita, para no perderla.</div>
       <div class='ayuda-tip'>🔢 <strong>El número de cliente no baila</strong> (app v566): al darle a «+ NUEVO» la ficha se apunta en la nube al instante, vacía y con quién la abrió. Así, si Antonio empieza una ficha desde un WhatsApp mientras Asier habla por teléfono con otro cliente, cada uno tiene su número y nadie (ni el vigía, ni Azkarin, ni otro «+ NUEVO») puede coger el mismo, aunque se tarde en escribir.</div>
       <div class='ayuda-tip'>Las fichas <strong>archivadas</strong> (fusionadas con otra, o de un número nuestro) ya <strong>no salen</strong> en la lista. No están borradas: siguen en la nube y se recuperan desde el panel de oficina o pidiéndoselo a Azkarin.</div>
 
@@ -4671,7 +4672,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v567';
+var APP_VERSION = 'v568';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8284,13 +8285,21 @@ async function newPresupuesto() {
 }
 
 async function delPresupuesto(id) {
-  if (!confirm('¿Eliminar este presupuesto?')) return;
-  await deletePresupuesto(id);
+  if (!confirm('¿Quitar este presupuesto de la lista? No se borra: queda archivado y se puede recuperar desde el panel de oficina o pidiéndoselo a Azkarin.')) return;
+  // v568 · NUNCA SE BORRA NADA (regla de la casa): la «x» de la lista ARCHIVA en la nube
+  // (recuperable) y solo quita la copia de este móvil. Antes hacía deleteDoc de verdad.
+  let archivadaEnNube = false;
   if (firebaseConfigured && window._fb) {
     try {
-      await window._fb.deleteDoc(window._fb.doc(window._fb.db, 'presupuestos', id));
-    } catch(e) {}
+      await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', id), {
+        _archivada: true, _archivadaTs: Date.now(), _archivadaPor: (typeof _comercialActual === 'function' && _comercialActual()) || 'app',
+        _archivadaDesde: 'lista de la app', timestamp: Date.now()
+      }, { merge: true });
+      archivadaEnNube = true;
+    } catch(e) { console.warn('[Azkar v568] no pude archivar en la nube:', e && e.message); }
   }
+  if (!archivadaEnNube && firebaseConfigured) { alert('No he podido archivarlo en la nube (sin conexión). No lo quito para no perderlo: inténtalo cuando tengas cobertura.'); return; }
+  await deletePresupuesto(id);
   // v124: Limpiar referencia si el presupuesto eliminado era el último abierto
   try {
     if (localStorage.getItem('azkar_backup_ref') === id) {

@@ -71,7 +71,7 @@ const SW = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
 const VJ = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8'));
 c('D2 · la app va por v565 o más', Number(V) >= 566, 'v' + V);
 c('D3 · y sw.js y version.json dicen lo mismo', SW.indexOf("azkar-pwa-v" + V) >= 0 && VJ.version === 'v' + V);
-c('D4 · la Ayuda lo cuenta', /BORRADOR DE AZKARIN|📝 BORRADOR/.test(H) && /app v566/.test(H));
+c('D4 · la Ayuda lo cuenta', /BORRADOR DE AZKARIN|📝 BORRADOR/.test(H) && /app v56[6-9]|app v5[7-9]\d/.test(H));
 
 console.log('\n──────────────────────────────────────────────');
 console.log('  ' + bien + ' bien · ' + mal + ' mal');
