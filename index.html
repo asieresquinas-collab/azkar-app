@@ -1092,7 +1092,15 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v563 · backend 2.7.575), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v564 · backend 2.7.586), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📞 EL TELÉFONO SE PONE SOLO EN LA FICHA QUE ABRES DURANTE LA LLAMADA (backend 2.7.586):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Tú haces lo de siempre: coges la llamada, abres una ficha nueva y escribes el <strong>nombre</strong> del cliente. <strong>El teléfono no hace falta ponerlo.</strong></div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Al rato (el vigía pasa cada 10 minutos) la llamada se transcribe, y si el nombre que escribiste <strong>suena en esa llamada</strong>, el número de quien llamó se pone <strong>solo</strong> en tu ficha y el contacto («6617 Raquel») entra en tu agenda del móvil. En las observaciones queda dicho de qué llamada salió.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Si había <strong>dos llamadas a la vez</strong>, se transcriben las dos y cada teléfono va a su ficha por el nombre. Si el nombre suena en las dos, <strong>no elige ninguna</strong>: mejor quedarse corto que confundir clientes.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Si el vigía ya había abierto una ficha sola (solo con el teléfono) porque tú aún no habías abierto la tuya, cuando la abras con el nombre <strong>se juntan solas</strong>: la tuya se queda con el teléfono y la del vigía queda archivada, no borrada.</div></div>
+      <div class='ayuda-tip'>🛑 Nunca pisa un teléfono que ya esté puesto, ni escribe el nombre que oye en la llamada como nombre del cliente (ese va como nota marcada). Si alguna vez casa mal, el teléfono se cambia como cualquier otro campo.</div>
+      <div class='ayuda-tip'>🛑 Azkarin ya no trae «la llamada» de un número nuestro (el móvil del desvío): por ahí pasan las llamadas de muchos clientes, así que te pedirá el número del cliente o la hora.</div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📇 GUARDAR AL CLIENTE EN LA AGENDA DEL MÓVIL (app v562):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al lado del botón verde de WhatsApp hay uno <strong>azul con una fichita</strong>. Le das y se abre la agenda del móvil con el contacto <strong>ya escrito</strong>: nombre <strong>«6655 Ariane»</strong> (el número de la ficha delante, como lo pones tú) y su teléfono. Solo tienes que darle a guardar.</div></div>
@@ -4504,7 +4512,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v563';
+var APP_VERSION = 'v564';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
