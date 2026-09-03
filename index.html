@@ -1092,7 +1092,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v570 · backend 2.7.595), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v571 · backend 2.7.596), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🎧 AZKARIN YA NO PUEDE CONFUNDIR A UN CLIENTE CON OTRO (backend 2.7.594):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando le pides una grabación, el <strong>nombre del audio lo pone el código</strong>, no él: sale de la <strong>ficha cuyo teléfono es el de esa llamada</strong>. Si ese número <strong>no está en ninguna ficha</strong> (o está en dos con nombres distintos), el audio va <strong>con el número y la hora, sin nombre</strong>. Nunca se pone un nombre a ojo.</div></div>
@@ -1105,6 +1105,13 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Las fichas que quitas con la <strong>«x»</strong> de la lista (quedan archivadas) <strong>ya no bloquean</strong> a ese teléfono: si vuelve a llamar, se le abre ficha. Antes decía «ya tiene ficha» y no abría ninguna.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Si se oye un nombre que ya tienen otras fichas pero <strong>todas con otro teléfono</strong>, es otra persona: ficha nueva, con la nota de los tocayos. Solo si hay una tocaya <strong>sin</strong> teléfono se queda en «llamadas por revisar», para no adivinar.</div></div>
       <div class='ayuda-tip'>Con la ficha abierta y completa, una llamada más del cliente <strong>no toca nada</strong>: el borrador solo rellena huecos.</div>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📅 LA FECHA DEL PRESUPUESTO YA NO SE MUEVE (app v571):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Fichas de ayer con el presupuesto <strong>ya mandado</strong> salían con fecha de <strong>hoy</strong>: la app ponía la fecha de hoy cada vez que se recalculaba algo (abrir la ficha, tocar una línea, marcar EN MARCHA). Ahora la fecha se pone <strong>solo al crear</strong> la ficha y <strong>no se toca más</strong>. Si quieres cambiarla, la cambias tú a mano.</div></div>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📞 EL REPASO DE LAS LLAMADAS DE HOY DICE LO QUE HACE (backend 2.7.596):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En el panel de oficina, «¿están fichados los que han llamado hoy?» te cuenta cada persona en <strong>cuatro cosas</strong>: ficha, nombre, agenda y <strong>lo de la llamada apuntado en la ficha</strong>. Antes de tocar nada te dice <strong>exactamente</strong> qué va a hacer (ya no «abro ficha a los que no la tienen» cuando no hay ninguno) y qué <strong>no puede</strong> hacer y por qué (una ficha sin nombre se queda sin nombre: en la llamada no se oyó, lo pones tú).</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Al darle que sí: abre ficha a quien no la tiene, guarda los contactos que faltan y <strong>apunta lo de la llamada</strong> en las fichas que no lo tienen (muebles, direcciones, fecha y nota; solo en huecos, sin pisar nada). Después <strong>relee</strong> y te enseña cómo queda <strong>cada uno</strong>: ✅ los que están, 🛑 los que aún les falta algo y qué.</div></div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🧹 LOS CLIENTES NO SE CRUZAN (app v567):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al abrir OTRO cliente desde MIS PRESUPUESTOS se suelta <strong>todo</strong> lo del anterior: los kilómetros medidos, el mapa, el recorrido, los avisos de ZBE, las fotos, la oferta del autónomo y las listas de distancia y operarios. Antes, al encender «cambio de muebles» en el nuevo, entraba la línea de desplazamiento <strong>con los km del cliente de antes</strong>. Y si un cálculo (km, mapa, fotos) llega tarde, ya no se pinta en la ficha equivocada.</div></div>
@@ -2475,11 +2482,21 @@ window._currentPresupuestoRef = null; // v128: ref del presupuesto abierto en pa
 window._lastSavedTimestamp = 0; // v128: timestamp de nuestro último guardado/carga (para detectar cambios remotos)
 window._initialLoadDone = false; // v130: bloquear auto-save hasta que se cargue el último presupuesto de Firebase
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  v571 · 3-sep-2026 · LA FECHA DEL PRESUPUESTO NO SE MUEVE.
+//  Asier, con la lista delante: fichas de AYER (6617, 6626), con el presupuesto ya
+//  MANDADO, aparecían con fecha de HOY. Causa, en el código: desde la v109 esta función
+//  ponía la fecha de hoy cada vez que se recalculaba algo (CA/CT saltan al abrir la
+//  ficha, al tocar una línea, al marcar EN MARCHA…). Así que la fecha del presupuesto
+//  —la que va impresa en el PDF que el cliente ya tiene— cambiaba sola. Ahora la fecha
+//  solo se pone si la ficha NO tiene ninguna (ficha nueva); la que tiene, no se toca.
+// ══════════════════════════════════════════════════════════════════════════════
 function updateFechaModificacion(){
   if(window._presupuestoLoading) return; // No actualizar mientras se carga un presupuesto
   var fd = document.getElementById('f_fecha');
   var ref = document.getElementById('f_ref');
   if(!fd || !ref || !ref.value) return; // Sin presupuesto activo, no hacer nada
+  if(String(fd.value||'').trim()) return;   // 🛑 ya tiene fecha: NO se toca
   fd.value = new Date().toISOString().slice(0,10);
 }
 
@@ -4684,7 +4701,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v570';
+var APP_VERSION = 'v571';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
