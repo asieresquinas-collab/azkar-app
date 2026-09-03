@@ -1092,7 +1092,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v572 · backend 2.7.597), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v573 · backend 2.7.599), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🎧 AZKARIN YA NO PUEDE CONFUNDIR A UN CLIENTE CON OTRO (backend 2.7.594):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando le pides una grabación, el <strong>nombre del audio lo pone el código</strong>, no él: sale de la <strong>ficha cuyo teléfono es el de esa llamada</strong>. Si ese número <strong>no está en ninguna ficha</strong> (o está en dos con nombres distintos), el audio va <strong>con el número y la hora, sin nombre</strong>. Nunca se pone un nombre a ojo.</div></div>
@@ -1100,8 +1100,8 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Si le «corriges» un nombre, <strong>no se lo cree sin mirarlo</strong>: comprueba el teléfono contra las fichas y te contesta con lo que dicen ellas. Y una nota de memoria que le ponga nombre a un teléfono (también un contacto nuevo) <strong>no se guarda si no cuadra</strong> — se acabó el «guardado en la memoria» de algo que nadie ha comprobado.</div></div>
       <div class='ayuda-tip'>🛑 Esto salió del 3 de septiembre: pediste «la llamada de la del Casco Viejo» y llegó rotulada con el nombre de otra clienta. Ahora el nombre solo puede salir de una ficha.</div>
 
-      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>↩️ EL CLIENTE QUE VUELVE: ¿OTRO TRABAJO O EL MISMO SERVICIO? (backend 2.7.597):</p>
-      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Si llama alguien cuya mudanza ya está <strong>hecha y pagada</strong> (o con el servicio pasado hace más de un mes), se <strong>lee la llamada</strong> antes de abrir nada. Si pide <strong>otro trabajo que se cobra</strong> (otra mudanza, otro traslado, precio), se le abre <strong>ficha nueva</strong> con <strong>los dos números</strong>: la nueva dice «CLIENTE QUE VUELVE: ficha de antes 6120» y la vieja «ficha NUEVA 6629». Un <strong>guardamuebles</strong> vivo o una mudanza contratada para dentro de meses siguen siendo su ficha de siempre.</div></div>
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>↩️ EL CLIENTE QUE VUELVE: ¿OTRO SERVICIO O EL MISMO? (backend 2.7.599):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Si llama alguien cuya mudanza ya está <strong>hecha y pagada</strong> (o con el servicio pasado hace más de un mes), se <strong>lee la llamada</strong> antes de abrir nada. Si pide <strong>otro servicio que se cobra</strong> (otra mudanza, otro traslado, precio), se <strong>duplica su presupuesto</strong> como hace el botón «⧉ Duplicar»: el 6626 pasa a tener un <strong>6626-B</strong>, mismo cliente y misma carpeta, nuevo en todo lo demás (sin muebles, sin fechas, sin firmar, sin EN MARCHA). <strong>No se gasta otro número de cliente</strong>; la 6626 solo recibe una nota de que hay un 6626-B. Un <strong>guardamuebles</strong> vivo o una mudanza contratada para dentro de meses siguen siendo su ficha de siempre.</div></div>
       <div class='ayuda-step'><div class='step-num'>1b</div><div class='step-text'>Si llama por algo del servicio ya hecho que <strong>no se cobra</strong> (lo que quedó pendiente, «me dijisteis que lo haríais», un arreglo, algo que se rompió), <strong>NO se abre ficha</strong>: se apunta en su ficha de siempre «VOLVIÓ A LLAMAR POR EL MISMO SERVICIO (no se cobra)» con lo que dijo, y el aviso te lo dice. Si la llamada no lo deja claro, tampoco se abre: se apunta y lo decides tú.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Las fichas que quitas con la <strong>«x»</strong> de la lista (quedan archivadas) <strong>ya no bloquean</strong> a ese teléfono: si vuelve a llamar, se le abre ficha. Antes decía «ya tiene ficha» y no abría ninguna.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Si se oye un nombre que ya tienen otras fichas pero <strong>todas con otro teléfono</strong>, es otra persona: ficha nueva, con la nota de los tocayos. Solo si hay una tocaya <strong>sin</strong> teléfono se queda en «llamadas por revisar», para no adivinar.</div></div>
@@ -4702,7 +4702,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v572';
+var APP_VERSION = 'v573';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
