@@ -230,7 +230,8 @@ async function conTicks(e, veces){ for(let i=0;i<(veces||6);i++) await Promise.r
     // por donde la mete el widget. Eso es lo que se hace aqui: se ejecuta el _accionDe DE
     // VERDAD del backend, se coge su enlace tal cual, y se le da al bloque ?ficha= de la app.
     console.log('\n══ Del servidor al dedo: la MISMA url, sin escribir nada a mano ══');
-    const BACK = process.env.AZKAR_BACKEND || path.resolve(__dirname, '..', '..', 'azkar-presupuestos');
+    // el backend puede estar clonado como azkar-presupuestos o como azkar-backend-temp (las sesiones de Claude)
+    const BACK = process.env.AZKAR_BACKEND || ['azkar-presupuestos', 'azkar-backend-temp'].map(d => path.join(path.resolve(__dirname, '..', '..'), d)).find(d => fs.existsSync(path.join(d, 'api/repaso-lunes.js'))) || path.join(path.resolve(__dirname, '..', '..'), 'azkar-presupuestos');
     const P_RL = path.join(BACK, 'api', 'repaso-lunes.js');
     if (!fs.existsSync(P_RL)) {
       mal++;

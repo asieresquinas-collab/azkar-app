@@ -1,0 +1,7 @@
+{
+  "name": "azkar-app-tests",
+  "private": true,
+  "description": "Bancos de pruebas de la app de Azkar (node tests/<banco>.test.js). Solo hace falta jsdom para el banco del botón de Óscar.",
+  "scripts": { "test": "for t in tests/*.test.js; do node \"$t\" || exit 1; done" },
+  "devDependencies": { "jsdom": "^24.0.0" }
+}

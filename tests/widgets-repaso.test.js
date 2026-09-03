@@ -21,17 +21,28 @@ const path = require('path');
 
 // La versión que se está publicando AHORA y la anterior (para comparar la firma).
 // Subir estos cuatro valores es lo único que hay que tocar aquí al sacar una APK nueva.
-const VC = 20;                              // versionCode
-const VN = '1.19';                          // versionName
-const APK = 'azkar-widgets-v119.apk';       // la que se publica
-const APK_ANT = 'azkar-widgets-v115.apk';   // la anterior: la firma tiene que ser LA MISMA
+// 3-sep-2026: la versión ya no se clava aquí (el banco se quedó en la 1.19 mientras la
+// APK iba por la 1.30 y llevaba semanas en rojo sin que nada estuviera mal). Se lee del
+// manifest, que es lo que se compila; el resto de guardas comprueban que TODO cuadre.
+const _manifestPre = fs.readFileSync(path.resolve(__dirname, '..', 'android-widgets/app/src/main/AndroidManifest.xml'), 'utf8');
+const VC = Number((_manifestPre.match(/android:versionCode="(\d+)"/) || [])[1]);   // versionCode
+const VN = (_manifestPre.match(/android:versionName="([^"]+)"/) || [])[1];         // versionName
+const APK = 'azkar-widgets-v' + VN.replace('.', '') + '.apk';       // la que se publica
+// la anterior publicada: la firma tiene que ser LA MISMA
+const APK_ANT = (function () {
+  const dir = path.resolve(__dirname, '..', 'apk');
+  const vs = fs.readdirSync(dir).map(f => /^azkar-widgets-v(\d+)\.apk$/.exec(f)).filter(Boolean).map(m => Number(m[1]))
+    .filter(n => n !== Number(VN.replace('.', ''))).sort((a, b) => b - a);
+  return vs.length ? 'azkar-widgets-v' + vs[0] + '.apk' : APK;
+})();
 
 // Las rutas salen de DÓNDE ESTÁ este fichero, no de una ruta clavada: así vale en
 // cualquier ordenador y no se rompe al mover la carpeta.
 const APP = path.resolve(__dirname, '..');
 // El backend es otro repo; normalmente está al lado. Si no está, esas guardas se saltan
 // diciéndolo — nunca se dan por buenas en silencio.
-const BACK = process.env.AZKAR_BACKEND || path.resolve(APP, '..', 'azkar-presupuestos');
+// el backend puede estar clonado como azkar-presupuestos o como azkar-backend-temp (las sesiones de Claude)
+const BACK = process.env.AZKAR_BACKEND || ['azkar-presupuestos', 'azkar-backend-temp'].map(d => path.join(path.resolve(APP, '..'), d)).find(d => fs.existsSync(path.join(d, 'api/repaso-lunes.js'))) || path.join(path.resolve(APP, '..'), 'azkar-presupuestos');
 const hayBack = fs.existsSync(path.join(BACK, 'api/repaso-lunes.js'));
 const AW = path.join(APP, 'android-widgets');
 const SRC = path.join(AW, 'app/src/main');

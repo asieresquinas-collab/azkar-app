@@ -1092,13 +1092,19 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v569 · backend 2.7.594), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v570 · backend 2.7.595), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🎧 AZKARIN YA NO PUEDE CONFUNDIR A UN CLIENTE CON OTRO (backend 2.7.594):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando le pides una grabación, el <strong>nombre del audio lo pone el código</strong>, no él: sale de la <strong>ficha cuyo teléfono es el de esa llamada</strong>. Si ese número <strong>no está en ninguna ficha</strong> (o está en dos con nombres distintos), el audio va <strong>con el número y la hora, sin nombre</strong>. Nunca se pone un nombre a ojo.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Si le pides «<strong>ponme la llamada de Fulano</strong>», el teléfono lo saca de la ficha de Fulano. Si hay <strong>dos clientes que se llaman igual</strong>, te dice cuáles son y <strong>te pregunta</strong>: no elige por su cuenta. Y si no hay ninguna ficha con ese nombre, te lo dice en vez de sacarse un número de la manga.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Si le «corriges» un nombre, <strong>no se lo cree sin mirarlo</strong>: comprueba el teléfono contra las fichas y te contesta con lo que dicen ellas. Y una nota de memoria que le ponga nombre a un teléfono (también un contacto nuevo) <strong>no se guarda si no cuadra</strong> — se acabó el «guardado en la memoria» de algo que nadie ha comprobado.</div></div>
       <div class='ayuda-tip'>🛑 Esto salió del 3 de septiembre: pediste «la llamada de la del Casco Viejo» y llegó rotulada con el nombre de otra clienta. Ahora el nombre solo puede salir de una ficha.</div>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>↩️ EL CLIENTE QUE VUELVE TIENE FICHA NUEVA (backend 2.7.595):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Si llama alguien cuya mudanza ya está <strong>hecha y pagada</strong> (o con el servicio pasado hace más de un mes), ya no es «ya tiene ficha»: se le abre <strong>ficha nueva</strong> para el trabajo nuevo, con su nombre (el de su ficha de antes), la nota «↩️ CLIENTE QUE VUELVE: ya nos hizo la ficha NNNN» y su borrador. Un <strong>guardamuebles</strong> vivo o una mudanza contratada para dentro de meses siguen siendo su ficha de siempre.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Las fichas que quitas con la <strong>«x»</strong> de la lista (quedan archivadas) <strong>ya no bloquean</strong> a ese teléfono: si vuelve a llamar, se le abre ficha. Antes decía «ya tiene ficha» y no abría ninguna.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Si se oye un nombre que ya tienen otras fichas pero <strong>todas con otro teléfono</strong>, es otra persona: ficha nueva, con la nota de los tocayos. Solo si hay una tocaya <strong>sin</strong> teléfono se queda en «llamadas por revisar», para no adivinar.</div></div>
+      <div class='ayuda-tip'>Con la ficha abierta y completa, una llamada más del cliente <strong>no toca nada</strong>: el borrador solo rellena huecos.</div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🧹 LOS CLIENTES NO SE CRUZAN (app v567):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al abrir OTRO cliente desde MIS PRESUPUESTOS se suelta <strong>todo</strong> lo del anterior: los kilómetros medidos, el mapa, el recorrido, los avisos de ZBE, las fotos, la oferta del autónomo y las listas de distancia y operarios. Antes, al encender «cambio de muebles» en el nuevo, entraba la línea de desplazamiento <strong>con los km del cliente de antes</strong>. Y si un cálculo (km, mapa, fotos) llega tarde, ya no se pinta en la ficha equivocada.</div></div>
@@ -4678,7 +4684,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v569';
+var APP_VERSION = 'v570';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
