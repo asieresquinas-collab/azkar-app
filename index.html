@@ -1092,13 +1092,18 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v573 · backend 2.7.599), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v574 · backend 2.7.602), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🎧 AZKARIN YA NO PUEDE CONFUNDIR A UN CLIENTE CON OTRO (backend 2.7.594):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando le pides una grabación, el <strong>nombre del audio lo pone el código</strong>, no él: sale de la <strong>ficha cuyo teléfono es el de esa llamada</strong>. Si ese número <strong>no está en ninguna ficha</strong> (o está en dos con nombres distintos), el audio va <strong>con el número y la hora, sin nombre</strong>. Nunca se pone un nombre a ojo.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Si le pides «<strong>ponme la llamada de Fulano</strong>», el teléfono lo saca de la ficha de Fulano. Si hay <strong>dos clientes que se llaman igual</strong>, te dice cuáles son y <strong>te pregunta</strong>: no elige por su cuenta. Y si no hay ninguna ficha con ese nombre, te lo dice en vez de sacarse un número de la manga.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Si le «corriges» un nombre, <strong>no se lo cree sin mirarlo</strong>: comprueba el teléfono contra las fichas y te contesta con lo que dicen ellas. Y una nota de memoria que le ponga nombre a un teléfono (también un contacto nuevo) <strong>no se guarda si no cuadra</strong> — se acabó el «guardado en la memoria» de algo que nadie ha comprobado.</div></div>
       <div class='ayuda-tip'>🛑 Esto salió del 3 de septiembre: pediste «la llamada de la del Casco Viejo» y llegó rotulada con el nombre de otra clienta. Ahora el nombre solo puede salir de una ficha.</div>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📱 SI SALES DE LA APLICACIÓN MIENTRAS ESPERAS, YA NO SE PIERDE LA RESPUESTA (app v574):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Le preguntas algo a Azkarin y te vas a WhatsApp o a otra app mientras esperas: el móvil <strong>congela</strong> la página y antes la respuesta se perdía, aunque el servidor hubiera terminado el trabajo. Ahora el servidor <strong>guarda la respuesta media hora</strong> y la app la <strong>recoge sola</strong> en cuanto vuelves — sale con una nota pequeña de que se quedó a medias. No se repite el trabajo ni se vuelve a preguntar nada.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Vale también si Android <strong>cierra la aplicación</strong> del todo: al abrirla otra vez, si quedaba algo a medias de la última media hora, lo recoge. Y si el trabajo era largo de verdad, sigue llegándote además la <strong>notificación</strong> de siempre.</div></div>
+      <div class='ayuda-tip'>Lo único que no se puede repintar así es un <strong>PDF pesado</strong> (el permiso, una factura): en ese caso te lo dice y se lo vuelves a pedir.</div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>↩️ EL CLIENTE QUE VUELVE: ¿OTRO SERVICIO O EL MISMO? (backend 2.7.599):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Si llama alguien cuya mudanza ya está <strong>hecha y pagada</strong> (o con el servicio pasado hace más de un mes), se <strong>lee la llamada</strong> antes de abrir nada. Si pide <strong>otro servicio que se cobra</strong> (otra mudanza, otro traslado, precio), se <strong>duplica su presupuesto</strong> como hace el botón «⧉ Duplicar»: el 6626 pasa a tener un <strong>6626-B</strong>, mismo cliente y misma carpeta, nuevo en todo lo demás (sin muebles, sin fechas, sin firmar, sin EN MARCHA). <strong>No se gasta otro número de cliente</strong>; la 6626 solo recibe una nota de que hay un 6626-B. Un <strong>guardamuebles</strong> vivo o una mudanza contratada para dentro de meses siguen siendo su ficha de siempre.</div></div>
@@ -4702,7 +4707,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v573';
+var APP_VERSION = 'v574';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17334,6 +17339,7 @@ async function doResetWithCode() {
       startProgPoll(_turnoId);
       var _ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
       var _tAbort = _ctrl ? setTimeout(function() { try { _ctrl.abort(); } catch(e) {} }, 240000) : null;
+      _marcarTurnoPendiente(_turnoId, msgEnviar);   // v574 · por si el móvil congela la página
       var resp = await fetch(RAILWAY_API + '/api/chatbot/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (_authToken || '') },
@@ -17358,6 +17364,7 @@ async function doResetWithCode() {
       });
       if (_tAbort) clearTimeout(_tAbort);
       var data = await resp.json();
+      _turnoResuelto(_turnoId);   // v574
       removeTyping();
       if (data.error) {
         addMsg('bot', '❌ Error: ' + data.error);
@@ -17678,6 +17685,13 @@ async function doResetWithCode() {
         chatHistorial.push({ role: 'assistant', content: data.mensaje });
       }
     } catch (err) {
+      // 🛑 v574 · Antes de dar nada por perdido: ¿está la respuesta en el buzón del turno?
+      //   (saliste a otra app, el móvil congeló la página y la petición se cortó, pero el
+      //    servidor terminó y la dejó guardada). No se reenvía nada: solo se recoge.
+      try {
+        var _resc = await _esperarBuzon(_turnoId, (err && err.name === 'AbortError') ? 20000 : 90000);
+        if (_resc) { _turnoResuelto(_turnoId); removeTyping(); _pintarDelBuzon(_resc); sendBtn.disabled = false; return; }
+      } catch (eResc) { /* si el rescate falla, se sigue por el camino de siempre */ }
       removeTyping();
       if (err && err.name === 'AbortError') {
         addMsg('bot', '⏱️ He cortado la espera: el servidor llevaba más de 4 minutos sin responder. Si estaba con un trabajo largo, al terminar te llega el resultado por notificación (v2.7.261) y lo ya hecho no se pierde. Si no te llega nada en unos minutos, reenvía el mensaje.');
@@ -17706,6 +17720,7 @@ async function doResetWithCode() {
       var _turnoIdC = nuevoTurnoId();
       var _ubicNowC = await _pillaUbicacion(2500); // v391
       startProgPoll(_turnoIdC);
+      _marcarTurnoPendiente(_turnoIdC, '(confirmación)');   // v574
       var _ctrlC = (typeof AbortController !== 'undefined') ? new AbortController() : null;
       var _tAbortC = _ctrlC ? setTimeout(function() { try { _ctrlC.abort(); } catch(e) {} }, 150000) : null;
       var resp = await fetch(RAILWAY_API + '/api/chatbot/message', {
@@ -17722,6 +17737,7 @@ async function doResetWithCode() {
       });
       if (_tAbortC) clearTimeout(_tAbortC);
       var data = await resp.json();
+      _turnoResuelto(_turnoIdC);   // v574
       removeTyping();
       if (data.error) {
         addMsg('bot', '❌ Error: ' + data.error);
@@ -17754,6 +17770,10 @@ async function doResetWithCode() {
         }
       }
     } catch (err) {
+      try {   // v574 · el mismo rescate para lo que se confirma con el botón
+        var _rescC = await _esperarBuzon(_turnoIdC, (err && err.name === 'AbortError') ? 20000 : 90000);
+        if (_rescC) { _turnoResuelto(_turnoIdC); removeTyping(); _pintarDelBuzon(_rescC); return; }
+      } catch (eRC) {}
       removeTyping();
       addMsg('bot', '❌ Error: ' + (err.message || 'error desconocido'));
     }
@@ -18361,6 +18381,77 @@ async function doResetWithCode() {
     }, 1800);
   }
   function stopProgPoll() { if (_progPollInt) { clearInterval(_progPollInt); _progPollInt = null; } window._progRealActivo = false; }
+  // ══════════════════════════════════════════════════════════════════════════
+  //  🛑 v574 · «CAMBIO DE APLICACIÓN Y SE PARA» (Asier, 3-sep-2026, de noche)
+  //  El móvil CONGELA la página en cuanto te vas a otra app: la petición se corta y la
+  //  respuesta se perdía, aunque el servidor hubiera terminado su trabajo. Desde el
+  //  2.7.602 el servidor GUARDA la respuesta de cada turno media hora. Aquí:
+  //   · se apunta el turno pendiente (también en el móvil, por si Android mata la app),
+  //   · si la petición se corta, se le pide al servidor la respuesta de ESE turno,
+  //   · y al volver a la app se recoge sola y se pinta.
+  //  Nada de reenviar la pregunta: el trabajo ya está hecho, solo se recoge.
+  // ══════════════════════════════════════════════════════════════════════════
+  var _TURNO_PEND_K = 'azkar_turno_pendiente';
+  function _marcarTurnoPendiente(id, texto) {
+    window._turnoPendiente = { id: id, ts: Date.now() };
+    try { localStorage.setItem(_TURNO_PEND_K, JSON.stringify({ id: id, ts: Date.now(), pregunta: String(texto || '').slice(0, 120) })); } catch (e) {}
+  }
+  function _turnoResuelto(id) {
+    if (window._turnoPendiente && (!id || window._turnoPendiente.id === id)) window._turnoPendiente = null;
+    try { localStorage.removeItem(_TURNO_PEND_K); } catch (e) {}
+  }
+  async function _buzonDelTurno(turnoId) {
+    try {
+      var r = await fetch(RAILWAY_API + '/api/chatbot/progress/' + turnoId + '?t=' + Date.now(),
+        { headers: { 'x-api-key': window._apiKey || '', 'Authorization': 'Bearer ' + (_authToken || '') } });
+      if (!r.ok) return null;
+      var d = await r.json();
+      return (d && d.listo && d.respuesta) ? d : null;
+    } catch (e) { return null; }
+  }
+  async function _esperarBuzon(turnoId, msTope) {
+    var t0 = Date.now();
+    while (Date.now() - t0 < (msTope || 240000)) {
+      var d = await _buzonDelTurno(turnoId);
+      if (d) return d;
+      await new Promise(function (ok) { setTimeout(ok, 2500); });
+    }
+    return null;
+  }
+  // Pinta una respuesta recogida del buzón. Devuelve true si había algo que pintar.
+  function _pintarDelBuzon(d) {
+    if (!d || !d.respuesta) return false;
+    var r = d.respuesta;
+    var txt = r.mensaje || r.respuesta || '';
+    if (txt) {
+      addMsg('bot', txt + '<div style="margin-top:6px;font-size:11px;color:#888">↩️ Se quedó a medias porque saliste de la aplicación; lo he recogido del servidor'
+        + (d.hace_segundos > 90 ? (' — terminó hace ' + Math.round(d.hace_segundos / 60) + ' min') : '') + '.</div>');
+      chatHistorial.push({ role: 'assistant', content: txt });
+    } else {
+      addMsg('bot', '↩️ El trabajo terminó mientras estabas fuera de la aplicación, pero la respuesta no se puede repintar aquí. Pregúntamelo otra vez.');
+    }
+    if (d.aviso) addMsg('bot', 'ℹ️ ' + d.aviso);
+    return true;
+  }
+  // Al VOLVER a la app (o al abrirla), ¿había un turno a medias? Se recoge solo.
+  async function _recogerTurnoPendiente() {
+    try {
+      if (window._recogiendoTurno) return;
+      var g = null;
+      try { g = JSON.parse(localStorage.getItem(_TURNO_PEND_K) || 'null'); } catch (e) { g = null; }
+      var pend = window._turnoPendiente || g;
+      if (!pend || !pend.id) return;
+      if (Date.now() - (pend.ts || 0) > 30 * 60 * 1000) { _turnoResuelto(pend.id); return; }   // el buzón dura media hora
+      window._recogiendoTurno = true;
+      var d = await _buzonDelTurno(pend.id);
+      if (d) { _turnoResuelto(pend.id); try { removeTyping(); } catch (e) {} _pintarDelBuzon(d); }
+      window._recogiendoTurno = false;
+    } catch (e) { window._recogiendoTurno = false; }
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) _recogerTurnoPendiente(); });
+  window.addEventListener('focus', function () { _recogerTurnoPendiente(); });
+  setTimeout(_recogerTurnoPendiente, 2500);   // y al abrir la app, por si Android la mató
+  window._recogerTurnoPendiente = _recogerTurnoPendiente;
   function nuevoTurnoId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
   function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
