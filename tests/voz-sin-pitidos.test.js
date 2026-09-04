@@ -19,7 +19,7 @@ let bien = 0, mal = 0;
 const c = (n, x, d) => { if (x) { bien++; console.log('  ✅ ' + n); } else { mal++; console.log('  ❌ ' + n + (d ? '  →  ' + d : '')); } };
 function trozo(desde, hasta) { const i = H.indexOf(desde); const j = H.indexOf(hasta, i); return (i < 0 || j < 0) ? null : H.slice(i, j); }
 
-const SRC = trozo('  var _MP_PAUSA_MS = 900;', '  window._convEscuchar = function() {');
+const SRC = trozo('  var _MP_PAUSA_MS = 1400;', '  window._convEscuchar = function() {');
 console.log('\n══ A · EL MOTOR ESTÁ Y SE PUEDE EJECUTAR ══');
 c('A0 · el código del micro propio está donde toca', !!SRC);
 
@@ -89,7 +89,7 @@ if (SRC) {
   c('C1 · con la sala en silencio no manda nada', m.enviados.length === 0);
   mete(m.api, 0.25, 1200);          // habla
   c('C2 · mientras habla, tampoco (todavía no ha terminado)', m.enviados.length === 0);
-  mete(m.api, 0.002, 1300);         // se calla
+  mete(m.api, 0.002, 1800);         // se calla
   c('C3 · en cuanto calla de verdad, manda el trozo UNA vez', m.enviados.length === 1, String(m.enviados.length));
   if (m.enviados.length) {
     const cuerpo = m.enviados[0].cuerpo;
@@ -97,16 +97,20 @@ if (SRC) {
     const bytes = Buffer.from(cuerpo.audio, 'base64').length;
     const seg = (bytes - 44) / 2 / 16000;
     c('C5 · lleva la frase entera y algo de antes (no se come el arranque)', seg > 1.3 && seg < 4, seg.toFixed(2) + ' s');
+    c('C5b · v584 · y va con los SEGUNDOS de voz que había (el servidor descarta lo imposible)', typeof cuerpo.segundos === 'number' && cuerpo.segundos > 0.8 && cuerpo.segundos < 2, String(cuerpo.segundos));
   }
   const mC6 = m;   // la respuesta del servidor llega después: se mira más abajo
 
   m = monta();
-  mete(m.api, 0.002, 500); mete(m.api, 0.25, 150); mete(m.api, 0.002, 1500);
-  c('C7 · una tos o un golpe no manda nada', m.enviados.length === 0);
+  mete(m.api, 0.002, 500); mete(m.api, 0.25, 300); mete(m.api, 0.002, 1900);
+  c('C7 · una tos o un golpe (menos de medio segundo) no manda nada', m.enviados.length === 0);
+  m = monta();
+  mete(m.api, 0.002, 800); mete(m.api, 0.025, 2000); mete(m.api, 0.002, 1900);   // la tele de fondo, flojita
+  c('C7b · v584 · un ruido flojo y largo (la tele de fondo) tampoco', m.enviados.length === 0, String(m.enviados.length));
 
   m = monta();
-  mete(m.api, 0.002, 400); mete(m.api, 0.25, 900); mete(m.api, 0.002, 600); mete(m.api, 0.25, 900); mete(m.api, 0.002, 1400);
-  c('C8 · una pausa corta a mitad de frase NO la parte en dos', m.enviados.length === 1, String(m.enviados.length));
+  mete(m.api, 0.002, 400); mete(m.api, 0.25, 900); mete(m.api, 0.002, 1100); mete(m.api, 0.25, 900); mete(m.api, 0.002, 1900);
+  c('C8 · una pausa de más de un segundo a mitad de frase NO la parte en dos', m.enviados.length === 1, String(m.enviados.length));
 
   console.log('\n══ D · MIENTRAS HABLA AZKARIN ══');
   m = monta({ hablando: () => true });
@@ -128,19 +132,19 @@ if (SRC) {
   m = monta({ hablando: () => hablandoAhora, respuesta: { texto: 'amigo' } });
   mete(m.api, 0.25, 1200);
   hablandoAhora = false;
-  mete(m.api, 0.25, 900); mete(m.api, 0.002, 1400);
+  mete(m.api, 0.25, 900); mete(m.api, 0.002, 1900);
   const mEco = m;
 
   console.log('\n══ E · CUANDO ALGO FALLA, NO SE QUEDA SORDO ══');
   m = monta({ falla: true });
-  mete(m.api, 0.002, 400); mete(m.api, 0.25, 900); mete(m.api, 0.002, 1400);
+  mete(m.api, 0.002, 400); mete(m.api, 0.25, 900); mete(m.api, 0.002, 1900);
   const mFalla = m;
   setTimeout(() => {
     c('E1 · si el dictado falla, se reintenta con el MISMO audio', mFalla.enviados.length >= 2, String(mFalla.enviados.length));
     c('E1b · y NUNCA se vuelve al micro que pita', mFalla.almacen['azkar_voz_motor'] === undefined, JSON.stringify(mFalla.almacen));
     c('E1c · el fallo se cuenta al servidor para poder arreglarlo', mFalla.partes.some(p => p.evento === 'dictado_falla'), JSON.stringify(mFalla.partes.map(p => p.evento)));
     m = monta({ respuesta: { texto: '' } });
-    mete(m.api, 0.002, 400); mete(m.api, 0.25, 900); mete(m.api, 0.002, 1400);
+    mete(m.api, 0.002, 400); mete(m.api, 0.25, 900); mete(m.api, 0.002, 1900);
     setTimeout(() => {
       c('E2 · si no se entendió nada, no se manda ningún mensaje', m.recibidos.length === 0);
       c('C6 · el texto que devuelve el servidor entra en la conversación', mC6.recibidos.length === 1 && mC6.recibidos[0] === 'hola', JSON.stringify(mC6.recibidos));
@@ -178,7 +182,7 @@ function fin() {
   console.log('\n══ G · SABOTAJES ══');
   const sab = (t, de, a) => String(t || '').replace(de, a);
   c('G1 · si alguien quita el pre-buffer, C5 canta', !/_mp\.buf = _mp\.pre\.slice\(\)/.test(sab(SRC, '_mp.buf = _mp.pre.slice();', '_mp.buf = [];')));
-  c('G2 · si alguien baja el mínimo de habla, C7 canta', !/_MP_MIN_HABLA_MS = 320/.test(sab(SRC, '_MP_MIN_HABLA_MS = 320', '_MP_MIN_HABLA_MS = 10')));
+  c('G2 · si alguien baja el mínimo de habla, C7 canta', !/_MP_MIN_HABLA_MS = 450/.test(sab(SRC, '_MP_MIN_HABLA_MS = 450', '_MP_MIN_HABLA_MS = 10')));
   c('G3 · si alguien manda el audio sin cancelación de eco, se ve', !/echoCancellation: true/.test(sab(SRC, 'echoCancellation: true', 'echoCancellation: false')));
 
   console.log('\n──────────────────────────────');

@@ -1108,6 +1108,8 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>Dentro de tu APK, Android NO le deja a la app abrir el micrófono</strong> (lo dijo tu propio móvil: permiso denegado, aunque el permiso se pida por todas las puertas). Mientras esa APK sea la que es, hay que usar el reconocedor de Android, y <strong>ese pitido es del sistema: una página no lo puede silenciar</strong>. Lo que sí se ha hecho: <strong>una sola sesión larga por turno</strong> en vez de una cada segundo, así que suena <strong>una vez cuando empiezas a hablar</strong> y no veinte por minuto. En silencio, además, espera hasta siete segundos entre intentos.</div></div>
       <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>✅ <strong>Resuelto con la APK v1.6</strong> (4-sep): a la APK le faltaba declarar un segundo permiso de audio que Capacitor exige para dejarle el micrófono a la web. Con eso entra el micro propio y <strong>no suena nada</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>10</div><div class='step-text'>🛑 <strong>Las frases fantasma</strong> («Oye, Siri, pon una alarma», «¿qué tiempo hace?», «¡Hola!» que nadie dijo): el micro mandaba un trozo de <strong>ruido</strong> de la sala y el modelo se <strong>inventaba</strong> la frase típica que se le dice a un asistente — y Azkarin la ejecutaba. Ahora el modelo tiene que decir primero <strong>si hay voz humana</strong>; las frases de catálogo se tiran; y si hay más letras de las que caben en los segundos de voz que hubo, se tira también. Además el micro es más exigente con lo que cuenta como voz y no manda nada de menos de medio segundo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>11</div><div class='step-text'><strong>Ya no te parte las frases</strong> («¿cuántos clientes han salido, han»): espera casi segundo y medio de silencio, y si tienes un trozo camino del servidor o estás hablando, <strong>no manda nada</strong> hasta que termines.</div></div>
       <div class='ayuda-step'><div class='step-num'>9</div><div class='step-text'>Y con el micro ya abierto, el altavoz le entraba por el micrófono: <strong>se contestaba a sí mismo</strong> y se cortaba a media frase. Ahora, mientras habla, la vara de medir es <strong>su propia voz</strong>: para cortarle hay que sonar el doble que él durante medio segundo largo. Además, lo que se oiga en el primer instante después de que se calle <strong>no se manda</strong>: es su eco.</div></div>
       <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'><strong>También dentro de la APK.</strong> Ahí se usaba el reconocedor de Android —el que pita— por ser «app instalada». Ya no: el micro propio se prueba siempre, y solo si el móvil no deja abrirlo se usa el de antes (y queda apuntado para poder verlo).</div></div>
       <div class='ayuda-tip'>Escribe <strong>/micro</strong> y te dice cuál está usando. Con <strong>/micro navegador</strong> vuelves al de siempre y con <strong>/micro propio</strong> al nuevo.</div>
@@ -4732,7 +4734,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v583';
+var APP_VERSION = 'v584';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17992,6 +17994,9 @@ async function doResetWithCode() {
     // v575: NADA SE PIERDE. Si justo esta hablando o pensando la respuesta anterior, lo dicho
     // se guarda y se manda en cuanto termina (antes se enviaba encima o se quedaba colgado).
     if (_convHablando()) { _convSendTimer = setTimeout(_convEnviarLoAcumulado, 500); return; }
+    // v584: y si ASIER esta hablando ahora mismo, o hay un trozo suyo camino del servidor, se
+    // espera: mandar ahora seria partirle la frase («Puedes revisar todas las llamadas de»).
+    if (typeof _mp !== 'undefined' && _mp.on && (_mp.hablando || (_mp.enVuelo || 0) > 0)) { _convSendTimer = setTimeout(_convEnviarLoAcumulado, 400); return; }
     if (sendBtn && sendBtn.disabled) { _convSendTimer = setTimeout(_convEnviarLoAcumulado, 600); return; }
     _convBuffer = '';
     try { inputEl.value = txt; } catch(e){}
@@ -18227,11 +18232,11 @@ async function doResetWithCode() {
   //  Si algo falla tres veces seguidas, se vuelve solo al reconocedor del navegador (pita,
   //  pero funciona) sin decir nada: nunca se queda sin poder hablar.
   // ══════════════════════════════════════════════════════════════════════════
-  var _MP_PAUSA_MS = 900;        // silencio que da por terminado un trozo (si sigue hablando, los trozos se juntan)
-  var _MP_MIN_HABLA_MS = 320;    // menos que esto es un ruido, no una frase
+  var _MP_PAUSA_MS = 1400;       // v584: silencio que da por terminado un trozo (900 le partía las frases: «¿cuántos clientes han salido, han»)
+  var _MP_MIN_HABLA_MS = 450;    // v584: menos que esto es un ruido, no una frase (con 320 se mandaban golpes y el modelo se inventaba frases)
   var _MP_MAX_MS = 25000;        // tope de un trozo (por si se deja el micro con la tele puesta)
   var _MP_PRE_MS = 700;          // se guarda lo de justo antes, para no comerse el arranque
-  var _MP_ESPERA_ENVIO = 500;    // con micro propio ya sabemos que ha callado: no hace falta esperar 2,4 s
+  var _MP_ESPERA_ENVIO = 900;    // v584: tras llegar el texto, casi un segundo por si retoma la frase
   var _mp = { on: false, arrancando: false, imposible: false, permisoPedido: false, permisoEstado: '', finHablaTs: 0, maxHablando: 0, msHablando: 0, stream: null, ctx: null, proc: null, src: null, sil: null,
               hz: 0, pre: [], preMs: 0, buf: [], bufMs: 0, hablando: false, msHabla: 0, msSil: 0,
               niveles: [], corteSeguidos: 0, fallos: 0, transcribiendo: false };
@@ -18427,9 +18432,11 @@ async function doResetWithCode() {
       var sum = 0;
       for (var i = 0; i < ent.length; i++) sum += ent[i] * ent[i];
       var rms = Math.sqrt(sum / ent.length);
-      _mp.niveles.push(rms); if (_mp.niveles.length > 45) _mp.niveles.shift();
       var fondo = _mpFondo();
-      var hayVoz = rms > Math.max(fondo * 3, 0.02);
+      var hayVoz = rms > Math.max(fondo * 3.5, 0.03);   // v584: más exigente — un golpe o la tele de fondo no es voz
+      // v584: el fondo se mide SOLO con lo que no es voz. Antes entraba todo, y a los dos
+      // segundos de hablar seguido el «fondo» era su propia voz: dejaba de oírle y cortaba.
+      if (!hayVoz) { _mp.niveles.push(rms); if (_mp.niveles.length > 45) _mp.niveles.shift(); }
 
       // ── Azkarin está hablando: este micro solo sirve para cortarle ──────────────
       // v583 · SE ESTABA CONTESTANDO A SÍ MISMO (Asier, 4-sep, 19:37). Con el micro propio
@@ -18494,7 +18501,7 @@ async function doResetWithCode() {
     if (_mp.transcribiendo) { console.warn('[Voz] llega otro trozo con uno en marcha: se encola'); }
     var pcm = _mpAJuntar(trozos);
     var wav = _mpWav(_mpA16k(pcm, _mp.hz), 16000);
-    _mpMandarATexto(wav);
+    _mpMandarATexto(wav, 1, msHabla / 1000);
   }
   function _mpAJuntar(trozos) {
     var n = 0, i;
@@ -18532,20 +18539,22 @@ async function doResetWithCode() {
     for (var i = 0; i < u8.length; i += paso) s += String.fromCharCode.apply(null, u8.subarray(i, i + paso));
     return btoa(s);
   }
-  function _mpMandarATexto(wav, intento) {
+  function _mpMandarATexto(wav, intento, segundosVoz) {
     intento = intento || 1;
     _mp.transcribiendo = true;
+    _mp.enVuelo = (_mp.enVuelo || 0) + 1;
     var opts = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '',
                  'Authorization': 'Bearer ' + (window._authToken || (typeof _authToken !== 'undefined' ? _authToken : '') || '') },
-      body: JSON.stringify({ audio: _mpB64(wav), mime: 'audio/wav' })
+      body: JSON.stringify({ audio: _mpB64(wav), mime: 'audio/wav', segundos: Math.round((segundosVoz || 0) * 10) / 10 })
     };
     try { if (AbortSignal && AbortSignal.timeout) opts.signal = AbortSignal.timeout(25000); } catch(e){}
     fetch(RAILWAY_API + '/api/voz/dictado', opts)
       .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function(d) {
         _mp.transcribiendo = false;
+        _mp.enVuelo = Math.max(0, (_mp.enVuelo || 0) - 1);
         _mp.fallos = 0;
         var t = (d && d.texto ? String(d.texto) : '').trim();
         _vozParte('dictado_ok', { ms: d && d.ms, letras: t.length, kb: Math.round(wav.length / 1024) });
@@ -18564,6 +18573,7 @@ async function doResetWithCode() {
       })
       .catch(function(e) {
         _mp.transcribiendo = false;
+        _mp.enVuelo = Math.max(0, (_mp.enVuelo || 0) - 1);
         _mp.fallos++;
         var _msg = (e && e.message) || 'error';
         console.warn('[Voz] no se pudo pasar a texto (' + _msg + '), intento ' + intento + ' — fallos seguidos: ' + _mp.fallos);
@@ -18571,7 +18581,7 @@ async function doResetWithCode() {
         // v577 · SE REINTENTA CON EL MISMO AUDIO (dos veces). Antes, a los tres fallos se
         // volvía al reconocedor del navegador… que es el que pita. Eso ya no pasa nunca:
         // si no hay manera, se dice y se sigue escuchando, pero sin pitidos.
-        if (intento < 3) { setTimeout(function(){ _mpMandarATexto(wav, intento + 1); }, 700 * intento); return; }
+        if (intento < 3) { setTimeout(function(){ _mpMandarATexto(wav, intento + 1, segundosVoz); }, 700 * intento); return; }
         _convAvisoCorto('📵 No he podido con eso — repítemelo');
       });
   }
