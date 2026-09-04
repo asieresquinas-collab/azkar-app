@@ -110,12 +110,26 @@ if (SRC) {
 
   console.log('\n══ D · MIENTRAS HABLA AZKARIN ══');
   m = monta({ hablando: () => true });
-  mete(m.api, 0.25, 600);
-  c('D1 · si le hablas encima, se calla', m.cortes.length >= 1);
+  mete(m.api, 0.02, 1500);        // su propia voz, sonando
+  mete(m.api, 0.6, 900);          // Asier hablando MUCHO mas fuerte
+  c('D1 · si le hablas encima (mas fuerte que el), se calla', m.cortes.length >= 1, String(m.cortes.length));
   c('D2 · y lo que suena mientras habla NO se manda como pregunta', m.enviados.length === 0);
   m = monta({ hablando: () => true });
   mete(m.api, 0.002, 3000);
   c('D3 · su propia voz de fondo no le hace cortarse solo', m.cortes.length === 0);
+  // v583 · el caso real del 4-sep: su voz por el altavoz entra al micro y NO debe cortarle
+  m = monta({ hablando: () => true });
+  mete(m.api, 0.25, 4000);        // su propia voz, alta y sostenida
+  c('D4 · su voz por el altavoz, alta y seguida, tampoco le corta', m.cortes.length === 0, String(m.cortes.length));
+  c('D5 · y no manda NADA de lo que suena mientras habla', m.enviados.length === 0);
+
+  // el eco que llega justo despues de callarse
+  let hablandoAhora = true;
+  m = monta({ hablando: () => hablandoAhora, respuesta: { texto: 'amigo' } });
+  mete(m.api, 0.25, 1200);
+  hablandoAhora = false;
+  mete(m.api, 0.25, 900); mete(m.api, 0.002, 1400);
+  const mEco = m;
 
   console.log('\n══ E · CUANDO ALGO FALLA, NO SE QUEDA SORDO ══');
   m = monta({ falla: true });
@@ -130,6 +144,7 @@ if (SRC) {
     setTimeout(() => {
       c('E2 · si no se entendió nada, no se manda ningún mensaje', m.recibidos.length === 0);
       c('C6 · el texto que devuelve el servidor entra en la conversación', mC6.recibidos.length === 1 && mC6.recibidos[0] === 'hola', JSON.stringify(mC6.recibidos));
+      c('D6 · una palabra suelta justo tras callarse NO se manda (era su eco)', mEco.recibidos.length === 0, JSON.stringify(mEco.recibidos));
       fin();
     }, 60);
   }, 2600);

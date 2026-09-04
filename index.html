@@ -1107,7 +1107,8 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>El botón del micro 🎤 tampoco pita.</strong> Dictar a mano va por el mismo camino: tocas, hablas, vuelves a tocar y sale el texto en el cuadro.</div></div>
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>Dentro de tu APK, Android NO le deja a la app abrir el micrófono</strong> (lo dijo tu propio móvil: permiso denegado, aunque el permiso se pida por todas las puertas). Mientras esa APK sea la que es, hay que usar el reconocedor de Android, y <strong>ese pitido es del sistema: una página no lo puede silenciar</strong>. Lo que sí se ha hecho: <strong>una sola sesión larga por turno</strong> en vez de una cada segundo, así que suena <strong>una vez cuando empiezas a hablar</strong> y no veinte por minuto. En silencio, además, espera hasta siete segundos entre intentos.</div></div>
-      <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>Para quitarlo <strong>del todo</strong> hace falta una APK nueva que le dé el micrófono a la app (entonces entra el micro propio, que no pita nada). Si me dices quién te hizo esa APK o dónde está su proyecto, lo dejo listo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>✅ <strong>Resuelto con la APK v1.6</strong> (4-sep): a la APK le faltaba declarar un segundo permiso de audio que Capacitor exige para dejarle el micrófono a la web. Con eso entra el micro propio y <strong>no suena nada</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>9</div><div class='step-text'>Y con el micro ya abierto, el altavoz le entraba por el micrófono: <strong>se contestaba a sí mismo</strong> y se cortaba a media frase. Ahora, mientras habla, la vara de medir es <strong>su propia voz</strong>: para cortarle hay que sonar el doble que él durante medio segundo largo. Además, lo que se oiga en el primer instante después de que se calle <strong>no se manda</strong>: es su eco.</div></div>
       <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'><strong>También dentro de la APK.</strong> Ahí se usaba el reconocedor de Android —el que pita— por ser «app instalada». Ya no: el micro propio se prueba siempre, y solo si el móvil no deja abrirlo se usa el de antes (y queda apuntado para poder verlo).</div></div>
       <div class='ayuda-tip'>Escribe <strong>/micro</strong> y te dice cuál está usando. Con <strong>/micro navegador</strong> vuelves al de siempre y con <strong>/micro propio</strong> al nuevo.</div>
 
@@ -4731,7 +4732,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v582';
+var APP_VERSION = 'v583';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18231,7 +18232,7 @@ async function doResetWithCode() {
   var _MP_MAX_MS = 25000;        // tope de un trozo (por si se deja el micro con la tele puesta)
   var _MP_PRE_MS = 700;          // se guarda lo de justo antes, para no comerse el arranque
   var _MP_ESPERA_ENVIO = 500;    // con micro propio ya sabemos que ha callado: no hace falta esperar 2,4 s
-  var _mp = { on: false, arrancando: false, imposible: false, permisoPedido: false, permisoEstado: '', stream: null, ctx: null, proc: null, src: null, sil: null,
+  var _mp = { on: false, arrancando: false, imposible: false, permisoPedido: false, permisoEstado: '', finHablaTs: 0, maxHablando: 0, msHablando: 0, stream: null, ctx: null, proc: null, src: null, sil: null,
               hz: 0, pre: [], preMs: 0, buf: [], bufMs: 0, hablando: false, msHabla: 0, msSil: 0,
               niveles: [], corteSeguidos: 0, fallos: 0, transcribiendo: false };
   // v577 · CUÁNDO SE USA EL MICRO PROPIO. Antes se miraba _esAppNativa(), y eso da TRUE
@@ -18430,10 +18431,27 @@ async function doResetWithCode() {
       var fondo = _mpFondo();
       var hayVoz = rms > Math.max(fondo * 3, 0.02);
 
-      // ── Azkarin está hablando: este micro solo sirve para cortarle ──
+      // ── Azkarin está hablando: este micro solo sirve para cortarle ──────────────
+      // v583 · SE ESTABA CONTESTANDO A SÍ MISMO (Asier, 4-sep, 19:37). Con el micro propio
+      // ya abierto, el altavoz del móvil le entra al micrófono: su propia voz pasaba por voz
+      // de Asier, se cortaba solo a media frase y encima mandaba trozos suyos como si fueran
+      // preguntas («amigo», «Así es»). Ahora, mientras habla, la referencia NO es el fondo de
+      // la sala: es SU PROPIA VOZ (el máximo de lo que está sonando). Para cortarle hay que
+      // sonar el DOBLE que él y durante 600 ms — su eco no puede con eso.
       if (_convHablando()) {
-        _mp.corteSeguidos = hayVoz ? (_mp.corteSeguidos + 1) : 0;
-        if (_mp.corteSeguidos * ms >= 350 && _bargeinActivo()) {
+        _mp.finHablaTs = Date.now();
+        // Los primeros 900 ms de VOZ suya solo se escuchan, para saber cuánto suena él: es la
+        // vara de medir. Sin eso, su primera sílaba (con la referencia a cero) parecería que
+        // le están hablando encima. Se cuenta en sonido, no en reloj.
+        _mp.msHablando = (_mp.msHablando || 0) + ms;
+        var _calibrando = _mp.msHablando < 900;
+        // la referencia es lo que VIENE SONANDO (su voz). Si Asier habla por encima, ese
+        // pico NO sube la referencia — si no, se taparía a sí mismo y nunca se le cortaría.
+        var _refSuVoz = (_mp.maxHablando || 0) * 0.995;
+        var _superaSuVoz = !_calibrando && rms > Math.max(_refSuVoz * 2, 0.08);
+        _mp.maxHablando = _superaSuVoz ? _refSuVoz : Math.max(_refSuVoz, rms);
+        _mp.corteSeguidos = _superaSuVoz ? (_mp.corteSeguidos + 1) : 0;
+        if (_mp.corteSeguidos * ms >= 600 && _bargeinActivo()) {
           _mp.corteSeguidos = 0;
           _mpLimpiaTrozo();
           _convInterrumpir({});
@@ -18441,6 +18459,10 @@ async function doResetWithCode() {
         return;
       }
       _mp.corteSeguidos = 0;
+      _mp.maxHablando = 0;
+      _mp.msHablando = 0;
+      // La cola del eco llega TARDE: los primeros 700 ms tras callarse no se guardan.
+      if (_mp.finHablaTs && (Date.now() - _mp.finHablaTs) < 700) { _mpLimpiaTrozo(); return; }
 
       // ── Le toca a Asier: se guarda lo que dice ──
       var copia = new Float32Array(ent);       // hay que copiarlo: el buffer se reutiliza
@@ -18529,6 +18551,13 @@ async function doResetWithCode() {
         _vozParte('dictado_ok', { ms: d && d.ms, letras: t.length, kb: Math.round(wav.length / 1024) });
         if (!t) return;                                   // no se entendió nada: ni se dice ni se manda
         if (_esEcoDeAzkarin(t)) return;                   // no se contesta a sí mismo
+        // v583 · lo que se oye JUSTO despues de que se calle y es corto es su eco casi
+        // seguro («amigo», «Así es»): no se manda, salvo que sea una palabra de parar.
+        var _reciencallado = _mp.finHablaTs && (Date.now() - _mp.finHablaTs) < 2500;
+        if (_reciencallado && t.split(/\s+/).length < 5 && !_esPalabraDeCorte(t)) {
+          console.warn('[Voz] descartado por eco corto tras hablar:', t);
+          return;
+        }
         if (_convHablando() && _esPalabraDeCorte(t)) { _convInterrumpir({}); return; }
         _convResetBackoff();
         _convRecibirHabla(t);
