@@ -1092,7 +1092,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v579 · backend 2.7.613), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v580 · backend 2.7.614), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>💸 LA CHARLA VUELVE A COSTAR CÉNTIMOS (backend 2.7.613):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Un «a ver, me oyes» te costó <strong>siete céntimos</strong>. El motivo: para decidir si un mensaje necesita el modelo bueno o el barato se miraban <strong>los diez últimos mensajes</strong> de la conversación, respuestas de Azkarin incluidas, buscando palabras como «mudanza», «presupuesto» o «armario». En esta empresa esas palabras salen <strong>siempre</strong>, así que en cuanto aparecía una, <strong>toda la conversación se quedaba pegada al modelo caro</strong>.</div></div>
@@ -1106,6 +1106,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>De paso se arregla lo de «<strong>la primera vez me contesta y luego ya no</strong>»: pasaba cuando el navegador se atascaba al reabrir el micro y se quedaba sordo del todo. Con el micro propio no hay nada que reabrir.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>El botón del micro 🎤 tampoco pita.</strong> Dictar a mano va por el mismo camino: tocas, hablas, vuelves a tocar y sale el texto en el cuadro.</div></div>
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
+      <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>La primera vez te saldrá un aviso de Android pidiendo permiso para grabar audio: dile que SÍ.</strong> Dentro de la APK, la app no puede abrir el micrófono si Android no le ha dado ese permiso, y sin él vuelve al micro de antes (el que pita).</div></div>
       <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'><strong>También dentro de la APK.</strong> Ahí se usaba el reconocedor de Android —el que pita— por ser «app instalada». Ya no: el micro propio se prueba siempre, y solo si el móvil no deja abrirlo se usa el de antes (y queda apuntado para poder verlo).</div></div>
       <div class='ayuda-tip'>Escribe <strong>/micro</strong> y te dice cuál está usando. Con <strong>/micro navegador</strong> vuelves al de siempre y con <strong>/micro propio</strong> al nuevo.</div>
 
@@ -4729,7 +4730,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v579';
+var APP_VERSION = 'v580';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17905,7 +17906,10 @@ async function doResetWithCode() {
   function _micPropioBoton() {
     var b = document.getElementById('chatbot-mic');
     if (_bt.grabando) { _micPropioParar(); return; }
-    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+    ((window.Capacitor && window.Capacitor.Plugins && !_mp.permisoPedido)
+      ? _pedirPermisoALaApk().then(function(){ _mp.permisoPedido = true; })
+      : Promise.resolve()).then(function() {
+    return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
       .then(function(st) {
         var AC = window.AudioContext || window.webkitAudioContext;
         var ctx = new AC();
@@ -17927,6 +17931,7 @@ async function doResetWithCode() {
         _mp.imposible = true;                       // v578: se cae al dictado de antes, sin dar la lata
         try { window.chatbotMicToggle(); } catch(err){}
       });
+    });
   }
   function _micPropioParar() {
     var b = document.getElementById('chatbot-mic');
@@ -18220,7 +18225,7 @@ async function doResetWithCode() {
   var _MP_MAX_MS = 25000;        // tope de un trozo (por si se deja el micro con la tele puesta)
   var _MP_PRE_MS = 700;          // se guarda lo de justo antes, para no comerse el arranque
   var _MP_ESPERA_ENVIO = 500;    // con micro propio ya sabemos que ha callado: no hace falta esperar 2,4 s
-  var _mp = { on: false, arrancando: false, imposible: false, stream: null, ctx: null, proc: null, src: null, sil: null,
+  var _mp = { on: false, arrancando: false, imposible: false, permisoPedido: false, stream: null, ctx: null, proc: null, src: null, sil: null,
               hz: 0, pre: [], preMs: 0, buf: [], bufMs: 0, hablando: false, msHabla: 0, msSil: 0,
               niveles: [], corteSeguidos: 0, fallos: 0, transcribiendo: false };
   // v577 · CUÁNDO SE USA EL MICRO PROPIO. Antes se miraba _esAppNativa(), y eso da TRUE
@@ -18265,6 +18270,7 @@ async function doResetWithCode() {
     try { out.standalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches); } catch(e){}
     try { out.app1 = /[?&]app=1/.test(location.search || ''); } catch(e){}
     try { out.wv = /;\s*wv\)/.test(navigator.userAgent || '') || /\bwv\b/.test(navigator.userAgent || ''); } catch(e){}   // v578: ¿va dentro de la APK?
+    try { out.plugins = Object.keys((window.Capacitor && window.Capacitor.Plugins) || {}).join(',').slice(0, 120); } catch(e){}   // v580: con qué se puede grabar ahí dentro
     try { out.motor = _mpDisponible() ? 'propio' : 'navegador'; } catch(e){}
     try { out.navegador = (/Chrome\/([\d.]+)/.exec(navigator.userAgent) || [,'?'])[1] + (/Android/i.test(navigator.userAgent) ? ' Android' : ''); } catch(e){}
     return out;
@@ -18278,11 +18284,44 @@ async function doResetWithCode() {
     if (window._azkarinConv) setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 300);
   }
   function _mpLimpiaTrozo() { _mp.buf = []; _mp.bufMs = 0; _mp.hablando = false; _mp.msHabla = 0; _mp.msSil = 0; }
+  // v580 · EL PERMISO, PEDIDO POR LA PUERTA DE LA APK.
+  // El parte del móvil de Asier lo dejó claro: dentro de su APK (Capacitor, WebView de
+  // Chrome 151) la llamada al micrófono devuelve NotAllowedError aunque el navegador tenga
+  // la función. Eso pasa cuando ANDROID no le ha dado el permiso de grabar a la aplicación:
+  // la página no puede pedirlo por su cuenta, pero los plugins de la APK sí. Así que antes
+  // de abrir el micro se le pide el permiso a la app, y luego ya se abre.
+  function _pedirPermisoALaApk() {
+    return new Promise(function(listo) {
+      try {
+        var P = window.Capacitor && window.Capacitor.Plugins;
+        if (!P) return listo(false);
+        var candidatos = ['SpeechRecognition', 'Microphone', 'VoiceRecorder', 'Permissions', 'Camera'];
+        var tareas = [];
+        candidatos.forEach(function(n) {
+          var pl = P[n]; if (!pl) return;
+          try {
+            if (typeof pl.requestPermissions === 'function') tareas.push(pl.requestPermissions({ permissions: ['microphone', 'audio'] }));
+            else if (typeof pl.requestAudioRecordingPermission === 'function') tareas.push(pl.requestAudioRecordingPermission());
+            else if (typeof pl.requestPermission === 'function') tareas.push(pl.requestPermission());
+          } catch(e){}
+        });
+        if (!tareas.length) return listo(false);
+        Promise.all(tareas.map(function(t){ return Promise.resolve(t).catch(function(){ return null; }); }))
+          .then(function(){ setTimeout(function(){ listo(true); }, 250); })
+          .catch(function(){ listo(false); });
+        setTimeout(function(){ listo(false); }, 4000);   // que no se quede colgado
+      } catch(e) { listo(false); }
+    });
+  }
   function _mpArrancar() {
     if (_mp.on || _mp.arrancando) return;
     if (!_mpDisponible()) return;
     _mp.arrancando = true;
-    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+    var _pidePrimero = (window.Capacitor && window.Capacitor.Plugins && !_mp.permisoPedido)
+      ? _pedirPermisoALaApk().then(function(hecho){ _mp.permisoPedido = true; return hecho; })
+      : Promise.resolve(false);
+    _pidePrimero.then(function() {
+    return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
       .then(function(st) {
         if (!window._azkarinConv) { try { st.getTracks().forEach(function(t){ t.stop(); }); } catch(e){} _mp.arrancando = false; return; }
         var AC = window.AudioContext || window.webkitAudioContext;
@@ -18319,6 +18358,7 @@ async function doResetWithCode() {
         console.warn('[Voz] sin micro propio (' + (err || (e && e.message)) + '): sigo con el de antes');
         if (window._azkarinConv) setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 250);
       });
+    });
   }
   function _mpParar() {
     try { if (_mp.proc) { _mp.proc.onaudioprocess = null; _mp.proc.disconnect(); } } catch(e){}
