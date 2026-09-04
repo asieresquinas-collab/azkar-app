@@ -4735,7 +4735,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v586';
+var APP_VERSION = 'v587';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17316,6 +17316,38 @@ async function doResetWithCode() {
       }, 500);
     } catch(e) {}
   })();
+  // v587 · QUÉ LE FALTA A ANDROID PARA QUE SE ABRA SOLA. La APK v1.8 lo sabe decir; si la
+  // APK es más vieja, no hay info() y no se enseña nada (no se le da la lata con algo que
+  // no puede arreglar todavía).
+  window.azkarinEscuchaPermisos = function(){
+    var p = _azkWakePlugin();
+    if (!p || typeof p.info !== 'function') { addMsg('bot','Tu APK es anterior a la 1.8 y no puede decirme qué permiso le falta. Instala la última desde el enlace que te pasé y vuelve a intentarlo.'); return; }
+    p.info().then(function(d){
+      d = d || {};
+      var falta = [];
+      if (d.overlay === false) falta.push('overlay');
+      if (d.fullscreen === false) falta.push('pantalla');
+      var h = '🎧 <b>Escucha «Azkarin»</b> · APK ' + (d.version || '?') + '<br>';
+      h += 'Escuchando ahora: ' + (d.listening ? '🟢 sí' : '⚪ no') + ' · Micrófono: ' + (d.mic ? '✅' : '❌') + '<br><br>';
+      if (!falta.length) {
+        h += '✅ <b>Todo listo.</b> Bloquea el móvil y di «Azkarin»: se abrirá sola.';
+      } else {
+        h += '🛑 <b>Le falta permiso para abrirse sola</b> con el móvil bloqueado. Toca y dale a «Permitir»:<br>';
+        if (d.overlay === false) h += '<button onclick="azkarinPermiso(\'overlay\')" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;cursor:pointer;font-family:inherit;font-size:14px;">1️⃣ <b>Mostrar sobre otras aplicaciones</b> — el importante</button>';
+        if (d.fullscreen === false) h += '<button onclick="azkarinPermiso(\'pantalla\')" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">2️⃣ <b>Notificaciones a pantalla completa</b></button>';
+        h += '<div style="font-size:12px;color:#666;margin-top:6px">Al volver, escribe <b>/escucha</b> otra vez para comprobarlo.</div>';
+      }
+      addMsg('bot', h);
+    }).catch(function(e){ addMsg('bot','No he podido preguntarle a la app: ' + (e && e.message)); });
+  };
+  window.azkarinPermiso = function(cual){
+    var p = _azkWakePlugin(); if (!p) return;
+    try {
+      if (cual === 'overlay' && p.pedirOverlay) p.pedirOverlay();
+      else if (cual === 'pantalla' && p.pedirPantallaCompleta) p.pedirPantallaCompleta();
+      addMsg('bot','Te he abierto los ajustes. Dale a <b>Permitir</b> y vuelve; luego escribe <b>/escucha</b> para comprobarlo.');
+    } catch(e){ addMsg('bot','No pude abrir los ajustes: ' + e.message); }
+  };
   window.azkarinEscuchaSet = function(on){
     var p = _azkWakePlugin();
     if (!_azkEsApp() || !p){
@@ -17326,6 +17358,7 @@ async function doResetWithCode() {
       try { p.start(); } catch(e){}
       localStorage.setItem('azkarinEscucha','on');
       addMsg('bot','✅ <b>Escucha activada.</b> Aunque bloquees el móvil, di <b>«Azkarin»</b> y se abre para hablar contigo.<br><small>Verás una notificación fija «Azkarin te escucha»: es normal, así Android no la corta. Es la versión gratis, gasta algo de batería.</small>');
+      setTimeout(function(){ try { window.azkarinEscuchaPermisos(); } catch(e){} }, 600);   // v587: y se comprueba qué le falta
     } else {
       try { p.stop(); } catch(e){}
       localStorage.setItem('azkarinEscucha','off');
@@ -17342,6 +17375,7 @@ async function doResetWithCode() {
     html += 'Estado ahora: ' + (on ? '\u{1F7E2} <b>activada</b>' : '⚪ desactivada') + '<br><br>';
     html += '<button onclick="azkarinEscuchaSet(true)" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F399}️ <b>Activar</b> — di «Azkarin» y se abre sola</button>';
     html += '<button onclick="azkarinEscuchaSet(false)" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F507} <b>Desactivar</b></button>';
+    html += '<button onclick="azkarinEscuchaPermisos()" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F50E} <b>Comprobar si le falta algún permiso</b></button>';
     html += '<div style="background:#fff7e6;border:1px solid #f0d9a0;border-radius:8px;padding:9px 11px;margin:8px 0;font-size:12.5px;color:#7a5b1e;">⚠️ Para que no falle: Ajustes → Apps → Azkarin → Batería → <b>Sin restricciones</b>. Es la versión gratis: gasta algo de batería y a veces hay que repetir «Azkarin» claro y un poco alto.</div>';
     addMsg('bot', html);
   };
