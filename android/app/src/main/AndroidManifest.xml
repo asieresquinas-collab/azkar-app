@@ -19,6 +19,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- v1.7 · para que al oir «Azkarin» pueda abrirse encima del bloqueo o de otra app
+         (desde Android 10 un servicio no puede abrir pantallas: hace falta la notificacion
+         a pantalla completa, como una llamada entrante) -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:allowBackup="true"
