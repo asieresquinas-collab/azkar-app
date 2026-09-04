@@ -4731,7 +4731,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v581';
+var APP_VERSION = 'v582';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18231,7 +18231,7 @@ async function doResetWithCode() {
   var _MP_MAX_MS = 25000;        // tope de un trozo (por si se deja el micro con la tele puesta)
   var _MP_PRE_MS = 700;          // se guarda lo de justo antes, para no comerse el arranque
   var _MP_ESPERA_ENVIO = 500;    // con micro propio ya sabemos que ha callado: no hace falta esperar 2,4 s
-  var _mp = { on: false, arrancando: false, imposible: false, permisoPedido: false, stream: null, ctx: null, proc: null, src: null, sil: null,
+  var _mp = { on: false, arrancando: false, imposible: false, permisoPedido: false, permisoEstado: '', stream: null, ctx: null, proc: null, src: null, sil: null,
               hz: 0, pre: [], preMs: 0, buf: [], bufMs: 0, hablando: false, msHabla: 0, msSil: 0,
               niveles: [], corteSeguidos: 0, fallos: 0, transcribiendo: false };
   // v577 · CUÁNDO SE USA EL MICRO PROPIO. Antes se miraba _esAppNativa(), y eso da TRUE
@@ -18308,28 +18308,49 @@ async function doResetWithCode() {
   // la función. Eso pasa cuando ANDROID no le ha dado el permiso de grabar a la aplicación:
   // la página no puede pedirlo por su cuenta, pero los plugins de la APK sí. Así que antes
   // de abrir el micro se le pide el permiso a la app, y luego ya se abre.
+  // v582 · SE PIDE DE UNO EN UNO Y SE ESPERA A QUE CONTESTE.
+  // Antes se pedía a varios plugins A LA VEZ y con cuatro segundos de tope: Android solo
+  // enseña UN aviso cada vez, y cuatro segundos no dan ni para leerlo. Además se pedía con
+  // nombres de permiso equivocados. El plugin de la palabra clave («WakeWord») es el que
+  // declara el permiso de grabar con su nombre bueno, «mic», así que va el primero.
+  var _PERM_PLUGINS = ['WakeWord', 'SpeechRecognition', 'Microphone', 'VoiceRecorder'];
+  function _permisoConcedido(r) {
+    try {
+      if (!r || typeof r !== 'object') return false;
+      for (var k in r) { if (String(r[k]).toLowerCase() === 'granted') return true; }
+      return false;
+    } catch(e) { return false; }
+  }
   function _pedirPermisoALaApk() {
-    return new Promise(function(listo) {
+    var P = (window.Capacitor && window.Capacitor.Plugins) || {};
+    var lista = _PERM_PLUGINS.filter(function(n){ return !!P[n]; });
+    var estado = 'sin plugins';
+    function siguiente(i) {
+      if (i >= lista.length) { _mp.permisoEstado = estado; return Promise.resolve(false); }
+      var n = lista[i], pl = P[n];
+      var pide;
       try {
-        var P = window.Capacitor && window.Capacitor.Plugins;
-        if (!P) return listo(false);
-        var candidatos = ['SpeechRecognition', 'Microphone', 'VoiceRecorder', 'Permissions', 'Camera'];
-        var tareas = [];
-        candidatos.forEach(function(n) {
-          var pl = P[n]; if (!pl) return;
-          try {
-            if (typeof pl.requestPermissions === 'function') tareas.push(pl.requestPermissions({ permissions: ['microphone', 'audio'] }));
-            else if (typeof pl.requestAudioRecordingPermission === 'function') tareas.push(pl.requestAudioRecordingPermission());
-            else if (typeof pl.requestPermission === 'function') tareas.push(pl.requestPermission());
-          } catch(e){}
-        });
-        if (!tareas.length) return listo(false);
-        Promise.all(tareas.map(function(t){ return Promise.resolve(t).catch(function(){ return null; }); }))
-          .then(function(){ setTimeout(function(){ listo(true); }, 250); })
-          .catch(function(){ listo(false); });
-        setTimeout(function(){ listo(false); }, 4000);   // que no se quede colgado
-      } catch(e) { listo(false); }
-    });
+        if (n === 'WakeWord' && typeof pl.requestPermissions === 'function') pide = pl.requestPermissions({ permissions: ['mic'] });
+        else if (typeof pl.requestPermissions === 'function') pide = pl.requestPermissions();
+        else if (typeof pl.requestAudioRecordingPermission === 'function') pide = pl.requestAudioRecordingPermission();
+        else if (typeof pl.requestPermission === 'function') pide = pl.requestPermission();
+        else return siguiente(i + 1);
+      } catch(e) { return siguiente(i + 1); }
+      return Promise.resolve(pide).then(function(r) {
+        var ok = _permisoConcedido(r) || (r && (r.value === true || r.granted === true));
+        estado = n + ':' + (ok ? 'ok' : JSON.stringify(r || {}).slice(0, 40));
+        if (ok) { _mp.permisoEstado = estado; return true; }
+        return siguiente(i + 1);
+      }).catch(function(e) {
+        estado = n + ':' + String((e && e.message) || 'error').slice(0, 40);
+        return siguiente(i + 1);
+      });
+    }
+    // hasta 40 s: el aviso de Android lo tiene que leer y tocar una persona
+    return Promise.race([
+      siguiente(0),
+      new Promise(function(r){ setTimeout(function(){ r(false); }, 40000); })
+    ]);
   }
   function _mpArrancar() {
     if (_mp.on || _mp.arrancando) return;
@@ -18356,13 +18377,13 @@ async function doResetWithCode() {
         _mp.on = true; _mp.arrancando = false; _mp.niveles = []; _mp.pre = []; _mp.preMs = 0;
         _mpLimpiaTrozo();
         console.log('[Voz] micro propio abierto a ' + _mp.hz + ' Hz — sin pitidos');
-        _vozParte('micro_abierto', Object.assign(_vozFoto(), { hz: _mp.hz }));
+        _vozParte('micro_abierto', Object.assign(_vozFoto(), { hz: _mp.hz, permiso: String(_mp.permisoEstado || 'no hizo falta').slice(0, 60) }));
         _convEstadoAuto();
       })
       .catch(function(e) {
         _mp.arrancando = false;
         var err = (e && e.name) || '';
-        _vozParte('micro_error', Object.assign(_vozFoto(), { error: err || String((e && e.message) || e) }));
+        _vozParte('micro_error', Object.assign(_vozFoto(), { error: err || String((e && e.message) || e), permiso: String(_mp.permisoEstado || 'no pedido').slice(0, 60) }));
         // v578: el micro propio no se puede abrir aquí. Se apunta para no volver a probar en
         // esta sesión y se sigue con el de antes — la conversación NO se corta.
         _mp.imposible = true;
