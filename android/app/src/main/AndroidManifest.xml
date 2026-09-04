@@ -2,6 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- v1.5 · EL PERMISO QUE FALTABA. Capacitor, cuando la pagina de dentro pide el
+         microfono, exige RECORD_AUDIO **y** MODIFY_AUDIO_SETTINGS. Este segundo no estaba
+         declarado, y un permiso que no se declara NUNCA cuenta como concedido: por eso el
+         WebView denegaba el microfono a la web (NotAllowedError) aunque en los ajustes del
+         telefono el microfono de Azkarin estuviera en "Permitir". Es un permiso normal: no
+         pregunta nada al instalar ni al usarlo. -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- v1.4: para que Azkarin sepa DESDE DONDE sales y pueda decir cuanto tardas.
          El WebView solo puede dar la ubicacion si la app pide estos permisos. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
