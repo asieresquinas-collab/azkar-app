@@ -1092,7 +1092,13 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v578 · backend 2.7.612), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v579 · backend 2.7.613), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>💸 LA CHARLA VUELVE A COSTAR CÉNTIMOS (backend 2.7.613):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Un «a ver, me oyes» te costó <strong>siete céntimos</strong>. El motivo: para decidir si un mensaje necesita el modelo bueno o el barato se miraban <strong>los diez últimos mensajes</strong> de la conversación, respuestas de Azkarin incluidas, buscando palabras como «mudanza», «presupuesto» o «armario». En esta empresa esas palabras salen <strong>siempre</strong>, así que en cuanto aparecía una, <strong>toda la conversación se quedaba pegada al modelo caro</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora decide <strong>solo lo que pides tú en ese mensaje</strong>. Van al bueno: un texto largo pegado de un cliente, un turno donde ya se están tocando presupuestos de verdad, un encargo de código o de la app, y lo que suene a mudanza <strong>en ese mismo mensaje</strong>. Lo demás —saludos, «vale», preguntas sueltas— va al barato.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y cuando le preguntes <strong>con qué modelo te habla</strong>, ahora tiene el dato delante: te dice el de <strong>ese mensaje</strong> y el precio. Tiene prohibido cambiar de versión porque insistas: sobre un dato del sistema, darte la razón sin comprobarlo es mentir.</div></div>
+      <div class='ayuda-tip'>El punto de color del final de cada respuesta sigue igual: 🔴 el bueno (caro), 🟢 el barato. Y el número de al lado es lo que ha costado ESE mensaje.</div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🔇 SE ACABÓ EL «CLIN, CLIN» DEL MICRÓFONO (app v578 · backend 2.7.612):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Ese pitido lo hacía <strong>Android</strong> cada vez que se abría y se cerraba el reconocedor de voz del navegador — y se cerraba solo en cuanto callabas, así que sonaba veinte veces por minuto. Desde la web ese sonido <strong>no se puede quitar</strong>. Así que ya no se usa: la app abre el micrófono <strong>una sola vez</strong> (eso no pita) y escucha ella misma.</div></div>
@@ -4723,7 +4729,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v578';
+var APP_VERSION = 'v579';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
