@@ -2,7 +2,9 @@ package com.azkar.azkarin;
 
 import android.Manifest;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
+import android.provider.Settings;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
@@ -21,6 +23,66 @@ import com.getcapacitor.annotation.PermissionCallback;
     }
 )
 public class WakeWordPlugin extends Plugin {
+
+    /**
+     * v1.8 · QUE HACE FALTA PARA QUE SE ABRA SOLA. Desde Android 10 un servicio en segundo
+     * plano no puede abrir una pantalla, y desde Android 14 la notificacion "de llamada"
+     * tampoco vale si el permiso no esta concedido. Esto le dice a la app QUE FALTA, para
+     * que Asier lo active de un toque en vez de quedarse con el micro sonando y sin app.
+     */
+    @PluginMethod
+    public void info(PluginCall call) {
+        JSObject r = new JSObject();
+        String version = "?";
+        try {
+            version = getContext().getPackageManager()
+                .getPackageInfo(getContext().getPackageName(), 0).versionName;
+        } catch (Exception e) {}
+        boolean overlay = true;
+        try { if (Build.VERSION.SDK_INT >= 23) overlay = Settings.canDrawOverlays(getContext()); } catch (Exception e) {}
+        boolean fullscreen = true;
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                android.app.NotificationManager nm = (android.app.NotificationManager)
+                    getContext().getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+                fullscreen = nm != null && nm.canUseFullScreenIntent();
+            }
+        } catch (Exception e) {}
+        r.put("version", version);
+        r.put("listening", WakeWordService.RUNNING);
+        r.put("overlay", overlay);
+        r.put("fullscreen", fullscreen);
+        r.put("mic", getPermissionState("mic") == PermissionState.GRANTED);
+        call.resolve(r);
+    }
+
+    /** Abre la pantalla de Android donde se concede "mostrar sobre otras aplicaciones". */
+    @PluginMethod
+    public void pedirOverlay(PluginCall call) {
+        try {
+            if (Build.VERSION.SDK_INT >= 23) {
+                Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getContext().getPackageName()));
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(i);
+            }
+            call.resolve();
+        } catch (Exception e) { call.reject("no se pudo abrir: " + e.getMessage()); }
+    }
+
+    /** Abre la pantalla de "notificaciones a pantalla completa" (Android 14+). */
+    @PluginMethod
+    public void pedirPantallaCompleta(PluginCall call) {
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                Intent i = new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                        Uri.parse("package:" + getContext().getPackageName()));
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(i);
+            }
+            call.resolve();
+        } catch (Exception e) { call.reject("no se pudo abrir: " + e.getMessage()); }
+    }
 
     @PluginMethod
     public void isListening(PluginCall call) {
