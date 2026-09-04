@@ -4735,7 +4735,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v585';
+var APP_VERSION = 'v586';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17170,7 +17170,18 @@ async function doResetWithCode() {
   };
   // ── Wake word "Azkarin": escucha en segundo plano (solo app nativa Android) ──
   function _azkEsApp(){ try { return (typeof window.Capacitor !== 'undefined') || /[?&]app=1/.test(location.search||''); } catch(e){ return false; } }
-  function _azkWakePlugin(){ try { return (window.Capacitor && window.Capacitor.registerPlugin) ? window.Capacitor.registerPlugin('WakeWord') : null; } catch(e){ return null; } }
+  // v586 · Asier, 4-sep: al tocar «Activar» salía «solo funciona dentro de la app»… estando
+  // dentro de la app. El plugin se buscaba solo por registerPlugin(), que en su APK no está;
+  // el parte del móvil dice que el plugin SÍ está, en Capacitor.Plugins.WakeWord.
+  function _azkWakePlugin(){
+    try {
+      var C = window.Capacitor;
+      if (!C) return null;
+      if (C.Plugins && C.Plugins.WakeWord) return C.Plugins.WakeWord;
+      if (typeof C.registerPlugin === 'function') return C.registerPlugin('WakeWord');
+      return null;
+    } catch(e){ return null; }
+  }
   window._azkWakePluginRef = _azkWakePlugin;   // v585: el modo conversación lo aparta y lo devuelve
   // La app nativa llama a esto cuando oye "Azkarin" con el movil bloqueado
   window.__azkarinWakeFromNative = function(){
