@@ -1092,7 +1092,14 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v574 · backend 2.7.602), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v575 · backend 2.7.609), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🎧 EL MODO CONVERSACIÓN, ARREGLADO (app v575):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>El micro ya no se cierra en tu cara.</strong> Antes se abría y se cerraba cada dos segundos: en ese hueco el botón se ponía <strong>verde</strong> (encendido pero sordo) y lo que dijeras <strong>se perdía</strong> — por eso tenías que repetirlo todo. Ahora la escucha es <strong>seguida</strong>: mientras te toca hablar a ti, el micro está abierto todo el rato.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Un solo cartel, en cristiano</strong>, encima de donde se escribe: «🎧 Te escucho», «⏳ Pensando…» o «🔊 Hablando». Ya no parpadea de verde a rojo: mientras es tu turno pone «Te escucho» y se queda quieto.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Le puedes cortar hablándole encima.</strong> Mientras habla, la app va midiendo el sonido de la sala (con cancelación de eco, para que su propia voz no cuente): en cuanto oye tu voz, <strong>se calla y te escucha</strong>. Tocar la pantalla o el botón rojo «⏹ Parar de hablar» sigue valiendo igual. Si te molesta, escribe <strong>/cortar</strong> y lo apago.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Mientras piensa la respuesta te sigue oyendo</strong>: lo que digas se guarda y se manda solo en cuanto conteste — no se pierde ni se manda encima. Y ya <strong>no te corta a mitad de frase</strong>: espera a que calles de verdad (2,4 s), pero si sigues hablando espera lo que haga falta.</div></div>
+      <div class='ayuda-tip'>Se apaga sola tras <strong>tres minutos sin oírte</strong> (antes se apagaba a los pocos segundos de silencio). 45 pruebas nuevas vigilan todo esto.</div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🎧 AZKARIN YA NO PUEDE CONFUNDIR A UN CLIENTE CON OTRO (backend 2.7.594):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Cuando le pides una grabación, el <strong>nombre del audio lo pone el código</strong>, no él: sale de la <strong>ficha cuyo teléfono es el de esa llamada</strong>. Si ese número <strong>no está en ninguna ficha</strong> (o está en dos con nombres distintos), el audio va <strong>con el número y la hora, sin nombre</strong>. Nunca se pone un nombre a ojo.</div></div>
@@ -4707,7 +4714,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v574';
+var APP_VERSION = 'v575';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -16545,6 +16552,11 @@ async function doResetWithCode() {
 #chatbot-conv.activo{background:#1a7a3f;color:#fff}
 #chatbot-conv.escuchando{background:#c0392b;color:#fff;animation:pulse-mic 1s infinite}
 #chatbot-conv.hablando{background:#E85C0D;color:#fff}
+#chatbot-conv.pensando{background:#E8A00D;color:#fff}
+#chatbot-estado{display:none;margin:0 12px 6px;padding:8px 12px;border-radius:9px;background:#eef2f7;color:#1B4F8A;font-size:13px;font-weight:700;font-family:Barlow,sans-serif;text-align:center;flex-shrink:0}
+#chatbot-estado.ver{display:block}
+#chatbot-estado.escucha{background:#fdeaea;color:#a3261a}
+#chatbot-estado.habla{background:#fdf0e3;color:#8a4b05}
 #chatbot-parar{display:none;margin:0 12px 6px;padding:9px 12px;border:none;border-radius:9px;background:#c0392b;color:#fff;font-size:13px;font-weight:700;font-family:Barlow,sans-serif;cursor:pointer;flex-shrink:0}
 #chatbot-parar.ver{display:block}
 #chatbot-mic{width:38px;height:38px;border-radius:50%;border:none;background:#e0e0e0;color:#666;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -16590,6 +16602,7 @@ async function doResetWithCode() {
     </div>
   </div>
   <div id="chatbot-msgs"></div>
+  <div id="chatbot-estado"></div>
   <button id="chatbot-parar" type="button" onclick="window._convInterrumpir &amp;&amp; window._convInterrumpir()">&#9209; Parar de hablar</button>
   <div id="chatbot-foto-ind" style="display:none"></div>
   <div id="chatbot-input-area">
@@ -16731,6 +16744,7 @@ async function doResetWithCode() {
     _ttsQueue = [];
     _ttsSpeaking = false;
     window._ttsSpeaking = false; // v364: espejo para que el botón ⏹ (parar voz) sepa el estado real
+    try { if (window._convBargeParar) window._convBargeParar(); } catch(e){}   // v575
   }
   // v567 · el botón «⏹ Parar» de la voz vive en OTRO script y hacía «typeof chatSpeakStop»
   // (false, porque esta función es de dentro de este closure): no paraba la voz web ni la
@@ -16890,11 +16904,17 @@ async function doResetWithCode() {
       window._ttsModo = null;        // reset: nueva respuesta elegira voz de nuevo
       window._ttsReintento = {};
       // v282 MODO CONVERSACION: termino de hablar, volver a escuchar
-      if (window._azkarinConv) setTimeout(function() { if (window._azkarinConv && typeof window._convEscuchar === 'function') window._convEscuchar(); }, 450);
+      try { if (window._convBargeParar) window._convBargeParar(); } catch(e){}
+      window._ttsFinTs = Date.now();
+      if (window._azkarinConv) setTimeout(function() { if (window._azkarinConv && typeof window._convEscuchar === 'function') window._convEscuchar(); }, 150); // v575: era 450
       return;
     }
     _ttsSpeaking = true;
     window._ttsSpeaking = true; // v364: espejo para el botón ⏹ (parar voz)
+    // v575: le toca hablar a el -> se cierra el micro (para no oirse) y se abre el medidor
+    // de sonido, que es lo que permite cortarle hablandole encima.
+    try { if (window._azkarinConv && window._convCerrarMic) window._convCerrarMic(); } catch(e){}
+    try { if (window._azkarinConv && window._convBargeArrancar) window._convBargeArrancar(); } catch(e){}
     var chunk = _ttsQueue.shift();
     // COHERENCIA v310: una sola voz por respuesta. Si ya se fijo navegador, todo navegador.
     if (window._ttsModo === 'navegador' || !_vozNeuronalActiva()) {
@@ -17302,6 +17322,15 @@ async function doResetWithCode() {
     try {
     var msg = inputEl.value.trim();
     if (msg && /^\/voz\b/i.test(msg)) { inputEl.value = ''; inputEl.style.height = 'auto'; try { azkarinSelectorVoz(); } catch(e) { addMsg('bot', 'No pude abrir el selector de voz: ' + e.message); } return; }
+    if (msg && /^\/(cortar|corte)\b/i.test(msg)) {
+      inputEl.value = ''; inputEl.style.height = 'auto';
+      var _corteOn = true; try { _corteOn = (localStorage.getItem('azkar_bargein') !== '0'); } catch(e){}
+      try { localStorage.setItem('azkar_bargein', _corteOn ? '0' : '1'); } catch(e){}
+      addMsg('bot', _corteOn
+        ? '🔇 Vale: ya NO te escucho mientras hablo yo. Para cortarme, toca la pantalla o el botón rojo «Parar de hablar».'
+        : '🎙️ Hecho: mientras hablo yo te sigo escuchando, y en cuanto me hables encima me callo.');
+      return;
+    }
     if (msg && /^\/escucha\b/i.test(msg)) { inputEl.value=''; inputEl.style.height='auto'; try { azkarinEscuchaToggle(); } catch(e){ addMsg('bot','No pude abrir la escucha: '+e.message); } return; }
     var fotoEnviar = pendingFoto;
     var framesEnviar = window._pendingFrames;
@@ -17846,24 +17875,44 @@ async function doResetWithCode() {
   // Ahora los trozos de habla se ACUMULAN y solo se envían tras una pausa larga de verdad.
   var _convBuffer = '';
   var _convSendTimer = null;
-  var _CONV_PAUSA_MS = 4000; // cuánto silencio hay que dejar tras la última palabra para enviar (tuneable)
+  var _convReintentosVacios = 0;   // v575: freno por si el navegador cierra el micro nada mas abrirlo
+  // v575: 4 s de espera era una eternidad. Ahora el micro NO se cierra y las palabras a
+  // medias (parciales) rearman el reloj, asi que solo se manda cuando de verdad ha callado.
+  var _CONV_PAUSA_MS = 2400; // silencio tras la ultima palabra para mandar (tuneable)
   function _convLimpiarBuffer() { _convBuffer = ''; if (_convSendTimer) { clearTimeout(_convSendTimer); _convSendTimer = null; } }
+  function _convEnviarLoAcumulado() {
+    _convSendTimer = null;
+    if (!window._azkarinConv) return;
+    var txt = (_convBuffer || '').trim();
+    if (!txt) return;
+    // v575: NADA SE PIERDE. Si justo esta hablando o pensando la respuesta anterior, lo dicho
+    // se guarda y se manda en cuanto termina (antes se enviaba encima o se quedaba colgado).
+    if (_convHablando()) { _convSendTimer = setTimeout(_convEnviarLoAcumulado, 500); return; }
+    if (sendBtn && sendBtn.disabled) { _convSendTimer = setTimeout(_convEnviarLoAcumulado, 600); return; }
+    _convBuffer = '';
+    try { inputEl.value = txt; } catch(e){}
+    window.chatbotSend();
+  }
   function _convArmarEnvio() {
     if (_convSendTimer) clearTimeout(_convSendTimer);
-    _convSendTimer = setTimeout(function() {
-      _convSendTimer = null;
-      var txt = (_convBuffer || '').trim();
-      _convBuffer = '';
-      if (!window._azkarinConv) return;
-      if (txt) { try { inputEl.value = txt; } catch(e){} window.chatbotSend(); }
-    }, _CONV_PAUSA_MS);
+    _convSendTimer = setTimeout(_convEnviarLoAcumulado, _CONV_PAUSA_MS);
   }
   function _convRecibirHabla(txt) {
     txt = (txt || '').trim();
     if (!txt) return;
+    window._convUltimaVozTs = Date.now();
     _convBuffer = _convBuffer ? (_convBuffer + ' ' + txt) : txt;   // une lo dicho antes y después de la pausa
     try { inputEl.value = _convBuffer; } catch(e){}                 // feedback: va viendo lo que lleva dicho
     _convArmarEnvio();                                             // (re)arma el temporizador de envío
+  }
+  // v575: lo que va oyendo a medias — se pinta, cuenta como que SIGUE HABLANDO (rearma la
+  // pausa) pero NO se manda: solo el texto final entra en lo que se envía.
+  function _convVerParcial(p) {
+    p = (p || '').trim();
+    if (!p) return;
+    window._convUltimaVozTs = Date.now();
+    try { inputEl.value = (_convBuffer ? _convBuffer + ' ' : '') + p; } catch(e){}
+    _convArmarEnvio();
   }
   // ── v358 INTERRUMPIR A AZKARIN mientras habla (barge-in por voz + toque en la pantalla) ──
   // v360: barge-in por voz RE-ACTIVADO, ahora con GUARDIA ANTI-BUCLE robusta para que Azkarin
@@ -17901,8 +17950,7 @@ async function doResetWithCode() {
         // v390: boton "Parar de hablar" visible solo mientras habla
         var _pb = document.getElementById('chatbot-parar');
         if (_pb) _pb.classList.toggle('ver', !!h);
-        var _cb = document.getElementById('chatbot-conv');
-        if (_cb) _cb.classList.toggle('hablando', !!h);
+        _convEstadoAuto();   // v575: el semaforo lo pinta SIEMPRE el mismo sitio
       } catch(e){}
     }, 400);
   }
@@ -17985,21 +18033,70 @@ async function doResetWithCode() {
       window._ultimosDichos = [];   // v390: no filtrar lo que diga Asier justo despues de cortarle
       _convLimpiarBuffer();
       _convResetBackoff();
+      window._convUltimaVozTs = Date.now();   // v575
+      _convEstadoAuto();
       if (window._azkarinConv) setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 120);
     } catch(err){}
   }
   window._convInterrumpir = _convInterrumpir;
   try { var _msgsEl = document.getElementById('chatbot-msgs'); if (_msgsEl) _msgsEl.addEventListener('click', _convInterrumpir); } catch(e){}
-  // v390: pinta/despinta el boton del auricular segun este escuchando (vale para APK y web)
-  function _convPintarEscucha(on) {
+  // ── v575 · UN SOLO SEMAFORO, Y EN CRISTIANO ─────────────────────────────────
+  // Asier, 3-sep: «se pone en verde, en rojo, todo el rato; igual le quiero hablar y se
+  // pone en verde y no me deja hablarle». El boton cambiaba de color CADA VEZ que se abria
+  // y se cerraba el micro (cada 1-2 s) y no habia manera de saber cuando tocaba hablar.
+  // Ahora hay CUATRO estados y mientras es su turno pone «Te escucho» y NO parpadea.
+  var _convEstado = 'off';   // off | escucha | pensando | habla
+  function _convPintarEstado(e) {
+    _convEstado = e;
+    window._convEstado = e;
     try {
       var b = document.getElementById('chatbot-conv');
-      if (!b) return;
-      b.classList.toggle('escuchando', !!on);
-      b.title = on ? 'Te escucho \u2014 habla' : (window._azkarinConv ? 'Conversaci\u00f3n activa \u2014 toca para parar' : 'Modo conversaci\u00f3n (manos libres)');
+      if (b) {
+        b.classList.toggle('activo', e !== 'off');
+        b.classList.toggle('escuchando', e === 'escucha');
+        b.classList.toggle('pensando', e === 'pensando');
+        b.classList.toggle('hablando', e === 'habla');
+        b.title = e === 'escucha' ? 'Te escucho \u2014 habla'
+                : e === 'pensando' ? 'Pensando la respuesta \u2014 puedes seguir hablando'
+                : e === 'habla' ? 'Hablando \u2014 h\u00e1blame encima o toca para cortarme'
+                : 'Modo conversaci\u00f3n (manos libres)';
+      }
+      var chip = document.getElementById('chatbot-estado');
+      if (chip) {
+        var t = e === 'escucha' ? '\ud83c\udfa7 Te escucho \u2014 habla tranquilo'
+              : e === 'pensando' ? '\u23f3 Pensando\u2026 puedes seguir hablando'
+              : e === 'habla' ? '\ud83d\udd0a Hablando \u2014 h\u00e1blame encima o toca la pantalla para cortarme'
+              : '';
+        chip.textContent = t;
+        chip.classList.toggle('ver', !!t);
+        chip.classList.toggle('escucha', e === 'escucha');
+        chip.classList.toggle('habla', e === 'habla');
+      }
+    } catch(err){}
+  }
+  // De donde sale el estado: de lo que esta pasando de verdad, no de si el micro se acaba
+  // de cerrar medio segundo para volver a abrirse.
+  function _convEstadoAuto() {
+    try {
+      if (!window._azkarinConv) return _convPintarEstado('off');
+      if (_convHablando()) return _convPintarEstado('habla');
+      if (sendBtn && sendBtn.disabled && !(_convBuffer || '').trim()) return _convPintarEstado('pensando');
+      return _convPintarEstado('escucha');
     } catch(e){}
   }
+  window._convEstadoAuto = _convEstadoAuto;
+  window._convPintarEstado = _convPintarEstado;
+  // compat: la ruta del APK llamaba a esto; ahora solo repinta el semaforo
+  function _convPintarEscucha(on) { _convEstadoAuto(); }
   window._convPintarEscucha = _convPintarEscucha;
+  // v575 · CERRAR EL MICRO cuando le toca hablar a Azkarin (para no oirse a si mismo)
+  window._convCerrarMic = function() {
+    try {
+      var r = window._convRec;
+      if (r) { r.onend = null; r.onresult = null; if (r.abort) r.abort(); else r.stop(); }
+    } catch(e){}
+    _convSesion = false;
+  };
   window._convEscuchar = function() {
     if (!window._azkarinConv) return;
     if (_convSesion) return;                                   // ya hay micro abierto
@@ -18015,14 +18112,17 @@ async function doResetWithCode() {
       && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition;
     if (_hablandoAhora && !_puedeCorte) return;
     var _finTTS = window._ttsFinTs || 0;
-    if (!_puedeCorte && _finTTS && (Date.now() - _finTTS) < 500) {
-      setTimeout(function(){ if (window._azkarinConv && !_convHablando()) window._convEscuchar(); }, 300);
+    if (!_puedeCorte && _finTTS && (Date.now() - _finTTS) < 150) {   // v575: era medio segundo
+      setTimeout(function(){ if (window._azkarinConv && !_convHablando()) window._convEscuchar(); }, 150);
       return;
     }
     // v369: acaba de callarse Azkarin (<3s) → turno de Asier: micro rápido, backoff a cero
     if (_finTTS && (Date.now() - _finTTS) < 3000) _convResetBackoff();
     if (!_puedeCorte && Date.now() < (window._convProximoMicTs || 0)) return; // v369: en silencio, esperar el retardo (el vigilante reintenta) — menos pitidos
-    if (!_puedeCorte && sendBtn && sendBtn.disabled) return;    // está pensando una respuesta
+    // v575: antes, mientras pensaba la respuesta, el micro estaba CERRADO y lo que dijeras
+    // se perdia. En el navegador ahora se sigue escuchando y lo dicho se manda en cuanto
+    // conteste. En el APK no, porque alli cada apertura de micro pita.
+    if (!_puedeCorte && sendBtn && sendBtn.disabled && _esAppNativa()) return;
     if (!panel.classList.contains('open')) { window.chatbotConvToggle(false); return; }
     if (_esAppNativa() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
       _convSesion = true;
@@ -18066,40 +18166,110 @@ async function doResetWithCode() {
     }
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) { alert('Tu navegador no soporta voz. Usa Chrome.'); window.chatbotConvToggle(false); return; }
     if (isRecording) return; // hay un dictado manual en marcha
+    // ── v575 · EL MICRO SE QUEDA ABIERTO ──────────────────────────────────────
+    // Antes cada sesion de micro se cerraba en el PRIMER silencio y hasta 1,5 s despues no
+    // se volvia a abrir (lo reenganchaba el vigilante). En ese hueco el boton se ponia
+    // VERDE y lo que dijeras se perdia: «se pone en verde y no me deja hablarle, le tengo
+    // que repetir las cosas» (Asier, 3-sep). Ahora: escucha CONTINUA, con lo que va oyendo
+    // a medias, y si el navegador cierra la sesion se reabre al instante (120 ms).
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    var rec = new SR();
-    rec.lang = 'es-ES'; rec.interimResults = false; rec.continuous = false; rec.maxAlternatives = 1;
-    var btn = document.getElementById('chatbot-conv');
-    var _resultado = false;
-    rec.onstart = function() { _convSesion = true; if (btn) btn.classList.add('escuchando'); };
+    var rec;
+    try { rec = new SR(); } catch (e) { return; }
+    rec.lang = 'es-ES'; rec.interimResults = true; rec.continuous = true; rec.maxAlternatives = 1;
+    _convSesion = true;                    // ocupado YA: start() tarda en avisar y el vigilante no debe abrir otra
+    var _arranqueTs = Date.now();
+    rec.onstart = function() { _convSesion = true; _arranqueTs = Date.now(); _convEstadoAuto(); };
     rec.onresult = function(e) {
-      var t = '';
-      for (var i = 0; i < e.results.length; i++) if (e.results[i].isFinal) t += e.results[i][0].transcript + ' ';
-      t = t.trim();
-      if (t) {
-        _resultado = true; _convSilencios = 0;
-        _convRecibirHabla(t); // v357: acumular y enviar tras la pausa larga (no cortar a Asier)
-        try { rec.stop(); } catch (ex) {}
+      var fin = '', parc = '';
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        var r = e.results[i];
+        if (r.isFinal) fin += r[0].transcript + ' '; else parc += r[0].transcript + ' ';
       }
+      fin = fin.trim(); parc = parc.trim();
+      if (fin || parc) { _convSilencios = 0; _convReintentosVacios = 0; _convResetBackoff(); }
+      if (parc) _convVerParcial(parc);
+      if (fin) {
+        if (_esEcoDeAzkarin(fin)) return;   // no se contesta a si mismo
+        if (_convHablando() && _esPalabraDeCorte(fin)) { _convInterrumpir({}); return; }
+        _convRecibirHabla(fin);
+      }
+      _convEstadoAuto();
     };
     rec.onend = function() {
       _convSesion = false;
-      if (btn) btn.classList.remove('escuchando');
-      if (!window._azkarinConv || _resultado) return;
-      _convSilencios++;
-      if (_convSilencios >= 10) { window.chatbotConvToggle(false); return; } // ~1-2 min de silencio → se apaga solo
-      // el vigilante reengancha el micro; no relanzar aquí (evita sesiones dobles)
+      if (!window._azkarinConv) { _convEstadoAuto(); return; }
+      // Normal: se reabre al instante (120 ms) y no se pierde nada. Pero si el navegador
+      // cierra la sesion NADA MAS abrirla (micro ocupado, sin permiso, sin red), no se
+      // machaca: se va esperando cada vez un poco mas, hasta 2 s.
+      var _fugaz = (Date.now() - (_arranqueTs || 0)) < 400;
+      _convReintentosVacios = _fugaz ? Math.min(_convReintentosVacios + 1, 10) : 0;
+      var _espera = _fugaz ? Math.min(200 * _convReintentosVacios, 2000) : 120;
+      setTimeout(function() { if (window._azkarinConv) window._convEscuchar(); }, _espera);
     };
     rec.onerror = function(e) {
       _convSesion = false;
-      if (btn) btn.classList.remove('escuchando');
-      if (e && (e.error === 'not-allowed' || e.error === 'service-not-allowed')) {
+      var err = (e && e.error) || '';
+      if (err === 'not-allowed' || err === 'service-not-allowed') {
         window.chatbotConvToggle(false);
         alert('Necesito permiso del micrófono: toca el micro 🎤 una vez, acepta el permiso, y vuelve a activar el auricular 🎧.');
+        return;
       }
+      // 'no-speech', 'aborted', 'network'... no se dice nada: onend lo reengancha solo
     };
     window._convRec = rec;
-    try { rec.start(); } catch (e) {}
+    try { rec.start(); } catch (e) { _convSesion = false; }
+  };
+  // ── v575 · CORTARLE HABLANDO, TAMBIEN EN EL NAVEGADOR ──────────────────────
+  // Asier, 5-ago y otra vez el 3-sep: «hasta que no acaba de hablar no puedo hablar yo».
+  // No se puede abrir el reconocedor mientras habla (se oiria a si mismo y se contestaria
+  // solo: el fallo de la grua de Gernika). Lo que se abre es un MEDIDOR DE SONIDO con
+  // cancelacion de eco: si suena una voz por encima del fondo, se le corta y se escucha.
+  // El fondo se mide sobre la marcha, asi que su PROPIA voz nunca lo dispara (es el fondo).
+  // Apagar: localStorage.setItem('azkar_bargein','0').
+  var _bargeStream = null, _bargeCtx = null, _bargeTimer = null, _bargeNiveles = [], _bargeSeguidos = 0, _bargeDesde = 0;
+  window._convBargeArrancar = function() {
+    try {
+      if (!window._azkarinConv || !_bargeinActivo() || _bargeStream || _bargeCtx) return;
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+      var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      _bargeDesde = Date.now(); _bargeNiveles = []; _bargeSeguidos = 0;
+      navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(function(st) {
+        if (!window._azkarinConv || !_convHablando()) { try { st.getTracks().forEach(function(t){ t.stop(); }); } catch(e){} return; }
+        _bargeStream = st;
+        _bargeCtx = new AC();
+        var an = _bargeCtx.createAnalyser(); an.fftSize = 1024;
+        _bargeCtx.createMediaStreamSource(st).connect(an);
+        var buf = new Uint8Array(an.fftSize);
+        _bargeTimer = setInterval(function() {
+          try {
+            if (!_convHablando()) return;
+            an.getByteTimeDomainData(buf);
+            var sum = 0;
+            for (var i = 0; i < buf.length; i++) { var v = (buf[i] - 128) / 128; sum += v * v; }
+            var rms = Math.sqrt(sum / buf.length);
+            _bargeNiveles.push(rms); if (_bargeNiveles.length > 40) _bargeNiveles.shift();
+            if (Date.now() - _bargeDesde < 1200 || _bargeNiveles.length < 12) return;  // primer segundo: solo mirar
+            var ord = _bargeNiveles.slice().sort(function(a, b) { return a - b; });
+            var fondo = ord[Math.floor(ord.length / 2)];
+            if (rms > Math.max(fondo * 3.5, 0.045)) _bargeSeguidos++; else _bargeSeguidos = 0;
+            if (_bargeSeguidos >= 4) {   // ~400 ms de voz de verdad, no un golpe
+              _bargeSeguidos = 0;
+              console.log('[Conv] me cortan hablando (nivel ' + rms.toFixed(3) + ', fondo ' + fondo.toFixed(3) + ')');
+              _convInterrumpir({});
+            }
+          } catch(e){}
+        }, 100);
+      }).catch(function(e) { console.warn('[Conv] sin medidor de voz:', e && e.message); });
+    } catch(e){}
+  };
+  window._convBargeParar = function() {
+    try { if (_bargeTimer) clearInterval(_bargeTimer); } catch(e){}
+    _bargeTimer = null;
+    try { if (_bargeStream) _bargeStream.getTracks().forEach(function(t) { t.stop(); }); } catch(e){}
+    _bargeStream = null;
+    try { if (_bargeCtx && _bargeCtx.close) _bargeCtx.close(); } catch(e){}
+    _bargeCtx = null;
+    _bargeNiveles = []; _bargeSeguidos = 0;
   };
   // v311: Wake Lock — mantiene la pantalla encendida durante la conversacion
   var _convWakeLock = null;
@@ -18116,20 +18286,22 @@ async function doResetWithCode() {
     if (nuevo === window._azkarinConv) return;
     window._azkarinConv = nuevo;
     _convSilencios = 0;
-    var btn = document.getElementById('chatbot-conv');
-    if (btn) { btn.classList.toggle('activo', nuevo); btn.title = nuevo ? 'Conversación activa — toca para parar' : 'Modo conversación (manos libres)'; }
+    window._convUltimaVozTs = Date.now();   // v575: el reloj del silencio arranca ahora
+    _convEstadoAuto();
     if (nuevo) {
       chatTTSEnabled = true; try { localStorage.setItem('chatTTS', 'on'); } catch (e) {}
       try { _convResetBackoff(); } catch (e) {} // v369: al encender, micro sin retardo
       _convPedirWake();
       // El saludo se lee por TTS; el micro arranca SOLO cuando la voz termina
       // (lo reengancha el hook del TTS o el vigilante). Nunca a la vez.
-      addMsg('bot', '🎧 Te escucho. Para cortarme: di "para" o toca la pantalla.');
+      addMsg('bot', '🎧 Te escucho. Habla tranquilo, que no te corto: espero a que termines. Y mientras hablo yo, háblame encima o toca la pantalla y me callo.');
     } else {
       _convLiberarWake();
-      try { if (window._convRec) window._convRec.stop(); } catch (e) {}
+      try { if (window._convBargeParar) window._convBargeParar(); } catch (e) {}
+      try { if (window._convRec) { window._convRec.onend = null; window._convRec.stop(); } } catch (e) {}
       _convSesion = false;
       _convLimpiarBuffer(); // v357: descartar lo acumulado al apagar
+      _convEstadoAuto();
       addMsg('bot', '🎧 Modo conversación apagado.');
     }
   };
@@ -18138,11 +18310,17 @@ async function doResetWithCode() {
   setInterval(function() {
     try {
       if (!window._azkarinConv) return;
-      if (_convSesion || isRecording) return;
       var _hablando = _convHablando();
+      var _pensando = !!(sendBtn && sendBtn.disabled);
+      // v575: se apaga solo tras TRES MINUTOS sin oir nada. Antes contaba sesiones de micro
+      // (10) y con el micro abierto de continuo se habria apagado en medio minuto.
+      if (!_hablando && !_pensando && window._convUltimaVozTs && (Date.now() - window._convUltimaVozTs) > 180000) {
+        window.chatbotConvToggle(false);
+        return;
+      }
+      if (_convSesion || isRecording) return;
       // v390: si esta hablando, _convEscuchar decide solo si abre el micro en modo corte
       if (!_hablando && (_ttsSpeaking || _ttsQueue.length > 0)) return;
-      if (!_hablando && sendBtn && sendBtn.disabled) return;
       window._convEscuchar();
     } catch (e) {}
   }, 1500);
