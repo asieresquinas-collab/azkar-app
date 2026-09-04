@@ -151,6 +151,15 @@ function fin() {
   c('F6 · con micro propio la espera para mandar es corta', /_mp\.on\) \? _MP_ESPERA_ENVIO : _CONV_PAUSA_MS/.test(H));
   c('F7 · el reconocedor del navegador sigue ahí, pero solo de respaldo', /_mpAlNavegador/.test(H) && /webkitSpeechRecognition/.test(H));
 
+  console.log('\n══ H · DENTRO DE LA APK: UN PITIDO POR TURNO, NO VEINTE ══');
+  c('H1 · se usa la escucha CONTINUA del plugin (partialResults)', /partialResults: true, popup: false/.test(H) && /function _micNativoContinuo/.test(H));
+  c('H2 · lo que va oyendo se pinta y rearma la pausa', /_srN\.ultimo = m;[\s\S]{0,200}_convVerParcial\(m\)/.test(H));
+  c('H3 · en silencio se espera hasta 7 s (cada apertura es un pitido)', /_convBackoffMs \|\| 0\) \+ 1500, 7000/.test(H));
+  c('H4 · cuando habla Azkarin, la sesión del plugin se cierra', /SR && typeof SR\.stop === 'function'\) SR\.stop\(\);/.test(H));
+  c('H5 · una sesión colgada no deja sordo a Azkarin (se corta a los 30 s)', /_srN\.escuchando && window\._convUltimaVozTs[\s\S]{0,120}> 30000/.test(H));
+  c('H6 · si la escucha continua falla tres veces, se vuelve a la de antes', /_srSigueValiendo\(\)/.test(H) && /_srN\.fallos < 3/.test(H));
+  c('H7 · el parte dice qué sabe hacer cada plugin de la APK', /out\.api_sr = _apiDePlugin\('SpeechRecognition'\)/.test(H) && /out\.api_ww = _apiDePlugin\('WakeWord'\)/.test(H));
+
   console.log('\n══ G · SABOTAJES ══');
   const sab = (t, de, a) => String(t || '').replace(de, a);
   c('G1 · si alguien quita el pre-buffer, C5 canta', !/_mp\.buf = _mp\.pre\.slice\(\)/.test(sab(SRC, '_mp.buf = _mp.pre.slice();', '_mp.buf = [];')));

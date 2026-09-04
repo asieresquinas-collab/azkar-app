@@ -1092,7 +1092,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v580 · backend 2.7.614), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v581 · backend 2.7.615), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>💸 LA CHARLA VUELVE A COSTAR CÉNTIMOS (backend 2.7.613):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Un «a ver, me oyes» te costó <strong>siete céntimos</strong>. El motivo: para decidir si un mensaje necesita el modelo bueno o el barato se miraban <strong>los diez últimos mensajes</strong> de la conversación, respuestas de Azkarin incluidas, buscando palabras como «mudanza», «presupuesto» o «armario». En esta empresa esas palabras salen <strong>siempre</strong>, así que en cuanto aparecía una, <strong>toda la conversación se quedaba pegada al modelo caro</strong>.</div></div>
@@ -1106,7 +1106,8 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>De paso se arregla lo de «<strong>la primera vez me contesta y luego ya no</strong>»: pasaba cuando el navegador se atascaba al reabrir el micro y se quedaba sordo del todo. Con el micro propio no hay nada que reabrir.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>El botón del micro 🎤 tampoco pita.</strong> Dictar a mano va por el mismo camino: tocas, hablas, vuelves a tocar y sale el texto en el cuadro.</div></div>
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
-      <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>La primera vez te saldrá un aviso de Android pidiendo permiso para grabar audio: dile que SÍ.</strong> Dentro de la APK, la app no puede abrir el micrófono si Android no le ha dado ese permiso, y sin él vuelve al micro de antes (el que pita).</div></div>
+      <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>Dentro de tu APK, Android NO le deja a la app abrir el micrófono</strong> (lo dijo tu propio móvil: permiso denegado, aunque el permiso se pida por todas las puertas). Mientras esa APK sea la que es, hay que usar el reconocedor de Android, y <strong>ese pitido es del sistema: una página no lo puede silenciar</strong>. Lo que sí se ha hecho: <strong>una sola sesión larga por turno</strong> en vez de una cada segundo, así que suena <strong>una vez cuando empiezas a hablar</strong> y no veinte por minuto. En silencio, además, espera hasta siete segundos entre intentos.</div></div>
+      <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>Para quitarlo <strong>del todo</strong> hace falta una APK nueva que le dé el micrófono a la app (entonces entra el micro propio, que no pita nada). Si me dices quién te hizo esa APK o dónde está su proyecto, lo dejo listo.</div></div>
       <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'><strong>También dentro de la APK.</strong> Ahí se usaba el reconocedor de Android —el que pita— por ser «app instalada». Ya no: el micro propio se prueba siempre, y solo si el móvil no deja abrirlo se usa el de antes (y queda apuntado para poder verlo).</div></div>
       <div class='ayuda-tip'>Escribe <strong>/micro</strong> y te dice cuál está usando. Con <strong>/micro navegador</strong> vuelves al de siempre y con <strong>/micro propio</strong> al nuevo.</div>
 
@@ -4730,7 +4731,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v580';
+var APP_VERSION = 'v581';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18109,7 +18110,7 @@ async function doResetWithCode() {
   // Se resetea en cuanto hay voz real, al callarse Azkarin o al tocar la pantalla.
   var _convBackoffMs = 0;
   window._convProximoMicTs = 0;
-  function _convMicVacio() { _convBackoffMs = Math.min((_convBackoffMs || 0) + 1000, 3000); window._convProximoMicTs = Date.now() + _convBackoffMs; } // v390: tope 3s (antes 6s: se perdia el arranque de la frase)
+  function _convMicVacio() { _convBackoffMs = Math.min((_convBackoffMs || 0) + 1500, 7000); window._convProximoMicTs = Date.now() + _convBackoffMs; } // v581: en silencio se espera hasta 7 s — cada apertura del micro de Android es un pitido
   function _convResetBackoff() { _convBackoffMs = 0; window._convProximoMicTs = 0; }
   window._convResetBackoff = _convResetBackoff;
   // v390 CORTARLE POR VOZ (Asier, 5-ago: "hasta que no acaba de hablar no puedo hablar yo").
@@ -18200,6 +18201,11 @@ async function doResetWithCode() {
       var r = window._convRec;
       if (r) { r.onend = null; r.onresult = null; if (r.abort) r.abort(); else r.stop(); }
     } catch(e){}
+    // v581: y la sesión larga del plugin de la APK (si no, oiría hablar a Azkarin)
+    try {
+      var SR = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition;
+      if (SR && typeof SR.stop === 'function') SR.stop();
+    } catch(e){}
     _convSesion = false;
   };
   // ══════════════════════════════════════════════════════════════════════════
@@ -18262,6 +18268,16 @@ async function doResetWithCode() {
     } catch(e){}
   }
   window._vozParte = _vozParte;
+  // v581 · qué métodos trae un plugin de la APK (para saber qué se puede hacer sin recompilarla)
+  function _apiDePlugin(nombre) {
+    try {
+      var pl = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[nombre];
+      if (!pl) return '';
+      var ks = [];
+      for (var k in pl) { try { if (typeof pl[k] === 'function') ks.push(k); } catch(e){} }
+      return ks.join(',').slice(0, 160);
+    } catch(e) { return ''; }
+  }
   function _vozFoto() {
     var out = { version: (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?') };
     try { out.getusermedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia); } catch(e){}
@@ -18271,6 +18287,8 @@ async function doResetWithCode() {
     try { out.app1 = /[?&]app=1/.test(location.search || ''); } catch(e){}
     try { out.wv = /;\s*wv\)/.test(navigator.userAgent || '') || /\bwv\b/.test(navigator.userAgent || ''); } catch(e){}   // v578: ¿va dentro de la APK?
     try { out.plugins = Object.keys((window.Capacitor && window.Capacitor.Plugins) || {}).join(',').slice(0, 120); } catch(e){}   // v580: con qué se puede grabar ahí dentro
+    try { out.api_sr = _apiDePlugin('SpeechRecognition'); } catch(e){}   // v581: qué sabe hacer el de la voz
+    try { out.api_ww = _apiDePlugin('WakeWord'); } catch(e){}            // v581: y el de la palabra clave (escucha sin pitar)
     try { out.motor = _mpDisponible() ? 'propio' : 'navegador'; } catch(e){}
     try { out.navegador = (/Chrome\/([\d.]+)/.exec(navigator.userAgent) || [,'?'])[1] + (/Android/i.test(navigator.userAgent) ? ' Android' : ''); } catch(e){}
     return out;
@@ -18524,6 +18542,58 @@ async function doResetWithCode() {
     if (_convSendTimer) { clearTimeout(_convSendTimer); _convSendTimer = null; }
     _convEstadoAuto();
   }
+  // ── v581 · ESCUCHA CONTINUA CON EL PLUGIN DE LA APK ─────────────────────────
+  var _srN = { escuchando: false, listener: null, ultimo: '', fallos: 0 };
+  function _srSigueValiendo() { return _srN.fallos < 3; }
+  function _micNativoContinuo() {
+    var SR = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition;
+    if (!SR || _srN.escuchando) return;
+    _srN.escuchando = true; _srN.ultimo = '';
+    _convSesion = true;
+    _convEstadoAuto();
+    if (!_srN.listener && typeof SR.addListener === 'function') {
+      try {
+        _srN.listener = SR.addListener('partialResults', function(d) {
+          try {
+            var m = (d && d.matches && d.matches.length) ? String(d.matches[0]) : '';
+            if (!m) return;
+            _srN.ultimo = m;
+            window._convUltimaVozTs = Date.now();
+            _convResetBackoff();
+            _convVerParcial(m);          // se ve lo que va oyendo y se rearma la pausa del envío
+          } catch(e){}
+        });
+      } catch(e){}
+    }
+    var _cerrada = false;
+    var _cerrar = function(txtFinal) {
+      if (_cerrada) return;
+      _cerrada = true;
+      _srN.escuchando = false; _convSesion = false;
+      var t = String(txtFinal || _srN.ultimo || '').trim();
+      _srN.ultimo = '';
+      _convEstadoAuto();
+      if (t) {
+        if (_esEcoDeAzkarin(t)) { /* su propia voz: fuera */ }
+        else if (_convHablando() && _esPalabraDeCorte(t)) { _convInterrumpir({}); }
+        else { _convResetBackoff(); _convRecibirHabla(t); }
+      } else {
+        _convMicVacio();               // en silencio, cada vez se espera un poco más (menos pitidos)
+      }
+      if (window._azkarinConv) setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, t ? 250 : 900);
+    };
+    try {
+      var _pr = SR.start({ language: 'es-ES', maxResults: 1, partialResults: true, popup: false });
+      Promise.resolve(_pr).then(function(res) {
+        var m = (res && res.matches && res.matches.length) ? String(res.matches[0]) : '';
+        _cerrar(m);
+      }).catch(function(e) {
+        _srN.fallos++;
+        console.warn('[Voz] la escucha continua falló (' + (e && e.message) + '), intento ' + _srN.fallos + '/3');
+        _cerrar('');
+      });
+    } catch(e) { _srN.fallos++; _cerrar(''); }
+  }
   window._convEscuchar = function() {
     if (!window._azkarinConv) return;
     // v576: con micro propio no hay nada que abrir ni cerrar — está abierto desde que se
@@ -18558,6 +18628,18 @@ async function doResetWithCode() {
     // conteste. En el APK no, porque alli cada apertura de micro pita.
     if (!_puedeCorte && sendBtn && sendBtn.disabled && _esAppNativa()) return;
     if (!panel.classList.contains('open')) { window.chatbotConvToggle(false); return; }
+    // ── v581 · DENTRO DE LA APK: UNA SOLA SESIÓN LARGA, NO VEINTE CORTAS ────────
+    // El «pi» lo hace Android cada vez que ABRE y cada vez que CIERRA el reconocedor. Hasta
+    // ahora se abría una sesión de las cortas cada segundo o dos (y en silencio también):
+    // de ahí el «cada vez que se activa el micrófono suena». Con los resultados a medias
+    // (partialResults) la sesión se queda abierta MIENTRAS habla, así que suena una vez por
+    // turno en lugar de sin parar. Es lo máximo que se puede hacer sin tocar la APK: ese
+    // sonido es del sistema y una página no lo puede silenciar.
+    var _SRp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition;
+    if (_SRp && typeof _SRp.addListener === 'function' && _srSigueValiendo()) {
+      _micNativoContinuo();
+      return;
+    }
     if (_esAppNativa() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
       _convSesion = true;
       // v390: en el APK NO habia ningun aviso de cuando escuchaba (solo lo tenia la ruta web) —
@@ -18758,6 +18840,11 @@ async function doResetWithCode() {
       if (!_hablando && !_pensando && window._convUltimaVozTs && (Date.now() - window._convUltimaVozTs) > 180000) {
         window.chatbotConvToggle(false);
         return;
+      }
+      // v581: si la sesión larga del plugin se queda colgada, se corta y se vuelve a abrir
+      if (_srN && _srN.escuchando && window._convUltimaVozTs && (Date.now() - window._convUltimaVozTs) > 30000) {
+        try { var _SRw = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition; if (_SRw && _SRw.stop) _SRw.stop(); } catch(e){}
+        _srN.escuchando = false; _convSesion = false;
       }
       if (_convSesion || isRecording) return;
       // v390: si esta hablando, _convEscuchar decide solo si abre el micro en modo corte
