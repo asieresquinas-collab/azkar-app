@@ -25,6 +25,10 @@ import android.speech.SpeechRecognizer;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Locale;
 
@@ -67,6 +71,9 @@ public class WakeWordService extends Service {
 
     private AudioManager am;
     private boolean muted = false;
+    // v1.9 · el cartero: cada pocos minutos pregunta si hay algo que recordarle a Asier
+    private static final long CADA_MS = 5 * 60 * 1000L;
+    private long ultimoCartero = 0;
     private Thread hiloVad;
     private AudioRecord rec;
 
@@ -102,7 +109,89 @@ public class WakeWordService extends Service {
             return START_NOT_STICKY;
         }
         arrancarVigilancia();
+        arrancarCartero();
         return START_STICKY;
+    }
+
+    // ── EL CARTERO ─────────────────────────────────────────────────────────────
+    // v1.9 · Asier: «que sea mi companero y me recuerde las cosas aunque este bloqueado el
+    // telefono». Cada cinco minutos se le pregunta al servidor si hay algo que decirle. El
+    // servidor es el que decide QUE y CUANDO (horario, no repetir, sin nombres de cliente):
+    // aqui solo se pregunta y, si hay algo, se abre Azkarin para que se lo diga hablando.
+    private void arrancarCartero() {
+        handler.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (stopping) return;
+                try { preguntarSiHayAlgo(); } catch (Exception e) {}
+                handler.postDelayed(this, CADA_MS);
+            }
+        }, 60000);   // el primero, un minuto despues de arrancar
+    }
+
+    private void preguntarSiHayAlgo() {
+        if (System.currentTimeMillis() - ultimoCartero < CADA_MS - 5000) return;
+        ultimoCartero = System.currentTimeMillis();
+        final android.content.SharedPreferences pref =
+            getSharedPreferences("azkarin", Context.MODE_PRIVATE);
+        final String base = pref.getString("base", "");
+        final String key = pref.getString("apiKey", "");
+        if (!pref.getBoolean("avisos", true)) return;
+        if (base == null || base.isEmpty() || key == null || key.isEmpty()) return;
+        new Thread(new Runnable() {
+            @Override public void run() {
+                HttpURLConnection con = null;
+                try {
+                    URL u = new URL(base + "/api/voz/companero?apiKey=" + key);
+                    con = (HttpURLConnection) u.openConnection();
+                    con.setConnectTimeout(12000);
+                    con.setReadTimeout(15000);
+                    con.setRequestProperty("User-Agent", "AzkarinAPK");
+                    if (con.getResponseCode() != 200) return;
+                    StringBuilder sb = new StringBuilder();
+                    BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream(), "UTF-8"));
+                    String l;
+                    while ((l = br.readLine()) != null) sb.append(l);
+                    br.close();
+                    org.json.JSONObject j = new org.json.JSONObject(sb.toString());
+                    if (!j.optBoolean("hay", false)) return;
+                    final String texto = j.optString("texto", "");
+                    final String id = j.optString("id", "");
+                    if (texto.isEmpty()) return;
+                    handler.post(new Runnable() {
+                        @Override public void run() { abrirParaDecir(texto, id); }
+                    });
+                } catch (Exception e) {
+                } finally { try { if (con != null) con.disconnect(); } catch (Exception e) {} }
+            }
+        }, "azkarin-cartero").start();
+    }
+
+    private void abrirParaDecir(String texto, String id) {
+        Intent i = new Intent(this, MainActivity.class);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                | Intent.FLAG_ACTIVITY_SINGLE_TOP
+                | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+        i.putExtra("azkarin_aviso", texto);
+        i.putExtra("azkarin_aviso_id", id);
+        try { startActivity(i); } catch (Exception e) {}
+        try {
+            int pf = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= 23) pf |= PendingIntent.FLAG_IMMUTABLE;
+            PendingIntent full = PendingIntent.getActivity(this, 8, i, pf);
+            Notification n = new NotificationCompat.Builder(this, CH_LLAMA)
+                .setContentTitle("Azkarin")
+                .setContentText("Tengo que recordarte una cosa")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .setAutoCancel(true)
+                .setTimeoutAfter(60000)
+                .setContentIntent(full)
+                .setFullScreenIntent(full, true)
+                .build();
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) nm.notify(NOTIF_ID + 2, n);
+        } catch (Exception e) {}
     }
 
     private void acquireLock() {

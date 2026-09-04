@@ -29,6 +29,7 @@ public class MainActivity extends BridgeActivity {
         pideMicro();
         dejaQueLaWebUseElMicro();
         handleWake(getIntent());
+        handleAviso(getIntent());
     }
 
     /**
@@ -113,6 +114,7 @@ public class MainActivity extends BridgeActivity {
         super.onNewIntent(intent);
         setIntent(intent);
         handleWake(intent);
+        handleAviso(intent);
     }
 
     private void handleWake(Intent intent) {
@@ -120,6 +122,35 @@ public class MainActivity extends BridgeActivity {
         showOverLockscreen();
         // El WebView remoto puede tardar en cargar: reintentamos varias veces.
         fireWakeJs(0);
+    }
+
+    /** v1.9 · el recado que trae el cartero: se le pasa a la web para que lo diga hablando. */
+    private void handleAviso(Intent intent) {
+        if (intent == null) return;
+        final String texto = intent.getStringExtra("azkarin_aviso");
+        if (texto == null || texto.isEmpty()) return;
+        final String id = intent.getStringExtra("azkarin_aviso_id");
+        intent.removeExtra("azkarin_aviso");
+        showOverLockscreen();
+        fireAvisoJs(texto, id == null ? "" : id, 0);
+    }
+
+    private void fireAvisoJs(final String texto, final String id, final int tries) {
+        if (tries > 10) return;
+        try {
+            if (bridge != null && bridge.getWebView() != null) {
+                final String js = "(function(){if(window.__azkarinAvisoDeVoz){window.__azkarinAvisoDeVoz("
+                    + org.json.JSONObject.quote(texto) + "," + org.json.JSONObject.quote(id) + ");return 1;}return 0;})();";
+                bridge.getWebView().post(new Runnable() {
+                    @Override public void run() {
+                        try { bridge.getWebView().evaluateJavascript(js, null); } catch (Exception e) {}
+                    }
+                });
+            }
+        } catch (Exception e) {}
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override public void run() { fireAvisoJs(texto, id, tries + 1); }
+        }, 900);
     }
 
     private void fireWakeJs(final int tries) {

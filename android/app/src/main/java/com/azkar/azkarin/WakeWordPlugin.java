@@ -30,6 +30,30 @@ public class WakeWordPlugin extends Plugin {
      * tampoco vale si el permiso no esta concedido. Esto le dice a la app QUE FALTA, para
      * que Asier lo active de un toque en vez de quedarse con el micro sonando y sin app.
      */
+    /**
+     * v1.9 · LA LLAVE PARA PREGUNTAR SOLO. El servicio, con el movil bloqueado, va a
+     * preguntarle al servidor si hay algo que recordarle a Asier. Para eso necesita la
+     * direccion y la llave de la app, que se las pasa la propia web al arrancar. No se
+     * guarda ninguna contrasena: solo la llave publica que ya viaja en la pagina.
+     */
+    @PluginMethod
+    public void configurar(PluginCall call) {
+        try {
+            String base = call.getString("base", "");
+            String apiKey = call.getString("apiKey", "");
+            boolean avisos = Boolean.TRUE.equals(call.getBoolean("avisos", true));
+            getContext().getSharedPreferences("azkarin", android.content.Context.MODE_PRIVATE)
+                .edit()
+                .putString("base", base == null ? "" : base)
+                .putString("apiKey", apiKey == null ? "" : apiKey)
+                .putBoolean("avisos", avisos)
+                .apply();
+            JSObject r = new JSObject();
+            r.put("ok", true);
+            call.resolve(r);
+        } catch (Exception e) { call.reject("no se pudo guardar: " + e.getMessage()); }
+    }
+
     @PluginMethod
     public void info(PluginCall call) {
         JSObject r = new JSObject();
