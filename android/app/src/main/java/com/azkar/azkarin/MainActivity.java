@@ -11,7 +11,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.WindowManager;
 
+import android.webkit.PermissionRequest;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebChromeClient;
 
 public class MainActivity extends BridgeActivity {
 
@@ -21,6 +26,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(WhatsAppBizPlugin.class);
         super.onCreate(savedInstanceState);
         pideUbicacion();
+        pideMicro();
+        dejaQueLaWebUseElMicro();
         handleWake(getIntent());
     }
 
@@ -42,6 +49,63 @@ public class MainActivity extends BridgeActivity {
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION}, 9001);
         } catch (Exception e) { /* si no se puede pedir, la app sigue igual */ }
+    }
+
+    /**
+     * v1.5 · EL MICROFONO, PARA LA WEB DE DENTRO.
+     *
+     * Asier, 4-sep-2026: «cada vez que se activa el microfono suena; quitame eso».
+     * Ese «pi» lo hace Android cada vez que se abre y se cierra su reconocedor de voz, y no
+     * se puede silenciar. La app web ya sabe escuchar sin pitar (abre el microfono normal,
+     * graba, y pasa el audio a texto en el servidor), pero para eso el WebView tiene que
+     * poder abrir el microfono — y aqui no podia: el parte que manda su movil decia
+     * NotAllowedError una y otra vez.
+     *
+     * Dos cosas hacen falta, y ninguna estaba: (1) que la APP tenga concedido RECORD_AUDIO
+     * (declararlo en el manifest NO basta: hay que pedirlo en marcha), y (2) que cuando la
+     * pagina pida el microfono, la aplicacion se lo CONCEDA. Eso es lo que hay aqui debajo.
+     */
+    private void pideMicro() {
+        try {
+            if (Build.VERSION.SDK_INT < 23) return;
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) return;
+            requestPermissions(new String[]{ Manifest.permission.RECORD_AUDIO }, 9002);
+        } catch (Exception e) { /* si no se puede pedir, la app sigue igual */ }
+    }
+
+    /** Cuando la pagina pide el microfono, se le da — pero SOLO el microfono, y solo si la
+     *  app lo tiene concedido. Nada de camara ni de conceder a ciegas lo que pida. */
+    private void dejaQueLaWebUseElMicro() {
+        try {
+            if (bridge == null || bridge.getWebView() == null) return;
+            bridge.getWebView().setWebChromeClient(new BridgeWebChromeClient(bridge) {
+                @Override
+                public void onPermissionRequest(final PermissionRequest request) {
+                    runOnUiThread(new Runnable() {
+                        @Override public void run() {
+                            try {
+                                List<String> vale = new ArrayList<>();
+                                String[] pide = request.getResources();
+                                boolean tieneMicro = Build.VERSION.SDK_INT < 23 ||
+                                    checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+                                for (int i = 0; pide != null && i < pide.length; i++) {
+                                    if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(pide[i]) && tieneMicro) vale.add(pide[i]);
+                                }
+                                if (vale.isEmpty()) {
+                                    // no esta concedido todavia: se pide y esta vez se deniega
+                                    pideMicro();
+                                    request.deny();
+                                } else {
+                                    request.grant(vale.toArray(new String[0]));
+                                }
+                            } catch (Exception e) {
+                                try { request.deny(); } catch (Exception e2) {}
+                            }
+                        }
+                    });
+                }
+            });
+        } catch (Exception e) { /* si algo falla, la app sigue como siempre */ }
     }
 
     @Override
