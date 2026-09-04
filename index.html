@@ -1108,6 +1108,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>Dentro de tu APK, Android NO le deja a la app abrir el micrófono</strong> (lo dijo tu propio móvil: permiso denegado, aunque el permiso se pida por todas las puertas). Mientras esa APK sea la que es, hay que usar el reconocedor de Android, y <strong>ese pitido es del sistema: una página no lo puede silenciar</strong>. Lo que sí se ha hecho: <strong>una sola sesión larga por turno</strong> en vez de una cada segundo, así que suena <strong>una vez cuando empiezas a hablar</strong> y no veinte por minuto. En silencio, además, espera hasta siete segundos entre intentos.</div></div>
       <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>✅ <strong>Resuelto con la APK v1.6</strong> (4-sep): a la APK le faltaba declarar un segundo permiso de audio que Capacitor exige para dejarle el micrófono a la web. Con eso entra el micro propio y <strong>no suena nada</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>12</div><div class='step-text'>🗣️ <strong>Hablarle sin abrir la app, con el móvil bloqueado:</strong> dentro de la APK escribe <strong>/escucha</strong> y toca «Activar». Queda una notificación fija «Di Azkarin para hablar»; dices <strong>«Azkarin»</strong> y se abre sola encima de la pantalla bloqueada con la conversación encendida. Para que Android no la mate: Ajustes → Aplicaciones → Azkarin → Batería → <strong>Sin restricciones</strong>. Mientras estás hablando con él, esa escucha se aparta sola y vuelve al terminar.</div></div>
       <div class='ayuda-step'><div class='step-num'>10</div><div class='step-text'>🛑 <strong>Las frases fantasma</strong> («Oye, Siri, pon una alarma», «¿qué tiempo hace?», «¡Hola!» que nadie dijo): el micro mandaba un trozo de <strong>ruido</strong> de la sala y el modelo se <strong>inventaba</strong> la frase típica que se le dice a un asistente — y Azkarin la ejecutaba. Ahora el modelo tiene que decir primero <strong>si hay voz humana</strong>; las frases de catálogo se tiran; y si hay más letras de las que caben en los segundos de voz que hubo, se tira también. Además el micro es más exigente con lo que cuenta como voz y no manda nada de menos de medio segundo.</div></div>
       <div class='ayuda-step'><div class='step-num'>11</div><div class='step-text'><strong>Ya no te parte las frases</strong> («¿cuántos clientes han salido, han»): espera casi segundo y medio de silencio, y si tienes un trozo camino del servidor o estás hablando, <strong>no manda nada</strong> hasta que termines.</div></div>
       <div class='ayuda-step'><div class='step-num'>9</div><div class='step-text'>Y con el micro ya abierto, el altavoz le entraba por el micrófono: <strong>se contestaba a sí mismo</strong> y se cortaba a media frase. Ahora, mientras habla, la vara de medir es <strong>su propia voz</strong>: para cortarle hay que sonar el doble que él durante medio segundo largo. Además, lo que se oiga en el primer instante después de que se calle <strong>no se manda</strong>: es su eco.</div></div>
@@ -4734,7 +4735,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v584';
+var APP_VERSION = 'v585';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17170,6 +17171,7 @@ async function doResetWithCode() {
   // ── Wake word "Azkarin": escucha en segundo plano (solo app nativa Android) ──
   function _azkEsApp(){ try { return (typeof window.Capacitor !== 'undefined') || /[?&]app=1/.test(location.search||''); } catch(e){ return false; } }
   function _azkWakePlugin(){ try { return (window.Capacitor && window.Capacitor.registerPlugin) ? window.Capacitor.registerPlugin('WakeWord') : null; } catch(e){ return null; } }
+  window._azkWakePluginRef = _azkWakePlugin;   // v585: el modo conversación lo aparta y lo devuelve
   // La app nativa llama a esto cuando oye "Azkarin" con el movil bloqueado
   window.__azkarinWakeFromNative = function(){
     try {
@@ -18869,6 +18871,9 @@ async function doResetWithCode() {
     if (nuevo) {
       chatTTSEnabled = true; try { localStorage.setItem('chatTTS', 'on'); } catch (e) {}
       try { _convResetBackoff(); } catch (e) {} // v369: al encender, micro sin retardo
+      // v585: la escucha de «Azkarin» en segundo plano usa el micro de Android; mientras la
+      // conversación tenga el micro propio abierto, se aparta (dos no pueden grabar a la vez)
+      try { var _pw = window._azkWakePluginRef && window._azkWakePluginRef(); if (_pw && localStorage.getItem('azkarinEscucha') === 'on') _pw.stop(); } catch (e) {}
       try { if (_mpDisponible()) _mpArrancar(); } catch (e) {}   // v576: el micro se abre con SU toque (el permiso lo pide así)
       try { _vozParte('enciende', _vozFoto()); } catch (e) {}
       _convPedirWake();
@@ -18883,6 +18888,8 @@ async function doResetWithCode() {
       _convSesion = false;
       _convLimpiarBuffer(); // v357: descartar lo acumulado al apagar
       _convEstadoAuto();
+      // v585: y la escucha de «Azkarin» vuelve a su sitio
+      try { var _pw2 = window._azkWakePluginRef && window._azkWakePluginRef(); if (_pw2 && localStorage.getItem('azkarinEscucha') === 'on') setTimeout(function(){ try { _pw2.start(); } catch(e){} }, 800); } catch (e) {}
       addMsg('bot', '🎧 Modo conversación apagado.');
     }
   };
