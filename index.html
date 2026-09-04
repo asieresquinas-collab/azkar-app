@@ -1108,6 +1108,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>Dentro de tu APK, Android NO le deja a la app abrir el micrófono</strong> (lo dijo tu propio móvil: permiso denegado, aunque el permiso se pida por todas las puertas). Mientras esa APK sea la que es, hay que usar el reconocedor de Android, y <strong>ese pitido es del sistema: una página no lo puede silenciar</strong>. Lo que sí se ha hecho: <strong>una sola sesión larga por turno</strong> en vez de una cada segundo, así que suena <strong>una vez cuando empiezas a hablar</strong> y no veinte por minuto. En silencio, además, espera hasta siete segundos entre intentos.</div></div>
       <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>✅ <strong>Resuelto con la APK v1.6</strong> (4-sep): a la APK le faltaba declarar un segundo permiso de audio que Capacitor exige para dejarle el micrófono a la web. Con eso entra el micro propio y <strong>no suena nada</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>13</div><div class='step-text'>🎧 <strong>Escuchar una grabación sin tocar el móvil.</strong> Le dices «ponme la última llamada de Fulano» y, si estás en conversación, la grabación <strong>empieza sola</strong> en cuanto él termina de hablar. Desde ahí la mandas de viva voz: <strong>«para»</strong>, <strong>«sigue»</strong>, <strong>«otra vez»</strong>, <strong>«más rápido»</strong>, <strong>«más despacio»</strong>, <strong>«adelanta treinta segundos»</strong>, <strong>«vuelve diez»</strong>, <strong>«quítala»</strong>. Y si le hablas encima mientras suena, se para y te escucha. Esas órdenes se hacen en el propio móvil: <strong>no gastan nada</strong>.</div></div>
       <div class='ayuda-step'><div class='step-num'>12</div><div class='step-text'>🗣️ <strong>Hablarle sin abrir la app, con el móvil bloqueado:</strong> dentro de la APK escribe <strong>/escucha</strong> y toca «Activar». Queda una notificación fija «Di Azkarin para hablar»; dices <strong>«Azkarin»</strong> y se abre sola encima de la pantalla bloqueada con la conversación encendida. Para que Android no la mate: Ajustes → Aplicaciones → Azkarin → Batería → <strong>Sin restricciones</strong>. Mientras estás hablando con él, esa escucha se aparta sola y vuelve al terminar.</div></div>
       <div class='ayuda-step'><div class='step-num'>10</div><div class='step-text'>🛑 <strong>Las frases fantasma</strong> («Oye, Siri, pon una alarma», «¿qué tiempo hace?», «¡Hola!» que nadie dijo): el micro mandaba un trozo de <strong>ruido</strong> de la sala y el modelo se <strong>inventaba</strong> la frase típica que se le dice a un asistente — y Azkarin la ejecutaba. Ahora el modelo tiene que decir primero <strong>si hay voz humana</strong>; las frases de catálogo se tiran; y si hay más letras de las que caben en los segundos de voz que hubo, se tira también. Además el micro es más exigente con lo que cuenta como voz y no manda nada de menos de medio segundo.</div></div>
       <div class='ayuda-step'><div class='step-num'>11</div><div class='step-text'><strong>Ya no te parte las frases</strong> («¿cuántos clientes han salido, han»): espera casi segundo y medio de silencio, y si tienes un trozo camino del servidor o estás hablando, <strong>no manda nada</strong> hasta que termines.</div></div>
@@ -4735,7 +4736,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v587';
+var APP_VERSION = 'v588';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17626,6 +17627,21 @@ async function doResetWithCode() {
               divLl.appendChild(notaLl);
               msgsDiv.appendChild(divLl);
               msgsDiv.scrollTop = msgsDiv.scrollHeight;
+              // ── v588 · MANOS LIBRES: la grabación queda a mano para mandarla de viva voz
+              //    y, si la pidió hablando, EMPIEZA SOLA en cuanto Azkarin termine de hablar.
+              try {
+                window._llAudio = auEl;
+                window._llTitulo = titLl;
+                window._llVel = function(v){ try { auEl.preservesPitch = true; } catch(e){} auEl.playbackRate = v; velLl = v; spBtnLl.textContent = String(v).replace('.', ',') + '×'; };
+                auEl.addEventListener('ended', function(){ if (window._llAudio === auEl) window._llAudio = null; });
+                if (window._azkarinConv) {
+                  var _arranca = function(){
+                    if (_convHablando && _convHablando()) { setTimeout(_arranca, 400); return; }
+                    try { auEl.play(); } catch(e){}
+                  };
+                  setTimeout(_arranca, 500);
+                }
+              } catch(e){}
               // Autoborrado (protección de datos), SIN cortar llamadas largas:
               // mientras está SONANDO nunca se borra (da igual que dure 20 min);
               // al acabar → 30 s de margen y se borra; si está parada 5 min → se borra.
@@ -18056,10 +18072,51 @@ async function doResetWithCode() {
     var _espera = (typeof _mp !== 'undefined' && _mp.on) ? _MP_ESPERA_ENVIO : _CONV_PAUSA_MS;
     _convSendTimer = setTimeout(_convEnviarLoAcumulado, _espera);
   }
+  // ── v588 · EL MANDO DE LA GRABACIÓN, DE VIVA VOZ ────────────────────────────
+  // Asier, 4-sep: «que le pueda decir que le dé al play, así no tengo que tocar el móvil
+  // para nada». Estas órdenes NO van al servidor: se hacen aquí mismo, al instante y gratis.
+  var _RE_LL_PLAY   = /^(dale|dale al play|play|reproduce|repr[oó]ducela|ponla|p[oó]nmela|pon la grabaci|escuch[ae]mos|sigue|contin[uú]a|reanuda|otra vez play)\b/i;
+  var _RE_LL_PAUSA  = /^(para|parad|p[aá]rala|pausa|p[aá]usala|quieto|espera|stop|corta)\b/i;
+  var _RE_LL_OTRA   = /^(otra vez|rep[ií]tela|repite|desde el principio|vuelve a empezar|desde el inicio)\b/i;
+  var _RE_LL_RAPIDO = /^(m[aá]s r[aá]pido|acelera|corre m[aá]s|r[aá]pido)\b/i;
+  var _RE_LL_LENTO  = /^(m[aá]s despacio|despacio|m[aá]s lento|lento|normal)\b/i;
+  var _RE_LL_ADEL   = /^(adelanta|salta|avanza|pasa|tira)\b/i;
+  var _RE_LL_ATRAS  = /^(atr[aá]s|vuelve|retrocede|rebobina|un poco atr[aá]s)\b/i;
+  var _RE_LL_FUERA  = /^(qu[ií]tala|ci[eé]rrala|ya est[aá]|d[eé]jalo|fuera|borra la grabaci)\b/i;
+  function _llSegundos(t) {
+    var m = /(\d{1,3})\s*(segundo|seg|minuto|min)/i.exec(t || '');
+    if (!m) return 15;
+    var n = parseInt(m[1], 10) || 15;
+    return /min/i.test(m[2]) ? n * 60 : n;
+  }
+  // Devuelve true si la frase era una orden para la grabación (y ya está hecha)
+  function _mandoDeLaGrabacion(txt) {
+    try {
+      var a = window._llAudio;
+      if (!a) return false;
+      var t = String(txt || '').trim().toLowerCase().replace(/[¡!¿?.,]/g, '');
+      if (!t) return false;
+      if (t.split(/\s+/).length > 7) return false;          // una frase larga es para Azkarin
+      var di = function(m){ try { _convAvisoCorto(m); } catch(e){} };
+      if (_RE_LL_OTRA.test(t))   { a.currentTime = 0; a.play(); di('🎧 Desde el principio'); return true; }
+      if (_RE_LL_PLAY.test(t))   { a.play(); di('🎧 Va'); return true; }
+      if (_RE_LL_PAUSA.test(t))  { a.pause(); di('🎧 Parada'); return true; }
+      if (_RE_LL_RAPIDO.test(t)) { window._llVel(Math.min(2, (a.playbackRate || 1) + 0.25)); di('🎧 Más rápido'); return true; }
+      if (_RE_LL_LENTO.test(t))  { window._llVel(Math.max(0.75, (a.playbackRate || 1) - 0.25)); di('🎧 Más despacio'); return true; }
+      if (_RE_LL_ADEL.test(t))   { a.currentTime = Math.min((a.duration || 1e9), a.currentTime + _llSegundos(t)); if (a.paused) a.play(); di('🎧 Adelante'); return true; }
+      if (_RE_LL_ATRAS.test(t))  { a.currentTime = Math.max(0, a.currentTime - _llSegundos(t)); if (a.paused) a.play(); di('🎧 Atrás'); return true; }
+      if (_RE_LL_FUERA.test(t))  { a.pause(); window._llAudio = null; di('🎧 Quitada'); return true; }
+      return false;
+    } catch(e){ return false; }
+  }
+  window._mandoDeLaGrabacion = _mandoDeLaGrabacion;
+
   function _convRecibirHabla(txt) {
     txt = (txt || '').trim();
     if (!txt) return;
     window._convUltimaVozTs = Date.now();
+    // v588: si es una orden para la grabación, se hace aquí y no se le manda nada a Azkarin
+    if (_mandoDeLaGrabacion(txt)) { _convLimpiarBuffer(); return; }
     _convBuffer = _convBuffer ? (_convBuffer + ' ' + txt) : txt;   // une lo dicho antes y después de la pausa
     try { inputEl.value = _convBuffer; } catch(e){}                 // feedback: va viendo lo que lleva dicho
     _convArmarEnvio();                                             // (re)arma el temporizador de envío
@@ -18077,7 +18134,10 @@ async function doResetWithCode() {
   // v360: barge-in por voz RE-ACTIVADO, ahora con GUARDIA ANTI-BUCLE robusta para que Azkarin
   // NUNCA se conteste a sí mismo (el fallo de la grúa Gernika). Apagar del todo: localStorage.azkar_bargein='0'.
   function _bargeinActivo() { try { return localStorage.getItem('azkar_bargein') !== '0'; } catch(e){ return true; } }
-  function _convHablando() { try { return !!(window._hablandoNativo || _ttsSpeaking || (_ttsQueue && _ttsQueue.length)); } catch(e){ return false; } }
+  // v588: «hablando» es también la GRABACIÓN sonando — así el micro no se toma la voz del
+  // cliente por la de Asier, y hablándole encima se le puede parar igual que a él.
+  function _convGrabacionSonando() { try { var a = window._llAudio; return !!(a && !a.paused && !a.ended); } catch(e){ return false; } }
+  function _convHablando() { try { return !!(window._hablandoNativo || _ttsSpeaking || (_ttsQueue && _ttsQueue.length) || _convGrabacionSonando()); } catch(e){ return false; } }
   // v360: memoria de lo ÚLTIMO que dijo Azkarin (varias frases, 12s) — para reconocer su eco AUNQUE
   // la transcripción llegue tarde (cuando ya ha dejado de hablar) y con fallos.
   // v361: normaliza quitando signos — el eco transcrito no trae comas ni interrogaciones.
@@ -18188,6 +18248,7 @@ async function doResetWithCode() {
       if (!_convHablando()) return;                                           // solo si está hablando
       if (e && e.target && e.target.closest && e.target.closest('a,button,input,textarea,select,label')) return; // no robar toques a botones/enlaces
       if (typeof chatSpeakStop === 'function') chatSpeakStop();
+      try { if (window._llAudio && !window._llAudio.paused) window._llAudio.pause(); } catch(e){}   // v588
       window._ttsFinTs = Date.now();
       window._ultimosDichos = [];   // v390: no filtrar lo que diga Asier justo despues de cortarle
       _convLimpiarBuffer();
