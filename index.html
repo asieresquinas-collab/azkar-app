@@ -1108,6 +1108,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>Dentro de tu APK, Android NO le deja a la app abrir el micrófono</strong> (lo dijo tu propio móvil: permiso denegado, aunque el permiso se pida por todas las puertas). Mientras esa APK sea la que es, hay que usar el reconocedor de Android, y <strong>ese pitido es del sistema: una página no lo puede silenciar</strong>. Lo que sí se ha hecho: <strong>una sola sesión larga por turno</strong> en vez de una cada segundo, así que suena <strong>una vez cuando empiezas a hablar</strong> y no veinte por minuto. En silencio, además, espera hasta siete segundos entre intentos.</div></div>
       <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>✅ <strong>Resuelto con la APK v1.6</strong> (4-sep): a la APK le faltaba declarar un segundo permiso de audio que Capacitor exige para dejarle el micrófono a la web. Con eso entra el micro propio y <strong>no suena nada</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>14</div><div class='step-text'>🤫 <strong>Con el móvil bloqueado NO se entera de tus conversaciones.</strong> Cuando se abre solo al oír «Azkarin», solo contesta a lo que empiece por su nombre: lo que hables con tu hijo o con quien sea <strong>ni se manda ni se contesta</strong> (ni gasta). Después de que él conteste tienes quince segundos para seguirle el hilo sin repetir el nombre («sí», «ponme la otra»), y si no le hablas en dos minutos <strong>se apaga sola</strong> y vuelve a estar solo a la escucha de su nombre. Si eres tú quien abre la conversación tocando el auricular, funciona como siempre.</div></div>
       <div class='ayuda-step'><div class='step-num'>13</div><div class='step-text'>🎧 <strong>Escuchar una grabación sin tocar el móvil.</strong> Le dices «ponme la última llamada de Fulano» y, si estás en conversación, la grabación <strong>empieza sola</strong> en cuanto él termina de hablar. Desde ahí la mandas de viva voz: <strong>«para»</strong>, <strong>«sigue»</strong>, <strong>«otra vez»</strong>, <strong>«más rápido»</strong>, <strong>«más despacio»</strong>, <strong>«adelanta treinta segundos»</strong>, <strong>«vuelve diez»</strong>, <strong>«quítala»</strong>. Y si le hablas encima mientras suena, se para y te escucha. Esas órdenes se hacen en el propio móvil: <strong>no gastan nada</strong>.</div></div>
       <div class='ayuda-step'><div class='step-num'>12</div><div class='step-text'>🗣️ <strong>Hablarle sin abrir la app, con el móvil bloqueado:</strong> dentro de la APK escribe <strong>/escucha</strong> y toca «Activar». Queda una notificación fija «Di Azkarin para hablar»; dices <strong>«Azkarin»</strong> y se abre sola encima de la pantalla bloqueada con la conversación encendida. Para que Android no la mate: Ajustes → Aplicaciones → Azkarin → Batería → <strong>Sin restricciones</strong>. Mientras estás hablando con él, esa escucha se aparta sola y vuelve al terminar.</div></div>
       <div class='ayuda-step'><div class='step-num'>10</div><div class='step-text'>🛑 <strong>Las frases fantasma</strong> («Oye, Siri, pon una alarma», «¿qué tiempo hace?», «¡Hola!» que nadie dijo): el micro mandaba un trozo de <strong>ruido</strong> de la sala y el modelo se <strong>inventaba</strong> la frase típica que se le dice a un asistente — y Azkarin la ejecutaba. Ahora el modelo tiene que decir primero <strong>si hay voz humana</strong>; las frases de catálogo se tiran; y si hay más letras de las que caben en los segundos de voz que hubo, se tira también. Además el micro es más exigente con lo que cuenta como voz y no manda nada de menos de medio segundo.</div></div>
@@ -4736,7 +4737,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v588';
+var APP_VERSION = 'v589';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17187,6 +17188,11 @@ async function doResetWithCode() {
   // La app nativa llama a esto cuando oye "Azkarin" con el movil bloqueado
   window.__azkarinWakeFromNative = function(){
     try {
+      // v589 · se ha abierto porque ha oído «Azkarin», no porque Asier haya tocado nada.
+      // En ese modo NO vale escuchar todo lo que se hable en la habitación: solo lo que
+      // vaya dirigido a él. Lo demás ni se manda ni se contesta.
+      window._convPorPalabraClave = true;
+      window._convUltimaSuya = Date.now();
       var panel = document.getElementById('chatbot-panel');
       var bubble = document.getElementById('chatbot-bubble');
       if (panel && !panel.classList.contains('open')) panel.classList.add('open');
@@ -18063,6 +18069,7 @@ async function doResetWithCode() {
     if (sendBtn && sendBtn.disabled) { _convSendTimer = setTimeout(_convEnviarLoAcumulado, 600); return; }
     _convBuffer = '';
     try { inputEl.value = txt; } catch(e){}
+    window._convUltimaSuya = Date.now();   // v589: esto sí iba para él
     window.chatbotSend();
   }
   function _convArmarEnvio() {
@@ -18111,12 +18118,45 @@ async function doResetWithCode() {
   }
   window._mandoDeLaGrabacion = _mandoDeLaGrabacion;
 
+  // ── v589 · CUANDO SE ABRE POR VOZ, SOLO CONTESTA SI LE LLAMAS ────────────────
+  // Asier, 4-sep: «yo hablo y él me está contestando hasta lo que hablo con mi hijo».
+  // Con el móvil bloqueado, la conversación se abre sola al oír «Azkarin» y hasta ahora se
+  // quedaba escuchando TODO. Ahora: lo que no empiece por su nombre no se manda ni se
+  // contesta — salvo en los segundos siguientes a que él conteste, para poder seguir el hilo
+  // («sí», «ponme la otra») sin repetir el nombre en cada frase.
+  var _MS_SIGUE_EL_HILO = 15000;
+  var _RE_LE_LLAMA = /^\s*(oye\s+|eh\s+|venga\s+)?(azkarin|azkar[ií]n|azcarin|askarin|ascarin|oscarin|azkar)\b[\s,.:;!¡?¿-]*/i;
+  function _leHablaAEl(txt) {
+    try {
+      if (!window._convPorPalabraClave) return { vale: true, texto: txt };   // lo abrió él a mano: como siempre
+      var t = String(txt || '');
+      if (_RE_LE_LLAMA.test(t)) {
+        var limpio = t.replace(_RE_LE_LLAMA, '').trim();
+        return { vale: true, texto: limpio || t };                          // le ha llamado
+      }
+      // sigue el hilo: los quince segundos siguientes a que él acabe de hablar
+      var desde = Math.max(window._ttsFinTs || 0, window._convUltimaSuya || 0);
+      if (desde && (Date.now() - desde) < _MS_SIGUE_EL_HILO) return { vale: true, texto: t };
+      return { vale: false, texto: t };
+    } catch(e){ return { vale: true, texto: txt }; }
+  }
+  window._leHablaAEl = _leHablaAEl;
+
   function _convRecibirHabla(txt) {
     txt = (txt || '').trim();
     if (!txt) return;
     window._convUltimaVozTs = Date.now();
     // v588: si es una orden para la grabación, se hace aquí y no se le manda nada a Azkarin
     if (_mandoDeLaGrabacion(txt)) { _convLimpiarBuffer(); return; }
+    // v589: ¿va dirigido a él? Si no, ni se manda ni se apunta (y no gasta un céntimo)
+    var _p = _leHablaAEl(txt);
+    if (!_p.vale) {
+      console.log('[Conv] no va conmigo, lo dejo pasar:', txt.slice(0, 40));
+      _convLimpiarBuffer();
+      try { _convAvisoCorto('🎧 Di «Azkarin» para hablarme'); } catch(e){}
+      return;
+    }
+    txt = _p.texto;
     _convBuffer = _convBuffer ? (_convBuffer + ' ' + txt) : txt;   // une lo dicho antes y después de la pausa
     try { inputEl.value = _convBuffer; } catch(e){}                 // feedback: va viendo lo que lleva dicho
     _convArmarEnvio();                                             // (re)arma el temporizador de envío
@@ -18993,6 +19033,7 @@ async function doResetWithCode() {
       try { if (window._convRec) { window._convRec.onend = null; window._convRec.stop(); } } catch (e) {}
       _convSesion = false;
       _convLimpiarBuffer(); // v357: descartar lo acumulado al apagar
+      window._convPorPalabraClave = false;   // v589
       _convEstadoAuto();
       // v585: y la escucha de «Azkarin» vuelve a su sitio
       try { var _pw2 = window._azkWakePluginRef && window._azkWakePluginRef(); if (_pw2 && localStorage.getItem('azkarinEscucha') === 'on') setTimeout(function(){ try { _pw2.start(); } catch(e){} }, 800); } catch (e) {}
@@ -19010,6 +19051,14 @@ async function doResetWithCode() {
       var _pensando = !!(sendBtn && sendBtn.disabled);
       // v575: se apaga solo tras TRES MINUTOS sin oir nada. Antes contaba sesiones de micro
       // (10) y con el micro abierto de continuo se habria apagado en medio minuto.
+      // v589 · abierta por la palabra clave: se apaga sola a los DOS MINUTOS sin que le
+      // hablen a él, aunque haya gente hablando en la habitación. Así vuelve a estar solo a
+      // la escucha de su nombre y no se entera de nada más.
+      var _refSuya = Math.max(window._convUltimaSuya || 0, window._ttsFinTs || 0);
+      if (window._convPorPalabraClave && !_hablando && !_pensando && _refSuya && (Date.now() - _refSuya) > 120000) {
+        window.chatbotConvToggle(false);
+        return;
+      }
       if (!_hablando && !_pensando && window._convUltimaVozTs && (Date.now() - window._convUltimaVozTs) > 180000) {
         window.chatbotConvToggle(false);
         return;
