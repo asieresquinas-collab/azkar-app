@@ -139,7 +139,8 @@ function fin() {
   console.log('\n══ F · QUE NO VUELVA EL PITIDO ══');
   c('F1 · el modo conversación usa el micro propio antes que nada', /if \(_mpDisponible\(\)\) \{\s*\n\s*if \(!_mp\.on && !_mp\.arrancando\) _mpArrancar\(\);/.test(H));
   c('F1b · «?app=1» ya NO manda al micro que pita', !/_esAppNativa\(\) && _mpDisponible\(\)/.test(H));
-  c('F1c · solo un plugin nativo de verdad puede ganarle al micro propio', /Plugins\.SpeechRecognition\) return false;/.test(H));
+  c('F1c · también dentro de la APK se usa el micro propio', !/Plugins\.SpeechRecognition\) return false;/.test(H) && /_mp && _mp\.imposible\) return false;/.test(H));
+  c('F1d · si el móvil no deja abrir el micro, NO se corta la conversación', /_mp\.imposible = true;[\s\S]{0,400}if \(!_hayNativo && !_hayWeb\)/.test(H));
   c('F2 · el micro se pide en el mismo toque de encender (permiso limpio)', /_mpDisponible\(\)\) _mpArrancar\(\);.*permiso lo pide as/.test(H));
   c('F3 · el vigilante lo mantiene abierto toda la conversación', /!_mp\.on && !_mp\.arrancando\) _mpArrancar\(\);\s*\n\s*var _hablando/.test(H));
   c('F3b · el botón del micro 🎤 tampoco pita ya', /_mpDisponible\(\)\) \{ _micPropioBoton\(\); return; \}/.test(H) && /function _micPropioBoton/.test(H));
