@@ -1092,13 +1092,15 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v576 · backend 2.7.610), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v577 · backend 2.7.611), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
-      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🔇 SE ACABÓ EL «CLIN, CLIN» DEL MICRÓFONO (app v576 · backend 2.7.610):</p>
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🔇 SE ACABÓ EL «CLIN, CLIN» DEL MICRÓFONO (app v577 · backend 2.7.611):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Ese pitido lo hacía <strong>Android</strong> cada vez que se abría y se cerraba el reconocedor de voz del navegador — y se cerraba solo en cuanto callabas, así que sonaba veinte veces por minuto. Desde la web ese sonido <strong>no se puede quitar</strong>. Así que ya no se usa: la app abre el micrófono <strong>una sola vez</strong> (eso no pita) y escucha ella misma.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Cuando de verdad has callado, coge ese trozo de voz y lo manda al servidor para <strong>pasarlo a texto</strong>. Guarda también <strong>lo de justo antes</strong> de empezar a hablar, así que no se come la primera palabra. Una tos o un golpe no manda nada, y si no se entiende nada <strong>no se inventa</strong> una frase.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>De paso se arregla lo de «<strong>la primera vez me contesta y luego ya no</strong>»: pasaba cuando el navegador se atascaba al reabrir el micro y se quedaba sordo del todo. Con el micro propio no hay nada que reabrir.</div></div>
-      <div class='ayuda-tip'>Si alguna vez el dictado fallara tres veces seguidas, vuelve solo al micro de siempre (pita, pero funciona). Nunca te quedas sin poder hablarle.</div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>El botón del micro 🎤 tampoco pita.</strong> Dictar a mano va por el mismo camino: tocas, hablas, vuelves a tocar y sale el texto en el cuadro.</div></div>
+      <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
+      <div class='ayuda-tip'>Escribe <strong>/micro</strong> y te dice cuál está usando. Con <strong>/micro navegador</strong> vuelves al de siempre y con <strong>/micro propio</strong> al nuevo.</div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🎧 EL MODO CONVERSACIÓN, ARREGLADO (app v575):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>El micro ya no se cierra en tu cara.</strong> Antes se abría y se cerraba cada dos segundos: en ese hueco el botón se ponía <strong>verde</strong> (encendido pero sordo) y lo que dijeras <strong>se perdía</strong> — por eso tenías que repetirlo todo. Ahora la escucha es <strong>seguida</strong>: mientras te toca hablar a ti, el micro está abierto todo el rato.</div></div>
@@ -4720,7 +4722,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v576';
+var APP_VERSION = 'v577';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17328,6 +17330,22 @@ async function doResetWithCode() {
     try {
     var msg = inputEl.value.trim();
     if (msg && /^\/voz\b/i.test(msg)) { inputEl.value = ''; inputEl.style.height = 'auto'; try { azkarinSelectorVoz(); } catch(e) { addMsg('bot', 'No pude abrir el selector de voz: ' + e.message); } return; }
+    if (msg && /^\/micro\b/i.test(msg)) {
+      inputEl.value = ''; inputEl.style.height = 'auto';
+      var _quiere = (msg.split(/\s+/)[1] || '').toLowerCase();
+      if (_quiere === 'navegador') { try { localStorage.setItem('azkar_voz_motor', 'navegador'); } catch(e){} addMsg('bot', '🎙️ Vale: micro del navegador (pita, pero es el de siempre).'); return; }
+      if (_quiere === 'propio' || _quiere === 'nuevo') { try { localStorage.removeItem('azkar_voz_motor'); } catch(e){} addMsg('bot', '🔇 Vale: micro propio, sin pitidos.'); return; }
+      var _f = (typeof _vozFoto === 'function') ? _vozFoto() : {};
+      try { if (typeof _vozParte === 'function') _vozParte('enciende', _f); } catch(e){}
+      var _abierto = false, _hz = 0;
+      try { _abierto = !!(_mp && _mp.on); _hz = (_mp && _mp.hz) || 0; } catch(e){}
+      addMsg('bot', '🎙️ Micro: <b>' + (_f.motor === 'propio' ? 'el propio (sin pitidos)' : 'el del navegador (pita)') + '</b>' +
+        '<br>Abierto ahora: ' + (_abierto ? 'sí, a ' + _hz + ' Hz' : 'no') +
+        '<br>App ' + (_f.version || '?') + ' · ' + (_f.navegador || '?') +
+        '<br>Permiso de micro: ' + (_f.getusermedia ? 'lo pide el navegador' : 'NO hay micro para la web') +
+        '<br><span style="font-size:11px;color:#666">Para cambiarlo: «/micro navegador» o «/micro propio».</span>');
+      return;
+    }
     if (msg && /^\/(cortar|corte)\b/i.test(msg)) {
       inputEl.value = ''; inputEl.style.height = 'auto';
       var _corteOn = true; try { _corteOn = (localStorage.getItem('azkar_bargein') !== '0'); } catch(e){}
@@ -17830,6 +17848,10 @@ async function doResetWithCode() {
   }
   window.chatbotMicToggle = function() {
     try { if (typeof chatSpeakStop === 'function') chatSpeakStop(); } catch(e){}
+    // v577 · TAMBIÉN AQUÍ SIN PITIDOS. El botón del micro abría el reconocedor del
+    // navegador, que hace sonar el «pi» de Android al abrir y al cerrar. Ahora graba con el
+    // micro normal y lo pasa a texto por el mismo sitio que el modo conversación.
+    if (typeof _mpDisponible === 'function' && _mpDisponible()) { _micPropioBoton(); return; }
     if (_esAppNativa() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) {
       var _mb = document.getElementById('chatbot-mic');
       if (_mb) { _mb.classList.add('recording'); _mb.innerHTML = '⏹'; }
@@ -17870,6 +17892,66 @@ async function doResetWithCode() {
     recognition.onerror = function(e) { isRecording = false; micBtn.classList.remove('recording'); micBtn.innerHTML = '🎤'; };
     recognition.start();
   };
+
+  // ── v577 · EL BOTÓN DEL MICRO, CON EL MICRO PROPIO (sin el «pi» de Android) ──────────
+  var _bt = { grabando: false, stream: null, ctx: null, proc: null, src: null, sil: null, hz: 0, buf: [] };
+  function _micPropioBoton() {
+    var b = document.getElementById('chatbot-mic');
+    if (_bt.grabando) { _micPropioParar(); return; }
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+      .then(function(st) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        var ctx = new AC();
+        try { if (ctx.state === 'suspended' && ctx.resume) ctx.resume(); } catch(e){}
+        var src = ctx.createMediaStreamSource(st);
+        var proc = ctx.createScriptProcessor(4096, 1, 1);
+        var sil = ctx.createGain(); sil.gain.value = 0;
+        src.connect(proc); proc.connect(sil); sil.connect(ctx.destination);
+        _bt.buf = [];
+        proc.onaudioprocess = function(e) {
+          try { _bt.buf.push(new Float32Array(e.inputBuffer.getChannelData(0))); } catch(err){}
+        };
+        _bt.grabando = true; _bt.stream = st; _bt.ctx = ctx; _bt.proc = proc; _bt.src = src; _bt.sil = sil; _bt.hz = ctx.sampleRate || 48000;
+        if (b) { b.classList.add('recording'); b.innerHTML = '⏹'; }
+      })
+      .catch(function(e) {
+        console.warn('[Voz] el botón del micro no pudo abrir el micrófono:', e && e.name);
+        alert('Necesito permiso del micrófono para dictar.');
+      });
+  }
+  function _micPropioParar() {
+    var b = document.getElementById('chatbot-mic');
+    var trozos = _bt.buf, hz = _bt.hz;
+    try { if (_bt.proc) { _bt.proc.onaudioprocess = null; _bt.proc.disconnect(); } } catch(e){}
+    try { if (_bt.src) _bt.src.disconnect(); } catch(e){}
+    try { if (_bt.sil) _bt.sil.disconnect(); } catch(e){}
+    try { if (_bt.stream) _bt.stream.getTracks().forEach(function(t){ t.stop(); }); } catch(e){}
+    try { if (_bt.ctx && _bt.ctx.close) _bt.ctx.close(); } catch(e){}
+    _bt = { grabando: false, stream: null, ctx: null, proc: null, src: null, sil: null, hz: 0, buf: [] };
+    if (b) { b.classList.remove('recording'); b.innerHTML = '🎤'; }
+    if (!trozos || !trozos.length) return;
+    var wav = _mpWav(_mpA16k(_mpAJuntar(trozos), hz), 16000);
+    if (b) b.innerHTML = '⏳';
+    var opts = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '',
+                 'Authorization': 'Bearer ' + (window._authToken || (typeof _authToken !== 'undefined' ? _authToken : '') || '') },
+      body: JSON.stringify({ audio: _mpB64(wav), mime: 'audio/wav' })
+    };
+    fetch(RAILWAY_API + '/api/voz/dictado', opts)
+      .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(d) {
+        if (b) b.innerHTML = '🎤';
+        var t = (d && d.texto ? String(d.texto) : '').trim();
+        if (!t) return;
+        try { inputEl.value = (inputEl.value ? inputEl.value + ' ' : '') + t; inputEl.focus(); } catch(e){}
+      })
+      .catch(function(e) {
+        if (b) b.innerHTML = '🎤';
+        console.warn('[Voz] el dictado del botón falló:', e && e.message);
+        alert('No he podido pasar a texto lo que has dicho. Inténtalo otra vez.');
+      });
+  }
 
   // ── v282 MODO CONVERSACIÓN (manos libres, tipo ChatGPT): hablar → enviar solo →
   // Azkarin responde con voz → al callar, vuelve a escuchar. Bucle hasta apagarlo. ──
@@ -18132,17 +18214,51 @@ async function doResetWithCode() {
   var _mp = { on: false, arrancando: false, stream: null, ctx: null, proc: null, src: null, sil: null,
               hz: 0, pre: [], preMs: 0, buf: [], bufMs: 0, hablando: false, msHabla: 0, msSil: 0,
               niveles: [], corteSeguidos: 0, fallos: 0, transcribiendo: false };
+  // v577 · CUÁNDO SE USA EL MICRO PROPIO. Antes se miraba _esAppNativa(), y eso da TRUE
+  // solo con que el acceso directo lleve «?app=1» — sin plugin nativo ninguno. En ese caso
+  // se caía al reconocedor del navegador… que es justo el que pita. Ahora se mira lo único
+  // que importa: ¿hay micro de verdad y hay con qué escucharlo?
   function _mpDisponible() {
     try {
-      if (localStorage.getItem('azkar_voz_motor') === 'navegador') return false;   // se cayó al de siempre
+      if (localStorage.getItem('azkar_voz_motor') === 'navegador') return false;   // solo si Asier lo pide con /micro
     } catch(e){}
     try {
+      // si de verdad hay plugin nativo de voz (APK con Capacitor), ese gana
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition) return false;
       return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia &&
-                (window.AudioContext || window.webkitAudioContext));
+                (window.AudioContext || window.webkitAudioContext) &&
+                (window.AudioContext || window.webkitAudioContext).prototype);
     } catch(e){ return false; }
   }
+  // ── EL PARTE DEL MICRO ────────────────────────────────────────────────────
+  // Desde aquí no se ve su móvil. Para no adivinar, la app cuenta al servidor lo que le
+  // pasa al micrófono: si se abrió, a cuántos hercios, qué error dio, si el dictado llegó.
+  // NUNCA se manda audio ni nada de un cliente.
+  function _vozParte(evento, datos) {
+    try {
+      fetch(RAILWAY_API + '/api/voz/parte', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '' },
+        body: JSON.stringify({ evento: evento, datos: datos || {} })
+      }).catch(function(){});
+    } catch(e){}
+  }
+  window._vozParte = _vozParte;
+  function _vozFoto() {
+    var out = { version: (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?') };
+    try { out.getusermedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia); } catch(e){}
+    try { out.audiocontext = !!(window.AudioContext || window.webkitAudioContext); } catch(e){}
+    try { out.capacitor = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition); } catch(e){}
+    try { out.standalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches); } catch(e){}
+    try { out.app1 = /[?&]app=1/.test(location.search || ''); } catch(e){}
+    try { out.motor = _mpDisponible() ? 'propio' : 'navegador'; } catch(e){}
+    try { out.navegador = (/Chrome\/([\d.]+)/.exec(navigator.userAgent) || [,'?'])[1] + (/Android/i.test(navigator.userAgent) ? ' Android' : ''); } catch(e){}
+    return out;
+  }
+  window._vozFoto = _vozFoto;
   function _mpAlNavegador(porQue) {
     console.warn('[Voz] me paso al reconocedor del navegador:', porQue);
+    _vozParte('al_navegador', Object.assign(_vozFoto(), { motivo: String(porQue).slice(0, 100) }));
     try { localStorage.setItem('azkar_voz_motor', 'navegador'); } catch(e){}
     _mpParar();
     if (window._azkarinConv) setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 300);
@@ -18169,11 +18285,13 @@ async function doResetWithCode() {
         _mp.on = true; _mp.arrancando = false; _mp.niveles = []; _mp.pre = []; _mp.preMs = 0;
         _mpLimpiaTrozo();
         console.log('[Voz] micro propio abierto a ' + _mp.hz + ' Hz — sin pitidos');
+        _vozParte('micro_abierto', Object.assign(_vozFoto(), { hz: _mp.hz }));
         _convEstadoAuto();
       })
       .catch(function(e) {
         _mp.arrancando = false;
         var err = (e && e.name) || '';
+        _vozParte('micro_error', Object.assign(_vozFoto(), { error: err || String((e && e.message) || e) }));
         if (err === 'NotAllowedError' || err === 'SecurityError') {
           window.chatbotConvToggle(false);
           alert('Necesito permiso del micrófono: toca el micro 🎤 una vez, acepta el permiso, y vuelve a activar el auricular 🎧.');
@@ -18293,7 +18411,8 @@ async function doResetWithCode() {
     for (var i = 0; i < u8.length; i += paso) s += String.fromCharCode.apply(null, u8.subarray(i, i + paso));
     return btoa(s);
   }
-  function _mpMandarATexto(wav) {
+  function _mpMandarATexto(wav, intento) {
+    intento = intento || 1;
     _mp.transcribiendo = true;
     var opts = {
       method: 'POST',
@@ -18308,6 +18427,7 @@ async function doResetWithCode() {
         _mp.transcribiendo = false;
         _mp.fallos = 0;
         var t = (d && d.texto ? String(d.texto) : '').trim();
+        _vozParte('dictado_ok', { ms: d && d.ms, letras: t.length, kb: Math.round(wav.length / 1024) });
         if (!t) return;                                   // no se entendió nada: ni se dice ni se manda
         if (_esEcoDeAzkarin(t)) return;                   // no se contesta a sí mismo
         if (_convHablando() && _esPalabraDeCorte(t)) { _convInterrumpir({}); return; }
@@ -18317,9 +18437,27 @@ async function doResetWithCode() {
       .catch(function(e) {
         _mp.transcribiendo = false;
         _mp.fallos++;
-        console.warn('[Voz] no se pudo pasar a texto (' + (e && e.message) + '), fallo ' + _mp.fallos + '/3');
-        if (_mp.fallos >= 3) _mpAlNavegador('el dictado falla tres veces seguidas');
+        var _msg = (e && e.message) || 'error';
+        console.warn('[Voz] no se pudo pasar a texto (' + _msg + '), intento ' + intento + ' — fallos seguidos: ' + _mp.fallos);
+        _vozParte('dictado_falla', { error: _msg, fallos: _mp.fallos, kb: Math.round(wav.length / 1024) });
+        // v577 · SE REINTENTA CON EL MISMO AUDIO (dos veces). Antes, a los tres fallos se
+        // volvía al reconocedor del navegador… que es el que pita. Eso ya no pasa nunca:
+        // si no hay manera, se dice y se sigue escuchando, pero sin pitidos.
+        if (intento < 3) { setTimeout(function(){ _mpMandarATexto(wav, intento + 1); }, 700 * intento); return; }
+        _convAvisoCorto('📵 No he podido con eso — repítemelo');
       });
+  }
+  // Un aviso de dos segundos en el cartel, sin ensuciar la conversación
+  var _avisoTimer = null;
+  function _convAvisoCorto(txt) {
+    try {
+      var chip = document.getElementById('chatbot-estado');
+      if (!chip) return;
+      chip.textContent = txt;
+      chip.classList.add('ver');
+      if (_avisoTimer) clearTimeout(_avisoTimer);
+      _avisoTimer = setTimeout(function(){ _avisoTimer = null; _convEstadoAuto(); }, 2500);
+    } catch(e){}
   }
   // Ha vuelto a hablar: se cancela el envío que estaba a punto de salir (no se le parte la frase)
   function _convHabloOtraVez() {
@@ -18330,7 +18468,7 @@ async function doResetWithCode() {
     if (!window._azkarinConv) return;
     // v576: con micro propio no hay nada que abrir ni cerrar — está abierto desde que se
     // enciende la conversación y NO se cierra cuando habla Azkarin (así se le puede cortar).
-    if (!_esAppNativa() && _mpDisponible()) {
+    if (_mpDisponible()) {
       if (!_mp.on && !_mp.arrancando) _mpArrancar();
       _convEstadoAuto();
       return;
@@ -18408,6 +18546,7 @@ async function doResetWithCode() {
     // VERDE y lo que dijeras se perdia: «se pone en verde y no me deja hablarle, le tengo
     // que repetir las cosas» (Asier, 3-sep). Ahora: escucha CONTINUA, con lo que va oyendo
     // a medias, y si el navegador cierra la sesion se reabre al instante (120 ms).
+    try { _vozParte('navegador_pita', _vozFoto()); } catch(e){}   // v577: si esto se apunta, es que el micro propio no pudo
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     var rec;
     try { rec = new SR(); } catch (e) { return; }
@@ -18528,7 +18667,8 @@ async function doResetWithCode() {
     if (nuevo) {
       chatTTSEnabled = true; try { localStorage.setItem('chatTTS', 'on'); } catch (e) {}
       try { _convResetBackoff(); } catch (e) {} // v369: al encender, micro sin retardo
-      try { if (!_esAppNativa() && _mpDisponible()) _mpArrancar(); } catch (e) {}   // v576: el micro se abre con SU toque (el permiso lo pide así)
+      try { if (_mpDisponible()) _mpArrancar(); } catch (e) {}   // v576: el micro se abre con SU toque (el permiso lo pide así)
+      try { _vozParte('enciende', _vozFoto()); } catch (e) {}
       _convPedirWake();
       // El saludo se lee por TTS; el micro arranca SOLO cuando la voz termina
       // (lo reengancha el hook del TTS o el vigilante). Nunca a la vez.
@@ -18550,7 +18690,7 @@ async function doResetWithCode() {
     try {
       if (!window._azkarinConv) return;
       // v576: el micro propio tiene que estar SIEMPRE abierto mientras dure la conversación
-      if (!_esAppNativa() && _mpDisponible() && !_mp.on && !_mp.arrancando) _mpArrancar();
+      if (_mpDisponible() && !_mp.on && !_mp.arrancando) _mpArrancar();
       var _hablando = _convHablando();
       var _pensando = !!(sendBtn && sendBtn.disabled);
       // v575: se apaga solo tras TRES MINUTOS sin oir nada. Antes contaba sesiones de micro

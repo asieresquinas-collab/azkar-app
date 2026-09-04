@@ -30,13 +30,16 @@ function monta({ hablando = () => false, respuesta = { texto: 'hola' }, falla = 
   const cortes = [];          // veces que se le corta la voz a Azkarin
   const almacen = {};
   const win = { _azkarinConv: true };
+  const partes = [];
   const fetchFalso = (url, opts) => {
-    enviados.push({ url, cuerpo: JSON.parse(opts.body) });
+    const cuerpo = JSON.parse(opts.body);
+    if (/\/api\/voz\/parte$/.test(url)) { partes.push(cuerpo); return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) }); }
+    enviados.push({ url, cuerpo });
     if (falla) return Promise.reject(new Error('sin red'));
     return Promise.resolve({ ok: true, json: () => Promise.resolve(respuesta) });
   };
   const api = new Function(
-    'window', 'navigator', 'localStorage', 'console', 'fetch', 'RAILWAY_API', 'btoa', 'AbortSignal',
+    'window', 'navigator', 'localStorage', 'console', 'fetch', 'RAILWAY_API', 'btoa', 'AbortSignal', 'APP_VERSION', 'document', 'location',
     '_convHablando', '_convInterrumpir', '_bargeinActivo', '_esEcoDeAzkarin', '_esPalabraDeCorte',
     '_convRecibirHabla', '_convResetBackoff', '_convEstadoAuto', '_esAppNativa', 'alert', 'setTimeout', 'clearTimeout',
     'var _convSendTimer = null;\n' + SRC +
@@ -47,14 +50,14 @@ function monta({ hablando = () => false, respuesta = { texto: 'hola' }, falla = 
     { getItem: k => (k in almacen ? almacen[k] : null), setItem: (k, v) => { almacen[k] = String(v); } },
     { log() {}, warn() {} },
     fetchFalso, 'https://servidor', b => Buffer.from(b, 'binary').toString('base64'),
-    { timeout: () => null },
+    { timeout: () => null }, 'v577', { getElementById: () => null }, { search: '' },
     hablando, () => cortes.push(1), () => true, () => false, () => false,
     t => recibidos.push(t), () => {}, () => {}, () => false, () => {},
     (fn, ms) => setTimeout(fn, ms), id => clearTimeout(id)
   );
   // el AudioContext no hace falta: se rellena a mano lo que dejaría abierto
   api.mp.on = true; api.mp.hz = 48000;
-  return { api, enviados, recibidos, cortes, almacen, win };
+  return { api, enviados, recibidos, cortes, almacen, win, partes };
 }
 
 // bloque de 4096 muestras: silencio o voz (ruido fuerte)
@@ -116,24 +119,32 @@ if (SRC) {
 
   console.log('\n══ E · CUANDO ALGO FALLA, NO SE QUEDA SORDO ══');
   m = monta({ falla: true });
-  for (let i = 0; i < 3; i++) { mete(m.api, 0.002, 400); mete(m.api, 0.25, 900); mete(m.api, 0.002, 1400); }
+  mete(m.api, 0.002, 400); mete(m.api, 0.25, 900); mete(m.api, 0.002, 1400);
+  const mFalla = m;
   setTimeout(() => {
-    c('E1 · tras tres fallos se vuelve solo al reconocedor del navegador', m.almacen['azkar_voz_motor'] === 'navegador', JSON.stringify(m.almacen));
+    c('E1 · si el dictado falla, se reintenta con el MISMO audio', mFalla.enviados.length >= 2, String(mFalla.enviados.length));
+    c('E1b · y NUNCA se vuelve al micro que pita', mFalla.almacen['azkar_voz_motor'] === undefined, JSON.stringify(mFalla.almacen));
+    c('E1c · el fallo se cuenta al servidor para poder arreglarlo', mFalla.partes.some(p => p.evento === 'dictado_falla'), JSON.stringify(mFalla.partes.map(p => p.evento)));
     m = monta({ respuesta: { texto: '' } });
     mete(m.api, 0.002, 400); mete(m.api, 0.25, 900); mete(m.api, 0.002, 1400);
     setTimeout(() => {
       c('E2 · si no se entendió nada, no se manda ningún mensaje', m.recibidos.length === 0);
       c('C6 · el texto que devuelve el servidor entra en la conversación', mC6.recibidos.length === 1 && mC6.recibidos[0] === 'hola', JSON.stringify(mC6.recibidos));
       fin();
-    }, 30);
-  }, 30);
+    }, 60);
+  }, 2600);
 } else { fin(); }
 
 function fin() {
   console.log('\n══ F · QUE NO VUELVA EL PITIDO ══');
-  c('F1 · el modo conversación usa el micro propio antes que nada', /if \(!_esAppNativa\(\) && _mpDisponible\(\)\) \{\s*\n\s*if \(!_mp\.on && !_mp\.arrancando\) _mpArrancar\(\);/.test(H));
+  c('F1 · el modo conversación usa el micro propio antes que nada', /if \(_mpDisponible\(\)\) \{\s*\n\s*if \(!_mp\.on && !_mp\.arrancando\) _mpArrancar\(\);/.test(H));
+  c('F1b · «?app=1» ya NO manda al micro que pita', !/_esAppNativa\(\) && _mpDisponible\(\)/.test(H));
+  c('F1c · solo un plugin nativo de verdad puede ganarle al micro propio', /Plugins\.SpeechRecognition\) return false;/.test(H));
   c('F2 · el micro se pide en el mismo toque de encender (permiso limpio)', /_mpDisponible\(\)\) _mpArrancar\(\);.*permiso lo pide as/.test(H));
   c('F3 · el vigilante lo mantiene abierto toda la conversación', /!_mp\.on && !_mp\.arrancando\) _mpArrancar\(\);\s*\n\s*var _hablando/.test(H));
+  c('F3b · el botón del micro 🎤 tampoco pita ya', /_mpDisponible\(\)\) \{ _micPropioBoton\(\); return; \}/.test(H) && /function _micPropioBoton/.test(H));
+  c('F3c · y manda el audio a la misma puerta del dictado', /_micPropioParar[\s\S]{0,2200}\/api\/voz\/dictado/.test(H));
+  c('F3d · «/micro» dice qué micro está usando', /\/\^\\\/micro\\b\/i\.test\(msg\)/.test(H) || /\/micro\\b/.test(H));
   c('F4 · al apagar la conversación se suelta el micro', /try \{ _mpParar\(\); \} catch \(e\) \{\}/.test(H));
   c('F5 · el medidor viejo ya no abre un segundo micro', /if \(typeof _mp !== 'undefined' && _mp\.on\) return;   \/\/ v576/.test(H));
   c('F6 · con micro propio la espera para mandar es corta', /_mp\.on\) \? _MP_ESPERA_ENVIO : _CONV_PAUSA_MS/.test(H));
