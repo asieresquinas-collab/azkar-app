@@ -4746,7 +4746,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v608';
+var APP_VERSION = 'v609';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17397,7 +17397,10 @@ async function doResetWithCode() {
       if (d.fullscreen === false) falta.push('pantalla');
       var h = '🎧 <b>Escucha «Azkarin»</b> · APK ' + (d.version || '?') + '<br>';
       h += 'Escuchando ahora: ' + (d.listening ? '🟢 sí' : '⚪ no') + ' · Micrófono: ' + (d.mic ? '✅' : '❌') + '<br>';
-      if (d.cedeEnUso !== undefined) h += 'Mientras usas el móvil: ' + (d.cedeEnUso ? '🤫 <b>callado del todo</b> (no puedes llamarme con la pantalla encendida)' : '👂 <b>te escucho</b>, y me aparto solo si otra app pide el micro') + '<br>';   // v606
+      // v609 · el estado de verdad: «vivo» no es lo mismo que «escuchando»
+      if (d.vigilando !== undefined) h += 'Escuchando de verdad ahora mismo: ' + (d.vigilando ? '🟢 sí' : '🔴 <b>no</b> — dale a «Reiniciar la escucha»') + '<br>';
+      if (d.ultimoOido) h += 'Lo último que entendió: «' + String(d.ultimoOido).slice(0, 60) + '»<br>';
+            if (d.cedeEnUso !== undefined) h += 'Mientras usas el móvil: ' + (d.cedeEnUso ? '🤫 <b>callado del todo</b> (no puedes llamarme con la pantalla encendida)' : '👂 <b>te escucho</b>, y me aparto solo si otra app pide el micro') + '<br>';   // v606
       if (d.dnd !== undefined) h += 'Permiso para tapar el «pi» (No molestar): ' + (d.dnd ? '✅' : '❌ <button onclick="azkarinNoMolestar()" style="padding:4px 8px;border:1px solid #1B4F8A;border-radius:8px;background:#D6E4F7;cursor:pointer;font-family:inherit;">Dar permiso</button>') + '<br>';   // v599
       // v592 · la batería, en cristiano y con su interruptor
       if (d.soloHorario !== undefined) {
@@ -17482,6 +17485,30 @@ async function doResetWithCode() {
   // v605 · Asier: «con Azkarin activado no me deja dictar en otra aplicación». Es verdad: la
   // escucha tiene cogido el micro y el reconocedor de Android, y de ese solo hay UNO en el móvil.
   // Con la APK 1.18, mientras usa el móvil (pantalla encendida y desbloqueado) suelta el micro.
+  // v609 · el remedio de mano: apagar y encender la escucha. Si Android la dejó sorda
+  // (le quitó el micro, se quedó en pausa), esto la levanta al momento.
+  window.azkarinReiniciarEscucha = function(){
+    var p = _azkWakePlugin();
+    if (!p) { addMsg('bot','\u{1F504} Esto solo va dentro de la app de Azkarin.'); return; }
+    addMsg('bot','\u{1F504} Reiniciando la escucha…');
+    try { p.stop(); } catch(e){}
+    setTimeout(function(){
+      try {
+        p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off', cedeEnUso: (localStorage.getItem('azkarinCede') === 'on') });
+      } catch(e){}
+      try { p.start(); } catch(e){}
+      try { localStorage.setItem('azkarinEscucha','on'); } catch(e){}
+      setTimeout(function(){
+        try {
+          if (typeof p.info === 'function') p.info().then(function(d){
+            d = d || {};
+            addMsg('bot', (d.vigilando ? '\u{2705} <b>Ya te escucha.</b> Di «Azkarin» a un metro del móvil y espera un segundo.' : '\u{1F6D1} <b>Sigue sin escuchar.</b> Mira que Azkarin tenga el micrófono permitido y la batería «Sin restricciones» (Ajustes → Apps → Azkarin). Me llega el aviso y lo miro.')
+              + (d.ultimoOido ? '<br><small>Lo último que entendió: «' + String(d.ultimoOido).slice(0,60) + '»</small>' : ''));
+          }).catch(function(){});
+        } catch(e){}
+      }, 2500);
+    }, 900);
+  };
   window.azkarinCederSet = function(on){
     try { localStorage.setItem('azkarinCede', on ? 'on' : 'off'); } catch(e){}
     var p = _azkWakePlugin();
@@ -17519,6 +17546,7 @@ async function doResetWithCode() {
     html += '<button onclick="azkarinEscuchaSet(false)" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F507} <b>Desactivar</b></button>';
     var _av = true; try { _av = localStorage.getItem('azkarinAvisos') !== 'off'; } catch(e){}
     html += '<button onclick="azkarinAvisosSet(' + (_av ? 'false' : 'true') + ')" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F464} <b>' + (_av ? 'Que NO me avise él' : 'Que me avise él') + '</b> — recordatorios hablando (' + (_av ? 'ahora: sí' : 'ahora: no') + ')</button>';
+    html += '<button onclick="azkarinReiniciarEscucha()" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F504} <b>Reiniciar la escucha</b> — si dices «Azkarin» y no te oye</button>';
     html += '<button onclick="azkarinEscuchaPermisos()" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F50E} <b>Comprobar si le falta algún permiso</b></button>';
     html += '<div style="background:#eef7ee;border:1px solid #d6e8d6;border-radius:8px;padding:9px 11px;margin:8px 0;font-size:12.5px;color:#2e6b2e;">🗣️ <b>Para callarme, háblame:</b> «Azkarin, deja de escuchar» — y si quieres, con plazo: «una hora», «media hora», «hasta mañana», «del todo». Vuelvo solo cuando toque.<br><b>Ojo:</b> callado del todo NO puedo oír que me llamas, así que para volver hay que tocar la notificación.</div>';
     // v595: bajar la app nueva desde aquí (por el servidor, que es lo que abre el navegador)
