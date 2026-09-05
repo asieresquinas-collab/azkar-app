@@ -4746,7 +4746,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v607';
+var APP_VERSION = 'v608';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18602,7 +18602,7 @@ async function doResetWithCode() {
   var _MP_ESPERA_ENVIO = 900;    // v584: tras llegar el texto, casi un segundo por si retoma la frase
   var _mp = { on: false, arrancando: false, imposible: false, permisoPedido: false, permisoEstado: '', finHablaTs: 0, maxHablando: 0, msHablando: 0, stream: null, ctx: null, proc: null, src: null, sil: null,
               hz: 0, pre: [], preMs: 0, buf: [], bufMs: 0, hablando: false, msHabla: 0, msSil: 0,
-              niveles: [], corteSeguidos: 0, fallos: 0, transcribiendo: false };
+              niveles: [], corteSeguidos: 0, fallos: 0, transcribiendo: false, silBloques: 0 };
   // v577 · CUÁNDO SE USA EL MICRO PROPIO. Antes se miraba _esAppNativa(), y eso da TRUE
   // solo con que el acceso directo lleve «?app=1» — sin plugin nativo ninguno. En ese caso
   // se caía al reconocedor del navegador… que es justo el que pita. Ahora se mira lo único
@@ -18671,7 +18671,7 @@ async function doResetWithCode() {
     _mpParar();
     if (window._azkarinConv) setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 300);
   }
-  function _mpLimpiaTrozo() { _mp.buf = []; _mp.bufMs = 0; _mp.hablando = false; _mp.msHabla = 0; _mp.msSil = 0; }
+  function _mpLimpiaTrozo() { _mp.buf = []; _mp.bufMs = 0; _mp.hablando = false; _mp.msHabla = 0; _mp.msSil = 0; _mp.silBloques = 0; }
   // v580 · EL PERMISO, PEDIDO POR LA PUERTA DE LA APK.
   // El parte del móvil de Asier lo dejó claro: dentro de su APK (Capacitor, WebView de
   // Chrome 151) la llamada al micrófono devuelve NotAllowedError aunque el navegador tenga
@@ -18891,8 +18891,8 @@ async function doResetWithCode() {
         return;
       }
       _mp.buf.push(copia); _mp.bufMs += ms;
-      if (hayVoz) { _mp.msHabla += ms; _mp.msSil = 0; window._convUltimaVozTs = Date.now(); }
-      else _mp.msSil += ms;
+      if (hayVoz) { _mp.msHabla += ms; _mp.msSil = 0; _mp.silBloques = 0; window._convUltimaVozTs = Date.now(); }
+      else { _mp.msSil += ms; _mp.silBloques = (_mp.silBloques || 0) + 1; }
       if (_mp.msSil >= _MP_PAUSA_MS || _mp.bufMs >= _MP_MAX_MS) _mpCerrarTrozo();
     } catch(err) { console.warn('[Voz]', err && err.message); }
   }
@@ -18923,7 +18923,12 @@ async function doResetWithCode() {
     } catch(e){}
   }
   function _mpCerrarTrozo() {
-    var trozos = _mp.buf, msHabla = _mp.msHabla;
+    var trozos = _mp.buf, msHabla = _mp.msHabla, silB = _mp.silBloques || 0;
+    // v608 · se recorta el silencio del final (el segundo y medio que cierra el trozo): se
+    // dejan cuatro décimas de cola. Menos audio = menos dinero y menos «ha dicho X letras en
+    // Y segundos» descuadrado. Lo de delante NO se toca: ahí está el pre-buffer.
+    var _dejar = 5;   // ~425 ms
+    if (silB > _dejar && trozos.length > (silB - _dejar)) trozos = trozos.slice(0, trozos.length - (silB - _dejar));
     _mpLimpiaTrozo();
     if (!trozos.length || msHabla < _MP_MIN_HABLA_MS) return;   // un ruido, una tos: fuera
     if (_mp.transcribiendo) { console.warn('[Voz] llega otro trozo con uno en marcha: se encola'); }
