@@ -10,6 +10,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.WindowManager;
+import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
+import android.net.Uri;
+import android.os.Environment;
+import android.webkit.DownloadListener;
+import androidx.core.content.ContextCompat;
 
 import android.webkit.PermissionRequest;
 import java.util.ArrayList;
@@ -28,8 +35,70 @@ public class MainActivity extends BridgeActivity {
         pideUbicacion();
         pideMicro();
         dejaQueLaWebUseElMicro();
+        bajaEInstalaLoQueSeDescarga();
         handleWake(getIntent());
         handleAviso(getIntent());
+    }
+
+    /**
+     * v1.14 · EL ENLACE DE LA APK «NO HACE NADA» (Asier, 5-sep-2026).
+     *
+     * Un WebView no descarga nada por si mismo: si la pagina enlaza un .apk del mismo dominio,
+     * navega a el y se queda en blanco. Aqui se le pone oido a las descargas: un .apk se baja
+     * con el gestor de descargas de Android (con su notificacion) y, al terminar, se abre el
+     * instalador de Android encima — como se instala encima con la misma firma, no pierde nada.
+     * Cualquier otra descarga se manda al navegador del movil.
+     */
+    private void bajaEInstalaLoQueSeDescarga() {
+        try {
+            getBridge().getWebView().setDownloadListener(new DownloadListener() {
+                @Override
+                public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
+                    try {
+                        boolean esApk = (url != null && url.toLowerCase().contains(".apk"))
+                            || "application/vnd.android.package-archive".equals(mimetype);
+                        if (!esApk) {
+                            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(i);
+                            return;
+                        }
+                        final DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                        DownloadManager.Request r = new DownloadManager.Request(Uri.parse(url));
+                        r.setMimeType("application/vnd.android.package-archive");
+                        r.setTitle("Azkarin — actualización");
+                        r.setDescription("Bajando la app nueva…");
+                        r.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                        r.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "azkarin-" + System.currentTimeMillis() + ".apk");
+                        final long id = dm.enqueue(r);
+                        BroadcastReceiver listo = new BroadcastReceiver() {
+                            @Override
+                            public void onReceive(Context ctx, Intent in) {
+                                try {
+                                    long done = in.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                                    if (done != id) return;
+                                    try { ctx.unregisterReceiver(this); } catch (Exception e) {}
+                                    Uri u = dm.getUriForDownloadedFile(id);
+                                    if (u == null) return;
+                                    Intent inst = new Intent(Intent.ACTION_VIEW);
+                                    inst.setDataAndType(u, "application/vnd.android.package-archive");
+                                    inst.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                    ctx.startActivity(inst);
+                                } catch (Exception e) { /* queda en Descargas, con su notificacion */ }
+                            }
+                        };
+                        ContextCompat.registerReceiver(MainActivity.this, listo,
+                            new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), ContextCompat.RECEIVER_EXPORTED);
+                    } catch (Exception e) {
+                        try {
+                            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(i);
+                        } catch (Exception e2) { /* nada mas que hacer */ }
+                    }
+                }
+            });
+        } catch (Exception e) { /* sin oido a descargas: el enlace del navegador sigue valiendo */ }
     }
 
     /**
