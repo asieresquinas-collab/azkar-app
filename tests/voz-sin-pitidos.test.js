@@ -117,7 +117,18 @@ if (SRC) {
   mete(m.api, 0.02, 1500);        // su propia voz, sonando
   mete(m.api, 0.6, 900);          // Asier hablando MUCHO mas fuerte
   c('D1 · si le hablas encima (mas fuerte que el), se calla', m.cortes.length >= 1, String(m.cortes.length));
-  c('D2 · y lo que suena mientras habla NO se manda como pregunta', m.enviados.length === 0);
+  // v600 · lo que suena POR ENCIMA sí se manda — marcado con lo que estaba diciendo él — para hacerle caso
+  c('D2 · v600 · lo que dice Asier por encima SÍ se manda a texto (antes se tiraba y había que repetirlo)', m.enviados.length >= 1, String(m.enviados.length));
+  m = monta({ hablando: () => true });
+  m.win._ultimoHabla = 'tienes tres llamadas perdidas';
+  mete(m.api, 0.1, 1500);         // su propia voz
+  mete(m.api, 0.14, 600);         // Asier un 40 % más alto, medio segundo largo (no el doble)
+  mete(m.api, 0.1, 900);          // sigue hablando él
+  c('D2c · v600 · con sonar un tercio más que él medio segundo, ese trozo se manda a mirar (no hace falta gritar el doble)', m.enviados.length >= 1, String(m.enviados.length));
+  c('D2e · y lleva lo que estaba diciendo Azkarin para que el servidor no lo transcriba', m.enviados.length >= 1 && m.enviados[0].cuerpo.ignorar === 'tienes tres llamadas perdidas', m.enviados.length ? JSON.stringify(m.enviados[0].cuerpo.ignorar) : '-');
+  m = monta({ hablando: () => true });
+  mete(m.api, 0.1, 1500); mete(m.api, 0.105, 3000);
+  c('D2d · su propia voz seguida, sin nadie encima, NO manda nada', m.enviados.length === 0, String(m.enviados.length));
   m = monta({ hablando: () => true });
   mete(m.api, 0.002, 3000);
   c('D3 · su propia voz de fondo no le hace cortarse solo', m.cortes.length === 0);
