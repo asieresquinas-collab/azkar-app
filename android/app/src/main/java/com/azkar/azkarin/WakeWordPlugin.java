@@ -130,12 +130,16 @@ public class WakeWordPlugin extends Plugin {
     public void pedirHeyGoogle(PluginCall call) {
         PackageManager pm = getContext().getPackageManager();
         String gsa = "com.google.android.googlequicksearchbox";
+        // v1.15: en el movil de Asier la pantalla «Voz» de la app de Google ya no lleva el
+        // «Hey Google» (solo idiomas y la voz que habla). El interruptor esta en los ajustes
+        // generales de Google → «Asistente de Google» → «Hey Google y Voice Match». Asi que
+        // primero la raiz de ajustes, y la de «Voz» solo si no existe la raiz.
         String[][] puertas = {
+            {"google-ajustes", gsa, "com.google.android.apps.gsa.velvet.ui.settings.PublicSettingsActivity"},
             {"google-voz", gsa, "com.google.android.apps.gsa.settingsui.VoiceSearchPreferences"},
             {"google-voz", gsa, "com.google.android.apps.gsa.velvet.ui.settings.VoiceSearchPreferences"},
             {"google-voz", gsa, "com.google.android.voicesearch.VoiceSearchPreferences"},
             {"google-voz", "com.google.android.voicesearch", "com.google.android.voicesearch.VoiceSearchPreferences"},
-            {"google-ajustes", gsa, "com.google.android.apps.gsa.velvet.ui.settings.PublicSettingsActivity"},
         };
         for (String[] p : puertas) {
             try {
