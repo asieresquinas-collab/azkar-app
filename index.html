@@ -1108,6 +1108,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>Dentro de tu APK, Android NO le deja a la app abrir el micrófono</strong> (lo dijo tu propio móvil: permiso denegado, aunque el permiso se pida por todas las puertas). Mientras esa APK sea la que es, hay que usar el reconocedor de Android, y <strong>ese pitido es del sistema: una página no lo puede silenciar</strong>. Lo que sí se ha hecho: <strong>una sola sesión larga por turno</strong> en vez de una cada segundo, así que suena <strong>una vez cuando empiezas a hablar</strong> y no veinte por minuto. En silencio, además, espera hasta siete segundos entre intentos.</div></div>
       <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>✅ <strong>Resuelto con la APK v1.6</strong> (4-sep): a la APK le faltaba declarar un segundo permiso de audio que Capacitor exige para dejarle el micrófono a la web. Con eso entra el micro propio y <strong>no suena nada</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>17</div><div class='step-text'>🔋 <strong>La batería.</strong> Lo que gasta no es el micrófono: es tener el móvil despierto escuchando. Por eso, por defecto, <strong>solo escucha de ocho de la mañana a siete de la tarde, de lunes a sábado</strong> — por la noche y los domingos duerme, que es donde se iba la mitad del gasto. Además <strong>se para sola por debajo del quince por ciento</strong> de batería y vuelve al enchufar el móvil. Si lo quieres a todas horas, en <strong>/escucha</strong> tienes el botón (y gastará más).</div></div>
       <div class='ayuda-step'><div class='step-num'>16</div><div class='step-text'>🔛 <strong>Ya no hay que activar nada.</strong> La escucha <strong>arranca sola</strong> al encender el móvil y al abrir la app; no hace falta escribir /escucha nunca más. Para callarla, <strong>háblale</strong>: «Azkarin, deja de escuchar» — y con plazo si quieres: «una hora», «media hora», «hasta mañana», «del todo». <strong>Vuelve sola</strong> cuando toque, y mientras está callada la notificación te lo dice y trae el botón «Volver a escuchar». 🛑 La verdad por delante: <strong>callada del todo no puede oír que la llamas</strong> (si no escucha, no oye), así que para volver de un «del todo» hay que tocar esa notificación.</div></div>
       <div class='ayuda-step'><div class='step-num'>15</div><div class='step-text'>👋 <strong>Te avisa él, hablando, aunque tengas el móvil bloqueado.</strong> Si en una llamada quedó algo pendiente —mandar unas fotos, un WhatsApp, devolver una llamada— te lo recuerda de viva voz. <strong>De ocho de la mañana a siete de la tarde</strong> te cuenta lo que haga falta; fuera de esa hora, <strong>solo lo que de verdad urge</strong>. 🛑 <strong>Nunca dice el nombre del cliente</strong> en alto: dice su número de ficha («el cliente seis seis dos seis»), por si tienes gente delante. Una cosa cada vez, sin repetir. Para quitarlo o ponerlo: <strong>/escucha</strong> → «Que no me avise él».</div></div>
       <div class='ayuda-step'><div class='step-num'>14</div><div class='step-text'>🤫 <strong>Con el móvil bloqueado NO se entera de tus conversaciones.</strong> Cuando se abre solo al oír «Azkarin», solo contesta a lo que empiece por su nombre: lo que hables con tu hijo o con quien sea <strong>ni se manda ni se contesta</strong> (ni gasta). Después de que él conteste tienes quince segundos para seguirle el hilo sin repetir el nombre («sí», «ponme la otra»), y si no le hablas en dos minutos <strong>se apaga sola</strong> y vuelve a estar solo a la escucha de su nombre. Si eres tú quien abre la conversación tocando el auricular, funciona como siempre.</div></div>
@@ -4739,7 +4740,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v591';
+var APP_VERSION = 'v592';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17384,7 +17385,14 @@ async function doResetWithCode() {
       if (d.overlay === false) falta.push('overlay');
       if (d.fullscreen === false) falta.push('pantalla');
       var h = '🎧 <b>Escucha «Azkarin»</b> · APK ' + (d.version || '?') + '<br>';
-      h += 'Escuchando ahora: ' + (d.listening ? '🟢 sí' : '⚪ no') + ' · Micrófono: ' + (d.mic ? '✅' : '❌') + '<br><br>';
+      h += 'Escuchando ahora: ' + (d.listening ? '🟢 sí' : '⚪ no') + ' · Micrófono: ' + (d.mic ? '✅' : '❌') + '<br>';
+      // v592 · la batería, en cristiano y con su interruptor
+      if (d.soloHorario !== undefined) {
+        h += '🔋 Escucha ' + (d.soloHorario ? '<b>solo de 8 a 19</b> (de lunes a sábado)' : '<b>todo el día</b>')
+          + ' · se para sola por debajo del ' + (d.minBateria || 15) + '% de batería<br>';
+        h += '<button onclick="azkarinHorarioSet(' + (d.soloHorario ? 'false' : 'true') + ')" style="display:block;width:100%;text-align:left;margin:6px 0;padding:10px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:13px;">🔋 <b>' + (d.soloHorario ? 'Que escuche a todas horas' : 'Que escuche solo en horario de trabajo') + '</b> — ' + (d.soloHorario ? 'gasta más batería' : 'gasta la mitad') + '</button>';
+      }
+      h += '<br>';
       if (!falta.length) {
         h += '✅ <b>Todo listo.</b> Bloquea el móvil y di «Azkarin»: se abrirá sola.';
       } else {
@@ -17395,6 +17403,15 @@ async function doResetWithCode() {
       }
       addMsg('bot', h);
     }).catch(function(e){ addMsg('bot','No he podido preguntarle a la app: ' + (e && e.message)); });
+  };
+  window.azkarinHorarioSet = function(solo){
+    try {
+      var p = _azkWakePlugin(); if (!p || !p.configurar) return;
+      p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off', soloHorario: !!solo, minBateria: 15 });
+      addMsg('bot', solo
+        ? '🔋 <b>Escucho solo de ocho a siete</b>, de lunes a sábado. Por la noche y los domingos duermo: ahí es donde se iba la batería, escuchando a nadie.'
+        : '🔋 <b>Escucho a todas horas.</b> Gasta más batería — si notas que te dura menos, dime «que escuche solo en horario» y lo dejo como estaba.');
+    } catch(e){ addMsg('bot','No pude cambiarlo: ' + e.message); }
   };
   window.azkarinPermiso = function(cual){
     var p = _azkWakePlugin(); if (!p) return;
