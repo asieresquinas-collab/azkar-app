@@ -51,10 +51,11 @@ function montaBuffer({ hablando = () => false, pensando = () => false } = {}) {
   const win = { _azkarinConv: true };
   const FakeDate = { now: () => 1000000 + r.ahora() };
   const api = new Function(
-    'window', 'inputEl', 'sendBtn', 'setTimeout', 'clearTimeout', 'Date', '_convHablando', 'chatbotSend',
+    'window', 'inputEl', 'sendBtn', 'setTimeout', 'clearTimeout', 'Date', '_convHablando', 'chatbotSend', '_respuestaAlToque',
     SRC_BUF + '\nwindow.chatbotSend = chatbotSend;\nreturn { recibir: _convRecibirHabla, parcial: _convVerParcial, limpiar: _convLimpiarBuffer, pausa: _CONV_PAUSA_MS, buffer: function(){ return _convBuffer; } };'
   )(win, inputEl, sendBtn, r.setTimeout.bind(r), r.clearTimeout.bind(r), FakeDate, hablando,
-    function () { enviados.push(inputEl.value); inputEl.value = ''; });
+    function () { enviados.push(inputEl.value); inputEl.value = ''; },
+    () => false);   // v616: aquí no se prueba el toque en la puerta (tiene su propio banco)
   return { r, api, inputEl, enviados, win };
 }
 
@@ -204,10 +205,10 @@ if (SRC_BUF) {
   // v601: la espera de «está pensando» vive ahora en _porQue ('pensando'); el sabotaje la quita de ahí
   const roto = SRC_BUF.replace("((sendBtn && sendBtn.disabled) ? 'pensando' : '')", "''");
   const r = reloj(); const enviados = []; const inputEl = { value: '' };
-  const api = new Function('window', 'inputEl', 'sendBtn', 'setTimeout', 'clearTimeout', 'Date', '_convHablando', 'chatbotSend',
+  const api = new Function('window', 'inputEl', 'sendBtn', 'setTimeout', 'clearTimeout', 'Date', '_convHablando', 'chatbotSend', '_respuestaAlToque',
     roto + '\nwindow.chatbotSend = chatbotSend;\nreturn { recibir: _convRecibirHabla };')(
     { _azkarinConv: true }, inputEl, { disabled: true }, r.setTimeout.bind(r), r.clearTimeout.bind(r), { now: () => r.ahora() },
-    () => false, function () { enviados.push(inputEl.value); });
+    () => false, function () { enviados.push(inputEl.value); }, () => false);
   api.recibir('y ponme el guardamuebles');
   r.avanza(4000);
   c('E4 · sin la espera de "está pensando", el mensaje saldría encima (A8 sería falso)', enviados.length === 1);
