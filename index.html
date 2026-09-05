@@ -1108,6 +1108,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>Dentro de tu APK, Android NO le deja a la app abrir el micrófono</strong> (lo dijo tu propio móvil: permiso denegado, aunque el permiso se pida por todas las puertas). Mientras esa APK sea la que es, hay que usar el reconocedor de Android, y <strong>ese pitido es del sistema: una página no lo puede silenciar</strong>. Lo que sí se ha hecho: <strong>una sola sesión larga por turno</strong> en vez de una cada segundo, así que suena <strong>una vez cuando empiezas a hablar</strong> y no veinte por minuto. En silencio, además, espera hasta siete segundos entre intentos.</div></div>
       <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>✅ <strong>Resuelto con la APK v1.6</strong> (4-sep): a la APK le faltaba declarar un segundo permiso de audio que Capacitor exige para dejarle el micrófono a la web. Con eso entra el micro propio y <strong>no suena nada</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>23</div><div class='step-text'>🤝 <strong>«Con Azkarin activado no puedo dictar en otras apps».</strong> Cierto, y es de Android: el micrófono y el reconocedor de voz <strong>son uno solo</strong> en todo el móvil, y mientras la escucha «Azkarin» está en marcha los tiene ella. Desde la APK 1.18, <strong>mientras usas el móvil</strong> (pantalla encendida y desbloqueado) <strong>te deja el micro</strong>: dictas donde quieras. En cuanto bloqueas o se apaga la pantalla, vuelve a escuchar «Azkarin» sola. Si lo prefieres al revés, en <strong>/escucha</strong> hay un botón para cambiarlo.</div></div>
       <div class='ayuda-step'><div class='step-num'>22</div><div class='step-text'>🗣️ <strong>Hablarle encima y que te haga caso.</strong> Si te está soltando una parrafada, háblale por encima, un poco más alto que él: se calla y hace lo que le has dicho, sin que tengas que repetirlo. Por dentro: lo que suena por encima de su voz se manda a pasar a texto diciéndole al servidor qué estaba diciendo Azkarin, para que solo apunte tus palabras; si es su propio eco, no pasa nada. Y las palabras de parar de siempre («para», «calla») siguen valiendo.</div></div>
       <div class='ayuda-step'><div class='step-num'>21</div><div class='step-text'>🔕 <strong>«Suena pi cada cinco segundos con la escucha puesta».</strong> Ese «pi» lo hace el reconocedor de Android al abrirse, y la app solo lo abre cuando oye voz: si alguien habla seguido cerca (tú dictando, la tele), se abría una y otra vez. Ahora, tras cada sesión, espera un hueco de silencio antes de volver a abrirlo (uno por parrafada como mucho), tapa también el canal del timbre y lo tapa más tiempo. Y hay un permiso de Android, <strong>«Acceso a No molestar»</strong>, sin el cual no deja tapar el canal de notificaciones: en <strong>/escucha</strong>, botón <strong>«Quitar el pi del micrófono»</strong> (APK 1.17).</div></div>
       <div class='ayuda-step'><div class='step-num'>20</div><div class='step-text'>⬇️ <strong>«El enlace de la APK no me hace nada».</strong> Dentro de la app, un enlace a un archivo de su misma web se abría dentro y no descargaba. Ahora el enlace de la app nueva va por el servidor, que abre el navegador del móvil y baja el archivo: escribe <strong>/apk</strong> (o el botón en /escucha), toca, y dale a «Instalar». Con la APK 1.14 o más nueva, además, se baja e instala <strong>sin salir de la app</strong>.</div></div>
@@ -4745,7 +4746,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v604';
+var APP_VERSION = 'v605';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17229,7 +17230,7 @@ async function doResetWithCode() {
       try {
         var p = _azkWakePlugin();
         if (!p || typeof p.configurar !== 'function') return;
-        p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off' });
+        p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off', cedeEnUso: (localStorage.getItem('azkarinCede') !== 'off') });   // v605
         // v596 · qué APK lleva de verdad, apuntado en el parte (para no adivinarlo desde fuera)
         if (typeof p.info === 'function') p.info().then(function(d){
           d = d || {}; window._apkInfo = d;
@@ -17396,6 +17397,7 @@ async function doResetWithCode() {
       if (d.fullscreen === false) falta.push('pantalla');
       var h = '🎧 <b>Escucha «Azkarin»</b> · APK ' + (d.version || '?') + '<br>';
       h += 'Escuchando ahora: ' + (d.listening ? '🟢 sí' : '⚪ no') + ' · Micrófono: ' + (d.mic ? '✅' : '❌') + '<br>';
+      if (d.cedeEnUso !== undefined) h += 'Mientras usas el móvil: ' + (d.cedeEnUso ? '🤝 <b>te dejo el micro</b> (puedes dictar en otras apps)' : '👂 sigo escuchando (el dictado de otras apps puede fallar)') + '<br>';   // v605
       if (d.dnd !== undefined) h += 'Permiso para tapar el «pi» (No molestar): ' + (d.dnd ? '✅' : '❌ <button onclick="azkarinNoMolestar()" style="padding:4px 8px;border:1px solid #1B4F8A;border-radius:8px;background:#D6E4F7;cursor:pointer;font-family:inherit;">Dar permiso</button>') + '<br>';   // v599
       // v592 · la batería, en cristiano y con su interruptor
       if (d.soloHorario !== undefined) {
@@ -17477,6 +17479,18 @@ async function doResetWithCode() {
   window.azkarinApkEnlace = function(){
     addMsg('bot','\u{1F4F1} <b>La app nueva de Azkarin</b><br>Toca aquí y se baja; luego dale a «Instalar» (se pone encima, sin desinstalar y sin perder nada):<br><br><a href="https://azkar-presupuestos-production.up.railway.app/api/apk/bajar" style="display:block;padding:12px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;text-decoration:none;color:#1B4F8A;font-weight:700;text-align:center;">\u{2B07}\uFE0F Bajar e instalar la app nueva</a><br>Si se abre el navegador y no pasa nada, mira la barra de notificaciones: ahí está la descarga; tócala para instalar.');
   };
+  // v605 · Asier: «con Azkarin activado no me deja dictar en otra aplicación». Es verdad: la
+  // escucha tiene cogido el micro y el reconocedor de Android, y de ese solo hay UNO en el móvil.
+  // Con la APK 1.18, mientras usa el móvil (pantalla encendida y desbloqueado) suelta el micro.
+  window.azkarinCederSet = function(on){
+    try { localStorage.setItem('azkarinCede', on ? 'on' : 'off'); } catch(e){}
+    var p = _azkWakePlugin();
+    if (!p || typeof p.configurar !== 'function') { addMsg('bot','\u{1F91D} Para esto hace falta la <b>APK 1.18</b> o más nueva: escribe <b>/apk</b> e instala.'); return; }
+    try { p.configurar({ cedeEnUso: !!on }); } catch(e){}
+    addMsg('bot', on
+      ? '\u{1F91D} <b>Hecho: mientras usas el móvil te dejo el micro.</b><br>Puedes dictar en WhatsApp, en notas o donde quieras. En cuanto bloqueas o apagas la pantalla, vuelvo a escuchar «Azkarin» (unos segundos después).'
+      : '\u{1F442} <b>Hecho: escucho también mientras usas el móvil.</b><br>🛑 Con esto puesto, el dictado de otras apps puede no funcionar: el micrófono y el reconocedor de Android son uno solo y los tengo yo.');
+  };
   window.azkarinNoMolestar = function(){
     var p = _azkWakePlugin();
     if (!p || typeof p.pedirNoMolestar !== 'function') { addMsg('bot','\u{1F515} Para esto hace falta la <b>APK 1.17</b> o más nueva: escribe <b>/apk</b>, instala, y vuelve a <b>/escucha</b>.'); return; }
@@ -17511,6 +17525,9 @@ async function doResetWithCode() {
     html += '<a href="https://azkar-presupuestos-production.up.railway.app/api/apk/bajar" style="display:block;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;text-decoration:none;color:#1B4F8A;font-family:inherit;font-size:14px;">\u{2B07}\uFE0F <b>Bajar e instalar la app nueva</b> (o escribe /apk)</a>';
     // v594: botón que abre la pantalla del «Hey Google» (APK 1.13)
     html += '<button onclick="azkarinHeyGoogle()" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F514} <b>Activar el «Hey Google»</b> — te abre la pantalla de Google donde se enciende</button>';
+    // v605: soltar el micro mientras usa el móvil (APK 1.18) — para poder dictar en otras apps
+    var _cede = true; try { _cede = localStorage.getItem('azkarinCede') !== 'off'; } catch(e){}
+    html += '<button onclick="azkarinCederSet(' + (_cede ? 'false' : 'true') + ')" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F91D} <b>' + (_cede ? 'Ahora te dejo el micro mientras usas el móvil' : 'Ahora escucho también mientras usas el móvil') + '</b> — tócame para cambiarlo</button>';
     // v599: el «pi» — permiso de No molestar para poder tapar el canal por el que sale (APK 1.17)
     html += '<button onclick="azkarinNoMolestar()" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F515} <b>Quitar el «pi» del micrófono</b> — permiso para taparlo (No molestar)</button>';
     // v598: la pantalla de Android donde se elige Google o Bixby de asistente (APK 1.16)
@@ -18782,7 +18799,14 @@ async function doResetWithCode() {
         var _calibrando = _mp.msHablando < 1500;
         var _refSuVoz = (_mp.maxHablando || 0) * 0.999;
         var _superaSuVoz = !_calibrando && rms > Math.max(_refSuVoz * 2, 0.08);
-        var _encima = !_calibrando && _bargeinActivo() && rms > Math.max(_refSuVoz * 1.35, 0.04);
+        // v605 · más fácil de cortar: basta sonar un 20 % más que él (antes 35 %), con suelo
+        // para que la voz baja no dispare. Y se apuntan los NIVELES REALES para poder ajustarlo
+        // con números de su móvil en vez de a ojo.
+        var _encima = !_calibrando && _bargeinActivo() && rms > Math.max(_refSuVoz * 1.2, 0.035);
+        if (!_mp.diag) _mp.diag = { ref: 0, pico: 0, msEncima: 0 };
+        if (rms > _mp.diag.pico) _mp.diag.pico = rms;
+        if (_refSuVoz > _mp.diag.ref) _mp.diag.ref = _refSuVoz;
+        if (_encima) _mp.diag.msEncima += ms;
         if (_calibrando || !_encima) _mp.maxHablando = Math.max(_refSuVoz, rms);
         else _mp.maxHablando = Math.max(_refSuVoz * 1.01, 0.001);
         _mp.corteSeguidos = _superaSuVoz ? (_mp.corteSeguidos + 1) : 0;
@@ -18792,7 +18816,7 @@ async function doResetWithCode() {
           if (E.msEncima === 0) { E.buf = E.pre.slice(); E.ms = E.preMs; E.pre = []; E.preMs = 0; }
           E.buf.push(_copiaE); E.ms += ms;
           if (_encima) { E.msEncima += ms; E.msBajo = 0; } else { E.msBajo += ms; }
-          if ((E.msBajo >= 700 && E.msEncima >= 600) || E.ms >= 4500) { _mpMandarEncima(E); _mp.enc = null; }
+          if ((E.msBajo >= 700 && E.msEncima >= 450) || E.ms >= 4500) { _mpMandarEncima(E); _mp.enc = null; }
           else if (E.msBajo >= 700) { _mp.enc = null; }   // un pico suelto (una sílaba fuerte suya)
         } else {
           E.pre.push(_copiaE); E.preMs += ms;
@@ -18801,12 +18825,18 @@ async function doResetWithCode() {
         if (_mp.corteSeguidos * ms >= 600 && _bargeinActivo()) {
           // el corte rápido de antes (el doble de fuerte): se corta ya, y lo que se oyó se manda igual
           _mp.corteSeguidos = 0;
-          if (_mp.enc && _mp.enc.msEncima >= 500) { _mpMandarEncima(_mp.enc); _mp.enc = null; }
+          if (_mp.enc && _mp.enc.msEncima >= 450) { _mpMandarEncima(_mp.enc); _mp.enc = null; }
           _mpLimpiaTrozo();
           _convInterrumpir({ motivo: 'doble' });
         }
         return;
       }
+      // v605 · acaba de callarse: se manda UNA foto de los niveles (en milésimas) para saber
+      // cuánto sonaba él y cuánto lo más alto que se oyó — así se ajusta con datos, no a ojo.
+      if (_mp.msHablando > 800 && _mp.diag) {
+        try { _vozParte('encima_diag', { ref: Math.round(_mp.diag.ref * 1000), pico: Math.round(_mp.diag.pico * 1000), ms: Math.round(_mp.diag.msEncima), segundos: Math.round(_mp.msHablando / 100) / 10 }); } catch(e){}
+      }
+      _mp.diag = null;
       _mp.enc = null;
       _mp.corteSeguidos = 0;
       _mp.maxHablando = 0;
@@ -18853,7 +18883,7 @@ async function doResetWithCode() {
   // v600 · lo que se oyó POR ENCIMA de Azkarin, a pasar a texto (diciendo qué decía él)
   function _mpMandarEncima(E) {
     try {
-      if (!E || !E.buf.length || E.msEncima < 500) return;
+      if (!E || !E.buf.length || E.msEncima < 450) return;
       var pcm = _mpAJuntar(E.buf);
       var wav = _mpWav(_mpA16k(pcm, _mp.hz), 16000);
       var dicho = '';
