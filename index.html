@@ -4746,7 +4746,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v609';
+var APP_VERSION = 'v610';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17584,6 +17584,26 @@ async function doResetWithCode() {
     else window.addEventListener('load', function(){ setTimeout(_autoEsc, 2500); });
   })();
 
+  // v610 · borra de la pantalla y de la memoria de la app el último mensaje escrito por Asier
+  // (el que llevaba la clave). No hace falta saber cuál es la clave: el servidor ya ha dicho
+  // que ese mensaje la llevaba.
+  function _taparClaveEnPantalla() {
+    try {
+      for (var i = chatHistorial.length - 1; i >= 0; i--) {
+        if (chatHistorial[i] && chatHistorial[i].role === 'user') { chatHistorial[i].content = '🔑 ••••••'; break; }
+      }
+    } catch(e){}
+    try {
+      var cont = document.getElementById('chatbot-msgs');
+      if (!cont) return;
+      var burbujas = cont.querySelectorAll('.chat-msg.user');
+      for (var k = burbujas.length - 1; k >= 0; k--) {
+        var b = burbujas[k];
+        if (b && b.textContent && b.textContent.trim()) { b.innerHTML = '🔑 ••••••'; b.title = 'Tu clave: tapada, no se guarda en ningún sitio'; break; }
+      }
+    } catch(e){}
+  }
+  window._taparClaveEnPantalla = _taparClaveEnPantalla;
   window.chatbotSend = async function() {
     try {
     var msg = inputEl.value.trim();
@@ -17678,6 +17698,10 @@ async function doResetWithCode() {
       var data = await resp.json();
       _turnoResuelto(_turnoId);   // v574
       removeTyping();
+      // v610 · LA CLAVE NO SE QUEDA A LA VISTA. Asier la escribe en el chat (es su manera de
+      // trabajar). El servidor la comprueba, la tapa y avisa con clave_oculta: aquí se borra
+      // también de la burbuja y del historial que lleva la app, para que no quede en pantalla.
+      if (data && data.clave_oculta) { try { _taparClaveEnPantalla(); } catch(e){} }
       if (data.error) {
         addMsg('bot', '❌ Error: ' + data.error);
       } else if (data.tipo === 'texto') {
