@@ -525,10 +525,11 @@ public class WakeWordService extends Service {
     private boolean pareceAzkarin(String raw) {
         if (raw == null) return false;
         String t = raw.toLowerCase(Locale.ROOT)
-            .replace("á","a").replace("é","e").replace("í","i").replace("ó","o").replace("ú","u");
+            .replace("á","a").replace("é","e").replace("í","i").replace("ó","o").replace("ú","u")
+            .replace(" ","").replace("-","");   // v1.13: «az carin», «as-karin» → sin huecos
         String[] roots = {
             "azkarin","azcarin","askarin","ascarin","oscarin","ozkarin",
-            "azkar","azcar","askar","ascar","zkarin","scarin","es karin","oscar in"
+            "azkar","azcar","askar","ascar","zkarin","scarin","eskarin","escarin","oscarin","azkarim","ascarim"
         };
         for (String r : roots) if (t.contains(r)) return true;
         return false;

@@ -1,7 +1,9 @@
 package com.azkar.azkarin;
 
 import android.Manifest;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -80,6 +82,7 @@ public class WakeWordPlugin extends Plugin {
         r.put("overlay", overlay);
         r.put("fullscreen", fullscreen);
         r.put("mic", getPermissionState("mic") == PermissionState.GRANTED);
+        r.put("heyGoogle", true);   // v1.13: existe pedirHeyGoogle()
         try {
             android.content.SharedPreferences pf = getContext().getSharedPreferences("azkarin", android.content.Context.MODE_PRIVATE);
             r.put("soloHorario", pf.getBoolean(WakeWordService.K_SOLO_HORARIO, true));
@@ -114,6 +117,50 @@ public class WakeWordPlugin extends Plugin {
                 getContext().startActivity(i);
             }
             call.resolve();
+        } catch (Exception e) { call.reject("no se pudo abrir: " + e.getMessage()); }
+    }
+
+    /**
+     * v1.13 · Abre la pantalla de Google donde se enciende el «Hey Google» (Voice Match).
+     * Google ha cambiado esa pantalla varias veces, asi que se prueban varias puertas por
+     * orden y se abre la primera que exista; si ninguna, la de Android «asistente digital».
+     * Devuelve {abierto: "google-voz" | "google-ajustes" | "android-asistente" | "android-ajustes"}.
+     */
+    @PluginMethod
+    public void pedirHeyGoogle(PluginCall call) {
+        PackageManager pm = getContext().getPackageManager();
+        String gsa = "com.google.android.googlequicksearchbox";
+        String[][] puertas = {
+            {"google-voz", gsa, "com.google.android.apps.gsa.settingsui.VoiceSearchPreferences"},
+            {"google-voz", gsa, "com.google.android.apps.gsa.velvet.ui.settings.VoiceSearchPreferences"},
+            {"google-voz", gsa, "com.google.android.voicesearch.VoiceSearchPreferences"},
+            {"google-voz", "com.google.android.voicesearch", "com.google.android.voicesearch.VoiceSearchPreferences"},
+            {"google-ajustes", gsa, "com.google.android.apps.gsa.velvet.ui.settings.PublicSettingsActivity"},
+        };
+        for (String[] p : puertas) {
+            try {
+                Intent i = new Intent(Intent.ACTION_MAIN);
+                i.setComponent(new ComponentName(p[1], p[2]));
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (i.resolveActivity(pm) == null) continue;
+                getContext().startActivity(i);
+                JSObject r = new JSObject(); r.put("abierto", p[0]); r.put("puerta", p[2]);
+                call.resolve(r); return;
+            } catch (Exception e) { /* siguiente puerta */ }
+        }
+        try {
+            Intent i = new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+            JSObject r = new JSObject(); r.put("abierto", "android-asistente");
+            call.resolve(r); return;
+        } catch (Exception e) { /* ultima */ }
+        try {
+            Intent i = new Intent(Settings.ACTION_SETTINGS);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+            JSObject r = new JSObject(); r.put("abierto", "android-ajustes");
+            call.resolve(r);
         } catch (Exception e) { call.reject("no se pudo abrir: " + e.getMessage()); }
     }
 
