@@ -4743,7 +4743,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v597';
+var APP_VERSION = 'v598';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17457,9 +17457,10 @@ async function doResetWithCode() {
     p.pedirHeyGoogle().then(function(d){
       d = d || {};
       var h = '\u{1F514} <b>Se ha abierto ';
-      if (d.abierto === 'google-voz') h += 'la pantalla «Voz» de Google.</b><br>Si ahí solo ves idiomas y la voz que habla, el interruptor no está en esa pantalla: vuelve atrás con la flecha, y en los ajustes de Google entra en <b>Asistente de Google</b> → <b>«Hey Google» y Voice Match</b> → enciende <b>Hey Google</b> (te pedirá decirlo unas veces para aprender tu voz).';
+      if (d.abierto === 'google-app') h += 'la app de Google.</b><br>Toca <b>tu foto</b> (arriba a la derecha) → <b>Ajustes</b> → <b>Asistente de Google</b> → <b>«Hey Google» y Voice Match</b> → enciende <b>Hey Google</b> (te pedirá decirlo unas veces para aprender tu voz).';
+      else if (d.abierto === 'google-voz') h += 'la pantalla «Voz» de Google.</b><br>Si ahí solo ves idiomas y la voz que habla, el interruptor no está en esa pantalla: vuelve atrás con la flecha, y en los ajustes de Google entra en <b>Asistente de Google</b> → <b>«Hey Google» y Voice Match</b> → enciende <b>Hey Google</b> (te pedirá decirlo unas veces para aprender tu voz).';
       else if (d.abierto === 'google-ajustes') h += 'los ajustes de la app de Google.</b><br>Entra en <b>Asistente de Google</b> (o Gemini) → <b>«Hey Google» y Voice Match</b> → enciende <b>Hey Google</b>.';
-      else if (d.abierto === 'android-asistente') h += 'la pantalla del asistente de Android.</b><br>Comprueba que el asistente sea <b>Google</b> (no Bixby) y entra en sus ajustes → <b>«Hey Google» y Voice Match</b> → enciéndelo.';
+      else if (d.abierto === 'android-asistente') h += 'la pantalla del asistente de Android.</b><br>Mira que la app de asistente sea <b>Google</b> (no Bixby); si no, tócalo y elige Google. Con la <b>rueda</b> de al lado entras en los ajustes del Asistente → <b>«Hey Google» y Voice Match</b> → enciéndelo.';
       else h += 'los ajustes del móvil.</b><br>Ve a <b>Google</b> → <b>Ajustes de las apps de Google</b> → <b>Búsqueda, Asistente y Voz</b> → <b>Voz</b> → <b>Voice Match</b> → enciende <b>Hey Google</b>.';
       h += '<br><br>Cuando esté, con el móvil <b>desbloqueado</b> di <b>«Hey Google, abre Hablar con Azkarin»</b>.<br>🛑 Con el móvil <b>bloqueado</b>, Google no abre apps (lo dice la propia ayuda de Google): para eso sigue valiendo mi escucha, la de decir «Azkarin».';
       addMsg('bot', h);
@@ -17472,6 +17473,15 @@ async function doResetWithCode() {
   // dentro de la APK, un enlace al mismo dominio de la web se abre DENTRO y no descarga nada.
   window.azkarinApkEnlace = function(){
     addMsg('bot','\u{1F4F1} <b>La app nueva de Azkarin</b><br>Toca aquí y se baja; luego dale a «Instalar» (se pone encima, sin desinstalar y sin perder nada):<br><br><a href="https://azkar-presupuestos-production.up.railway.app/api/apk/bajar" style="display:block;padding:12px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;text-decoration:none;color:#1B4F8A;font-weight:700;text-align:center;">\u{2B07}\uFE0F Bajar e instalar la app nueva</a><br>Si se abre el navegador y no pasa nada, mira la barra de notificaciones: ahí está la descarga; tócala para instalar.');
+  };
+  window.azkarinAsistente = function(){
+    var p = _azkWakePlugin();
+    if (!p || typeof p.pedirAsistente !== 'function') { addMsg('bot','\u{1F916} Para este botón hace falta la <b>APK 1.16</b> o más nueva: escribe <b>/apk</b>, instala, y vuelve a <b>/escucha</b>.'); return; }
+    p.pedirAsistente().then(function(d){
+      d = d || {};
+      addMsg('bot','\u{1F916} <b>Se ha abierto la pantalla del asistente de Android.</b><br>Mira que la app de asistente sea <b>Google</b> (no Bixby); si no, tócalo y elige Google. Con la <b>rueda</b> de al lado entras en los ajustes del Asistente → <b>«Hey Google» y Voice Match</b> → enciende <b>Hey Google</b>.');
+      try { _vozParte('asistente', { abierto: d.abierto }); } catch(e){}
+    }).catch(function(e){ addMsg('bot','\u{1F916} No he podido abrir esa pantalla (' + ((e && e.message) || e) + '). En Ajustes del móvil busca «asistente» y elige Google.'); });
   };
   window.azkarinEscuchaToggle = function(){
     if (!_azkEsApp()){
@@ -17491,6 +17501,8 @@ async function doResetWithCode() {
     html += '<a href="https://azkar-presupuestos-production.up.railway.app/api/apk/bajar" style="display:block;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;text-decoration:none;color:#1B4F8A;font-family:inherit;font-size:14px;">\u{2B07}\uFE0F <b>Bajar e instalar la app nueva</b> (o escribe /apk)</a>';
     // v594: botón que abre la pantalla del «Hey Google» (APK 1.13)
     html += '<button onclick="azkarinHeyGoogle()" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F514} <b>Activar el «Hey Google»</b> — te abre la pantalla de Google donde se enciende</button>';
+    // v598: la pantalla de Android donde se elige Google o Bixby de asistente (APK 1.16)
+    html += '<button onclick="azkarinAsistente()" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F916} <b>Elegir Google como asistente</b> (por si es Bixby) y entrar en sus ajustes</button>';
     // v593: el timbre de Google (APK v1.12) — el «Hey Google» del chip abre el icono «Hablar con Azkarin» y la app arranca ya hablando
     html += '<div style="background:#eef3fb;border:1px solid #c9d8ef;border-radius:8px;padding:9px 11px;margin:8px 0;font-size:12.5px;color:#1B4F8A;">\u{1F514} <b>El timbre de Google (APK 1.12 o más nueva):</b> con la app instalada tienes un segundo icono, <b>«Hablar con Azkarin»</b>. Di <b>«Hey Google, abre Hablar con Azkarin»</b> y se abre ya hablando contigo — eso lo oye el chip del «Hey Google», que no gasta batería. Ojo: eso vale con el móvil <b>desbloqueado</b>; bloqueado, Google no abre apps. Para el móvil bloqueado y los recordatorios hablados hace falta mi escucha (Activar, aquí arriba).</div>';
     html += '<div style="background:#fff7e6;border:1px solid #f0d9a0;border-radius:8px;padding:9px 11px;margin:8px 0;font-size:12.5px;color:#7a5b1e;">⚠️ Para que no falle: Ajustes → Apps → Azkarin → Batería → <b>Sin restricciones</b>. Es la versión gratis: gasta algo de batería y a veces hay que repetir «Azkarin» claro y un poco alto.</div>';
