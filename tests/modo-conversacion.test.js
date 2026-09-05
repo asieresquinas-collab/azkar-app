@@ -213,6 +213,24 @@ if (SRC_BUF) {
   c('E4 · sin la espera de "está pensando", el mensaje saldría encima (A8 sería falso)', enviados.length === 1);
 }
 
+console.log('\n══ F · v611 · EL PRECIO SE VE, PERO NO SE LEE EN ALTO ══');
+{
+  // Asier: «me dice tecla cero, tecla tres, tecla ocho… es un rollo en cada respuesta».
+  const iM = H.indexOf('  function _sinMarcaGasto(t) {'), jM = H.indexOf('  window._sinMarcaGasto');
+  const SRCM = (iM > 0 && jM > iM) ? H.slice(iM, jM) : null;
+  c('F0 · el limpiador está donde toca', !!SRCM);
+  if (SRCM) {
+    const F = new Function(SRCM + '\nreturn _sinMarcaGasto;')();
+    const K = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣'];
+    const marca = '\u{1F7E2} ' + K[0] + ',' + K[0] + K[1] + K[7];
+    c('F1 · la marca del final no se lee', F('Tienes dos llamadas de hoy.\n\n' + marca) === 'Tienes dos llamadas de hoy', JSON.stringify(F('Tienes dos llamadas de hoy.\n\n' + marca)));
+    c('F2 · con el rayo del motor gratis, igual', F('Hecho \u26A1 ' + K[0] + ',' + K[0] + K[2] + K[4]) === 'Hecho');
+    c('F3 · un texto normal no se toca', F('Sin marca, texto normal') === 'Sin marca, texto normal');
+    c('F4 · los números de verdad se respetan', F('El presupuesto son 250 \u20AC y va el jueves ' + marca) === 'El presupuesto son 250 \u20AC y va el jueves');
+    c('F5 · y se quita ANTES de hablar, en los dos caminos de voz', (H.match(/_sinMarcaGasto\(text\)/g) || []).length >= 2);
+  }
+}
+
 console.log('\n──────────────────────────────');
 console.log(bien + ' bien · ' + mal + ' mal');
 process.exit(mal ? 1 : 0);
