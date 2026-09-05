@@ -4745,7 +4745,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v602';
+var APP_VERSION = 'v603';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18127,6 +18127,9 @@ async function doResetWithCode() {
   function _micPropioBoton() {
     var b = document.getElementById('chatbot-mic');
     if (_bt.grabando) { _micPropioParar(); return; }
+    // v603 · la escucha de «Azkarin» de fondo se aparta mientras graba el botón (dos no pueden
+    // grabar a la vez sin quitarse el micro) y vuelve al soltar — igual que en conversación
+    try { var _pwB = window._azkWakePluginRef && window._azkWakePluginRef(); if (_pwB && localStorage.getItem('azkarinEscucha') === 'on' && !window._azkarinConv) _pwB.stop(); } catch(e){}
     ((window.Capacitor && window.Capacitor.Plugins && !_mp.permisoPedido)
       ? _pedirPermisoALaApk().then(function(){ _mp.permisoPedido = true; })
       : Promise.resolve()).then(function() {
@@ -18144,6 +18147,7 @@ async function doResetWithCode() {
           try { _bt.buf.push(new Float32Array(e.inputBuffer.getChannelData(0))); } catch(err){}
         };
         _bt.grabando = true; _bt.stream = st; _bt.ctx = ctx; _bt.proc = proc; _bt.src = src; _bt.sil = sil; _bt.hz = ctx.sampleRate || 48000;
+        try { st.getTracks().forEach(function(tr){ tr.onended = function(){ try { _vozParte('micro_error', { error: 'boton: la pista se cerró sola' }); } catch(e){} if (_bt.grabando) _micPropioParar(); }; }); } catch(e){}   // v603
         if (b) { b.classList.add('recording'); b.innerHTML = '⏹'; }
       })
       .catch(function(e) {
@@ -18164,7 +18168,8 @@ async function doResetWithCode() {
     try { if (_bt.ctx && _bt.ctx.close) _bt.ctx.close(); } catch(e){}
     _bt = { grabando: false, stream: null, ctx: null, proc: null, src: null, sil: null, hz: 0, buf: [] };
     if (b) { b.classList.remove('recording'); b.innerHTML = '🎤'; }
-    if (!trozos || !trozos.length) return;
+    try { var _pwB2 = window._azkWakePluginRef && window._azkWakePluginRef(); if (_pwB2 && localStorage.getItem('azkarinEscucha') === 'on' && !window._azkarinConv) setTimeout(function(){ try { _pwB2.start(); } catch(e){} }, 800); } catch(e){}   // v603
+    if (!trozos || !trozos.length) { try { _vozParte('dictado_falla', { error: 'boton: sin audio', fallos: 0 }); } catch(e){} return; }
     var wav = _mpWav(_mpA16k(_mpAJuntar(trozos), hz), 16000);
     if (b) b.innerHTML = '⏳';
     var opts = {
@@ -18178,6 +18183,7 @@ async function doResetWithCode() {
       .then(function(d) {
         if (b) b.innerHTML = '🎤';
         var t = (d && d.texto ? String(d.texto) : '').trim();
+        try { _vozParte('dictado_ok', { ms: d && d.ms, letras: t.length, kb: Math.round(wav.length / 1024), motivo: 'boton' + ((d && d.motivo) ? ': ' + d.motivo : '') }); } catch(e){}   // v603
         if (!t) return;
         try { inputEl.value = (inputEl.value ? inputEl.value + ' ' : '') + t; inputEl.focus(); } catch(e){}
       })
@@ -19219,6 +19225,10 @@ async function doResetWithCode() {
     var nuevo = (typeof forzar === 'boolean') ? forzar : !window._azkarinConv;
     if (nuevo === window._azkarinConv) return;
     window._azkarinConv = nuevo;
+    // v603 · si lo enciende ÉL con el botón, se escucha todo (el modo «solo si me llama» es
+    // solo para cuando se abre sola por la palabra clave o por un aviso). Antes, si la app se
+    // había abierto sola antes, el botón heredaba ese modo y tiraba todo lo que no llevara el nombre.
+    if (nuevo && typeof forzar !== 'boolean') window._convPorPalabraClave = false;
     _convSilencios = 0;
     window._convUltimaVozTs = Date.now();   // v575: el reloj del silencio arranca ahora
     _convEstadoAuto();
