@@ -201,7 +201,8 @@ c('E2 · si quitan el reenganche instantáneo, C2 canta',
 c('E3 · si quitan la cancelación de eco, D1 canta',
   !/echoCancellation: true/.test(sabotea(BARGE, 'echoCancellation: true', 'echoCancellation: false')));
 if (SRC_BUF) {
-  const roto = SRC_BUF.replace('if (sendBtn && sendBtn.disabled) { _convSendTimer = setTimeout(_convEnviarLoAcumulado, 600); return; }', '');
+  // v601: la espera de «está pensando» vive ahora en _porQue ('pensando'); el sabotaje la quita de ahí
+  const roto = SRC_BUF.replace("((sendBtn && sendBtn.disabled) ? 'pensando' : '')", "''");
   const r = reloj(); const enviados = []; const inputEl = { value: '' };
   const api = new Function('window', 'inputEl', 'sendBtn', 'setTimeout', 'clearTimeout', 'Date', '_convHablando', 'chatbotSend',
     roto + '\nwindow.chatbotSend = chatbotSend;\nreturn { recibir: _convRecibirHabla };')(

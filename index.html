@@ -4745,7 +4745,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v600';
+var APP_VERSION = 'v601';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18203,6 +18203,7 @@ async function doResetWithCode() {
   // medias (parciales) rearman el reloj, asi que solo se manda cuando de verdad ha callado.
   var _CONV_PAUSA_MS = 2400; // silencio tras la ultima palabra para mandar (tuneable)
   function _convLimpiarBuffer() { _convBuffer = ''; if (_convSendTimer) { clearTimeout(_convSendTimer); _convSendTimer = null; } }
+  var _convEsperaDesde = 0;   // v601
   function _convEnviarLoAcumulado() {
     _convSendTimer = null;
     if (!window._azkarinConv) return;
@@ -18210,11 +18211,19 @@ async function doResetWithCode() {
     if (!txt) return;
     // v575: NADA SE PIERDE. Si justo esta hablando o pensando la respuesta anterior, lo dicho
     // se guarda y se manda en cuanto termina (antes se enviaba encima o se quedaba colgado).
-    if (_convHablando()) { _convSendTimer = setTimeout(_convEnviarLoAcumulado, 500); return; }
-    // v584: y si ASIER esta hablando ahora mismo, o hay un trozo suyo camino del servidor, se
-    // espera: mandar ahora seria partirle la frase («Puedes revisar todas las llamadas de»).
-    if (typeof _mp !== 'undefined' && _mp.on && (_mp.hablando || (_mp.enVuelo || 0) > 0)) { _convSendTimer = setTimeout(_convEnviarLoAcumulado, 400); return; }
-    if (sendBtn && sendBtn.disabled) { _convSendTimer = setTimeout(_convEnviarLoAcumulado, 600); return; }
+    // v601 · NADA SE QUEDA COLGADO. Se espera a que calle, a que termine su trozo o a que
+    // vuelva la respuesta anterior… pero como mucho doce segundos: si algo se quedó atascado
+    // (una voz que no se apaga, una petición que no vuelve), se manda igual y se apunta por qué.
+    var _porQue = _convHablando() ? 'habla' : ((typeof _mp !== 'undefined' && _mp.on && _mp.hablando) ? 'asier_habla' : ((typeof _mp !== 'undefined' && _mp.on && (_mp.enVuelo || 0) > 0) ? 'en_vuelo' : ((sendBtn && sendBtn.disabled) ? 'pensando' : '')));
+    if (_porQue) {
+      if (!_convEsperaDesde) _convEsperaDesde = Date.now();
+      if (Date.now() - _convEsperaDesde < 12000) { _convSendTimer = setTimeout(_convEnviarLoAcumulado, _porQue === 'habla' ? 500 : 400); return; }
+      try { _vozParte('espera', { motivo: 'atascado en ' + _porQue + ', se manda igual' }); } catch(e){}
+      if (_porQue === 'habla') { try { chatSpeakStop(); } catch(e){} }
+      if (_porQue === 'en_vuelo') { try { _mp.enVuelo = 0; _mp.transcribiendo = false; } catch(e){} }
+      if (_porQue === 'asier_habla') { try { _mpLimpiaTrozo(); } catch(e){} }
+    }
+    _convEsperaDesde = 0;
     _convBuffer = '';
     try { inputEl.value = txt; } catch(e){}
     window._convUltimaSuya = Date.now();   // v589: esto sí iba para él
@@ -18438,6 +18447,7 @@ async function doResetWithCode() {
   function _convInterrumpir(e) {
     try {
       if (!_convHablando()) return;                                           // solo si está hablando
+      try { _vozParte('corte', { motivo: (e && e.motivo) || (e && e.target ? 'toque' : '?') }); } catch(err){}   // v601
       if (e && e.target && e.target.closest && e.target.closest('a,button,input,textarea,select,label')) return; // no robar toques a botones/enlaces
       if (typeof chatSpeakStop === 'function') chatSpeakStop();
       try { if (window._llAudio && !window._llAudio.paused) window._llAudio.pause(); } catch(e){}   // v588
@@ -18785,7 +18795,7 @@ async function doResetWithCode() {
           _mp.corteSeguidos = 0;
           if (_mp.enc && _mp.enc.msEncima >= 300) { _mpMandarEncima(_mp.enc); _mp.enc = null; }
           _mpLimpiaTrozo();
-          _convInterrumpir({});
+          _convInterrumpir({ motivo: 'doble' });
         }
         return;
       }
@@ -18901,7 +18911,7 @@ async function doResetWithCode() {
         // v600 · venía de HABLARLE ENCIMA: no es su eco → se le corta y se le hace caso
         if (opts.encima) {
           _vozParte('encima_ok', { letras: t.length });
-          if (_convHablando()) _convInterrumpir({});
+          if (_convHablando()) _convInterrumpir({ motivo: 'encima' });
           setTimeout(function(){ try { _convRecibirHabla(t); } catch(e){} }, 150);
           return;
         }
@@ -18912,7 +18922,7 @@ async function doResetWithCode() {
           console.warn('[Voz] descartado por eco corto tras hablar:', t);
           return;
         }
-        if (_convHablando() && _esPalabraDeCorte(t)) { _convInterrumpir({}); return; }
+        if (_convHablando() && _esPalabraDeCorte(t)) { _convInterrumpir({ motivo: 'palabra' }); return; }
         _convResetBackoff();
         _convRecibirHabla(t);
       })
