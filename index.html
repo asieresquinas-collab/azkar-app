@@ -1108,7 +1108,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>Dentro de tu APK, Android NO le deja a la app abrir el micrófono</strong> (lo dijo tu propio móvil: permiso denegado, aunque el permiso se pida por todas las puertas). Mientras esa APK sea la que es, hay que usar el reconocedor de Android, y <strong>ese pitido es del sistema: una página no lo puede silenciar</strong>. Lo que sí se ha hecho: <strong>una sola sesión larga por turno</strong> en vez de una cada segundo, así que suena <strong>una vez cuando empiezas a hablar</strong> y no veinte por minuto. En silencio, además, espera hasta siete segundos entre intentos.</div></div>
       <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>✅ <strong>Resuelto con la APK v1.6</strong> (4-sep): a la APK le faltaba declarar un segundo permiso de audio que Capacitor exige para dejarle el micrófono a la web. Con eso entra el micro propio y <strong>no suena nada</strong>.</div></div>
-      <div class='ayuda-step'><div class='step-num'>23</div><div class='step-text'>🤝 <strong>«Con Azkarin activado no puedo dictar en otras apps».</strong> Cierto, y es de Android: el micrófono y el reconocedor de voz <strong>son uno solo</strong> en todo el móvil, y mientras la escucha «Azkarin» está en marcha los tiene ella. Desde la APK 1.18, <strong>mientras usas el móvil</strong> (pantalla encendida y desbloqueado) <strong>te deja el micro</strong>: dictas donde quieras. En cuanto bloqueas o se apaga la pantalla, vuelve a escuchar «Azkarin» sola. Si lo prefieres al revés, en <strong>/escucha</strong> hay un botón para cambiarlo.</div></div>
+      <div class='ayuda-step'><div class='step-num'>23</div><div class='step-text'>🤝 <strong>«Con Azkarin activado no puedo dictar en otras apps».</strong> Cierto, y es de Android: el micrófono y el reconocedor de voz <strong>son uno solo</strong> en todo el móvil. Desde la APK 1.19 la escucha <strong>se aparta sola en cuanto otra app pide el micrófono</strong> (el dictado del teclado, una nota de voz) y <strong>vuelve sola</strong> en cuanto terminas — sin dejar de escucharte el resto del tiempo, también con el móvil en la mano. Lo nota porque Android, al que pierde el micro, le manda silencio de verdad; y si el reconocedor está ocupado, se retira igual. 🛑 En la 1.18 se paró mientras usabas el móvil y eso estaba mal: entonces no se le podía hablar. Eso ahora está apagado (queda como interruptor en /escucha por si algún día lo quieres).</div></div>
       <div class='ayuda-step'><div class='step-num'>22</div><div class='step-text'>🗣️ <strong>Hablarle encima y que te haga caso.</strong> Si te está soltando una parrafada, háblale por encima, un poco más alto que él: se calla y hace lo que le has dicho, sin que tengas que repetirlo. Por dentro: lo que suena por encima de su voz se manda a pasar a texto diciéndole al servidor qué estaba diciendo Azkarin, para que solo apunte tus palabras; si es su propio eco, no pasa nada. Y las palabras de parar de siempre («para», «calla») siguen valiendo.</div></div>
       <div class='ayuda-step'><div class='step-num'>21</div><div class='step-text'>🔕 <strong>«Suena pi cada cinco segundos con la escucha puesta».</strong> Ese «pi» lo hace el reconocedor de Android al abrirse, y la app solo lo abre cuando oye voz: si alguien habla seguido cerca (tú dictando, la tele), se abría una y otra vez. Ahora, tras cada sesión, espera un hueco de silencio antes de volver a abrirlo (uno por parrafada como mucho), tapa también el canal del timbre y lo tapa más tiempo. Y hay un permiso de Android, <strong>«Acceso a No molestar»</strong>, sin el cual no deja tapar el canal de notificaciones: en <strong>/escucha</strong>, botón <strong>«Quitar el pi del micrófono»</strong> (APK 1.17).</div></div>
       <div class='ayuda-step'><div class='step-num'>20</div><div class='step-text'>⬇️ <strong>«El enlace de la APK no me hace nada».</strong> Dentro de la app, un enlace a un archivo de su misma web se abría dentro y no descargaba. Ahora el enlace de la app nueva va por el servidor, que abre el navegador del móvil y baja el archivo: escribe <strong>/apk</strong> (o el botón en /escucha), toca, y dale a «Instalar». Con la APK 1.14 o más nueva, además, se baja e instala <strong>sin salir de la app</strong>.</div></div>
@@ -4746,7 +4746,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v605';
+var APP_VERSION = 'v606';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17230,7 +17230,7 @@ async function doResetWithCode() {
       try {
         var p = _azkWakePlugin();
         if (!p || typeof p.configurar !== 'function') return;
-        p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off', cedeEnUso: (localStorage.getItem('azkarinCede') !== 'off') });   // v605
+        p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off', cedeEnUso: (localStorage.getItem('azkarinCede') === 'on') });   // v606
         // v596 · qué APK lleva de verdad, apuntado en el parte (para no adivinarlo desde fuera)
         if (typeof p.info === 'function') p.info().then(function(d){
           d = d || {}; window._apkInfo = d;
@@ -17397,7 +17397,7 @@ async function doResetWithCode() {
       if (d.fullscreen === false) falta.push('pantalla');
       var h = '🎧 <b>Escucha «Azkarin»</b> · APK ' + (d.version || '?') + '<br>';
       h += 'Escuchando ahora: ' + (d.listening ? '🟢 sí' : '⚪ no') + ' · Micrófono: ' + (d.mic ? '✅' : '❌') + '<br>';
-      if (d.cedeEnUso !== undefined) h += 'Mientras usas el móvil: ' + (d.cedeEnUso ? '🤝 <b>te dejo el micro</b> (puedes dictar en otras apps)' : '👂 sigo escuchando (el dictado de otras apps puede fallar)') + '<br>';   // v605
+      if (d.cedeEnUso !== undefined) h += 'Mientras usas el móvil: ' + (d.cedeEnUso ? '🤫 <b>callado del todo</b> (no puedes llamarme con la pantalla encendida)' : '👂 <b>te escucho</b>, y me aparto solo si otra app pide el micro') + '<br>';   // v606
       if (d.dnd !== undefined) h += 'Permiso para tapar el «pi» (No molestar): ' + (d.dnd ? '✅' : '❌ <button onclick="azkarinNoMolestar()" style="padding:4px 8px;border:1px solid #1B4F8A;border-radius:8px;background:#D6E4F7;cursor:pointer;font-family:inherit;">Dar permiso</button>') + '<br>';   // v599
       // v592 · la batería, en cristiano y con su interruptor
       if (d.soloHorario !== undefined) {
@@ -17488,8 +17488,8 @@ async function doResetWithCode() {
     if (!p || typeof p.configurar !== 'function') { addMsg('bot','\u{1F91D} Para esto hace falta la <b>APK 1.18</b> o más nueva: escribe <b>/apk</b> e instala.'); return; }
     try { p.configurar({ cedeEnUso: !!on }); } catch(e){}
     addMsg('bot', on
-      ? '\u{1F91D} <b>Hecho: mientras usas el móvil te dejo el micro.</b><br>Puedes dictar en WhatsApp, en notas o donde quieras. En cuanto bloqueas o apagas la pantalla, vuelvo a escuchar «Azkarin» (unos segundos después).'
-      : '\u{1F442} <b>Hecho: escucho también mientras usas el móvil.</b><br>🛑 Con esto puesto, el dictado de otras apps puede no funcionar: el micrófono y el reconocedor de Android son uno solo y los tengo yo.');
+      ? '\u{1F91D} <b>Hecho: mientras uses el móvil me callo del todo.</b><br>🛑 Ojo: así <b>no podrás llamarme</b> con la pantalla encendida; solo con el móvil bloqueado. Normalmente no hace falta: ya te suelto el micro solo cuando otra app lo pide.'
+      : '\u{1F442} <b>Hecho: te escucho siempre, también con el móvil en la mano.</b><br>Y si otra app pide el micrófono (el dictado del teclado, una nota de voz), me aparto solo y vuelvo en cuanto termines.');
   };
   window.azkarinNoMolestar = function(){
     var p = _azkWakePlugin();
@@ -17526,8 +17526,8 @@ async function doResetWithCode() {
     // v594: botón que abre la pantalla del «Hey Google» (APK 1.13)
     html += '<button onclick="azkarinHeyGoogle()" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F514} <b>Activar el «Hey Google»</b> — te abre la pantalla de Google donde se enciende</button>';
     // v605: soltar el micro mientras usa el móvil (APK 1.18) — para poder dictar en otras apps
-    var _cede = true; try { _cede = localStorage.getItem('azkarinCede') !== 'off'; } catch(e){}
-    html += '<button onclick="azkarinCederSet(' + (_cede ? 'false' : 'true') + ')" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F91D} <b>' + (_cede ? 'Ahora te dejo el micro mientras usas el móvil' : 'Ahora escucho también mientras usas el móvil') + '</b> — tócame para cambiarlo</button>';
+    var _cede = false; try { _cede = localStorage.getItem('azkarinCede') === 'on'; } catch(e){}
+    html += '<button onclick="azkarinCederSet(' + (_cede ? 'false' : 'true') + ')" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F91D} <b>' + (_cede ? 'Ahora callo del todo mientras usas el móvil' : 'Callar del todo mientras usas el móvil') + '</b> — ' + (_cede ? 'tócame para volver a escuchar siempre' : 'normalmente NO hace falta') + '</button>';
     // v599: el «pi» — permiso de No molestar para poder tapar el canal por el que sale (APK 1.17)
     html += '<button onclick="azkarinNoMolestar()" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">\u{1F515} <b>Quitar el «pi» del micrófono</b> — permiso para taparlo (No molestar)</button>';
     // v598: la pantalla de Android donde se elige Google o Bixby de asistente (APK 1.16)
