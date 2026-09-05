@@ -54,6 +54,28 @@
 
         </activity>
 
+        <!-- v1.12 · EL TIMBRE DE GOOGLE. Asier: «¿no podemos aprovechar que tenemos a Google,
+             hacer un puente para que funcione como el Hey Google?». Si: este segundo icono,
+             «Hablar con Azkarin», abre la app YA en modo conversacion. Con una rutina del
+             Asistente («cuando digo Azkarin -> abrir Hablar con Azkarin») o diciendo
+             «Hey Google, abre Hablar con Azkarin», el que escucha la palabra es el chip de
+             Google (que no gasta) y nuestra escucha se puede apagar del todo. -->
+        <activity-alias
+            android:name=".HablarActivity"
+            android:targetActivity=".MainActivity"
+            android:label="Hablar con Azkarin"
+            android:icon="@mipmap/ic_launcher"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VOICE_COMMAND" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
+
         <service
             android:name=".WakeWordService"
             android:exported="false"

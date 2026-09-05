@@ -117,8 +117,19 @@ public class MainActivity extends BridgeActivity {
         handleAviso(intent);
     }
 
+    /** v1.12 · ¿ha entrado por el icono «Hablar con Azkarin» (el que abre Google)? */
+    private boolean vieneDelTimbre(Intent intent) {
+        try {
+            if (intent == null) return false;
+            if (Intent.ACTION_VOICE_COMMAND.equals(intent.getAction())) return true;
+            android.content.ComponentName c = intent.getComponent();
+            return c != null && c.getClassName() != null && c.getClassName().endsWith("HablarActivity");
+        } catch (Exception e) { return false; }
+    }
+
     private void handleWake(Intent intent) {
-        if (intent == null || !intent.getBooleanExtra("azkarin_wake", false)) return;
+        if (intent == null) return;
+        if (!intent.getBooleanExtra("azkarin_wake", false) && !vieneDelTimbre(intent)) return;
         showOverLockscreen();
         // El WebView remoto puede tardar en cargar: reintentamos varias veces.
         fireWakeJs(0);
