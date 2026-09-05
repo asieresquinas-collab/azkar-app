@@ -1108,6 +1108,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>Dentro de tu APK, Android NO le deja a la app abrir el micrófono</strong> (lo dijo tu propio móvil: permiso denegado, aunque el permiso se pida por todas las puertas). Mientras esa APK sea la que es, hay que usar el reconocedor de Android, y <strong>ese pitido es del sistema: una página no lo puede silenciar</strong>. Lo que sí se ha hecho: <strong>una sola sesión larga por turno</strong> en vez de una cada segundo, así que suena <strong>una vez cuando empiezas a hablar</strong> y no veinte por minuto. En silencio, además, espera hasta siete segundos entre intentos.</div></div>
       <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>✅ <strong>Resuelto con la APK v1.6</strong> (4-sep): a la APK le faltaba declarar un segundo permiso de audio que Capacitor exige para dejarle el micrófono a la web. Con eso entra el micro propio y <strong>no suena nada</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>25</div><div class='step-text'>📊 <strong>Ya lee EXCEL y CSV.</strong> El cliente que manda los artículos en una hoja de cálculo: adjúntasela en el chat o dile que abra el correo, y te lee las filas tal cual (también <strong>Word</strong> y, como siempre, fotos y PDF). 🛑 El Excel <strong>viejo (.xls, anterior a 2007)</strong> no se puede abrir: hay que pedir que lo guarden como .xlsx o en PDF, y te lo dice claramente en vez de inventarse el contenido.</div></div>
       <div class='ayuda-step'><div class='step-num'>24</div><div class='step-text'>🔇 <strong>El precio, a la vista pero sin leerlo.</strong> El puntito de color y las cifras del final de cada respuesta <strong>siguen saliendo en pantalla</strong>, pero ya <strong>no se leen en alto</strong>: se acabó el «tecla cero, tecla tres, tecla ocho» en cada frase.</div></div>
       <div class='ayuda-step'><div class='step-num'>23</div><div class='step-text'>🤝 <strong>«Con Azkarin activado no puedo dictar en otras apps».</strong> Cierto, y es de Android: el micrófono y el reconocedor de voz <strong>son uno solo</strong> en todo el móvil. Desde la APK 1.19 la escucha <strong>se aparta sola en cuanto otra app pide el micrófono</strong> (el dictado del teclado, una nota de voz) y <strong>vuelve sola</strong> en cuanto terminas — sin dejar de escucharte el resto del tiempo, también con el móvil en la mano. Lo nota porque Android, al que pierde el micro, le manda silencio de verdad; y si el reconocedor está ocupado, se retira igual. 🛑 En la 1.18 se paró mientras usabas el móvil y eso estaba mal: entonces no se le podía hablar. Eso ahora está apagado (queda como interruptor en /escucha por si algún día lo quieres).</div></div>
       <div class='ayuda-step'><div class='step-num'>22</div><div class='step-text'>🗣️ <strong>Hablarle encima y que te haga caso.</strong> Si te está soltando una parrafada, háblale por encima, un poco más alto que él: se calla y hace lo que le has dicho, sin que tengas que repetirlo. Por dentro: lo que suena por encima de su voz se manda a pasar a texto diciéndole al servidor qué estaba diciendo Azkarin, para que solo apunte tus palabras; si es su propio eco, no pasa nada. Y las palabras de parar de siempre («para», «calla») siguen valiendo.</div></div>
@@ -4747,7 +4748,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v611';
+var APP_VERSION = 'v612';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -16639,7 +16640,7 @@ async function doResetWithCode() {
   <button id="chatbot-parar" type="button" onclick="window._convInterrumpir &amp;&amp; window._convInterrumpir()">&#9209; Parar de hablar</button>
   <div id="chatbot-foto-ind" style="display:none"></div>
   <div id="chatbot-input-area">
-    <input type="file" id="chatbot-foto-input" accept="image/*,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple style="display:none">
+    <input type="file" id="chatbot-foto-input" accept="image/*,application/pdf,.doc,.docx,.xlsx,.xlsm,.xls,.csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" multiple style="display:none">
     <button id="chatbot-foto-btn" onclick="document.getElementById('chatbot-foto-input').click()" title="Adjuntar foto">&#128206;</button>
     <input type="file" id="chatbot-video-input" accept="video/*" style="display:none">
     <button id="chatbot-video-btn" onclick="document.getElementById('chatbot-video-input').click()" title="Adjuntar vídeo (borrador de presupuesto)">&#127909;</button>
@@ -19839,7 +19840,8 @@ async function doResetWithCode() {
       this.value = '';
       if (!files.length) return;
       // v267: PDFs → se mandan aparte para que Azkarin los lea (máx 3, 15MB cada uno)
-      var _esPdf = function(f) { return f.type === 'application/pdf' || /\.(pdf|docx?)$/i.test(f.name || '') || /word|officedocument\.wordprocessing|msword/i.test(f.type || ''); };
+      // v612 · también Excel y CSV: hay clientes que mandan los artículos en una hoja
+      var _esPdf = function(f) { return f.type === 'application/pdf' || /\.(pdf|docx?|xlsx?|xlsm|csv|tsv)$/i.test(f.name || '') || /word|officedocument\.(wordprocessing|spreadsheet)|msword|ms-excel|csv/i.test(f.type || ''); };
       var pdfs = files.filter(_esPdf).slice(0, 3);
       files = files.filter(function(f) { return !_esPdf(f); });
       if (pdfs.length) {
