@@ -80,6 +80,8 @@ public class WakeWordPlugin extends Plugin {
         } catch (Exception e) {}
         r.put("version", version);
         r.put("listening", WakeWordService.RUNNING);
+        r.put("vigilando", WakeWordService.VIGILANDO);   // v1.20: escuchando de verdad (no solo vivo)
+        r.put("ultimoOido", WakeWordService.ULTIMO_OIDO);   // v1.20: lo ultimo que entendio
         r.put("overlay", overlay);
         r.put("fullscreen", fullscreen);
         r.put("mic", getPermissionState("mic") == PermissionState.GRANTED);
@@ -185,6 +187,8 @@ public class WakeWordPlugin extends Plugin {
     public void isListening(PluginCall call) {
         JSObject r = new JSObject();
         r.put("listening", WakeWordService.RUNNING);
+        r.put("vigilando", WakeWordService.VIGILANDO);   // v1.20: escuchando de verdad (no solo vivo)
+        r.put("ultimoOido", WakeWordService.ULTIMO_OIDO);   // v1.20: lo ultimo que entendio
         call.resolve(r);
     }
 

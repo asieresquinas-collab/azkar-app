@@ -59,6 +59,8 @@ public class WakeWordService extends Service {
     public static final String CH_LLAMA = "azkarin_wake_llama";
     public static final int NOTIF_ID = 4711;
     public static volatile boolean RUNNING = false;
+    public static volatile boolean VIGILANDO = false;      // v1.20 · escuchando de verdad
+    public static volatile String ULTIMO_OIDO = "";        // v1.20 · lo ultimo que entendio
 
     private SpeechRecognizer sr;
     private Intent srIntent;
@@ -493,9 +495,14 @@ public class WakeWordService extends Service {
             handler.post(new Runnable() { @Override public void run() { abrirReconocedor(); } });
             return;
         }
+        VIGILANDO = true;
+        parteAlServidor("ww_escucha", "{\"motivo\":\"micro abierto, escuchando\"}");
+        long _ultimoInforme = System.currentTimeMillis();
+        int _vecesVoz = 0;
         float fondo = 0.01f;
         int msVoz = 0;
         int msMudo = 0;   // v1.19 · ceros exactos = otra app tiene el microfono
+        boolean huboAudioReal = false;   // v1.20
         long _miraReloj = 0;
         // v1.17 · si se viene de una sesión del reconocedor, hay que oír un hueco de silencio
         // (1,2 s) antes de abrir otra: si alguien habla seguido, un solo «pi» por parrafada, no uno cada cinco segundos
@@ -521,11 +528,21 @@ public class WakeWordService extends Service {
             // error al de atras: le manda SILENCIO DIGITAL (ceros exactos). Una habitacion callada
             // nunca da ceros exactos, asi que esto no se confunde. Al detectarlo se suelta todo y
             // se vuelve a probar mas tarde, esperando cada vez un poco mas (hasta medio minuto).
+            // v1.20 · con dos candados mas, para no quedarse sordo por nada: solo se cede si
+            // ANTES habia audio de verdad (algunos moviles devuelven ceros al arrancar) y con
+            // dos segundos y medio seguidos de ceros.
             if (todoCeros) {
                 msMudo += ms;
-                if (msMudo >= 1200) { cedidoDetectado(); return; }
-            } else { msMudo = 0; if (esperaCesion > 0) { esperaCesion = 0; avisoNormal(); } }
+                if (huboAudioReal && msMudo >= 2500) { cedidoDetectado(); return; }
+            } else { huboAudioReal = true; msMudo = 0; if (esperaCesion > 0) { esperaCesion = 0; avisoNormal(); } }
             boolean voz = rms > Math.max(fondo * 3.5f, MIN_ABSOLUTO);
+            // v1.20 · cada cinco minutos, una foto: cuanto ruido hay y cuantas veces se abrio
+            // el reconocedor. Asi se ve desde fuera si esta sordo, sin preguntarle a Asier.
+            if (System.currentTimeMillis() - _ultimoInforme > 300000) {
+                _ultimoInforme = System.currentTimeMillis();
+                parteAlServidor("ww_estado", "{\"fondo\":" + Math.round(fondo * 1000) + ",\"pico\":" + Math.round(rms * 1000) + ",\"veces\":" + _vecesVoz + "}");
+                _vecesVoz = 0;
+            }
             if (!voz) {
                 fondo = fondo * 0.97f + rms * 0.03f;     // el fondo se aprende solo con lo que NO es voz
                 msVoz = 0;
@@ -545,6 +562,7 @@ public class WakeWordService extends Service {
         }
         soltarVad();
         vigilando = false;
+        VIGILANDO = false;   // v1.20
         // v1.11 · si se ha salido del bucle porque no toca escuchar, se suelta la CPU
         try { if (!tocaEscuchar() && wakeLock != null && wakeLock.isHeld()) wakeLock.release(); } catch (Exception e) {}
     }
@@ -552,6 +570,7 @@ public class WakeWordService extends Service {
     /** v1.19 · otra app tiene el microfono: se suelta TODO y se reintenta con espera creciente. */
     private void cedidoDetectado() {
         vigilando = false;
+        VIGILANDO = false;   // v1.20
         listening = false;
         try { if (sr != null) sr.cancel(); } catch (Exception e) {}
         soltarVad();
@@ -640,6 +659,14 @@ public class WakeWordService extends Service {
         if (b == null) return false;
         ArrayList<String> list = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
         if (list == null) return false;
+        // v1.20 · lo que oye, apuntado (recortado): si le oye pero no reconoce el nombre, se ve.
+        try {
+            String prim = list.isEmpty() ? "" : String.valueOf(list.get(0));
+            if (prim.length() > 60) prim = prim.substring(0, 60);
+            prim = prim.replace("\\", " ").replace("\"", " ");
+            if (!prim.isEmpty()) ULTIMO_OIDO = prim;
+            if (!prim.isEmpty()) parteAlServidor("ww_oye", "{\"texto\":\"" + prim + "\",\"vale\":" + pareceAzkarin(prim) + "}");
+        } catch (Exception e) {}
         for (String s : list) {
             if (pareceParar(s)) {                      // v1.10 · «Azkarin, deja de escuchar»
                 long hasta = plazoDeLaSiesta(s);
@@ -824,6 +851,7 @@ public class WakeWordService extends Service {
         stopping = true;
         vigilando = false;
         RUNNING = false;
+        VIGILANDO = false;   // v1.20
         destapar();                                   // nunca dejar el movil mudo
         try { handler.removeCallbacksAndMessages(null); } catch (Exception e) {}
         soltarVad();
