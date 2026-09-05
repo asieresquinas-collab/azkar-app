@@ -4743,7 +4743,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v595';
+var APP_VERSION = 'v596';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17228,6 +17228,11 @@ async function doResetWithCode() {
         var p = _azkWakePlugin();
         if (!p || typeof p.configurar !== 'function') return;
         p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off' });
+        // v596 · qué APK lleva de verdad, apuntado en el parte (para no adivinarlo desde fuera)
+        if (typeof p.info === 'function') p.info().then(function(d){
+          d = d || {}; window._apkInfo = d;
+          try { _vozParte('apk_info', { apk: String(d.version || '?'), listening: !!d.listening, overlay: d.overlay !== false, fullscreen: d.fullscreen !== false, heyGoogle: !!d.heyGoogle }); } catch(e){}
+        }).catch(function(){});
       } catch(e){}
     }
     if (document.readyState === 'complete') setTimeout(_config, 3000);
@@ -18567,6 +18572,7 @@ async function doResetWithCode() {
     try { out.api_sr = _apiDePlugin('SpeechRecognition'); } catch(e){}   // v581: qué sabe hacer el de la voz
     try { out.api_ww = _apiDePlugin('WakeWord'); } catch(e){}            // v581: y el de la palabra clave (escucha sin pitar)
     try { out.motor = _mpDisponible() ? 'propio' : 'navegador'; } catch(e){}
+    try { if (window._apkInfo) out.apk = String(window._apkInfo.version || '?'); } catch(e){}   // v596
     try { out.navegador = (/Chrome\/([\d.]+)/.exec(navigator.userAgent) || [,'?'])[1] + (/Android/i.test(navigator.userAgent) ? ' Android' : ''); } catch(e){}
     return out;
   }
