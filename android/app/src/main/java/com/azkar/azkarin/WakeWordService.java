@@ -73,6 +73,7 @@ public class WakeWordService extends Service {
     private AudioManager am;
     private boolean muted = false;
     private android.content.BroadcastReceiver pantallaReceiver = null;   // v1.18
+    private long esperaCesion = 0;   // v1.19 · cuanto se espera al ceder el micro (crece hasta 30 s)
     private volatile boolean vieneDelReconocedor = false;   // v1.17
     // v1.9 · el cartero: cada pocos minutos pregunta si hay algo que recordarle a Asier
     private static final long CADA_MS = 15 * 60 * 1000L;   // v1.11 · cada cuarto de hora (era 5 min)
@@ -404,8 +405,10 @@ public class WakeWordService extends Service {
      * Y es cierto: este servicio tiene el microfono cogido, y ademas abre el reconocedor de voz
      * de Android — del que solo puede haber UNO en todo el movil. Mientras el escucha, el
      * dictado del teclado (o cualquier otra app) se queda sin micro y sin reconocedor.
-     * Con el movil bloqueado o la pantalla apagada eso no molesta a nadie: ahi es donde hace
-     * falta. Asi que mientras el este usando el movil, se suelta el microfono.
+     * v1.19 · PERO parar SIEMPRE que use el movil no vale: Asier usa Azkarin CON el movil en la
+     * mano, y asi no podia hablarle. Esto queda APAGADO por defecto (es solo un interruptor por
+     * si algun dia lo quiere); lo que de verdad resuelve el dictado es cederPorque(): se suelta
+     * el micro SOLO cuando otra app lo esta usando de verdad, y se recupera solo.
      */
     private boolean estaEnUso() {
         try {
@@ -419,14 +422,14 @@ public class WakeWordService extends Service {
     }
 
     private boolean cedeEnUso() {
-        try { return getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(K_CEDE_EN_USO, true); } catch (Exception e) { return true; }
+        try { return getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(K_CEDE_EN_USO, false); } catch (Exception e) { return false; }
     }
 
     private boolean tocaEscuchar() {
         try {
             android.content.SharedPreferences pf = getSharedPreferences(PREF, Context.MODE_PRIVATE);
             // 0) v1.18 · si esta usando el movil, el microfono es suyo (dictado del teclado, notas de voz…)
-            if (pf.getBoolean(K_CEDE_EN_USO, true) && estaEnUso()) return false;
+            if (pf.getBoolean(K_CEDE_EN_USO, false) && estaEnUso()) return false;
             // 1) la bateria manda
             int minBat = pf.getInt(K_MIN_BATERIA, 15);
             BatteryManager bm = (BatteryManager) getSystemService(Context.BATTERY_SERVICE);
@@ -465,6 +468,7 @@ public class WakeWordService extends Service {
             return;
         }
         vigilando = true;
+        if (esperaCesion > 0) avisoNormal();   // v1.19 · vuelve a escuchar tras haber cedido
         hiloVad = new Thread(new Runnable() { @Override public void run() { bucleVad(); } }, "azkarin-vad");
         hiloVad.setPriority(Thread.MIN_PRIORITY);
         hiloVad.start();
@@ -491,6 +495,7 @@ public class WakeWordService extends Service {
         }
         float fondo = 0.01f;
         int msVoz = 0;
+        int msMudo = 0;   // v1.19 · ceros exactos = otra app tiene el microfono
         long _miraReloj = 0;
         // v1.17 · si se viene de una sesión del reconocedor, hay que oír un hueco de silencio
         // (1,2 s) antes de abrir otra: si alguien habla seguido, un solo «pi» por parrafada, no uno cada cinco segundos
@@ -507,9 +512,19 @@ public class WakeWordService extends Service {
             try { n = rec.read(buf, 0, buf.length); } catch (Exception e) { break; }
             if (n <= 0) continue;
             double suma = 0;
-            for (int i = 0; i < n; i++) { double v = buf[i] / 32768.0; suma += v * v; }
+            boolean todoCeros = true;
+            for (int i = 0; i < n; i++) { if (buf[i] != 0) todoCeros = false; double v = buf[i] / 32768.0; suma += v * v; }
             float rms = (float) Math.sqrt(suma / n);
             int ms = (int) (n * 1000L / HZ);
+            // v1.19 · CEDER EL MICRO CUANDO OTRA APP LO USA (Asier: «con Azkarin activado no me
+            // deja dictar en otra aplicacion»). Cuando otra app coge el microfono, Android NO da
+            // error al de atras: le manda SILENCIO DIGITAL (ceros exactos). Una habitacion callada
+            // nunca da ceros exactos, asi que esto no se confunde. Al detectarlo se suelta todo y
+            // se vuelve a probar mas tarde, esperando cada vez un poco mas (hasta medio minuto).
+            if (todoCeros) {
+                msMudo += ms;
+                if (msMudo >= 1200) { cedidoDetectado(); return; }
+            } else { msMudo = 0; if (esperaCesion > 0) { esperaCesion = 0; avisoNormal(); } }
             boolean voz = rms > Math.max(fondo * 3.5f, MIN_ABSOLUTO);
             if (!voz) {
                 fondo = fondo * 0.97f + rms * 0.03f;     // el fondo se aprende solo con lo que NO es voz
@@ -532,6 +547,32 @@ public class WakeWordService extends Service {
         vigilando = false;
         // v1.11 · si se ha salido del bucle porque no toca escuchar, se suelta la CPU
         try { if (!tocaEscuchar() && wakeLock != null && wakeLock.isHeld()) wakeLock.release(); } catch (Exception e) {}
+    }
+
+    /** v1.19 · otra app tiene el microfono: se suelta TODO y se reintenta con espera creciente. */
+    private void cedidoDetectado() {
+        vigilando = false;
+        listening = false;
+        try { if (sr != null) sr.cancel(); } catch (Exception e) {}
+        soltarVad();
+        destapar();
+        try { if (wakeLock != null && wakeLock.isHeld()) wakeLock.release(); } catch (Exception e) {}
+        if (esperaCesion == 0) {
+            parteAlServidor("ww_cede", "{\"motivo\":\"otra app tiene el microfono\"}");
+            try {
+                NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                if (nm != null) nm.notify(NOTIF_ID, buildNotif("Te dejo el micro (lo usa otra app) — vuelvo solo"));
+            } catch (Exception e) {}
+        }
+        esperaCesion = esperaCesion == 0 ? 6000L : Math.min(esperaCesion * 2, 30000L);
+        handler.postDelayed(new Runnable() { @Override public void run() { if (!stopping) arrancarVigilancia(); } }, esperaCesion);
+    }
+
+    private void avisoNormal() {
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) nm.notify(NOTIF_ID, buildNotif("Di \"Azkarin\" para hablar"));
+        } catch (Exception e) {}
     }
 
     private void soltarVad() {
@@ -587,8 +628,10 @@ public class WakeWordService extends Service {
         @Override public void onError(int error) {
             destaparEn(1000);
             reconocedorSinNada++;
-            long espera = (error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY
-                    || error == SpeechRecognizer.ERROR_CLIENT) ? 1200 : 400;
+            // v1.19 · «reconocedor ocupado» = lo esta usando otra app (el dictado del teclado).
+            // De reconocedor solo hay UNO en el movil: aqui se cede y se vuelve mas tarde.
+            if (error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY) { listening = false; cedidoDetectado(); return; }
+            long espera = (error == SpeechRecognizer.ERROR_CLIENT) ? 1200 : 400;
             volverAVigilar(espera);
         }
     };
