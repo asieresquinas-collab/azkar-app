@@ -52,6 +52,7 @@ public class WakeWordPlugin extends Plugin {
             // v1.11 · los frenos de la batería, si la app los manda
             if (call.getData().has("soloHorario")) ed.putBoolean(WakeWordService.K_SOLO_HORARIO, Boolean.TRUE.equals(call.getBoolean("soloHorario", true)));
             if (call.getData().has("minBateria")) ed.putInt(WakeWordService.K_MIN_BATERIA, call.getInt("minBateria", 15));
+            if (call.getData().has("cedeEnUso")) ed.putBoolean(WakeWordService.K_CEDE_EN_USO, Boolean.TRUE.equals(call.getBoolean("cedeEnUso", true)));   // v1.18
             ed.apply();
             JSObject r = new JSObject();
             r.put("ok", true);
@@ -92,6 +93,7 @@ public class WakeWordPlugin extends Plugin {
             android.content.SharedPreferences pf = getContext().getSharedPreferences("azkarin", android.content.Context.MODE_PRIVATE);
             r.put("soloHorario", pf.getBoolean(WakeWordService.K_SOLO_HORARIO, true));
             r.put("minBateria", pf.getInt(WakeWordService.K_MIN_BATERIA, 15));
+            r.put("cedeEnUso", pf.getBoolean(WakeWordService.K_CEDE_EN_USO, true));   // v1.18
             r.put("avisos", pf.getBoolean("avisos", true));
         } catch (Exception e) {}
         call.resolve(r);

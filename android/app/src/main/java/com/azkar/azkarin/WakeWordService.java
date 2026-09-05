@@ -72,6 +72,7 @@ public class WakeWordService extends Service {
 
     private AudioManager am;
     private boolean muted = false;
+    private android.content.BroadcastReceiver pantallaReceiver = null;   // v1.18
     private volatile boolean vieneDelReconocedor = false;   // v1.17
     // v1.9 · el cartero: cada pocos minutos pregunta si hay algo que recordarle a Asier
     private static final long CADA_MS = 15 * 60 * 1000L;   // v1.11 · cada cuarto de hora (era 5 min)
@@ -90,6 +91,7 @@ public class WakeWordService extends Service {
     //   · el cartero de los recados pregunta cada cuarto de hora, no cada cinco minutos.
     public static final String K_SOLO_HORARIO = "soloHorario";
     public static final String K_MIN_BATERIA = "minBateria";
+    public static final String K_CEDE_EN_USO = "cedeEnUso";   // v1.18: soltar el micro mientras usa el movil
     private static final int HORA_ABRE = 8, HORA_CIERRA = 19;
     private Thread hiloVad;
     private AudioRecord rec;
@@ -114,6 +116,35 @@ public class WakeWordService extends Service {
             try { startForeground(NOTIF_ID, n); } catch (Exception e2) {}
         }
         if (tocaEscuchar()) acquireLock();   // v1.11 · si no toca escuchar, ni se coge
+        try {   // v1.18 · en cuanto apaga la pantalla o bloquea, se vuelve a escuchar al instante
+            android.content.IntentFilter fp = new android.content.IntentFilter();
+            fp.addAction(Intent.ACTION_SCREEN_OFF);
+            fp.addAction(Intent.ACTION_USER_PRESENT);
+            fp.addAction(Intent.ACTION_SCREEN_ON);
+            pantallaReceiver = new android.content.BroadcastReceiver() {
+                @Override public void onReceive(Context c, Intent i) {
+                    if (stopping) return;
+                    if (Intent.ACTION_SCREEN_OFF.equals(i.getAction())) {
+                        handler.postDelayed(new Runnable() { @Override public void run() { if (!stopping) arrancarVigilancia(); } }, 1200);
+                    } else if (cedeEnUso() && estaEnUso()) {
+                        // ha desbloqueado: se suelta el micro para que pueda dictar donde quiera
+                        vigilando = false;
+                        try { if (sr != null) sr.cancel(); } catch (Exception e) {}
+                        listening = false;
+                        soltarVad();
+                        destapar();
+                        try { if (wakeLock != null && wakeLock.isHeld()) wakeLock.release(); } catch (Exception e) {}
+                        try {
+                            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                            if (nm != null) nm.notify(NOTIF_ID, buildNotif("Callado mientras usas el móvil (así puedes dictar)"));
+                        } catch (Exception e) {}
+                        handler.postDelayed(new Runnable() { @Override public void run() { if (!stopping) arrancarVigilancia(); } }, 15000);
+                    }
+                }
+            };
+            if (Build.VERSION.SDK_INT >= 33) registerReceiver(pantallaReceiver, fp, Context.RECEIVER_NOT_EXPORTED);
+            else registerReceiver(pantallaReceiver, fp);
+        } catch (Exception e) {}
         try { am = (AudioManager) getSystemService(Context.AUDIO_SERVICE); } catch (Exception e) { am = null; }
         initRecognizer();
         RUNNING = true;
@@ -367,9 +398,35 @@ public class WakeWordService extends Service {
     }
 
     /** v1.11 · ¿toca escuchar ahora, o toca ahorrar? */
+    /**
+     * v1.18 · ¿ESTA USANDO EL MOVIL? (pantalla encendida y desbloqueado).
+     * Asier, 5-sep: «cada vez que tengo Azkarin activado no me deja dictar en otra aplicacion».
+     * Y es cierto: este servicio tiene el microfono cogido, y ademas abre el reconocedor de voz
+     * de Android — del que solo puede haber UNO en todo el movil. Mientras el escucha, el
+     * dictado del teclado (o cualquier otra app) se queda sin micro y sin reconocedor.
+     * Con el movil bloqueado o la pantalla apagada eso no molesta a nadie: ahi es donde hace
+     * falta. Asi que mientras el este usando el movil, se suelta el microfono.
+     */
+    private boolean estaEnUso() {
+        try {
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            boolean pantalla = pm != null && (Build.VERSION.SDK_INT >= 20 ? pm.isInteractive() : true);
+            if (!pantalla) return false;
+            android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+            boolean bloqueado = km != null && km.isKeyguardLocked();
+            return !bloqueado;
+        } catch (Exception e) { return false; }
+    }
+
+    private boolean cedeEnUso() {
+        try { return getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(K_CEDE_EN_USO, true); } catch (Exception e) { return true; }
+    }
+
     private boolean tocaEscuchar() {
         try {
             android.content.SharedPreferences pf = getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            // 0) v1.18 · si esta usando el movil, el microfono es suyo (dictado del teclado, notas de voz…)
+            if (pf.getBoolean(K_CEDE_EN_USO, true) && estaEnUso()) return false;
             // 1) la bateria manda
             int minBat = pf.getInt(K_MIN_BATERIA, 15);
             BatteryManager bm = (BatteryManager) getSystemService(Context.BATTERY_SERVICE);
@@ -395,13 +452,16 @@ public class WakeWordService extends Service {
         if (stopping || vigilando || listening) return;
         if (siestaHasta() > System.currentTimeMillis()) return;   // v1.10 · está de siesta
         if (!tocaEscuchar()) {                                    // v1.11 · fuera de hora o sin batería
+            boolean enUso = cedeEnUso() && estaEnUso();            // v1.18 · o es que está usando el móvil
             try {
                 NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                if (nm != null) nm.notify(NOTIF_ID, buildNotif("Descansando — vuelvo a las 8:00"));
+                if (nm != null) nm.notify(NOTIF_ID, buildNotif(enUso
+                        ? "Callado mientras usas el móvil (así puedes dictar)"
+                        : "Descansando — vuelvo a las 8:00"));
             } catch (Exception e) {}
             handler.postDelayed(new Runnable() {
                 @Override public void run() { if (!stopping) arrancarVigilancia(); }
-            }, 10 * 60 * 1000L);                                   // se vuelve a mirar cada diez minutos
+            }, enUso ? 15 * 1000L : 10 * 60 * 1000L);              // en uso, se mira cada quince segundos
             return;
         }
         vigilando = true;
@@ -717,6 +777,7 @@ public class WakeWordService extends Service {
 
     @Override
     public void onDestroy() {
+        try { if (pantallaReceiver != null) unregisterReceiver(pantallaReceiver); } catch (Exception e) {}   // v1.18
         stopping = true;
         vigilando = false;
         RUNNING = false;
