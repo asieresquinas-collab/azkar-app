@@ -139,6 +139,12 @@ public class WakeWordPlugin extends Plugin {
 
     private void doStart(PluginCall call) {
         try {
+            // v1.10 · queda apuntado que Asier la dejó encendida: al reiniciar el móvil
+            // arranca sola y no hay que activarla nunca más
+            try {
+                getContext().getSharedPreferences(WakeWordService.PREF, android.content.Context.MODE_PRIVATE)
+                    .edit().putBoolean("escuchaPuesta", true).putLong(WakeWordService.K_SIESTA, 0).apply();
+            } catch (Exception e) {}
             Intent i = new Intent(getContext(), WakeWordService.class);
             if (Build.VERSION.SDK_INT >= 26) getContext().startForegroundService(i);
             else getContext().startService(i);
@@ -152,6 +158,10 @@ public class WakeWordPlugin extends Plugin {
 
     @PluginMethod
     public void stop(PluginCall call) {
+        try {
+            getContext().getSharedPreferences(WakeWordService.PREF, android.content.Context.MODE_PRIVATE)
+                .edit().putBoolean("escuchaPuesta", false).apply();
+        } catch (Exception e) {}
         try {
             getContext().stopService(new Intent(getContext(), WakeWordService.class));
         } catch (Exception e) {}

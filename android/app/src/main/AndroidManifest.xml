@@ -23,6 +23,10 @@
          (desde Android 10 un servicio no puede abrir pantallas: hace falta la notificacion
          a pantalla completa, como una llamada entrante) -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- v1.10 · para que la escucha arranque sola al encender el movil y no haya que
+         activarla nunca (activarla HABLANDO cuando esta apagada es imposible: si no
+         escucha, no puede oir que le llaman) -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
@@ -54,6 +58,17 @@
             android:name=".WakeWordService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <receiver
+            android:name=".ArranqueReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

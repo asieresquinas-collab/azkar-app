@@ -74,6 +74,12 @@ public class WakeWordService extends Service {
     // v1.9 · el cartero: cada pocos minutos pregunta si hay algo que recordarle a Asier
     private static final long CADA_MS = 5 * 60 * 1000L;
     private long ultimoCartero = 0;
+    // v1.10 · LA SIESTA. Asier: «que le diga deja de escuchar Azkarin y se desactive».
+    // Se calla el rato que diga y VUELVE SOLO. (Callado del todo no podria oir que le
+    // vuelven a llamar: por eso lo normal es un rato, no para siempre.)
+    public static final String PREF = "azkarin";
+    public static final String K_SIESTA = "siestaHasta";
+    private static final long SIESTA_POR_DEFECTO = 60 * 60 * 1000L;   // una hora
     private Thread hiloVad;
     private AudioRecord rec;
 
@@ -105,8 +111,13 @@ public class WakeWordService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && "STOP".equals(intent.getAction())) {
+            try { getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putLong(K_SIESTA, 0).apply(); } catch (Exception e) {}
             stopSelf();
             return START_NOT_STICKY;
+        }
+        if (intent != null && "DESPIERTA".equals(intent.getAction())) {   // v1.10
+            quitarSiesta();
+            return START_STICKY;
         }
         arrancarVigilancia();
         arrancarCartero();
@@ -249,8 +260,39 @@ public class WakeWordService extends Service {
     }
 
     // ── EL OIDO BARATO ─────────────────────────────────────────────────────────
+    private long siestaHasta() {
+        try { return getSharedPreferences(PREF, Context.MODE_PRIVATE).getLong(K_SIESTA, 0); } catch (Exception e) { return 0; }
+    }
+    private void ponerSiesta(long hasta, String comoLoDigo) {
+        try { getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putLong(K_SIESTA, hasta).apply(); } catch (Exception e) {}
+        vigilando = false;
+        listening = false;
+        try { if (sr != null) sr.cancel(); } catch (Exception e) {}
+        soltarVad();
+        destapar();
+        avisoDeSiesta(comoLoDigo, hasta);
+        if (hasta > 0) {
+            handler.postDelayed(new Runnable() {
+                @Override public void run() {
+                    if (stopping) return;
+                    if (siestaHasta() > System.currentTimeMillis()) return;   // la han alargado
+                    quitarSiesta();
+                }
+            }, Math.max(1000, hasta - System.currentTimeMillis()) + 500);
+        }
+    }
+    private void quitarSiesta() {
+        try { getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putLong(K_SIESTA, 0).apply(); } catch (Exception e) {}
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) nm.notify(NOTIF_ID, buildNotif("Di \"Azkarin\" para hablar"));
+        } catch (Exception e) {}
+        arrancarVigilancia();
+    }
+
     private void arrancarVigilancia() {
         if (stopping || vigilando || listening) return;
+        if (siestaHasta() > System.currentTimeMillis()) return;   // v1.10 · está de siesta
         vigilando = true;
         hiloVad = new Thread(new Runnable() { @Override public void run() { bucleVad(); } }, "azkarin-vad");
         hiloVad.setPriority(Thread.MIN_PRIORITY);
@@ -367,9 +409,61 @@ public class WakeWordService extends Service {
         ArrayList<String> list = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
         if (list == null) return false;
         for (String s : list) {
+            if (pareceParar(s)) {                      // v1.10 · «Azkarin, deja de escuchar»
+                long hasta = plazoDeLaSiesta(s);
+                String comoLoDigo;
+                if (hasta < 0) { comoLoDigo = "Callado. Para volver, toca aqui."; hasta = 0; }
+                else {
+                    java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("HH:mm", new Locale("es","ES"));
+                    comoLoDigo = "Vuelvo solo a las " + f.format(new java.util.Date(hasta)) + " · o toca aqui";
+                }
+                ponerSiesta(hasta, comoLoDigo);
+                return true;
+            }
             if (pareceAzkarin(s)) { trigger(); return true; }
         }
         return false;
+    }
+
+    /**
+     * v1.10 · «DEJA DE ESCUCHAR». Se le puede mandar callar hablando, y con plazo:
+     * «deja de escuchar» (una hora), «...una hora», «...hasta mañana», «...del todo».
+     * Tiene que llevar su nombre delante o detras: asi no se calla porque alguien lo diga
+     * en una conversacion cualquiera.
+     */
+    private boolean pareceParar(String raw) {
+        if (raw == null) return false;
+        String t = raw.toLowerCase(Locale.ROOT)
+            .replace("á","a").replace("é","e").replace("í","i").replace("ó","o").replace("ú","u");
+        if (!pareceAzkarin(t)) return false;
+        return t.contains("deja de escuchar") || t.contains("dejate de escuchar")
+            || t.contains("no me escuches") || t.contains("no escuches")
+            || t.contains("deja de oir") || t.contains("callate del todo")
+            || t.contains("desactivate") || t.contains("desconectate")
+            || t.contains("modo silencio") || t.contains("descansa");
+    }
+    private long plazoDeLaSiesta(String raw) {
+        String t = raw == null ? "" : raw.toLowerCase(Locale.ROOT);
+        long ahora = System.currentTimeMillis();
+        if (t.contains("del todo") || t.contains("para siempre") || t.contains("apagate")) return -1;
+        if (t.contains("manana") || t.contains("mañana") || t.contains("hasta manana") || t.contains("hasta mañana")) {
+            java.util.Calendar c = java.util.Calendar.getInstance();
+            c.setTimeInMillis(ahora);
+            c.add(java.util.Calendar.DAY_OF_YEAR, 1);
+            c.set(java.util.Calendar.HOUR_OF_DAY, 8);
+            c.set(java.util.Calendar.MINUTE, 0);
+            c.set(java.util.Calendar.SECOND, 0);
+            return c.getTimeInMillis();
+        }
+        java.util.regex.Matcher m = java.util.regex.Pattern
+            .compile("(\\d{1,3})\\s*(hora|h\\b|minuto|min)").matcher(t);
+        if (m.find()) {
+            long n = Long.parseLong(m.group(1));
+            return ahora + (m.group(2).startsWith("h") ? n * 3600000L : n * 60000L);
+        }
+        if (t.contains("media hora")) return ahora + 30 * 60000L;
+        if (t.contains("un rato")) return ahora + 30 * 60000L;
+        return ahora + SIESTA_POR_DEFECTO;
     }
 
     /** Acepta "Azkarin" y como lo suele transcribir mal el reconocedor en espanol. */
@@ -441,6 +535,31 @@ public class WakeWordService extends Service {
             cl.setSound(null, null);
             cl.setShowBadge(false);
             nm.createNotificationChannel(cl);
+        } catch (Exception e) {}
+    }
+
+    private void avisoDeSiesta(String comoLoDigo, long hasta) {
+        try {
+            int pf = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= 23) pf |= PendingIntent.FLAG_IMMUTABLE;
+            Intent volver = new Intent(this, WakeWordService.class);
+            volver.setAction("DESPIERTA");
+            PendingIntent volverPi = PendingIntent.getService(this, 3, volver, pf);
+            Intent stop = new Intent(this, WakeWordService.class);
+            stop.setAction("STOP");
+            PendingIntent stopPi = PendingIntent.getService(this, 1, stop, pf);
+            Notification n = new NotificationCompat.Builder(this, CH)
+                .setContentTitle("Azkarin NO te escucha")
+                .setContentText(comoLoDigo)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setContentIntent(volverPi)
+                .addAction(0, "Volver a escuchar", volverPi)
+                .addAction(0, "Parar del todo", stopPi)
+                .build();
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) nm.notify(NOTIF_ID, n);
         } catch (Exception e) {}
     }
 
