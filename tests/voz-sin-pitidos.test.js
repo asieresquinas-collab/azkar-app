@@ -42,8 +42,8 @@ function monta({ hablando = () => false, respuesta = { texto: 'hola' }, falla = 
     'window', 'navigator', 'localStorage', 'console', 'fetch', 'RAILWAY_API', 'btoa', 'AbortSignal', 'APP_VERSION', 'document', 'location',
     '_convHablando', '_convInterrumpir', '_bargeinActivo', '_esEcoDeAzkarin', '_esPalabraDeCorte',
     '_convRecibirHabla', '_convResetBackoff', '_convEstadoAuto', '_esAppNativa', 'alert', 'setTimeout', 'clearTimeout',
-    'var _convSendTimer = null;\n' + SRC +
-    '\nreturn { mp: _mp, procesa: _mpProcesa, wav: _mpWav, a16k: _mpA16k, b64: _mpB64, juntar: _mpAJuntar, cerrar: _mpCerrarTrozo, disponible: _mpDisponible, parar: _mpParar, fondo: _mpFondo, PAUSA: _MP_PAUSA_MS, MIN: _MP_MIN_HABLA_MS, PRE: _MP_PRE_MS, ESPERA: _MP_ESPERA_ENVIO };'
+    'var _convSendTimer = null;\nfunction _normEco(x){return String(x||"").toLowerCase().replace(/[^a-záéíóúñü0-9 ]+/g," ").replace(/\\s+/g," ").trim();}\n' + SRC +
+    '\nreturn { ecoDe: (typeof _pareceEcoDe === "function" ? _pareceEcoDe : null), mp: _mp, procesa: _mpProcesa, wav: _mpWav, a16k: _mpA16k, b64: _mpB64, juntar: _mpAJuntar, cerrar: _mpCerrarTrozo, disponible: _mpDisponible, parar: _mpParar, fondo: _mpFondo, PAUSA: _MP_PAUSA_MS, MIN: _MP_MIN_HABLA_MS, PRE: _MP_PRE_MS, ESPERA: _MP_ESPERA_ENVIO };'
   )(
     win,
     { mediaDevices: { getUserMedia: () => Promise.resolve({ getTracks: () => [] }) } },
@@ -121,14 +121,23 @@ if (SRC) {
   c('D2 · v600 · lo que dice Asier por encima SÍ se manda a texto (antes se tiraba y había que repetirlo)', m.enviados.length >= 1, String(m.enviados.length));
   m = monta({ hablando: () => true });
   m.win._ultimoHabla = 'tienes tres llamadas perdidas';
-  mete(m.api, 0.1, 1500);         // su propia voz
-  mete(m.api, 0.14, 600);         // Asier un 40 % más alto, medio segundo largo (no el doble)
+  mete(m.api, 0.1, 1700);         // su propia voz (segundo y medio de calibración, con sonido)
+  mete(m.api, 0.15, 800);         // Asier un 50 % más alto, casi un segundo (no el doble)
   mete(m.api, 0.1, 900);          // sigue hablando él
   c('D2c · v600 · con sonar un tercio más que él medio segundo, ese trozo se manda a mirar (no hace falta gritar el doble)', m.enviados.length >= 1, String(m.enviados.length));
   c('D2e · y lleva lo que estaba diciendo Azkarin para que el servidor no lo transcriba', m.enviados.length >= 1 && m.enviados[0].cuerpo.ignorar === 'tienes tres llamadas perdidas', m.enviados.length ? JSON.stringify(m.enviados[0].cuerpo.ignorar) : '-');
   m = monta({ hablando: () => true });
-  mete(m.api, 0.1, 1500); mete(m.api, 0.105, 3000);
+  mete(m.api, 0.1, 1700); mete(m.api, 0.105, 3000);
   c('D2d · su propia voz seguida, sin nadie encima, NO manda nada', m.enviados.length === 0, String(m.enviados.length));
+  // v604 · la voz tarda en arrancar: el hueco de antes NO puede servir de referencia
+  m = monta({ hablando: () => true });
+  mete(m.api, 0.001, 900);        // el hueco antes de que arranque la voz
+  mete(m.api, 0.2, 1000); mete(m.api, 0.26, 400); mete(m.api, 0.2, 1500); mete(m.api, 0.27, 500); mete(m.api, 0.2, 1500);   // el altavoz a tope
+  c('D3 · v604 · con un hueco de silencio antes de arrancar y sílabas fuertes, NO se corta a sí mismo', m.cortes.length === 0, String(m.cortes.length));
+  c('D3b · ni manda su propia voz a mirar', m.enviados.length === 0, String(m.enviados.length));
+  c('D4 · v604 · lo transcrito por encima que es lo que él decía = eco (se tira)', m.api.ecoDe('tienes tres llamadas perdidas', 'hoy tienes tres llamadas perdidas y dos presupuestos') === true);
+  c('D4b · lo que dice Asier (otras palabras) NO es eco', m.api.ecoDe('dime cuántos presupuestos hay pendientes', 'hoy tienes tres llamadas perdidas') === false);
+  c('D4c · una sola palabra suelta no vale para decidir', m.api.ecoDe('vale', 'hoy tienes tres llamadas') === true);
   m = monta({ hablando: () => true });
   mete(m.api, 0.002, 3000);
   c('D3 · su propia voz de fondo no le hace cortarse solo', m.cortes.length === 0);

@@ -4745,7 +4745,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v603';
+var APP_VERSION = 'v604';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18767,30 +18767,32 @@ async function doResetWithCode() {
         // Los primeros 900 ms de VOZ suya solo se escuchan, para saber cuánto suena él: es la
         // vara de medir. Sin eso, su primera sílaba (con la referencia a cero) parecería que
         // le están hablando encima. Se cuenta en sonido, no en reloj.
-        _mp.msHablando = (_mp.msHablando || 0) + ms;
-        var _calibrando = _mp.msHablando < 900;
-        // la referencia es lo que VIENE SONANDO (su voz). Si Asier habla por encima, ese
-        // pico NO sube la referencia — si no, se taparía a sí mismo y nunca se le cortaría.
-        var _refSuVoz = (_mp.maxHablando || 0) * 0.995;
+        // v604 · REVISADO ENTERO (Asier: «revísalo, es un desastre»). Fallos que había:
+        // (a) la calibración contaba 900 ms de RELOJ desde que «empieza a hablar», pero la voz
+        //     tarda en arrancar: se calibraba con el hueco de silencio → referencia casi cero →
+        //     su propia voz parecía «alguien encima» y se cortaba sola («doble»), y encima ese
+        //     trozo suyo iba a texto y volvía como si lo hubiera dicho Asier;
+        // (b) en la v600 la referencia dejaba de seguir su voz en cuanto algo sonaba un 30 % más:
+        //     una sílaba fuerte suya congelaba la referencia y todo lo siguiente era «encima».
+        // Ahora: se calibra con SONIDO (segundo y medio de voz de verdad), la referencia sigue a
+        // su voz siempre que no haya nadie encima, y «encima» exige un 35 % más durante medio
+        // segundo largo, con un suelo absoluto para no disparar con la voz baja.
+        var _suena = rms > 0.008;
+        if (_suena) _mp.msHablando = (_mp.msHablando || 0) + ms;
+        var _calibrando = _mp.msHablando < 1500;
+        var _refSuVoz = (_mp.maxHablando || 0) * 0.999;
         var _superaSuVoz = !_calibrando && rms > Math.max(_refSuVoz * 2, 0.08);
-        // v600 · HABLARLE ENCIMA Y QUE LE HAGA CASO (Asier: «hay veces que me suelta una
-        // parrafada y quiero decirle otra cosa»). Sonar el doble que él es mucho pedir a un
-        // metro del móvil. Ahora, con sonar un 30 % más que su voz durante medio segundo, ese
-        // trozo (con lo que se oye) se manda a pasar a texto DICIÉNDOLE al servidor qué estaba
-        // diciendo Azkarin, para que solo apunte lo que dice la persona por encima. Si vuelve
-        // algo que no es su eco, se le corta Y se le hace caso a lo dicho — sin repetirlo.
-        var _encima = !_calibrando && _bargeinActivo() && rms > Math.max(_refSuVoz * 1.3, 0.03);
-        // la referencia sube despacio (medio punto por trozo) cuando algo suena por encima: así una
-        // sílaba fuerte suya se aprende poco a poco y la voz de Asier no la infla de golpe
-        _mp.maxHablando = (_superaSuVoz || _encima) ? Math.max(_refSuVoz * 1.005, 0.001) : Math.max(_refSuVoz, rms);
+        var _encima = !_calibrando && _bargeinActivo() && rms > Math.max(_refSuVoz * 1.35, 0.04);
+        if (_calibrando || !_encima) _mp.maxHablando = Math.max(_refSuVoz, rms);
+        else _mp.maxHablando = Math.max(_refSuVoz * 1.01, 0.001);
         _mp.corteSeguidos = _superaSuVoz ? (_mp.corteSeguidos + 1) : 0;
-        if (!_mp.enc) _mp.enc = { buf: [], ms: 0, msEncima: 0, msBajo: 0, pre: [], preMs: 0, ref: _refSuVoz };
+        if (!_mp.enc) _mp.enc = { buf: [], ms: 0, msEncima: 0, msBajo: 0, pre: [], preMs: 0 };
         var E = _mp.enc, _copiaE = new Float32Array(ent);
         if (E.msEncima > 0 || _encima) {
           if (E.msEncima === 0) { E.buf = E.pre.slice(); E.ms = E.preMs; E.pre = []; E.preMs = 0; }
           E.buf.push(_copiaE); E.ms += ms;
           if (_encima) { E.msEncima += ms; E.msBajo = 0; } else { E.msBajo += ms; }
-          if ((E.msBajo >= 700 && E.msEncima >= 500) || E.ms >= 4500) { _mpMandarEncima(E); _mp.enc = null; }
+          if ((E.msBajo >= 700 && E.msEncima >= 600) || E.ms >= 4500) { _mpMandarEncima(E); _mp.enc = null; }
           else if (E.msBajo >= 700) { _mp.enc = null; }   // un pico suelto (una sílaba fuerte suya)
         } else {
           E.pre.push(_copiaE); E.preMs += ms;
@@ -18799,7 +18801,7 @@ async function doResetWithCode() {
         if (_mp.corteSeguidos * ms >= 600 && _bargeinActivo()) {
           // el corte rápido de antes (el doble de fuerte): se corta ya, y lo que se oyó se manda igual
           _mp.corteSeguidos = 0;
-          if (_mp.enc && _mp.enc.msEncima >= 300) { _mpMandarEncima(_mp.enc); _mp.enc = null; }
+          if (_mp.enc && _mp.enc.msEncima >= 500) { _mpMandarEncima(_mp.enc); _mp.enc = null; }
           _mpLimpiaTrozo();
           _convInterrumpir({ motivo: 'doble' });
         }
@@ -18835,10 +18837,23 @@ async function doResetWithCode() {
     } catch(err) { console.warn('[Voz]', err && err.message); }
   }
   // Se ha callado de verdad: se cierra el trozo y se manda a poner en texto.
+  // v604 · ¿lo transcrito es (parte de) lo que estaba diciendo Azkarin? Se compara palabra a
+  // palabra con lo que sonaba: la mitad o más coincidiendo = su eco. Menos de dos palabras
+  // con sustancia = no hay con qué decidir → se tira también.
+  function _pareceEcoDe(t, dicho) {
+    try {
+      var a = _normEco(t), b = _normEco(dicho || '');
+      var pal = a.split(/\s+/).filter(function(w){ return w.length > 2; });
+      if (pal.length < 2) return true;
+      if (!b) return false;
+      var n = 0; for (var i = 0; i < pal.length; i++) if (b.indexOf(pal[i]) >= 0) n++;
+      return (n / pal.length) >= 0.5;
+    } catch(e){ return false; }
+  }
   // v600 · lo que se oyó POR ENCIMA de Azkarin, a pasar a texto (diciendo qué decía él)
   function _mpMandarEncima(E) {
     try {
-      if (!E || !E.buf.length || E.msEncima < 300) return;
+      if (!E || !E.buf.length || E.msEncima < 500) return;
       var pcm = _mpAJuntar(E.buf);
       var wav = _mpWav(_mpA16k(pcm, _mp.hz), 16000);
       var dicho = '';
@@ -18916,6 +18931,11 @@ async function doResetWithCode() {
         if (_esEcoDeAzkarin(t)) return;                   // no se contesta a sí mismo
         // v600 · venía de HABLARLE ENCIMA: no es su eco → se le corta y se le hace caso
         if (opts.encima) {
+          // v604 · filtro de eco ESTRICTO: si la mitad de sus palabras están en lo que Azkarin
+          // estaba diciendo, es su voz, no la de Asier — y una sola palabra suelta tampoco vale
+          // (salvo las de parar, que cortan y ya)
+          if (_esPalabraDeCorte(t)) { if (_convHablando()) _convInterrumpir({ motivo: 'palabra' }); return; }
+          if (_pareceEcoDe(t, opts.ignorar)) { _vozParte('encima_eco', { letras: t.length }); return; }
           _vozParte('encima_ok', { letras: t.length });
           if (_convHablando()) _convInterrumpir({ motivo: 'encima' });
           setTimeout(function(){ try { _convRecibirHabla(t); } catch(e){} }, 150);
