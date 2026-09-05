@@ -1108,7 +1108,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>Dentro de tu APK, Android NO le deja a la app abrir el micrófono</strong> (lo dijo tu propio móvil: permiso denegado, aunque el permiso se pida por todas las puertas). Mientras esa APK sea la que es, hay que usar el reconocedor de Android, y <strong>ese pitido es del sistema: una página no lo puede silenciar</strong>. Lo que sí se ha hecho: <strong>una sola sesión larga por turno</strong> en vez de una cada segundo, así que suena <strong>una vez cuando empiezas a hablar</strong> y no veinte por minuto. En silencio, además, espera hasta siete segundos entre intentos.</div></div>
       <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>✅ <strong>Resuelto con la APK v1.6</strong> (4-sep): a la APK le faltaba declarar un segundo permiso de audio que Capacitor exige para dejarle el micrófono a la web. Con eso entra el micro propio y <strong>no suena nada</strong>.</div></div>
-      <div class='ayuda-step'><div class='step-num'>25</div><div class='step-text'>📊 <strong>Ya lee EXCEL y CSV.</strong> El cliente que manda los artículos en una hoja de cálculo: adjúntasela en el chat o dile que abra el correo, y te lee las filas tal cual (también <strong>Word</strong> y, como siempre, fotos y PDF). 🛑 El Excel <strong>viejo (.xls, anterior a 2007)</strong> no se puede abrir: hay que pedir que lo guarden como .xlsx o en PDF, y te lo dice claramente en vez de inventarse el contenido.</div></div>
+      <div class='ayuda-step'><div class='step-num'>25</div><div class='step-text'>📊 <strong>Ya lee EXCEL y CSV.</strong> El cliente que manda los artículos en una hoja de cálculo: adjúntasela en el chat o dile que abra el correo, y te lee las filas tal cual (también <strong>Word</strong> y, como siempre, fotos y PDF). Si el Excel pesa mucho (lleva fotos dentro), la app lo <strong>adelgaza sola</strong> antes de mandarlo: se queda con las celdas y deja las fotos. 🛑 El Excel <strong>viejo (.xls, anterior a 2007)</strong> no se puede abrir: hay que pedir que lo guarden como .xlsx o en PDF, y te lo dice claramente en vez de inventarse el contenido.</div></div>
       <div class='ayuda-step'><div class='step-num'>24</div><div class='step-text'>🔇 <strong>El precio, a la vista pero sin leerlo.</strong> El puntito de color y las cifras del final de cada respuesta <strong>siguen saliendo en pantalla</strong>, pero ya <strong>no se leen en alto</strong>: se acabó el «tecla cero, tecla tres, tecla ocho» en cada frase.</div></div>
       <div class='ayuda-step'><div class='step-num'>23</div><div class='step-text'>🤝 <strong>«Con Azkarin activado no puedo dictar en otras apps».</strong> Cierto, y es de Android: el micrófono y el reconocedor de voz <strong>son uno solo</strong> en todo el móvil. Desde la APK 1.19 la escucha <strong>se aparta sola en cuanto otra app pide el micrófono</strong> (el dictado del teclado, una nota de voz) y <strong>vuelve sola</strong> en cuanto terminas — sin dejar de escucharte el resto del tiempo, también con el móvil en la mano. Lo nota porque Android, al que pierde el micro, le manda silencio de verdad; y si el reconocedor está ocupado, se retira igual. 🛑 En la 1.18 se paró mientras usabas el móvil y eso estaba mal: entonces no se le podía hablar. Eso ahora está apagado (queda como interruptor en /escucha por si algún día lo quieres).</div></div>
       <div class='ayuda-step'><div class='step-num'>22</div><div class='step-text'>🗣️ <strong>Hablarle encima y que te haga caso.</strong> Si te está soltando una parrafada, háblale por encima, un poco más alto que él: se calla y hace lo que le has dicho, sin que tengas que repetirlo. Por dentro: lo que suena por encima de su voz se manda a pasar a texto diciéndole al servidor qué estaba diciendo Azkarin, para que solo apunte tus palabras; si es su propio eco, no pasa nada. Y las palabras de parar de siempre («para», «calla») siguen valiendo.</div></div>
@@ -4748,7 +4748,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v612';
+var APP_VERSION = 'v613';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -19833,6 +19833,64 @@ async function doResetWithCode() {
     ind.appendChild(x);
     ind.style.display = 'flex';
   }
+  // v613 · ADELGAZAR UN EXCEL ANTES DE MANDARLO. Un .xlsx es un ZIP; lo que pesa son las
+  // fotos y adornos que van dentro, y lo que Azkarin necesita (las celdas) son unos KB de
+  // XML. Aquí se copian SOLO las piezas con datos a un ZIP nuevo, sin descomprimir nada:
+  // de 30 MB a 50 KB. Si algo no cuadra, se devuelve null y se manda el archivo entero.
+  function _adelgazarXlsx(buf) {
+    try {
+      var u8 = new Uint8Array(buf), dv = new DataView(buf), n = u8.length;
+      var eocd = -1;
+      for (var i = n - 22; i >= Math.max(0, n - 70000); i--) { if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; } }
+      if (eocd < 0) return null;
+      var total = dv.getUint16(eocd + 10, true), cdOff = dv.getUint32(eocd + 16, true);
+      if (cdOff === 0xFFFFFFFF) return null;   // zip64: no se toca
+      var QUEDAN = /^(\[Content_Types\]\.xml|_rels\/\.rels|xl\/workbook\.xml|xl\/_rels\/workbook\.xml\.rels|xl\/sharedStrings\.xml|xl\/styles\.xml|xl\/worksheets\/sheet\d+\.xml)$/;
+      var p = cdOff, partes = [], central = [], off = 0, dec = new TextDecoder('utf-8');
+      for (var k = 0; k < total; k++) {
+        if (dv.getUint32(p, true) !== 0x02014b50) return null;
+        var flag = dv.getUint16(p + 8, true), metodo = dv.getUint16(p + 10, true);
+        var crc = dv.getUint32(p + 16, true), csz = dv.getUint32(p + 20, true), usz = dv.getUint32(p + 24, true);
+        var nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+        var lo = dv.getUint32(p + 42, true);
+        var nombre = dec.decode(u8.subarray(p + 46, p + 46 + nl));
+        var sig = p + 46 + nl + el + cl;
+        if (QUEDAN.test(nombre)) {
+          if (dv.getUint32(lo, true) !== 0x04034b50) return null;
+          var lnl = dv.getUint16(lo + 26, true), lel = dv.getUint16(lo + 28, true);
+          var dataIni = lo + 30 + lnl + lel;
+          // cabecera local nueva, con tamaños fijos (sin descriptor de datos)
+          var h = new Uint8Array(30 + lnl + lel), hv = new DataView(h.buffer);
+          hv.setUint32(0, 0x04034b50, true); hv.setUint16(4, dv.getUint16(lo + 4, true), true);
+          hv.setUint16(6, flag & ~0x0008, true); hv.setUint16(8, metodo, true);
+          hv.setUint16(10, dv.getUint16(lo + 10, true), true); hv.setUint16(12, dv.getUint16(lo + 12, true), true);
+          hv.setUint32(14, crc, true); hv.setUint32(18, csz, true); hv.setUint32(22, usz, true);
+          hv.setUint16(26, lnl, true); hv.setUint16(28, lel, true);
+          h.set(u8.subarray(lo + 30, lo + 30 + lnl + lel), 30);
+          var datos = u8.subarray(dataIni, dataIni + csz);
+          // entrada central nueva
+          var c = new Uint8Array(46 + nl + el), cv = new DataView(c.buffer);
+          c.set(u8.subarray(p, p + 46 + nl + el), 0);
+          cv.setUint16(8, flag & ~0x0008, true); cv.setUint16(32, 0, true); cv.setUint32(42, off, true);
+          partes.push(h, datos); central.push(c);
+          off += h.length + datos.length;
+        }
+        p = sig;
+      }
+      if (!central.length) return null;
+      var cdStart = off, cdLen = 0;
+      for (var q = 0; q < central.length; q++) cdLen += central[q].length;
+      var e = new Uint8Array(22), ev = new DataView(e.buffer);
+      ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, central.length, true); ev.setUint16(10, central.length, true);
+      ev.setUint32(12, cdLen, true); ev.setUint32(16, cdStart, true);
+      var out = new Uint8Array(off + cdLen + 22), pos = 0;
+      for (var a = 0; a < partes.length; a++) { out.set(partes[a], pos); pos += partes[a].length; }
+      for (var b = 0; b < central.length; b++) { out.set(central[b], pos); pos += central[b].length; }
+      out.set(e, pos);
+      return out.buffer;
+    } catch (err) { return null; }
+  }
+
   var _fotoInput = document.getElementById('chatbot-foto-input');
   if (_fotoInput) {
     _fotoInput.addEventListener('change', async function() {
@@ -19847,14 +19905,31 @@ async function doResetWithCode() {
       if (pdfs.length) {
         var lotePdf = [];
         for (var pi = 0; pi < pdfs.length; pi++) {
-          if (pdfs[pi].size > 15 * 1024 * 1024) { addMsg('bot', '❌ El archivo "' + pdfs[pi].name + '" pesa más de 15MB, no puedo con él.'); continue; }
+          var _esXlsx = /\.(xlsx|xlsm)$/i.test(pdfs[pi].name || '');
           try {
-            var leido = await new Promise(function(res, rej) {
-              var rr = new FileReader();
-              rr.onload = function(e) { res((e.target.result || '').split(',')[1]); };
-              rr.onerror = rej;
-              rr.readAsDataURL(pdfs[pi]);
-            });
+            var leido = null;
+            if (_esXlsx) {
+              // v613 · el Excel se adelgaza ANTES de mirar el peso: lo que pesa son las fotos de
+              // dentro, y lo que hace falta (las celdas) cabe en unos KB
+              var _ab = await new Promise(function(res, rej) { var r0 = new FileReader(); r0.onload = function(e) { res(e.target.result); }; r0.onerror = rej; r0.readAsArrayBuffer(pdfs[pi]); });
+              var _flaco = _adelgazarXlsx(_ab);
+              if (_flaco) {
+                var _u = new Uint8Array(_flaco), _bin = '';
+                for (var _i2 = 0; _i2 < _u.length; _i2 += 8192) _bin += String.fromCharCode.apply(null, _u.subarray(_i2, _i2 + 8192));
+                leido = btoa(_bin);
+                console.log('[Adjunto] Excel adelgazado: ' + Math.round(pdfs[pi].size / 1024) + ' KB → ' + Math.round(_flaco.byteLength / 1024) + ' KB');
+              }
+            }
+            if (!leido) {
+              if (pdfs[pi].size > 40 * 1024 * 1024) { addMsg('bot', '❌ El archivo "' + pdfs[pi].name + '" pesa más de 40 MB, no puedo con él. Si es un Excel con fotos dentro, guárdalo sin las fotos o mándalo en PDF.'); continue; }
+              if (pdfs[pi].size > 15 * 1024 * 1024) addMsg('bot', '⏳ "' + pdfs[pi].name + '" pesa ' + Math.round(pdfs[pi].size / 1024 / 1024) + ' MB: lo subo, pero tardará un poco.');
+              leido = await new Promise(function(res, rej) {
+                var rr = new FileReader();
+                rr.onload = function(e) { res((e.target.result || '').split(',')[1]); };
+                rr.onerror = rej;
+                rr.readAsDataURL(pdfs[pi]);
+              });
+            }
             if (leido) lotePdf.push({ b64: leido, nombre: pdfs[pi].name });
           } catch (ep) { addMsg('bot', '❌ No pude leer el archivo "' + pdfs[pi].name + '".'); }
         }
