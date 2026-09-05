@@ -4745,7 +4745,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v601';
+var APP_VERSION = 'v602';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18905,7 +18905,7 @@ async function doResetWithCode() {
         _mp.enVuelo = Math.max(0, (_mp.enVuelo || 0) - 1);
         _mp.fallos = 0;
         var t = (d && d.texto ? String(d.texto) : '').trim();
-        _vozParte('dictado_ok', { ms: d && d.ms, letras: t.length, kb: Math.round(wav.length / 1024) });
+        _vozParte('dictado_ok', { ms: d && d.ms, letras: t.length, kb: Math.round(wav.length / 1024), segundos: Math.round((segundosVoz || 0) * 10) / 10, motivo: (d && d.motivo) ? String(d.motivo) : (opts.encima ? 'encima' : undefined) });   // v602: con el motivo del servidor cuando vuelve vacío
         if (!t) return;                                   // no se entendió nada: ni se dice ni se manda
         if (_esEcoDeAzkarin(t)) return;                   // no se contesta a sí mismo
         // v600 · venía de HABLARLE ENCIMA: no es su eco → se le corta y se le hace caso
