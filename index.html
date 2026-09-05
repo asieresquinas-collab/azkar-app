@@ -1108,6 +1108,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>Dentro de tu APK, Android NO le deja a la app abrir el micrófono</strong> (lo dijo tu propio móvil: permiso denegado, aunque el permiso se pida por todas las puertas). Mientras esa APK sea la que es, hay que usar el reconocedor de Android, y <strong>ese pitido es del sistema: una página no lo puede silenciar</strong>. Lo que sí se ha hecho: <strong>una sola sesión larga por turno</strong> en vez de una cada segundo, así que suena <strong>una vez cuando empiezas a hablar</strong> y no veinte por minuto. En silencio, además, espera hasta siete segundos entre intentos.</div></div>
       <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>✅ <strong>Resuelto con la APK v1.6</strong> (4-sep): a la APK le faltaba declarar un segundo permiso de audio que Capacitor exige para dejarle el micrófono a la web. Con eso entra el micro propio y <strong>no suena nada</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>28</div><div class='step-text'>🚪 <strong>Llama a la puerta antes de contarte nada.</strong> Cuando tiene algo que decirte no te lo suelta de golpe: primero te dice «<strong>oye Asier, ¿te puedo decir una cosa? Es de un pago</strong>» — solo de qué va, nunca el detalle, por si tienes gente delante. Tú contestas: «<strong>sí</strong>» y te lo cuenta; «<strong>ahora no</strong>» y se calla tres cuartos de hora; o «<strong>dímelo en veinte minutos</strong>» y vuelve exactamente entonces. Si no contestas, se calla y lo intenta más tarde. Esas respuestas <strong>no gastan nada</strong>: las entiende el propio móvil.</div></div>
       <div class='ayuda-step'><div class='step-num'>27</div><div class='step-text'>💶 <strong>Los pagos del mes te los recuerda él.</strong> Lee solo tu hoja <strong>«2026 PAGOS GENERALES»</strong> (nóminas, alquiler, seguridad social, seguros, préstamo, IVA…) y, el día que toca un pago, <strong>te lo dice hablando</strong> aunque tengas el móvil bloqueado — y te lo repite cada día hasta que le digas «ya está pagado». Si a un pago le falta el día de cargo, te lo pregunta <strong>una vez</strong> y lo deja apuntado para siempre. En el chat: «<strong>qué hay que pagar este mes</strong>». 🛑 Tu hoja no la toca nadie: solo la lee; lo de «pagado» se apunta en la app.</div></div>
       <div class='ayuda-step'><div class='step-num'>26</div><div class='step-text'>⚡ <strong>«Le cuesta cargar»: arreglado.</strong> La app guarda una copia de sí misma en el móvil para abrirse al instante, pero esa copia <strong>no se estaba guardando nunca</strong>: se intentaba guardar todo de golpe y en la lista hay un archivo de Google (la letra); si ese fallaba —cobertura floja o Google lento—, se caía la copia entera y cada vez que abrías la app se bajaba <strong>entera de internet</strong>. Ahora se guarda archivo a archivo y lo que falle no arrastra al resto: <strong>abre al momento, incluso sin cobertura</strong>, y lo nuevo se baja por detrás. Y al actualizar, la versión nueva <strong>se baja antes</strong> de reiniciar.</div></div>
       <div class='ayuda-step'><div class='step-num'>25</div><div class='step-text'>📊 <strong>Ya lee EXCEL y CSV.</strong> El cliente que manda los artículos en una hoja de cálculo: adjúntasela en el chat o dile que abra el correo, y te lee las filas tal cual (también <strong>Word</strong> y, como siempre, fotos y PDF). Si el Excel pesa mucho (lleva fotos dentro), la app lo <strong>adelgaza sola</strong> antes de mandarlo: se queda con las celdas y deja las fotos. 🛑 El Excel <strong>viejo (.xls, anterior a 2007)</strong> no se puede abrir: hay que pedir que lo guarden como .xlsx o en PDF, y te lo dice claramente en vez de inventarse el contenido.</div></div>
@@ -4750,7 +4751,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v615';
+var APP_VERSION = 'v616';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17228,10 +17229,70 @@ async function doResetWithCode() {
   // Asier, 4-sep: «que me recuerde las cosas hablándome aunque esté bloqueado el teléfono».
   // La APK pregunta cada pocos minutos si hay algo; cuando lo hay, abre esto y aquí se DICE
   // en voz alta y se queda escuchando por si contesta («ya está hecho», «recuérdamelo luego»).
-  window.__azkarinAvisoDeVoz = function(texto, id){
+  // ── v616 · LLAMAR A LA PUERTA ANTES DE CONTAR NADA ──────────────────────────
+  // Asier: «cuando me vaya a hablar que me diga: ¿te puedo decir una cosa?, porque
+  // igual estoy con gente; y yo le digo que sí, o dímelo en veinte minutos».
+  // El servidor manda primero un TOQUE; aquí se entiende su respuesta SIN pasar por
+  // el modelo (instantáneo y sin gastar un céntimo), como el mando de la grabación.
+  var _FIN = '(?![a-záéíóúñ])';   // ojo: \b no vale tras vocal acentuada («sí» no casaba)
+  var _RE_TOQUE_SI  = new RegExp('^(s[ií]|dime|d[ií]melo|cuenta|cu[eé]ntame|venga|claro|vale|adelante|ahora s[ií]|habla|dispara)' + _FIN, 'i');
+  var _RE_TOQUE_NO  = new RegExp('^(no|ahora no|luego|m[aá]s tarde|despu[eé]s|estoy ocupado|no puedo|ahora estoy|calla|espera)' + _FIN, 'i');
+  var _RE_TOQUE_MIN = /(?:en|dentro de)?\s*(?:un[oa]s?\s+)?(\d{1,3}|media|cuarto)\s*(?:de\s+)?(minutos?|min|horas?|h)(?![a-záéíóúñ])/i;
+  function _minutosDe(txt) {
+    try {
+      var m = _RE_TOQUE_MIN.exec(String(txt || ''));
+      if (!m) return 0;
+      var n = m[1];
+      var unidad = /hora/i.test(m[2]) ? 60 : 1;
+      if (/media/i.test(n)) return unidad === 60 ? 30 : 30;
+      if (/cuarto/i.test(n)) return 15;
+      var v = parseInt(n, 10);
+      if (!(v > 0)) return 0;
+      return Math.min(240, v * unidad);
+    } catch(e){ return 0; }
+  }
+  // Devuelve true si lo dicho ERA la respuesta al toque (y ya está atendida)
+  function _respuestaAlToque(txt) {
+    try {
+      var t = window._azkToque;
+      if (!t || !t.id) return false;
+      if (Date.now() - (t.ts || 0) > 120000) { window._azkToque = null; return false; }   // dos minutos y caduca
+      var x = String(txt || '').trim();
+      if (!x || x.split(/\s+/).length > 9) return false;      // una frase larga no es un «sí»
+      var min = _minutosDe(x);
+      var api = RAILWAY_API + '/api/voz/companero?apiKey=' + encodeURIComponent(window._apiKey || '');
+      if (min > 0 || _RE_TOQUE_NO.test(x)) {
+        window._azkToque = null;
+        var m2 = min > 0 ? min : 45;
+        fetch(api + '&respuesta=luego&minutos=' + m2).then(function(r){ return r.json(); }).then(function(d){
+          try { addMsg('bot', '👍 ' + ((d && d.mensaje) || ('Vale, te lo digo en ' + m2 + ' minutos.'))); } catch(e){}
+          try { chatSpeak((d && d.mensaje) || ('Vale, te lo digo en ' + m2 + ' minutos.')); } catch(e){}
+        }).catch(function(){});
+        return true;
+      }
+      if (_RE_TOQUE_SI.test(x)) {
+        window._azkToque = null;
+        fetch(api + '&respuesta=si').then(function(r){ return r.json(); }).then(function(d){
+          if (!d || !d.hay || !d.texto) return;
+          try { addMsg('bot', '👋 ' + d.texto); } catch(e){}
+          try { chatSpeak(d.texto); } catch(e){}
+          try { if (d.id) fetch(api + '&dicho=' + encodeURIComponent(d.id)).catch(function(){}); } catch(e){}
+        }).catch(function(){});
+        return true;
+      }
+      return false;   // ha dicho otra cosa: se le atiende como siempre
+    } catch(e){ return false; }
+  }
+  window._respuestaAlToque = _respuestaAlToque;
+
+  window.__azkarinAvisoDeVoz = function(texto, id, tipo){
     try {
       texto = String(texto || '').trim();
       if (!texto) return;
+      // v616 · si es el toque en la puerta, se queda esperando su sí/no/en X minutos
+      if (tipo === 'toque' || /¿te puedo decir una cosa\?/i.test(texto)) {
+        window._azkToque = { id: id || '', ts: Date.now() };
+      }
       if (window._avisoDicho === texto) return;      // el reintento de la APK no lo repite
       window._avisoDicho = texto;
       var panel = document.getElementById('chatbot-panel');
@@ -18434,6 +18495,9 @@ async function doResetWithCode() {
     txt = _arreglaNombreAzkarin((txt || '').trim());
     if (!txt) return;
     window._convUltimaVozTs = Date.now();
+    // v616 · ¿es la respuesta a «¿te puedo decir una cosa?»? Se atiende aquí mismo:
+    // ni se manda al servidor de chat ni gasta.
+    if (_respuestaAlToque(txt)) { _convLimpiarBuffer(); return; }
     // v588: si es una orden para la grabación, se hace aquí y no se le manda nada a Azkarin
     if (_mandoDeLaGrabacion(txt)) { _convLimpiarBuffer(); return; }
     // v589: ¿va dirigido a él? Si no, ni se manda ni se apunta (y no gasta un céntimo)
