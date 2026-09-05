@@ -42,12 +42,15 @@ public class WakeWordPlugin extends Plugin {
             String base = call.getString("base", "");
             String apiKey = call.getString("apiKey", "");
             boolean avisos = Boolean.TRUE.equals(call.getBoolean("avisos", true));
-            getContext().getSharedPreferences("azkarin", android.content.Context.MODE_PRIVATE)
-                .edit()
+            android.content.SharedPreferences.Editor ed = getContext()
+                .getSharedPreferences("azkarin", android.content.Context.MODE_PRIVATE).edit()
                 .putString("base", base == null ? "" : base)
                 .putString("apiKey", apiKey == null ? "" : apiKey)
-                .putBoolean("avisos", avisos)
-                .apply();
+                .putBoolean("avisos", avisos);
+            // v1.11 · los frenos de la batería, si la app los manda
+            if (call.getData().has("soloHorario")) ed.putBoolean(WakeWordService.K_SOLO_HORARIO, Boolean.TRUE.equals(call.getBoolean("soloHorario", true)));
+            if (call.getData().has("minBateria")) ed.putInt(WakeWordService.K_MIN_BATERIA, call.getInt("minBateria", 15));
+            ed.apply();
             JSObject r = new JSObject();
             r.put("ok", true);
             call.resolve(r);
@@ -77,6 +80,12 @@ public class WakeWordPlugin extends Plugin {
         r.put("overlay", overlay);
         r.put("fullscreen", fullscreen);
         r.put("mic", getPermissionState("mic") == PermissionState.GRANTED);
+        try {
+            android.content.SharedPreferences pf = getContext().getSharedPreferences("azkarin", android.content.Context.MODE_PRIVATE);
+            r.put("soloHorario", pf.getBoolean(WakeWordService.K_SOLO_HORARIO, true));
+            r.put("minBateria", pf.getInt(WakeWordService.K_MIN_BATERIA, 15));
+            r.put("avisos", pf.getBoolean("avisos", true));
+        } catch (Exception e) {}
         call.resolve(r);
     }
 

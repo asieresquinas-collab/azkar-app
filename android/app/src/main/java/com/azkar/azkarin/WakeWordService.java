@@ -12,6 +12,7 @@ import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -72,7 +73,7 @@ public class WakeWordService extends Service {
     private AudioManager am;
     private boolean muted = false;
     // v1.9 · el cartero: cada pocos minutos pregunta si hay algo que recordarle a Asier
-    private static final long CADA_MS = 5 * 60 * 1000L;
+    private static final long CADA_MS = 15 * 60 * 1000L;   // v1.11 · cada cuarto de hora (era 5 min)
     private long ultimoCartero = 0;
     // v1.10 · LA SIESTA. Asier: «que le diga deja de escuchar Azkarin y se desactive».
     // Se calla el rato que diga y VUELVE SOLO. (Callado del todo no podria oir que le
@@ -80,6 +81,15 @@ public class WakeWordService extends Service {
     public static final String PREF = "azkarin";
     public static final String K_SIESTA = "siestaHasta";
     private static final long SIESTA_POR_DEFECTO = 60 * 60 * 1000L;   // una hora
+    // v1.11 · LA BATERIA. Asier: «va a gastar mucha bateria». Tres frenos, y los tres se
+    // pueden quitar desde la app:
+    //   · solo escucha en su horario de trabajo (8-19, lunes a sabado). Por la noche y los
+    //     domingos duerme: ahi es donde se iba la mitad del gasto, escuchando a nadie.
+    //   · si la bateria baja del 15% y no esta cargando, se para sola y vuelve al enchufarlo.
+    //   · el cartero de los recados pregunta cada cuarto de hora, no cada cinco minutos.
+    public static final String K_SOLO_HORARIO = "soloHorario";
+    public static final String K_MIN_BATERIA = "minBateria";
+    private static final int HORA_ABRE = 8, HORA_CIERRA = 19;
     private Thread hiloVad;
     private AudioRecord rec;
 
@@ -102,7 +112,7 @@ public class WakeWordService extends Service {
         } catch (Exception e) {
             try { startForeground(NOTIF_ID, n); } catch (Exception e2) {}
         }
-        acquireLock();
+        if (tocaEscuchar()) acquireLock();   // v1.11 · si no toca escuchar, ni se coge
         try { am = (AudioManager) getSystemService(Context.AUDIO_SERVICE); } catch (Exception e) { am = null; }
         initRecognizer();
         RUNNING = true;
@@ -141,6 +151,7 @@ public class WakeWordService extends Service {
 
     private void preguntarSiHayAlgo() {
         if (System.currentTimeMillis() - ultimoCartero < CADA_MS - 5000) return;
+        if (!tocaEscuchar()) return;   // v1.11 · fuera de hora o con la batería baja, ni se pregunta
         ultimoCartero = System.currentTimeMillis();
         final android.content.SharedPreferences pref =
             getSharedPreferences("azkarin", Context.MODE_PRIVATE);
@@ -290,9 +301,44 @@ public class WakeWordService extends Service {
         arrancarVigilancia();
     }
 
+    /** v1.11 · ¿toca escuchar ahora, o toca ahorrar? */
+    private boolean tocaEscuchar() {
+        try {
+            android.content.SharedPreferences pf = getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            // 1) la bateria manda
+            int minBat = pf.getInt(K_MIN_BATERIA, 15);
+            BatteryManager bm = (BatteryManager) getSystemService(Context.BATTERY_SERVICE);
+            if (bm != null && minBat > 0) {
+                int nivel = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+                boolean cargando = false;
+                try { cargando = bm.isCharging(); } catch (Exception e) {}
+                if (nivel > 0 && nivel < minBat && !cargando) return false;
+            }
+            // 2) su horario de trabajo (se puede quitar desde la app)
+            if (pf.getBoolean(K_SOLO_HORARIO, true)) {
+                java.util.Calendar c = java.util.Calendar.getInstance();
+                int h = c.get(java.util.Calendar.HOUR_OF_DAY);
+                int dia = c.get(java.util.Calendar.DAY_OF_WEEK);   // 1 = domingo
+                if (dia == java.util.Calendar.SUNDAY) return false;
+                if (h < HORA_ABRE || h >= HORA_CIERRA) return false;
+            }
+            return true;
+        } catch (Exception e) { return true; }
+    }
+
     private void arrancarVigilancia() {
         if (stopping || vigilando || listening) return;
         if (siestaHasta() > System.currentTimeMillis()) return;   // v1.10 · está de siesta
+        if (!tocaEscuchar()) {                                    // v1.11 · fuera de hora o sin batería
+            try {
+                NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                if (nm != null) nm.notify(NOTIF_ID, buildNotif("Descansando — vuelvo a las 8:00"));
+            } catch (Exception e) {}
+            handler.postDelayed(new Runnable() {
+                @Override public void run() { if (!stopping) arrancarVigilancia(); }
+            }, 10 * 60 * 1000L);                                   // se vuelve a mirar cada diez minutos
+            return;
+        }
         vigilando = true;
         hiloVad = new Thread(new Runnable() { @Override public void run() { bucleVad(); } }, "azkarin-vad");
         hiloVad.setPriority(Thread.MIN_PRIORITY);
@@ -300,6 +346,7 @@ public class WakeWordService extends Service {
     }
 
     private void bucleVad() {
+        try { if (wakeLock != null && !wakeLock.isHeld()) wakeLock.acquire(); } catch (Exception e) {}
         int min = 0;
         try { min = AudioRecord.getMinBufferSize(HZ, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT); } catch (Exception e) {}
         if (min <= 0) min = 4096;
@@ -319,7 +366,13 @@ public class WakeWordService extends Service {
         }
         float fondo = 0.01f;
         int msVoz = 0;
+        long _miraReloj = 0;
         while (vigilando && !stopping) {
+            // cada minuto se comprueba si ha dejado de tocar (se hizo de noche, batería baja)
+            if (System.currentTimeMillis() - _miraReloj > 60000) {
+                _miraReloj = System.currentTimeMillis();
+                if (!tocaEscuchar()) { vigilando = false; handler.post(new Runnable(){ @Override public void run(){ arrancarVigilancia(); } }); break; }
+            }
             int n;
             try { n = rec.read(buf, 0, buf.length); } catch (Exception e) { break; }
             if (n <= 0) continue;
@@ -344,6 +397,8 @@ public class WakeWordService extends Service {
         }
         soltarVad();
         vigilando = false;
+        // v1.11 · si se ha salido del bucle porque no toca escuchar, se suelta la CPU
+        try { if (!tocaEscuchar() && wakeLock != null && wakeLock.isHeld()) wakeLock.release(); } catch (Exception e) {}
     }
 
     private void soltarVad() {
