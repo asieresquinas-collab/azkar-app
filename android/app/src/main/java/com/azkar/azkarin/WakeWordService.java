@@ -75,6 +75,8 @@ public class WakeWordService extends Service {
     private AudioManager am;
     private boolean muted = false;
     private android.content.BroadcastReceiver pantallaReceiver = null;   // v1.18
+    private long listeningDesde = 0;   // v1.21 · para saber si el reconocedor se ha quedado colgado
+    private Runnable vigilante = null;  // v1.21 · el que se asegura de que SIEMPRE se escucha
     private long esperaCesion = 0;   // v1.19 · cuanto se espera al ceder el micro (crece hasta 30 s)
     private volatile boolean vieneDelReconocedor = false;   // v1.17
     // v1.9 · el cartero: cada pocos minutos pregunta si hay algo que recordarle a Asier
@@ -165,6 +167,7 @@ public class WakeWordService extends Service {
             return START_STICKY;
         }
         arrancarVigilancia();
+        arrancarVigilante();   // v1.21 · y el que vigila al vigilante
         arrancarCartero();
         return START_STICKY;
     }
@@ -453,6 +456,40 @@ public class WakeWordService extends Service {
         } catch (Exception e) { return true; }
     }
 
+    /**
+     * v1.21 · EL VIGILANTE (Asier, 5-sep: «le hablo y no funciona»). El servicio estaba VIVO
+     * pero sin escuchar: basta con que una vuelta se quede a medias (el reconocedor de Android
+     * abierto y sin contestar nunca, o el bucle salido por un fallo) para que `listening` o
+     * `vigilando` se queden pegados y `arrancarVigilancia()` se dé media vuelta para siempre.
+     * Desde ahora, cada minuto se comprueba y se levanta solo — y se avisa al servidor.
+     */
+    private void arrancarVigilante() {
+        if (vigilante != null) return;
+        vigilante = new Runnable() {
+            @Override public void run() {
+                try {
+                    if (stopping) return;
+                    boolean siesta = siestaHasta() > System.currentTimeMillis();
+                    boolean colgado = listening && (System.currentTimeMillis() - listeningDesde > 25000);
+                    if (colgado) {
+                        parteAlServidor("ww_revive", "{\"motivo\":\"el reconocedor se quedo colgado\"}");
+                        try { if (sr != null) sr.cancel(); } catch (Exception e) {}
+                        listening = false;
+                        try { destapar(); } catch (Exception e) {}
+                    }
+                    if (!siesta && !vigilando && !listening && tocaEscuchar()) {
+                        parteAlServidor("ww_revive", "{\"motivo\":\"estaba vivo pero sin escuchar\"}");
+                        arrancarVigilancia();
+                    }
+                } catch (Exception e) {
+                } finally {
+                    if (!stopping) handler.postDelayed(vigilante, 60000);
+                }
+            }
+        };
+        handler.postDelayed(vigilante, 60000);
+    }
+
     private void arrancarVigilancia() {
         if (stopping || vigilando || listening) return;
         if (siestaHasta() > System.currentTimeMillis()) return;   // v1.10 · está de siesta
@@ -605,6 +642,7 @@ public class WakeWordService extends Service {
         if (sr == null) { initRecognizer(); if (sr == null) { volverAVigilar(1500); return; } }
         try {
             listening = true;
+            listeningDesde = System.currentTimeMillis();   // v1.21
             tapar();
             sr.startListening(srIntent);
             destaparEn(1500);   // v1.17: antes 700; el «pi» de entrada puede sonar más tarde
@@ -847,6 +885,7 @@ public class WakeWordService extends Service {
 
     @Override
     public void onDestroy() {
+        try { if (vigilante != null) handler.removeCallbacks(vigilante); } catch (Exception e) {}   // v1.21
         try { if (pantallaReceiver != null) unregisterReceiver(pantallaReceiver); } catch (Exception e) {}   // v1.18
         stopping = true;
         vigilando = false;
