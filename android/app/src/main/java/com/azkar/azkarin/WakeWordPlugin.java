@@ -83,6 +83,7 @@ public class WakeWordPlugin extends Plugin {
         r.put("fullscreen", fullscreen);
         r.put("mic", getPermissionState("mic") == PermissionState.GRANTED);
         r.put("heyGoogle", true);   // v1.13: existe pedirHeyGoogle()
+        r.put("asistente", true);   // v1.16: existe pedirAsistente()
         try {
             android.content.SharedPreferences pf = getContext().getSharedPreferences("azkarin", android.content.Context.MODE_PRIVATE);
             r.put("soloHorario", pf.getBoolean(WakeWordService.K_SOLO_HORARIO, true));
@@ -121,37 +122,31 @@ public class WakeWordPlugin extends Plugin {
     }
 
     /**
-     * v1.13 · Abre la pantalla de Google donde se enciende el «Hey Google» (Voice Match).
-     * Google ha cambiado esa pantalla varias veces, asi que se prueban varias puertas por
-     * orden y se abre la primera que exista; si ninguna, la de Android «asistente digital».
-     * Devuelve {abierto: "google-voz" | "google-ajustes" | "android-asistente" | "android-ajustes"}.
+     * v1.16 · Abre la app de Google (su pantalla principal), que es lo unico que seguro se
+     * abre: en el movil de Asier la pantalla «Voz» no lleva el «Hey Google» y la raiz de
+     * ajustes (PublicSettingsActivity) dijo que se abria y no se veia nada. Desde la app de
+     * Google: foto → Ajustes → Asistente de Google → «Hey Google» y Voice Match.
+     * Devuelve {abierto: "google-app" | "android-asistente" | "android-ajustes"}.
      */
     @PluginMethod
     public void pedirHeyGoogle(PluginCall call) {
         PackageManager pm = getContext().getPackageManager();
-        String gsa = "com.google.android.googlequicksearchbox";
-        // v1.15: en el movil de Asier la pantalla «Voz» de la app de Google ya no lleva el
-        // «Hey Google» (solo idiomas y la voz que habla). El interruptor esta en los ajustes
-        // generales de Google → «Asistente de Google» → «Hey Google y Voice Match». Asi que
-        // primero la raiz de ajustes, y la de «Voz» solo si no existe la raiz.
-        String[][] puertas = {
-            {"google-ajustes", gsa, "com.google.android.apps.gsa.velvet.ui.settings.PublicSettingsActivity"},
-            {"google-voz", gsa, "com.google.android.apps.gsa.settingsui.VoiceSearchPreferences"},
-            {"google-voz", gsa, "com.google.android.apps.gsa.velvet.ui.settings.VoiceSearchPreferences"},
-            {"google-voz", gsa, "com.google.android.voicesearch.VoiceSearchPreferences"},
-            {"google-voz", "com.google.android.voicesearch", "com.google.android.voicesearch.VoiceSearchPreferences"},
-        };
-        for (String[] p : puertas) {
-            try {
-                Intent i = new Intent(Intent.ACTION_MAIN);
-                i.setComponent(new ComponentName(p[1], p[2]));
+        try {
+            Intent i = pm.getLaunchIntentForPackage("com.google.android.googlequicksearchbox");
+            if (i != null) {
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                if (i.resolveActivity(pm) == null) continue;
                 getContext().startActivity(i);
-                JSObject r = new JSObject(); r.put("abierto", p[0]); r.put("puerta", p[2]);
+                JSObject r = new JSObject(); r.put("abierto", "google-app");
                 call.resolve(r); return;
-            } catch (Exception e) { /* siguiente puerta */ }
-        }
+            }
+        } catch (Exception e) { /* siguiente */ }
+        pedirAsistente(call);
+    }
+
+    /** v1.16 · La pantalla de Android donde se elige el asistente (Google o Bixby) — con la rueda
+     *  de al lado se entra en los ajustes del Asistente de Google. */
+    @PluginMethod
+    public void pedirAsistente(PluginCall call) {
         try {
             Intent i = new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
