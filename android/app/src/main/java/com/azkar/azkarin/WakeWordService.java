@@ -72,6 +72,7 @@ public class WakeWordService extends Service {
 
     private AudioManager am;
     private boolean muted = false;
+    private volatile boolean vieneDelReconocedor = false;   // v1.17
     // v1.9 · el cartero: cada pocos minutos pregunta si hay algo que recordarle a Asier
     private static final long CADA_MS = 15 * 60 * 1000L;   // v1.11 · cada cuarto de hora (era 5 min)
     private long ultimoCartero = 0;
@@ -250,21 +251,85 @@ public class WakeWordService extends Service {
     // ── Tapar el aviso del sistema. En la v1.7 solo se tapaba la musica y su movil lo saca
     //    por otro altavoz; ahora se tapan los tres por los que puede salir. ───────────────
     private static final int[] CANALES = {
-        AudioManager.STREAM_MUSIC, AudioManager.STREAM_SYSTEM, AudioManager.STREAM_NOTIFICATION
+        AudioManager.STREAM_MUSIC, AudioManager.STREAM_SYSTEM, AudioManager.STREAM_NOTIFICATION,
+        AudioManager.STREAM_RING   // v1.17: en Samsung el aviso puede salir por el canal del timbre
     };
+    // v1.17 · Lo que no se deja tapar (SecurityException: «No molestar»), apuntado UNA vez al
+    // parte del servidor para saber por donde sale el «pi» en su movil, en vez de adivinarlo.
+    private final java.util.Map<Integer,Integer> volAntes = new java.util.HashMap<Integer,Integer>();
+    private String tapaFalla = "";
+    private boolean tapaAvisado = false;
+    private static String nombreCanal(int c) {
+        if (c == AudioManager.STREAM_MUSIC) return "music";
+        if (c == AudioManager.STREAM_SYSTEM) return "system";
+        if (c == AudioManager.STREAM_NOTIFICATION) return "notification";
+        if (c == AudioManager.STREAM_RING) return "ring";
+        return "" + c;
+    }
     private void tapar() {
         if (am == null || muted) return;
         muted = true;
+        StringBuilder falla = new StringBuilder();
         for (int c : CANALES) {
-            try { am.adjustStreamVolume(c, AudioManager.ADJUST_MUTE, 0); } catch (Exception e) {}
+            boolean ok = false;
+            try { am.adjustStreamVolume(c, AudioManager.ADJUST_MUTE, 0); ok = true; } catch (Exception e) {}
+            if (!ok) {
+                // segunda via: bajar el volumen a cero y acordarse de cuanto habia
+                try {
+                    int v = am.getStreamVolume(c);
+                    if (v > 0) { volAntes.put(c, v); am.setStreamVolume(c, 0, 0); }
+                    ok = true;
+                } catch (Exception e) {}
+            }
+            if (!ok) { if (falla.length() > 0) falla.append(","); falla.append(nombreCanal(c)); }
         }
+        tapaFalla = falla.toString();
+        if (!tapaAvisado) { tapaAvisado = true; parteAlServidor("ww_mute", "{\"motivo\":\"" + (tapaFalla.isEmpty() ? "todos tapados" : "no se tapan: " + tapaFalla) + "\",\"permiso\":" + noMolestarConcedido() + "}"); }
     }
     private void destapar() {
         if (am == null || !muted) return;
         muted = false;
         for (int c : CANALES) {
             try { am.adjustStreamVolume(c, AudioManager.ADJUST_UNMUTE, 0); } catch (Exception e) {}
+            try {
+                Integer v = volAntes.remove(c);
+                if (v != null) am.setStreamVolume(c, v, 0);
+            } catch (Exception e) {}
         }
+    }
+    private boolean noMolestarConcedido() {
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            return nm != null && Build.VERSION.SDK_INT >= 23 && nm.isNotificationPolicyAccessGranted();
+        } catch (Exception e) { return false; }
+    }
+    /** v1.17 · Un parte corto al servidor (misma llave publica que el cartero). */
+    private void parteAlServidor(final String evento, final String datosJson) {
+        try {
+            final android.content.SharedPreferences pref = getSharedPreferences("azkarin", Context.MODE_PRIVATE);
+            final String base = pref.getString("base", "");
+            final String key = pref.getString("apiKey", "");
+            if (base == null || base.isEmpty() || key == null || key.isEmpty()) return;
+            new Thread(new Runnable() {
+                @Override public void run() {
+                    HttpURLConnection con = null;
+                    try {
+                        URL u = new URL(base + "/api/voz/parte");
+                        con = (HttpURLConnection) u.openConnection();
+                        con.setConnectTimeout(8000); con.setReadTimeout(8000);
+                        con.setRequestMethod("POST");
+                        con.setRequestProperty("Content-Type", "application/json");
+                        con.setRequestProperty("x-api-key", key);
+                        con.setRequestProperty("User-Agent", "AzkarinAPK");
+                        con.setDoOutput(true);
+                        byte[] body = ("{\"evento\":\"" + evento + "\",\"datos\":" + datosJson + "}").getBytes("UTF-8");
+                        con.getOutputStream().write(body);
+                        con.getResponseCode();
+                    } catch (Exception e) {
+                    } finally { try { if (con != null) con.disconnect(); } catch (Exception e) {} }
+                }
+            }).start();
+        } catch (Exception e) {}
     }
     private void destaparEn(long ms) {
         handler.postDelayed(new Runnable() { @Override public void run() { destapar(); } }, ms);
@@ -367,6 +432,11 @@ public class WakeWordService extends Service {
         float fondo = 0.01f;
         int msVoz = 0;
         long _miraReloj = 0;
+        // v1.17 · si se viene de una sesión del reconocedor, hay que oír un hueco de silencio
+        // (1,2 s) antes de abrir otra: si alguien habla seguido, un solo «pi» por parrafada, no uno cada cinco segundos
+        int msSilencio = 0;
+        boolean hueco = !vieneDelReconocedor;
+        vieneDelReconocedor = false;
         while (vigilando && !stopping) {
             // cada minuto se comprueba si ha dejado de tocar (se hizo de noche, batería baja)
             if (System.currentTimeMillis() - _miraReloj > 60000) {
@@ -384,9 +454,12 @@ public class WakeWordService extends Service {
             if (!voz) {
                 fondo = fondo * 0.97f + rms * 0.03f;     // el fondo se aprende solo con lo que NO es voz
                 msVoz = 0;
+                msSilencio += ms;
+                if (msSilencio >= 1200) hueco = true;
             } else {
+                msSilencio = 0;
                 msVoz += ms;
-                if (msVoz >= MS_VOZ) {
+                if (hueco && msVoz >= MS_VOZ) {
                     msVoz = 0;
                     soltarVad();
                     vigilando = false;
@@ -414,7 +487,7 @@ public class WakeWordService extends Service {
             listening = true;
             tapar();
             sr.startListening(srIntent);
-            destaparEn(700);
+            destaparEn(1500);   // v1.17: antes 700; el «pi» de entrada puede sonar más tarde
         } catch (Exception e) {
             listening = false;
             destapar();
@@ -424,6 +497,7 @@ public class WakeWordService extends Service {
 
     private void volverAVigilar(long ms) {
         if (stopping) return;
+        vieneDelReconocedor = true;
         handler.postDelayed(new Runnable() {
             @Override public void run() {
                 listening = false;
@@ -433,25 +507,25 @@ public class WakeWordService extends Service {
     }
 
     private final RecognitionListener listener = new RecognitionListener() {
-        @Override public void onReadyForSpeech(Bundle params) { destaparEn(300); }
+        @Override public void onReadyForSpeech(Bundle params) { destaparEn(900); }   // v1.17: antes 300
         @Override public void onBeginningOfSpeech() {}
         @Override public void onRmsChanged(float rmsdB) {}
         @Override public void onBufferReceived(byte[] buffer) {}
-        @Override public void onEndOfSpeech() { tapar(); destaparEn(700); }
+        @Override public void onEndOfSpeech() { tapar(); destaparEn(1200); }
         @Override public void onEvent(int eventType, Bundle params) {}
 
         @Override public void onPartialResults(Bundle partialResults) {
             if (checkResults(partialResults)) reconocedorSinNada = 0;
         }
         @Override public void onResults(Bundle results) {
-            destaparEn(700);
+            destaparEn(1000);
             boolean algo = checkResults(results);
             if (algo) { reconocedorSinNada = 0; return; }
             reconocedorSinNada++;
             volverAVigilar(reconocedorSinNada >= 3 ? 2500 : 400);
         }
         @Override public void onError(int error) {
-            destaparEn(700);
+            destaparEn(1000);
             reconocedorSinNada++;
             long espera = (error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY
                     || error == SpeechRecognizer.ERROR_CLIENT) ? 1200 : 400;

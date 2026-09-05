@@ -85,6 +85,10 @@ public class WakeWordPlugin extends Plugin {
         r.put("heyGoogle", true);   // v1.13: existe pedirHeyGoogle()
         r.put("asistente", true);   // v1.16: existe pedirAsistente()
         try {
+            android.app.NotificationManager nm2 = (android.app.NotificationManager) getContext().getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+            r.put("dnd", nm2 != null && Build.VERSION.SDK_INT >= 23 && nm2.isNotificationPolicyAccessGranted());   // v1.17
+        } catch (Exception e) {}
+        try {
             android.content.SharedPreferences pf = getContext().getSharedPreferences("azkarin", android.content.Context.MODE_PRIVATE);
             r.put("soloHorario", pf.getBoolean(WakeWordService.K_SOLO_HORARIO, true));
             r.put("minBateria", pf.getInt(WakeWordService.K_MIN_BATERIA, 15));
@@ -160,6 +164,18 @@ public class WakeWordPlugin extends Plugin {
             getContext().startActivity(i);
             JSObject r = new JSObject(); r.put("abierto", "android-ajustes");
             call.resolve(r);
+        } catch (Exception e) { call.reject("no se pudo abrir: " + e.getMessage()); }
+    }
+
+    /** v1.17 · La pantalla de Android «Acceso a No molestar»: sin ese permiso, Android no deja
+     *  tapar el canal de notificaciones/timbre, que es por donde puede salir el «pi». */
+    @PluginMethod
+    public void pedirNoMolestar(PluginCall call) {
+        try {
+            Intent i = new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+            call.resolve();
         } catch (Exception e) { call.reject("no se pudo abrir: " + e.getMessage()); }
     }
 
