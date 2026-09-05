@@ -1108,6 +1108,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Si el dictado falla, <strong>se reintenta con lo mismo</strong> (hasta tres veces) y, si no hay manera, te lo dice en el cartel y sigue escuchando. <strong>Nunca</strong> vuelve solo al micro que pita.</div></div>
       <div class='ayuda-step'><div class='step-num'>7</div><div class='step-text'>🛑 <strong>Dentro de tu APK, Android NO le deja a la app abrir el micrófono</strong> (lo dijo tu propio móvil: permiso denegado, aunque el permiso se pida por todas las puertas). Mientras esa APK sea la que es, hay que usar el reconocedor de Android, y <strong>ese pitido es del sistema: una página no lo puede silenciar</strong>. Lo que sí se ha hecho: <strong>una sola sesión larga por turno</strong> en vez de una cada segundo, así que suena <strong>una vez cuando empiezas a hablar</strong> y no veinte por minuto. En silencio, además, espera hasta siete segundos entre intentos.</div></div>
       <div class='ayuda-step'><div class='step-num'>8</div><div class='step-text'>✅ <strong>Resuelto con la APK v1.6</strong> (4-sep): a la APK le faltaba declarar un segundo permiso de audio que Capacitor exige para dejarle el micrófono a la web. Con eso entra el micro propio y <strong>no suena nada</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>26</div><div class='step-text'>⚡ <strong>«Le cuesta cargar»: arreglado.</strong> La app guarda una copia de sí misma en el móvil para abrirse al instante, pero esa copia <strong>no se estaba guardando nunca</strong>: se intentaba guardar todo de golpe y en la lista hay un archivo de Google (la letra); si ese fallaba —cobertura floja o Google lento—, se caía la copia entera y cada vez que abrías la app se bajaba <strong>entera de internet</strong>. Ahora se guarda archivo a archivo y lo que falle no arrastra al resto: <strong>abre al momento, incluso sin cobertura</strong>, y lo nuevo se baja por detrás. Y al actualizar, la versión nueva <strong>se baja antes</strong> de reiniciar.</div></div>
       <div class='ayuda-step'><div class='step-num'>25</div><div class='step-text'>📊 <strong>Ya lee EXCEL y CSV.</strong> El cliente que manda los artículos en una hoja de cálculo: adjúntasela en el chat o dile que abra el correo, y te lee las filas tal cual (también <strong>Word</strong> y, como siempre, fotos y PDF). Si el Excel pesa mucho (lleva fotos dentro), la app lo <strong>adelgaza sola</strong> antes de mandarlo: se queda con las celdas y deja las fotos. 🛑 El Excel <strong>viejo (.xls, anterior a 2007)</strong> no se puede abrir: hay que pedir que lo guarden como .xlsx o en PDF, y te lo dice claramente en vez de inventarse el contenido.</div></div>
       <div class='ayuda-step'><div class='step-num'>24</div><div class='step-text'>🔇 <strong>El precio, a la vista pero sin leerlo.</strong> El puntito de color y las cifras del final de cada respuesta <strong>siguen saliendo en pantalla</strong>, pero ya <strong>no se leen en alto</strong>: se acabó el «tecla cero, tecla tres, tecla ocho» en cada frase.</div></div>
       <div class='ayuda-step'><div class='step-num'>23</div><div class='step-text'>🤝 <strong>«Con Azkarin activado no puedo dictar en otras apps».</strong> Cierto, y es de Android: el micrófono y el reconocedor de voz <strong>son uno solo</strong> en todo el móvil. Desde la APK 1.19 la escucha <strong>se aparta sola en cuanto otra app pide el micrófono</strong> (el dictado del teclado, una nota de voz) y <strong>vuelve sola</strong> en cuanto terminas — sin dejar de escucharte el resto del tiempo, también con el móvil en la mano. Lo nota porque Android, al que pierde el micro, le manda silencio de verdad; y si el reconocedor está ocupado, se retira igual. 🛑 En la 1.18 se paró mientras usabas el móvil y eso estaba mal: entonces no se le podía hablar. Eso ahora está apagado (queda como interruptor en /escucha por si algún día lo quieres).</div></div>
@@ -4748,7 +4749,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v613';
+var APP_VERSION = 'v614';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -4822,17 +4823,25 @@ function comprobarVersion() {
             localStorage.setItem('azkar_update_try', data.version + '|' + Date.now());
           } catch(e){}
           console.log('[Azkar] Version servidor=' + data.version + ' local=' + APP_VERSION + ' → actualizando');
-          caches.keys().then(function(names) {
-            return Promise.all(names.map(function(n) { return caches.delete(n); }));
-          }).then(function() {
-            if ('serviceWorker' in navigator) {
-              return navigator.serviceWorker.getRegistrations().then(function(regs) {
-                return Promise.all(regs.map(function(r) { return r.unregister(); }));
-              });
-            }
-          }).then(function() {
-            ejecutarUpdateSiNoChat(data.version);
-          });
+          // v614 · ANTES: se borraban TODAS las cachés y se desenchufaba el servicio, así que
+          // el arranque siguiente se bajaba la app entera de internet — y con quince versiones
+          // en un día, eso era esperar una y otra vez. AHORA: se baja la versión nueva PRIMERO
+          // y se deja guardada; el reinicio de después es instantáneo. Si la descarga falla,
+          // no se toca nada y se reintenta luego: nunca se queda sin copia.
+          fetch('./index.html?v=' + encodeURIComponent(data.version), { cache: 'reload' })
+            .then(function(r) {
+              if (!r || !r.ok) throw new Error('HTTP ' + (r && r.status));
+              if (!('caches' in window)) return null;
+              return caches.open('azkar-pwa-' + data.version).then(function(c) { return c.put('./index.html', r.clone()); });
+            })
+            .then(function() {
+              // las cachés viejas las limpia el propio servicio al activarse
+              ejecutarUpdateSiNoChat(data.version);
+            })
+            .catch(function(e) {
+              console.warn('[Azkar] No pude bajar la versión nueva (' + (e && e.message) + '); lo reintento luego');
+              try { localStorage.removeItem('azkar_update_try'); } catch(e2){}
+            });
         } else { try { localStorage.removeItem('azkar_update_try'); } catch(e){} }
       })
       .catch(function(e) { console.log('[Azkar] Version check offline, skip'); });
@@ -4966,11 +4975,12 @@ if ('serviceWorker' in navigator) {
   var storedVersion = localStorage.getItem('azkar-app-version');
   if (storedVersion && storedVersion !== APP_VERSION) {
     console.log('[Azkar] Nueva versión detectada:', storedVersion, '→', APP_VERSION);
-    // Solo limpiar caches, NO desregistrar SW (rompe PWA en Android)
-    caches.keys().then(function(names) {
-      return Promise.all(names.map(function(n) { return caches.delete(n); }));
-    }).then(function() {
-      // Forzar update del SW en vez de desregistrarlo
+    // v614 · YA NO se borran todas las cajas aquí. Borrarlas dejaba la app SIN COPIA, así que
+    // el arranque siguiente se bajaba otra vez la página entera de internet (1,7 MB) — y con
+    // varias versiones en un día, era esperar una y otra vez. Las cajas viejas las tira el
+    // propio servicio al activarse, que sabe cuál es la buena.
+    Promise.resolve()
+      .then(function() {
       return navigator.serviceWorker.getRegistrations();
     }).then(function(regs) {
       return Promise.all(regs.map(function(r) { return r.update(); }));

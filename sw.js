@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  AZKAR PWA · Service Worker · Offline-first
 // ══════════════════════════════════════════════════════════════
-const CACHE_NAME = 'azkar-pwa-v613';
+const CACHE_NAME = 'azkar-pwa-v614';
 const ASSETS = [
   './',
   './index.html',
@@ -11,12 +11,21 @@ const ASSETS = [
   'https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Barlow+Condensed:wght@700;800&display=swap'
 ];
 
-// Install: cache core assets
+// Install: se guarda lo básico
+// v614 · ANTES se guardaba todo de golpe con addAll: si UNO de los archivos fallaba —y en la
+// lista hay uno de Google (la letra), que con cobertura floja o si Google va lento falla— se
+// caía la instalación ENTERA y la app se quedaba SIN COPIA. Resultado: cada vez que se abría
+// se bajaba la página entera de internet. Por eso «le cuesta cargar».
+// Ahora se guarda uno a uno y lo que falle no arrastra a los demás.
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache =>
+      Promise.all(ASSETS.map(a =>
+        fetch(a, { cache: 'reload' })
+          .then(r => (r && r.ok) ? cache.put(a, r) : null)
+          .catch(() => null)
+      ))
+    ).then(() => self.skipWaiting())
   );
 });
 
@@ -49,16 +58,25 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // HTML pages: network-first (always get latest, fallback to cache)
+  // ── v614 · LA APP SE ABRE AL INSTANTE (Asier: «le cuesta cargar») ────────────
+  // Antes: cada vez que se abría se bajaba la página ENTERA de internet (1,7 MB) y
+  // hasta que no llegaba no se veía nada — con cobertura floja, eterno. Y encima se
+  // guardaba con la dirección exacta (?app=1, ?azkarin=voz…), así que abrirla por otra
+  // puerta era otra descarga entera.
+  // Ahora: se enseña YA la copia guardada y la nueva se baja POR DETRÁS para la próxima
+  // (la versión se sigue mirando aparte con version.json, que nunca se guarda).
   if (e.request.destination === 'document' || e.request.url.endsWith('.html')) {
     e.respondWith(
-      fetch(e.request).then(response => {
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        }
-        return response;
-      }).catch(() => caches.match(e.request).then(c => c || caches.match('./index.html')))
+      caches.open(CACHE_NAME).then(caja => caja.match('./index.html')).then(guardada => {
+        const red = fetch(e.request).then(response => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put('./index.html', clone));
+          }
+          return response;
+        }).catch(() => guardada);
+        return guardada || red;   // hay copia → se abre al instante; no la hay → se espera
+      })
     );
     return;
   }
