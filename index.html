@@ -4746,7 +4746,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v606';
+var APP_VERSION = 'v607';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17801,7 +17801,7 @@ async function doResetWithCode() {
               // ── v588 · MANOS LIBRES: la grabación queda a mano para mandarla de viva voz
               //    y, si la pidió hablando, EMPIEZA SOLA en cuanto Azkarin termine de hablar.
               try {
-                window._llAudio = auEl;
+                window._llAudio = auEl; window._llActivaTs = Date.now();   // v607
                 window._llTitulo = titLl;
                 window._llVel = function(v){ try { auEl.preservesPitch = true; } catch(e){} auEl.playbackRate = v; velLl = v; spBtnLl.textContent = String(v).replace('.', ',') + '×'; };
                 auEl.addEventListener('ended', function(){ if (window._llAudio === auEl) window._llAudio = null; });
@@ -18250,6 +18250,7 @@ async function doResetWithCode() {
     _convBuffer = '';
     try { inputEl.value = txt; } catch(e){}
     window._convUltimaSuya = Date.now();   // v589: esto sí iba para él
+    try { _vozParte('enviado', { letras: txt.length }); } catch(e){}   // v607: para saber si de verdad sale
     window.chatbotSend();
   }
   function _convArmarEnvio() {
@@ -18281,10 +18282,15 @@ async function doResetWithCode() {
     try {
       var a = window._llAudio;
       if (!a) return false;
+      // v607 · SOLO mientras la grabación está viva. Antes bastaba con que hubiera una cargada
+      // (aunque estuviera parada desde hacía media hora) y entonces «repite», «sigue», «espera»,
+      // «vuelve» o «ya está» se los tragaba el mando en vez de ir a Azkarin.
+      var _viva = (!a.paused && !a.ended) || ((Date.now() - (window._llActivaTs || 0)) < 180000);
+      if (!_viva) return false;
       var t = String(txt || '').trim().toLowerCase().replace(/[¡!¿?.,]/g, '');
       if (!t) return false;
       if (t.split(/\s+/).length > 7) return false;          // una frase larga es para Azkarin
-      var di = function(m){ try { _convAvisoCorto(m); } catch(e){} };
+      var di = function(m){ window._llActivaTs = Date.now(); try { _convAvisoCorto(m); } catch(e){} };
       if (_RE_LL_OTRA.test(t))   { a.currentTime = 0; a.play(); di('🎧 Desde el principio'); return true; }
       if (_RE_LL_PLAY.test(t))   { a.play(); di('🎧 Va'); return true; }
       if (_RE_LL_PAUSA.test(t))  { a.pause(); di('🎧 Parada'); return true; }
@@ -18321,6 +18327,22 @@ async function doResetWithCode() {
     } catch(e){ return { vale: true, texto: txt }; }
   }
   window._leHablaAEl = _leHablaAEl;
+  // v607 · SI TOCA LA APP O ESCRIBE, ES QUE ESTÁ HABLANDO CON ÉL. El modo «solo si me llamas»
+  // se inventó para no contestar a lo que habla con su hijo con el móvil bloqueado; en cuanto
+  // toca la pantalla ya no hay duda de a quién le habla, así que se escucha todo.
+  window._convModoNormal = function(porQue) {
+    if (!window._convPorPalabraClave) return;
+    window._convPorPalabraClave = false;
+    window._avisadoPalabraClave = false;
+    try { _vozParte('modo_normal', { motivo: String(porQue || 'toque') }); } catch(e){}
+    try { _convAvisoCorto('🎧 Te escucho — ya no hace falta decir mi nombre'); } catch(e){}
+  };
+  (function(){
+    try {
+      var _p = document.getElementById('chatbot-panel');
+      if (_p) ['touchstart','mousedown'].forEach(function(ev){ _p.addEventListener(ev, function(){ window._convModoNormal('toque'); }, true); });
+    } catch(e){}
+  })();
 
   // v594 · el nombre, como lo oye mal el móvil («az carin», «ascarín», «Oscarín», «azkar in») → «Azkarin»
   var _RE_NOMBRE_TORCIDO = /\b(?:a[sz]|o[sz]|e[sz]|ha[sz])[\s-]?[ckq]\s?a\s?r+\s?[ií]\s?[nm]\b|\bazkar\s+in\b/gi;
@@ -18337,7 +18359,14 @@ async function doResetWithCode() {
     if (!_p.vale) {
       console.log('[Conv] no va conmigo, lo dejo pasar:', txt.slice(0, 40));
       _convLimpiarBuffer();
+      try { _vozParte('no_es_para_mi', { letras: txt.length }); } catch(e){}
       try { _convAvisoCorto('🎧 Di «Azkarin» para hablarme'); } catch(e){}
+      // v607 · y se DICE en el chat la primera vez, porque el cartelito de arriba se va solo y
+      // no se lee: si no, parece que no le oye («la décima vez que lo digo sin respuesta»).
+      if (!window._avisadoPalabraClave) {
+        window._avisadoPalabraClave = true;
+        try { addMsg('bot', '🎧 Te he oído, pero me he abierto solo (con la palabra «Azkarin»), así que <b>solo contesto a lo que empiece por mi nombre</b> — es para no meterme en tus conversaciones. Dime «<b>Azkarin, ' + String(txt).slice(0, 40) + '</b>» o <b>toca la pantalla</b> y ya te escucho todo.'); } catch(e){}
+      }
       return;
     }
     txt = _p.texto;
@@ -18401,6 +18430,7 @@ async function doResetWithCode() {
     try {
       var clean = _normEco(text);
       if (!clean) return;
+      try { if (window._azkarinConv && window._vozParte) window._vozParte('respuesta', { letras: clean.length }); } catch(e){}   // v607
       window._ultimosDichos = (window._ultimosDichos || []).filter(_dichoVigente);
       window._ultimosDichos.push({ t: clean, ts: Date.now() });
       if (window._ultimosDichos.length > 10) window._ultimosDichos = window._ultimosDichos.slice(-10);

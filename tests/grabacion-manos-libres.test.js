@@ -20,7 +20,8 @@ function monta() {
   const audio = { paused: true, ended: false, currentTime: 40, duration: 300, playbackRate: 1,
     play() { this.paused = false; }, pause() { this.paused = true; } };
   const avisos = [];
-  const win = { _llAudio: audio, _llVel(v) { audio.playbackRate = v; } };
+  // v607: la grabación acaba de cargarse (por eso está «viva» aunque esté en pausa)
+  const win = { _llAudio: audio, _llActivaTs: Date.now(), _llVel(v) { audio.playbackRate = v; } };
   const mando = new Function('window', '_convAvisoCorto', SRC + '\nreturn _mandoDeLaGrabacion;')(win, m => avisos.push(m));
   return { audio, mando, avisos, win };
 }
@@ -62,8 +63,29 @@ c('C5 · las órdenes de la grabación NO se mandan al servidor (no gastan)', /i
 
 console.log('\n══ D · SABOTAJE ══');
 const roto = SRC.replace("if (t.split(/\\s+/).length > 7) return false;", "");
-const mandoRoto = new Function('window', '_convAvisoCorto', roto + '\nreturn _mandoDeLaGrabacion;')({ _llAudio: { paused: true, play() {}, pause() {} }, _llVel() {} }, () => {});
+const mandoRoto = new Function('window', '_convAvisoCorto', roto + '\nreturn _mandoDeLaGrabacion;')({ _llAudio: { paused: false, ended: false, play() {}, pause() {} }, _llActivaTs: Date.now(), _llVel() {} }, () => {});
 c('D1 · sin el tope de palabras, una frase de trabajo se tragaría el «para» (B2 sería falso)', mandoRoto('para el jueves necesito dos operarios en Getxo y una plataforma') === true);
+
+
+console.log('\n══ V · v607 · LA GRABACIÓN VIEJA YA NO SE COME LO QUE LE DICES A AZKARIN ══');
+{
+  // Asier pausó una grabación hace un rato y luego le habla a Azkarin: «repite», «sigue»,
+  // «espera», «vuelve», «ya está» son órdenes del mando… y se las tragaba aunque la grabación
+  // llevara parada media hora. Ahora el mando solo vale con la grabación viva (sonando o
+  // usada hace menos de tres minutos).
+  const vieja = monta();
+  vieja.win._llActivaTs = Date.now() - 4 * 60 * 1000;   // parada hace cuatro minutos
+  c('V1 · «repite» con la grabación vieja NO la toca: va para Azkarin', vieja.mando('repite') === false && vieja.audio.currentTime === 40);
+  c('V2 · «sigue» tampoco', vieja.mando('sigue') === false && vieja.audio.paused === true);
+  c('V3 · «ya está» tampoco', vieja.mando('ya está') === false);
+  const sonando = monta();
+  sonando.audio.paused = false;
+  sonando.win._llActivaTs = Date.now() - 60 * 60 * 1000;   // el reloj da igual: está sonando
+  c('V4 · pero si está sonando, «para» la para siempre', sonando.mando('para') === true && sonando.audio.paused === true);
+  const reciente = monta();
+  reciente.win._llActivaTs = Date.now() - 30 * 1000;
+  c('V5 · y en pausa recién usada, sigue mandando la voz', reciente.mando('sigue') === true && reciente.audio.paused === false);
+}
 
 console.log('\n──────────────────────────────');
 console.log(bien + ' bien · ' + mal + ' mal');
