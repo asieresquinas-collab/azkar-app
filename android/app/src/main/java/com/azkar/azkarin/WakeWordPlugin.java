@@ -85,6 +85,7 @@ public class WakeWordPlugin extends Plugin {
         r.put("overlay", overlay);
         r.put("fullscreen", fullscreen);
         r.put("mic", getPermissionState("mic") == PermissionState.GRANTED);
+        r.put("porQueNo", WakeWordService.porQueNoEscucha(getContext()));   // v1.22: por que no escucha, en cristiano
         r.put("heyGoogle", true);   // v1.13: existe pedirHeyGoogle()
         r.put("asistente", true);   // v1.16: existe pedirAsistente()
         try {

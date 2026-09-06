@@ -97,7 +97,7 @@ public class WakeWordService extends Service {
     public static final String K_SOLO_HORARIO = "soloHorario";
     public static final String K_MIN_BATERIA = "minBateria";
     public static final String K_CEDE_EN_USO = "cedeEnUso";   // v1.18: soltar el micro mientras usa el movil
-    private static final int HORA_ABRE = 8, HORA_CIERRA = 19;
+    private static final int HORA_ABRE = 7, HORA_CIERRA = 22;   // v1.22: sin domingo y mas ancho
     private Thread hiloVad;
     private AudioRecord rec;
 
@@ -430,6 +430,34 @@ public class WakeWordService extends Service {
         try { return getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(K_CEDE_EN_USO, false); } catch (Exception e) { return false; }
     }
 
+    /**
+     * v1.22 · POR QUE no esta escuchando, en cristiano. Desde fuera solo se veia «no
+     * escucha» y habia que adivinar. Devuelve "" cuando si toca escuchar.
+     */
+    public static String porQueNoEscucha(Context ctx) {
+        try {
+            android.content.SharedPreferences pf = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            long siesta = pf.getLong(K_SIESTA, 0);
+            if (siesta > System.currentTimeMillis()) return "esta callado un rato porque se lo pediste";
+            if (pf.getBoolean(K_SOLO_HORARIO, true)) {
+                int h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+                if (h < HORA_ABRE || h >= HORA_CIERRA) return "fuera de horario (escucha de " + HORA_ABRE + " a " + HORA_CIERRA + ")";
+            }
+            try {
+                int minBat = pf.getInt(K_MIN_BATERIA, 15);
+                BatteryManager bm = (BatteryManager) ctx.getSystemService(Context.BATTERY_SERVICE);
+                if (bm != null && minBat > 0) {
+                    int nivel = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+                    boolean cargando = false;
+                    try { cargando = bm.isCharging(); } catch (Exception e) {}
+                    if (nivel > 0 && nivel < minBat && !cargando) return "bateria por debajo del " + minBat + "%";
+                }
+            } catch (Exception e) {}
+            if (pf.getBoolean(K_CEDE_EN_USO, false)) return "esta puesto «callado mientras uso el movil»";
+            return "";
+        } catch (Exception e) { return ""; }
+    }
+
     private boolean tocaEscuchar() {
         try {
             android.content.SharedPreferences pf = getSharedPreferences(PREF, Context.MODE_PRIVATE);
@@ -444,12 +472,14 @@ public class WakeWordService extends Service {
                 try { cargando = bm.isCharging(); } catch (Exception e) {}
                 if (nivel > 0 && nivel < minBat && !cargando) return false;
             }
-            // 2) su horario de trabajo (se puede quitar desde la app)
+            // 2) su horario (se puede quitar desde la app)
+            // 🛑 v1.22 (6-sep-2026, domingo): Asier «tengo todo activado y le hablo y no me oye».
+            //    Era esto: los DOMINGOS no escuchaba en todo el dia, por ahorrar bateria. El
+            //    hombre trabaja los domingos. Fuera el domingo: solo manda la hora, y ancha
+            //    (7 a 22), que a las siete y media de la tarde sigue trabajando.
             if (pf.getBoolean(K_SOLO_HORARIO, true)) {
                 java.util.Calendar c = java.util.Calendar.getInstance();
                 int h = c.get(java.util.Calendar.HOUR_OF_DAY);
-                int dia = c.get(java.util.Calendar.DAY_OF_WEEK);   // 1 = domingo
-                if (dia == java.util.Calendar.SUNDAY) return false;
                 if (h < HORA_ABRE || h >= HORA_CIERRA) return false;
             }
             return true;
