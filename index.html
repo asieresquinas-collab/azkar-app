@@ -1094,6 +1094,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     <div class='ayuda-content'>
       <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v581 · backend 2.7.615), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🎧 «LE HABLO Y NO ME OYE» — ARREGLADO (app v619 · APK 1.22):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>🛑 <strong>Los domingos se quedaba sordo el día entero.</strong> Para ahorrar batería escuchaba solo de lunes a sábado, de ocho a siete. Tú trabajas los domingos. <strong>Fuera el domingo</strong>, y el horario se abre: de <strong>siete de la mañana a diez de la noche</strong>, todos los días.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>🛑 <strong>El modo conversación se apagaba solo al recargar</strong> — y una actualización es una recarga. Por fuera todo se veía igual: tú hablabas y no había nadie escuchando. Ahora <strong>queda apuntado</strong> y al abrir la app <strong>vuelve a encenderse solo</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Si la escucha de «Azkarin» está caída al abrir, <strong>la levanta ella sola</strong>. Y si aun así no puede, <strong>te dice por qué</strong> (horario, batería, o que le pediste callar) con un botón para arreglarlo de un toque. Ya no se queda callado sin explicación.</div></div>
+      <div class='ayuda-tip'>Para lo del domingo hace falta instalar la APK 1.22: escribe <b>/apk</b>.</div>
+
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>💸 BAJAR EL GASTO SIN QUITAR NADA (backend 2.7.653):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Se ha mirado <strong>dónde se va el dinero de verdad</strong>, con los contadores del servidor: casi todo es <strong>ENTRADA</strong> (lo que Azkarin LEE antes de contestar), no lo que escribe. En agosto: 495 millones de tokens de entrada y solo 1,8 millones de salida.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Google cobra al <strong>diez por ciento</strong> el trozo del principio que ya ha visto antes, pero solo si es <strong>exactamente igual</strong>. Los apartados del manual que entran y salen según lo que pidas estaban <strong>repartidos por todo el manual</strong>, así que el principio cambiaba en casi cada mensaje y esa rebaja se perdía.</div></div>
@@ -4758,7 +4764,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v618';
+var APP_VERSION = 'v619';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17663,6 +17669,61 @@ async function doResetWithCode() {
     html += '<div style="background:#fff7e6;border:1px solid #f0d9a0;border-radius:8px;padding:9px 11px;margin:8px 0;font-size:12.5px;color:#7a5b1e;">⚠️ Para que no falle: Ajustes → Apps → Azkarin → Batería → <b>Sin restricciones</b>. Es la versión gratis: gasta algo de batería y a veces hay que repetir «Azkarin» claro y un poco alto.</div>';
     addMsg('bot', html);
   };
+  // ── v619 · AL ABRIR, QUE VUELVA A ESCUCHAR ────────────────────────────────────
+  // Dos cosas que se quedaban caídas sin avisar:
+  //  · el MODO CONVERSACIÓN se apagaba en cada recarga (y una actualización es una recarga),
+  //  · la escucha de «Azkarin» podía estar muerta y la app solo lo apuntaba en el parte.
+  // Ahora se levanta solo, y si aun así no puede escuchar, lo DICE y por qué.
+  (function(){
+    function _volverAEscuchar(){
+      try {
+        if (!_azkEsApp()) return;
+        if (localStorage.getItem('azkarinConv') === 'on' && !window._azkarinConv) {
+          try {
+            var panel = document.getElementById('chatbot-panel');
+            var bubble = document.getElementById('chatbot-bubble');
+            if (panel && !panel.classList.contains('open')) panel.classList.add('open');
+            if (bubble) bubble.style.display = 'flex';
+            window._chatbotActivo = true;
+          } catch (e) {}
+          try { window.chatbotConvToggle(true); } catch (e) {}
+          try { _vozParte('ww_revive', { motivo: 'conversacion recuperada al abrir' }); } catch (e) {}
+        }
+      } catch (e) {}
+    }
+    function _levantarEscucha(){
+      try {
+        if (!_azkEsApp()) return;
+        if (localStorage.getItem('azkarinEscucha') === 'off') return;
+        var p = _azkWakePlugin(); if (!p || typeof p.info !== 'function') return;
+        p.info().then(function(d){
+          d = d || {};
+          var viva = !!d.listening && (d.vigilando === undefined || !!d.vigilando);
+          if (viva) return;
+          try { _vozParte('ww_revive', { motivo: 'estaba caida al abrir, se levanta sola' }); } catch (e) {}
+          try { p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off', cedeEnUso: (localStorage.getItem('azkarinCede') === 'on') }); } catch (e) {}
+          try { p.start(); } catch (e) {}
+          setTimeout(function(){
+            try {
+              p.info().then(function(d2){
+                d2 = d2 || {};
+                var ok = !!d2.listening && (d2.vigilando === undefined || !!d2.vigilando);
+                try { _vozParte('ww_estado', { motivo: ok ? 'levantada' : ('sigue sin escuchar: ' + (d2.porQueNo || '?')), vale: ok }); } catch (e) {}
+                if (ok) return;
+                var por = String(d2.porQueNo || '');
+                if (por) addMsg('bot', '🎧 <b>No te estoy escuchando</b> porque ' + por + '.<br><button onclick="azkarinHorarioSet(false)" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;cursor:pointer;font-family:inherit;font-size:14px;">🔋 <b>Que escuche a todas horas</b></button>');
+                else addMsg('bot', '🎧 <b>No he podido volver a escuchar solo.</b> Escribe <b>/escucha</b> y dale a «Reiniciar la escucha».');
+              }).catch(function(){});
+            } catch (e) {}
+          }, 3000);
+        }).catch(function(){});
+      } catch (e) {}
+    }
+    function _todo(){ _volverAEscuchar(); setTimeout(_levantarEscucha, 1500); }
+    if (document.readyState === 'complete') setTimeout(_todo, 4000);
+    else window.addEventListener('load', function(){ setTimeout(_todo, 4000); });
+  })();
+
   (function(){
     function _autoEsc(){
       try {
@@ -19463,6 +19524,11 @@ async function doResetWithCode() {
     var nuevo = (typeof forzar === 'boolean') ? forzar : !window._azkarinConv;
     if (nuevo === window._azkarinConv) return;
     window._azkarinConv = nuevo;
+    // v619 · 🛑 QUE NO SE QUEDE SORDO AL RECARGAR. Asier, 6-sep: «tengo todo activado y le
+    // hablo y no me oye». Cada vez que la app se actualiza o se recarga, el modo conversación
+    // se apagaba solo y por fuera todo se veía igual: él hablaba y no había nadie escuchando.
+    // Aquí queda apuntado, y al abrir se vuelve a encender solo (abajo, en _volverAEscuchar).
+    try { localStorage.setItem('azkarinConv', nuevo ? 'on' : 'off'); } catch (e) {}
     // v603 · si lo enciende ÉL con el botón, se escucha todo (el modo «solo si me llama» es
     // solo para cuando se abre sola por la palabra clave o por un aviso). Antes, si la app se
     // había abierto sola antes, el botón heredaba ese modo y tiraba todo lo que no llevara el nombre.

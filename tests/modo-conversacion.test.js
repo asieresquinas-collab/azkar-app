@@ -232,6 +232,26 @@ console.log('\n══ F · v611 · EL PRECIO SE VE, PERO NO SE LEE EN ALTO ═�
   }
 }
 
+// ── G · v619 · QUE NO SE QUEDE SORDO AL RECARGAR (Asier, 6-sep, domingo) ──────
+{
+  console.log('\n══ G · v619 · AL ABRIR, VUELVE A ESCUCHAR ══');
+  c('G1 · 🛑 el modo conversación queda apuntado al encenderlo y al apagarlo',
+    /localStorage\.setItem\('azkarinConv', nuevo \? 'on' : 'off'\)/.test(H));
+  c('G2 · 🛑 y al abrir la app se vuelve a encender solo si estaba puesto',
+    /localStorage\.getItem\('azkarinConv'\) === 'on' && !window\._azkarinConv/.test(H)
+    && /_volverAEscuchar/.test(H));
+  c('G3 · solo dentro de la app (en el ordenador no se abre el micro solo)',
+    /function _volverAEscuchar\(\)\{[\s\S]{0,120}_azkEsApp\(\)/.test(H));
+  c('G4 · 🛑 si la escucha de «Azkarin» está caída, la levanta ella sola',
+    /_levantarEscucha/.test(H) && /estaba caida al abrir, se levanta sola/.test(H));
+  c('G5 · 🛑 y si aun así no puede, DICE por qué (no se queda callado)',
+    /porQueNo/.test(H) && /No te estoy escuchando<\/b> porque/.test(H));
+  c('G6 · con un botón para quitar el horario de un toque',
+    /azkarinHorarioSet\(false\)/.test(H));
+  c('G7 · si él la apagó a propósito, se respeta',
+    /localStorage\.getItem\('azkarinEscucha'\) === 'off'\) return;/.test(H));
+}
+
 console.log('\n──────────────────────────────');
 console.log(bien + ' bien · ' + mal + ' mal');
 process.exit(mal ? 1 : 0);
