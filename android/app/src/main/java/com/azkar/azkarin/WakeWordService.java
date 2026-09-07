@@ -100,6 +100,10 @@ public class WakeWordService extends Service {
     private static final int HORA_ABRE = 7, HORA_CIERRA = 22;   // v1.22: sin domingo y mas ancho
     private Thread hiloVad;
     private AudioRecord rec;
+    private android.media.audiofx.AcousticEchoCanceler aec;   // v1.23
+    private android.media.audiofx.NoiseSuppressor ns;         // v1.23
+    private volatile int MI_SESION = -1;                      // v1.23 · para saber cual grabacion es MIA
+    private Object vigilanteMicro;                            // v1.23 · AudioManager.AudioRecordingCallback
 
     // ── El oido barato: mide el sonido sin pitar ────────────────────────────────
     private static final int HZ = 16000;
@@ -168,6 +172,7 @@ public class WakeWordService extends Service {
         }
         arrancarVigilancia();
         arrancarVigilante();   // v1.21 · y el que vigila al vigilante
+        arrancarVigilanteDelMicro();   // v1.23 · y el que pregunta a Android quien graba
         arrancarCartero();
         return START_STICKY;
     }
@@ -551,9 +556,28 @@ public class WakeWordService extends Service {
         final int tam = Math.max(min, 2048);
         short[] buf = new short[tam / 2];
         try {
-            rec = new AudioRecord(MediaRecorder.AudioSource.MIC, HZ,
-                    AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, tam * 2);
+            // 🛑 v1.23 · «ESTOY VIENDO UN VIDEO Y LE DIGO AZKARIN Y NO ME OYE» (Asier, 7-sep).
+            // Con MIC a secas entra tambien el sonido del PROPIO movil: el video sube el "fondo"
+            // y su voz ya nunca lo pasa (voz = rms > fondo x 3,5), asi que se queda sordo.
+            // VOICE_RECOGNITION es la fuente pensada para hablar: el movil le quita el eco de su
+            // altavoz y el ruido. Y encima se enchufan el cancelador de eco y el de ruido si el
+            // telefono los trae. Si esa fuente no estuviera, se cae al MIC de siempre.
+            try {
+                rec = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, HZ,
+                        AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, tam * 2);
+                if (rec.getState() != AudioRecord.STATE_INITIALIZED) { try { rec.release(); } catch (Exception e2) {} rec = null; }
+            } catch (Exception e1) { rec = null; }
+            if (rec == null) {
+                rec = new AudioRecord(MediaRecorder.AudioSource.MIC, HZ,
+                        AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, tam * 2);
+            }
             if (rec.getState() != AudioRecord.STATE_INITIALIZED) throw new IllegalStateException("no init");
+            try {
+                int _ses = rec.getAudioSessionId();
+                if (android.media.audiofx.AcousticEchoCanceler.isAvailable()) { aec = android.media.audiofx.AcousticEchoCanceler.create(_ses); if (aec != null) aec.setEnabled(true); }
+                if (android.media.audiofx.NoiseSuppressor.isAvailable()) { ns = android.media.audiofx.NoiseSuppressor.create(_ses); if (ns != null) ns.setEnabled(true); }
+                MI_SESION = _ses;
+            } catch (Exception e3) {}
             rec.startRecording();
         } catch (Exception e) {
             // Sin oido barato: se vuelve al bucle de antes (pita, pero funciona)
@@ -600,7 +624,11 @@ public class WakeWordService extends Service {
             // dos segundos y medio seguidos de ceros.
             if (todoCeros) {
                 msMudo += ms;
-                if (huboAudioReal && msMudo >= 2500) { cedidoDetectado(); return; }
+                // v1.23 · esto era el unico aviso y tardaba 2,5 s. Ahora, cuando Android nos deja
+                // preguntar quien graba (de la 10 en adelante), aquel es el que manda y esto se
+                // queda de red de seguridad, con mas margen para no cortarse por nada.
+                final int _topeCeros = (vigilanteMicro != null) ? 6000 : 2500;
+                if (huboAudioReal && msMudo >= _topeCeros) { cedidoDetectado(); return; }
             } else { huboAudioReal = true; msMudo = 0; if (esperaCesion > 0) { esperaCesion = 0; avisoNormal(); } }
             boolean voz = rms > Math.max(fondo * 3.5f, MIN_ABSOLUTO);
             // v1.20 · cada cinco minutos, una foto: cuanto ruido hay y cuantas veces se abrio
@@ -634,6 +662,53 @@ public class WakeWordService extends Service {
         try { if (!tocaEscuchar() && wakeLock != null && wakeLock.isHeld()) wakeLock.release(); } catch (Exception e) {}
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    //  v1.23 · QUIEN ESTA GRABANDO, PREGUNTANDOSELO A ANDROID (Asier, 7-sep:
+    //  «con Azkarin activado intente hablar por el dictado y no me funciono»).
+    //  Hasta ahora se adivinaba: si llegaban ceros exactos DOS SEGUNDOS Y MEDIO, se
+    //  suponia que otra app tenia el micro. Eso son dos segundos y medio de dictado
+    //  muerto, y encima solo saltaba si ANTES habia habido audio de verdad.
+    //  Android tiene una puerta que lo dice AL INSTANTE y ademas avisa cuando la otra
+    //  app TERMINA — asi se vuelve en un segundo, no en medio minuto.
+    // ══════════════════════════════════════════════════════════════════════════
+    private void arrancarVigilanteDelMicro() {
+        if (Build.VERSION.SDK_INT < 29 || vigilanteMicro != null) return;
+        try {
+            if (am == null) am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (am == null) return;
+            final AudioManager.AudioRecordingCallback cb = new AudioManager.AudioRecordingCallback() {
+                @Override public void onRecordingConfigChanged(java.util.List<android.media.AudioRecordingConfiguration> cfgs) {
+                    try {
+                        boolean otra = false;
+                        if (cfgs != null) {
+                            for (android.media.AudioRecordingConfiguration c : cfgs) {
+                                if (c == null) continue;
+                                if (MI_SESION >= 0 && c.getClientAudioSessionId() == MI_SESION) continue;   // esa soy yo
+                                otra = true; break;
+                            }
+                        }
+                        if (otra && vigilando) {
+                            parteAlServidor("ww_cede", "{\"motivo\":\"Android dice que otra app esta grabando\"}");
+                            cedidoDetectado();
+                        } else if (!otra && !vigilando && !stopping && esperaCesion > 0) {
+                            // la otra app ha terminado: se vuelve YA, no dentro de medio minuto
+                            esperaCesion = 0;
+                            handler.removeCallbacksAndMessages(null);
+                            handler.postDelayed(new Runnable() { @Override public void run() { if (!stopping) { avisoNormal(); arrancarVigilancia(); } } }, 900);
+                        }
+                    } catch (Exception e) {}
+                }
+            };
+            am.registerAudioRecordingCallback(cb, handler);
+            vigilanteMicro = cb;
+        } catch (Exception e) { vigilanteMicro = null; }
+    }
+
+    private void pararVigilanteDelMicro() {
+        try { if (am != null && vigilanteMicro != null) am.unregisterAudioRecordingCallback((AudioManager.AudioRecordingCallback) vigilanteMicro); } catch (Exception e) {}
+        vigilanteMicro = null;
+    }
+
     /** v1.19 · otra app tiene el microfono: se suelta TODO y se reintenta con espera creciente. */
     private void cedidoDetectado() {
         vigilando = false;
@@ -650,7 +725,9 @@ public class WakeWordService extends Service {
                 if (nm != null) nm.notify(NOTIF_ID, buildNotif("Te dejo el micro (lo usa otra app) — vuelvo solo"));
             } catch (Exception e) {}
         }
-        esperaCesion = esperaCesion == 0 ? 6000L : Math.min(esperaCesion * 2, 30000L);
+        // v1.23 · esperas cortas: el vigilante del micro avisa en cuanto la otra app termina,
+        // asi que ya no hace falta ir doblando hasta medio minuto.
+        esperaCesion = esperaCesion == 0 ? 3000L : Math.min(esperaCesion * 2, 12000L);
         handler.postDelayed(new Runnable() { @Override public void run() { if (!stopping) arrancarVigilancia(); } }, esperaCesion);
     }
 
@@ -662,6 +739,9 @@ public class WakeWordService extends Service {
     }
 
     private void soltarVad() {
+        try { if (aec != null) { aec.release(); aec = null; } } catch (Exception e) {}
+        try { if (ns != null) { ns.release(); ns = null; } } catch (Exception e) {}
+        MI_SESION = -1;
         try { if (rec != null) { try { rec.stop(); } catch (Exception e) {} rec.release(); } } catch (Exception e) {}
         rec = null;
     }
@@ -917,6 +997,7 @@ public class WakeWordService extends Service {
     public void onDestroy() {
         try { if (vigilante != null) handler.removeCallbacks(vigilante); } catch (Exception e) {}   // v1.21
         try { if (pantallaReceiver != null) unregisterReceiver(pantallaReceiver); } catch (Exception e) {}   // v1.18
+        pararVigilanteDelMicro();   // v1.23
         stopping = true;
         vigilando = false;
         RUNNING = false;
