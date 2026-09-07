@@ -1094,6 +1094,11 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     <div class='ayuda-content'>
       <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v581 · backend 2.7.615), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📐 EL PAPEL DE LOS CUADROS Y EL PARTE PARA FIRMAR (backend 2.7.687):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>📐 <strong>Cuánto papel para forrar cuadros, contado por código.</strong> Te dijo «con cuarenta metros vas sobrado» y treinta segundos después «necesitas ciento sesenta». Ya no echa esa cuenta de cabeza: se la hace el código y te dice los <strong>metros</strong> y el <strong>ancho del rollo</strong>, que son dos cosas distintas. Si falta la medida de algún cuadro, <strong>te la pide</strong> en vez de estimarla.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>📝 <strong>El parte para firmar.</strong> Te mandó una dirección de internet <strong>que no existe</strong> y te dejó tirado a pie de grúa. Ahora el enlace sale de una herramienta, con la llave de verdad y apuntando <strong>a esa ficha</strong>: abre el inventario y las dos firmas. Y tiene prohibido escribir de memoria ninguna dirección del portal, del fichaje o del parte.</div></div>
+      <div class='ayuda-tip'>🛑 Ojo: el PDF que genera es el parte <b>para archivar</b>. Lo que se firma en el móvil es el enlace.</div>
+
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🛑 ARREGLADO LO QUE ROMPÍ EN LA APK 1.23 (APK 1.24):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>La 1.23 te dejó sin escucha («Escuchando de verdad: <strong>no</strong>»). Dos cosas mías: cambié la <strong>entrada de audio</strong> por otra que en tu móvil no arrancaba, y el vigilante nuevo <strong>se soltaba el micro a sí mismo</strong> — mientras no sabía cuál grabación era la suya, tomaba la suya propia por «otra app».</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>En la <strong>1.24</strong>: vuelve la entrada de micrófono <strong>de siempre</strong>, y el vigilante <strong>no cede nunca</strong> si no sabe cuál es su grabación, ni en los tres primeros segundos. De lo del vídeo se queda lo que sí ayuda y no arriesga nada: el <strong>cancelador de eco y de ruido</strong>, que se enchufan aparte.</div></div>
@@ -4804,7 +4809,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v629';
+var APP_VERSION = 'v630';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
