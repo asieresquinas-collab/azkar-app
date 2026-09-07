@@ -103,6 +103,7 @@ public class WakeWordService extends Service {
     private android.media.audiofx.AcousticEchoCanceler aec;   // v1.23
     private android.media.audiofx.NoiseSuppressor ns;         // v1.23
     private volatile int MI_SESION = -1;                      // v1.23 · para saber cual grabacion es MIA
+    private volatile long arranqueVad = 0;                    // v1.24 · cuando se abrio el oido
     private Object vigilanteMicro;                            // v1.23 · AudioManager.AudioRecordingCallback
 
     // ── El oido barato: mide el sonido sin pitar ────────────────────────────────
@@ -562,22 +563,21 @@ public class WakeWordService extends Service {
             // VOICE_RECOGNITION es la fuente pensada para hablar: el movil le quita el eco de su
             // altavoz y el ruido. Y encima se enchufan el cancelador de eco y el de ruido si el
             // telefono los trae. Si esa fuente no estuviera, se cae al MIC de siempre.
-            try {
-                rec = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, HZ,
-                        AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, tam * 2);
-                if (rec.getState() != AudioRecord.STATE_INITIALIZED) { try { rec.release(); } catch (Exception e2) {} rec = null; }
-            } catch (Exception e1) { rec = null; }
-            if (rec == null) {
-                rec = new AudioRecord(MediaRecorder.AudioSource.MIC, HZ,
-                        AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, tam * 2);
-            }
+            // 🛑 v1.24 · SE VUELVE AL MICRO DE SIEMPRE. En la 1.23 se cambio a VOICE_RECOGNITION
+            // y Asier se quedo sin escucha («Escuchando de verdad: NO»). No se arriesga con la
+            // fuente: se queda el MIC de toda la vida y se conserva SOLO lo que ayuda de verdad
+            // con el video — el cancelador de eco y el de ruido, que se enchufan aparte.
+            rec = new AudioRecord(MediaRecorder.AudioSource.MIC, HZ,
+                    AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, tam * 2);
             if (rec.getState() != AudioRecord.STATE_INITIALIZED) throw new IllegalStateException("no init");
-            try {
-                int _ses = rec.getAudioSessionId();
-                if (android.media.audiofx.AcousticEchoCanceler.isAvailable()) { aec = android.media.audiofx.AcousticEchoCanceler.create(_ses); if (aec != null) aec.setEnabled(true); }
-                if (android.media.audiofx.NoiseSuppressor.isAvailable()) { ns = android.media.audiofx.NoiseSuppressor.create(_ses); if (ns != null) ns.setEnabled(true); }
-                MI_SESION = _ses;
-            } catch (Exception e3) {}
+            // v1.24 · la sesion se apunta LO PRIMERO (asi el vigilante del micro sabe cual es la
+            // mia aunque los filtros de abajo fallen), y cada filtro va en su propio try: si el
+            // movil no trae uno, se sigue sin el. Ninguno de estos dos puede dejarle sin escucha.
+            try { MI_SESION = rec.getAudioSessionId(); } catch (Exception e3) { MI_SESION = -1; }
+            if (MI_SESION >= 0) {
+                try { if (android.media.audiofx.AcousticEchoCanceler.isAvailable()) { aec = android.media.audiofx.AcousticEchoCanceler.create(MI_SESION); if (aec != null) aec.setEnabled(true); } } catch (Exception e4) { aec = null; }
+                try { if (android.media.audiofx.NoiseSuppressor.isAvailable()) { ns = android.media.audiofx.NoiseSuppressor.create(MI_SESION); if (ns != null) ns.setEnabled(true); } } catch (Exception e5) { ns = null; }
+            }
             rec.startRecording();
         } catch (Exception e) {
             // Sin oido barato: se vuelve al bucle de antes (pita, pero funciona)
@@ -587,6 +587,7 @@ public class WakeWordService extends Service {
             return;
         }
         VIGILANDO = true;
+        arranqueVad = System.currentTimeMillis();   // v1.24
         parteAlServidor("ww_escucha", "{\"motivo\":\"micro abierto, escuchando\"}");
         long _ultimoInforme = System.currentTimeMillis();
         int _vecesVoz = 0;
@@ -679,11 +680,19 @@ public class WakeWordService extends Service {
             final AudioManager.AudioRecordingCallback cb = new AudioManager.AudioRecordingCallback() {
                 @Override public void onRecordingConfigChanged(java.util.List<android.media.AudioRecordingConfiguration> cfgs) {
                     try {
+                        // 🛑 v1.24 · SI NO SE CUAL ES LA MIA, NO SE CEDE. En la 1.23 esto dejaba a
+                        // Asier sordo: mientras MI_SESION valia -1 (justo al arrancar, o entre
+                        // vueltas) NINGUNA grabacion se reconocia como propia, asi que la primera
+                        // que apareciera —la mia— se tomaba por «otra app» y se soltaba el micro.
+                        // Ahora: sin saber cual es la mia, este vigilante NO hace nada.
+                        if (MI_SESION < 0) return;
+                        // y tampoco en los primeros segundos, que es cuando Android reordena todo
+                        if (System.currentTimeMillis() - arranqueVad < 3000) return;
                         boolean otra = false;
                         if (cfgs != null) {
                             for (android.media.AudioRecordingConfiguration c : cfgs) {
                                 if (c == null) continue;
-                                if (MI_SESION >= 0 && c.getClientAudioSessionId() == MI_SESION) continue;   // esa soy yo
+                                if (c.getClientAudioSessionId() == MI_SESION) continue;   // esa soy yo
                                 otra = true; break;
                             }
                         }
