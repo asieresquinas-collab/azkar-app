@@ -1094,6 +1094,9 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     <div class='ayuda-content'>
       <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v581 · backend 2.7.615), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🛑 SI TIENES LA APP VIEJA, AHORA TE LO DICE (app v637):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>La causa más tonta de que no escuche es tener una APK vieja instalada, y eso no se notaba: la pantalla ponía «APK 1.23» y nadie te decía que ahí estaba el problema. Ahora la app <strong>compara tu versión con la publicada</strong> y, si vas atrasado, te lo pone <strong>arriba del todo</strong> con el botón de instalar — al abrir la app y también en <b>/escucha</b>.</div></div>
+
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📄 «GUÁRDALO EN SU CARPETA» YA SE PUEDE (backend 2.7.697):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Le pediste guardar las llamadas de Isabel en su carpeta de cliente y te dijo que <strong>en Drive no podía crear documentos</strong>. No era verdad. Ahora le dices <strong>«guárdalo en su carpeta»</strong> y te deja el texto como archivo en la carpeta de Drive de ese cliente, con su enlace.</div></div>
       <div class='ayuda-tip'>🛑 La <b>carpeta del cliente</b> y las <b>observaciones de la ficha</b> no son lo mismo. En observaciones van cuatro líneas de trabajo, que es lo que leen los chicos el día del servicio; un textazo ahí dentro estorba. Lo largo va a la carpeta.</div>
@@ -4825,7 +4828,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v636';
+var APP_VERSION = 'v637';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17552,6 +17555,42 @@ async function doResetWithCode() {
   // v587 · QUÉ LE FALTA A ANDROID PARA QUE SE ABRA SOLA. La APK v1.8 lo sabe decir; si la
   // APK es más vieja, no hay info() y no se enseña nada (no se le da la lata con algo que
   // no puede arreglar todavía).
+  // v637 · LA APP VIEJA NO SE NOTA, Y ES LA CAUSA MÁS TONTA DE QUE NO ESCUCHE.
+  // El 8-sep Asier llevaba tres días con la 1.23 (la que rompí yo) mientras la 1.24, que
+  // lo arregla, llevaba publicada desde el domingo: la pantalla decía «APK 1.23» y nadie
+  // le decía que eso era el problema. Ahora se compara con la publicada y se le canta.
+  window.azkarinApkVieja = function(cb){
+    try {
+      var p = _azkWakePlugin();
+      if (!p || typeof p.info !== 'function') { cb(null); return; }
+      p.info().then(function(d){
+        d = d || {};
+        fetch('apk/azkarin-version.json?t=' + Date.now()).then(function(r){ return r.json(); }).then(function(j){
+          var n = function(v){ return String(v||'0').split('.').map(function(x){ return parseInt(x,10)||0; }).reduce(function(a,b){ return a*1000+b; }, 0); };
+          cb((j && j.version && d.version && n(j.version) > n(d.version)) ? { tuya: d.version, ultima: j.version } : null);
+        }).catch(function(){ cb(null); });
+      }).catch(function(){ cb(null); });
+    } catch(e) { cb(null); }
+  };
+  window.azkarinAvisoApkVieja = function(v){
+    return '\u{1F6D1} <b>Tienes la app ' + v.tuya + ' y la buena es la ' + v.ultima + '.</b><br>'
+      + 'Mientras no la instales, la escucha puede fallar por eso y no por otra cosa.<br>'
+      + '<a href="https://azkar-presupuestos-production.up.railway.app/api/apk/bajar" style="display:block;margin:8px 0;padding:12px;border:2px solid #b00;border-radius:10px;background:#ffe9e9;text-decoration:none;color:#b00;font-weight:700;text-align:center;">\u{2B07}\uFE0F Instalar la app ' + v.ultima + ' ahora</a>';
+  };
+  // al abrir la app, una sola vez por versión: si la suya es vieja, se le dice y punto
+  (function(){
+    try {
+      setTimeout(function(){
+        window.azkarinApkVieja(function(v){
+          if (!v) return;
+          var k = 'azkApkAvisada';
+          try { if (localStorage.getItem(k) === v.ultima) return; localStorage.setItem(k, v.ultima); } catch(e){}
+          try { addMsg('bot', window.azkarinAvisoApkVieja(v)); } catch(e){}
+        });
+      }, 4000);
+    } catch(e){}
+  })();
+
   window.azkarinEscuchaPermisos = function(){
     var p = _azkWakePlugin();
     if (!p || typeof p.info !== 'function') { addMsg('bot','Tu APK es anterior a la 1.8 y no puede decirme qué permiso le falta. Instala la última desde el enlace que te pasé y vuelve a intentarlo.'); return; }
@@ -17582,7 +17621,10 @@ async function doResetWithCode() {
         if (d.fullscreen === false) h += '<button onclick="azkarinPermiso(\'pantalla\')" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">2️⃣ <b>Notificaciones a pantalla completa</b></button>';
         h += '<div style="font-size:12px;color:#666;margin-top:6px">Al volver, escribe <b>/escucha</b> otra vez para comprobarlo.</div>';
       }
-      addMsg('bot', h);
+      // v637 · si su APK es más vieja que la publicada, eso va DELANTE de todo
+      window.azkarinApkVieja(function(v){
+        addMsg('bot', (v ? window.azkarinAvisoApkVieja(v) + '<hr>' : '') + h);
+      });
     }).catch(function(e){ addMsg('bot','No he podido preguntarle a la app: ' + (e && e.message)); });
   };
   window.azkarinHorarioSet = function(solo){
