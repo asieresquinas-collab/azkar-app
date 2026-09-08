@@ -1094,6 +1094,11 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     <div class='ayuda-content'>
       <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v581 · backend 2.7.615), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📦 LOS METROS CÚBICOS DE UN PDF, SUMADOS (backend 2.7.701):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Le mandaste el inventario en un PDF para saber si llevabas <strong>uno o dos vehículos</strong> y te dijo «27 m³»… y luego «26»… y al final que <strong>se los había inventado</strong>. Ya no: <strong>suma la lista línea a línea</strong>, contando las unidades, y te <strong>enseña la cuenta</strong> y cuántas líneas ha contado, para que la repases.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>🛑 Si suelta una cifra de metros cúbicos <strong>sin haber sumado nada</strong>, sale el cartel arriba: <strong>«esos metros cúbicos no están sumados, son de cabeza. No cargues el camión con ese número.»</strong></div></div>
+      <div class='ayuda-tip'>🛑 Y ya no te dice cuántos vehículos hacen falta <b>suponiendo</b> lo que carga el tuyo. Dile una vez cuántos metros cúbicos carga el camión y la furgoneta, y a partir de ahí te lo dice de verdad.</div>
+
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🛠️ EL INTERRUPTOR DE LA ORUGA SALÍA IMPRESO EN EL PRESUPUESTO (app v640):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En el PDF que le mandas al cliente salía, entre las líneas y los totales, <strong>«INCLUYE ORUGA SALVAESCALERAS — Activa para añadir la cláusula 20ª»</strong> con su interruptor, y encima apagado. La lista de «esto no se imprime» nombraba los interruptores uno a uno —guardamuebles, permuta, plataforma— y cuando se añadió el de la oruga <strong>nadie lo metió en la lista</strong>.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Arreglado, y además con una regla que <strong>caza a todos los interruptores que vengan después</strong>, para que esto no dependa de acordarse. Comprobado con un navegador de verdad: en pantalla el interruptor sale, al imprimir desaparece.</div></div>
@@ -4842,7 +4847,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v640';
+var APP_VERSION = 'v641';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
