@@ -4857,7 +4857,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v644';
+var APP_VERSION = 'v645';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17732,7 +17732,8 @@ async function doResetWithCode() {
       var v = (j && j.version) ? String(j.version) : '';
       var nombre = v ? ('azkarin-' + v + '.apk') : 'azkarin.apk';
       var h = '\u{1F4F1} <b>La app nueva de Azkarin' + (v ? ' \u2014 versi\u00f3n ' + v : '') + '</b><br>'
-        + '<a href="https://azkar-presupuestos-production.up.railway.app/api/apk/bajar" style="display:block;margin:8px 0;padding:14px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;text-decoration:none;color:#1B4F8A;font-weight:700;text-align:center;">\u{2B07}\uFE0F Bajar <b>' + nombre + '</b></a>'
+        + '<a href="https://azkar-presupuestos-production.up.railway.app/api/apk/bajar" target="_blank" rel="noopener" onclick="return _abrirFuera(event, this.href);" style="display:block;margin:8px 0;padding:14px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;text-decoration:none;color:#1B4F8A;font-weight:700;text-align:center;">\u{2B07}\uFE0F Bajar <b>' + nombre + '</b></a>'
+        + '<div style="font-size:11px;color:#666;margin:-4px 0 8px">Se abre el navegador del m\u00f3vil y baja el archivo (m\u00edralo en la barra de notificaciones). Si no pasa nada, mant\u00e9n pulsado y elige \u00abAbrir en el navegador\u00bb.</div>'
         + '<b>Cuando acabe de bajar:</b><br>'
         + '1\uFE0F\u20E3 Abre <b>el archivo que pone ' + (v || 'el n\u00famero nuevo') + ' en el nombre</b>. Si abres otro de los que ya tienes bajados, Android dir\u00e1 «no instalada»: es que ya tienes esa versi\u00f3n puesta.<br>'
         + '2\uFE0F\u20E3 Si dice que <b>no puede instalar apps de este origen</b>, dale a «Ajustes» y activa <b>«Permitir de esta fuente»</b>.<br>'
@@ -17947,7 +17948,10 @@ async function doResetWithCode() {
         : '🎙️ Hecho: mientras hablo yo te sigo escuchando, y en cuanto me hables encima me callo.');
       return;
     }
-    if (msg && /^\/apk\b/i.test(msg)) { inputEl.value=''; inputEl.style.height='auto'; try { azkarinApkEnlace(); } catch(e){ addMsg('bot','No pude sacar el enlace: '+e.message); } return; }
+    // v645 · Asier escribió «apk» sin la barra (dictando no se pone) y no le salió el botón:
+    // el mensaje se fue al modelo. Ahora «apk», «la apk», «actualizar la app», «app nueva»,
+    // «bajar la app» e «instalar la app» hacen lo mismo que /apk.
+    if (msg && (/^\/apk\b/i.test(msg) || /^\s*(la\s+)?apk\s*[.!]?\s*$/i.test(msg) || /^\s*(actualiza(r|me)?|b[aá]ja(r|me)?|instala(r|me)?|dame|p[oó]n(me)?|desc[aá]rga(r|me)?)\s+(la\s+)?(app|apk)(\s+nueva)?\s*[.!]?\s*$/i.test(msg) || /^\s*(la\s+)?(app|apk)\s+nueva\s*[.!]?\s*$/i.test(msg))) { inputEl.value=''; inputEl.style.height='auto'; try { azkarinApkEnlace(); } catch(e){ addMsg('bot','No pude sacar el enlace: '+e.message); } return; }
     // v629 · Asier escribe «/escicha» dictando y se le contestaba «¿necesitas ayuda con algo?»,
     // gastando un mensaje. Los comandos se le entienden aunque le baile UNA letra: mismo largo
     // (más o menos una) y como mucho dos letras cambiadas. Nada de adivinar comandos raros.
@@ -19815,6 +19819,17 @@ async function doResetWithCode() {
   //    ventana nueva; si el navegador no la abre, se va al mapa en la misma
   //    pantalla (la app se queda donde estaba y vuelves con «atrás»).
   // ══════════════════════════════════════════════════════════════════════════
+  // v645 · abrir un enlace FUERA de la app (navegador del móvil). Dentro de la app un enlace
+  // a otra web se quedaba «abriendo la web» sin bajar nada.
+  window._abrirFuera = function(ev, u) {
+    u = String(u || '');
+    if (!u) return true;
+    try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (e) {}
+    var w = null;
+    try { w = window.open(u, '_blank', 'noopener'); } catch (e) { w = null; }
+    if (!w) { try { window.location.href = u; } catch (e2) {} }
+    return false;
+  };
   window._abrirRutaEntera = function(ev) {
     var u = String(window._rutaEnteraUrl || '');
     if (!u) return true; // no sabemos nada: que el enlace haga lo suyo
