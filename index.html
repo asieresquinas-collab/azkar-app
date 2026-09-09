@@ -4857,7 +4857,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v643';
+var APP_VERSION = 'v644';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17628,7 +17628,13 @@ async function doResetWithCode() {
       var falta = [];
       if (d.overlay === false) falta.push('overlay');
       if (d.fullscreen === false) falta.push('pantalla');
-      var h = '🎧 <b>Escucha «Azkarin»</b> · APK ' + (d.version || '?') + '<br>';
+      // v644 · Asier: «me dice que tengo la 1.23 y yo tengo la 1.24». Este número lo da el
+      // propio Android (no está escrito a mano); se enseña también CUÁNDO se instaló (APK 1.25+)
+      // para que se vea de un vistazo si la actualización de ayer entró o no.
+      var _inst = '';
+      try { if (d.instalada) { var _di = new Date(Number(d.instalada)); _inst = ' · instalada el ' + _di.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' }) + ' a las ' + _di.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); } } catch(e){}
+      var h = '🎧 <b>Escucha «Azkarin»</b> · APK ' + (d.version || '?') + (d.versionCode > 0 ? ' (' + d.versionCode + ')' : '') + _inst + '<br>';
+      h += '<span style="font-size:11px;color:#666">Este número lo dice tu Android, no yo: si pone una versión vieja, es la que hay instalada de verdad.</span><br>';
       h += 'Escuchando ahora: ' + (d.listening ? '🟢 sí' : '⚪ no') + ' · Micrófono: ' + (d.mic ? '✅' : '❌') + '<br>';
       // v609 · el estado de verdad: «vivo» no es lo mismo que «escuchando»
       if (d.vigilando !== undefined) h += 'Escuchando de verdad ahora mismo: ' + (d.vigilando ? '🟢 sí' : '🔴 <b>no</b> — dale a «Reiniciar la escucha»') + '<br>';
