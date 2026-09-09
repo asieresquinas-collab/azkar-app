@@ -1094,6 +1094,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     <div class='ayuda-content'>
       <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v581 · backend 2.7.615), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
 
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🛡️ LA APP YA NO PISA LO QUE AZKARIN METE EN LA FICHA (app v648):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Lo de Koldo: Azkarin metió los cuadros, el reloj y el colchón en la 6617 <strong>dos veces</strong>, y las dos veces desaparecieron. No fue Azkarin: fue <strong>esta app</strong>, que tenía la ficha abierta con la lista vieja y, al guardar, la subía entera encima de lo que Azkarin acababa de meter. Y al volver a tener cobertura (a las nueve y media, viniendo de la carretera) subió otra vez todas las fichas del móvil tal cual.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, antes de guardar, la app mira la nube: si hay un cambio <strong>más nuevo</strong> que lo que tienes cargado, cada cosa que tú <strong>no has tocado</strong> desde entonces (los artículos, las observaciones, cualquier campo) se queda como la dejó Azkarin, y el formulario se actualiza solo. Lo que sí has tocado tú después, manda. Te sale el aviso 🛡️ diciendo qué se ha conservado.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Escribir en el chat de Azkarin ya no cuenta como «estar editando la ficha»: si Azkarin cambia la ficha mientras hablas con él, se carga en la pantalla. Y al reconectar solo sube las fichas que son más nuevas en el móvil que en la nube; las otras se bajan.</div></div>
+      <div class='ayuda-tip'>🔄 Si estás con el dedo en un campo de la ficha cuando Azkarin la cambia, no se recarga encima: te avisa y pulsas <b>Sync</b> para verlo.</div>
+
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🖼️ LOS CUADROS DE KOLDO (backend 2.7.708 · app v647):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>«No era el eco de tu propia voz, era yo».</strong> Dos mensajes tuyos sobre los cuadros se tiraron como eco, y el eco de verdad (la respuesta entera de Azkarin repetida por el micro) pasó. Ahora el eco se mide por <strong>frases seguidas</strong>, no por palabras sueltas: una frase tuya sobre el mismo tema ya no se confunde con lo que acaba de decir él.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Un precio que tú no has dicho no entra en el presupuesto.</strong> Se metió «Material de embalaje especial 60 €» que tú nunca dijiste (lo propuso Azkarin y tú no contestaste). Ahora esa línea se queda fuera y te lo dice para que le pongas tú el precio.</div></div>
@@ -2503,6 +2509,7 @@ function ZO(s){
 function QA(c,z){ AR(c,z); }
 
 function DR(id){
+  if (!window._presupuestoLoading) window._rowsTocadasTs = Date.now(); // v648
   var r=document.getElementById('r'+id);
   if(!r) return;
   if(r.getAttribute('data-fijo')) return; // No se puede borrar fila fija
@@ -4156,6 +4163,7 @@ function chk2p(inp){
 }
 
 function AR(c,z,u,p,d,tm,tam){
+  if (!window._presupuestoLoading) window._rowsTocadasTs = Date.now(); // v648
   c=c||''; z=z||'Salón'; u=u||''; p=p||''; d=d||''; tm=tm||''; tam=tam||'Estándar';
   var ph=document.getElementById('rph');
   if(ph) ph.parentNode.removeChild(ph);
@@ -4852,6 +4860,7 @@ async function forceSync() {
     }
     window._currentPresupuestoRef = id;
     window._lastSavedTimestamp = ts;
+    window._camposTocados = {}; window._rowsTocadasTs = 0; // v648
     window._initialLoadDone = true;
     restoreFechaAbierta();   // v567: como en loadPresupuesto (FECHA ABIERTA / calendario)
 
@@ -4869,7 +4878,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v647';
+var APP_VERSION = 'v648';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -5858,6 +5867,21 @@ function actualizarCamposCargados(ref, data) {
 // ══════════════════════════════════════════════════════════════
 //  v119: GUARDADO EN CADENA con confirmación (IndexedDB → Firebase → cola si falla)
 // ══════════════════════════════════════════════════════════════
+// v648 · qué ha tocado el usuario en el formulario y cuándo (para el escudo anti-pisado)
+window._camposTocados = window._camposTocados || {};
+window._rowsTocadasTs = window._rowsTocadasTs || 0;
+(function () {
+  function _toca(e) {
+    try {
+      if (window._presupuestoLoading) return;
+      var t = e && e.target; if (!t || !t.closest) return;
+      if (t.closest('#tb')) { window._rowsTocadasTs = Date.now(); return; }
+      if (t.id && /^f_/.test(t.id)) window._camposTocados[t.id] = Date.now();
+    } catch (_) {}
+  }
+  document.addEventListener('input', _toca, true);
+  document.addEventListener('change', _toca, true);
+})();
 async function savePresupuestoFull(data) {
   const ref = data.id || data.f_ref;
   let savedIDB = false, savedFB = false;
@@ -5927,6 +5951,35 @@ async function savePresupuestoFull(data) {
       if (data.id) fbData.id = data.id;
       // Siempre incluir rows aunque esté vacío (para borrado intencional)
       if (data.rows !== undefined) fbData.rows = data.rows;
+      // ── v648 · ESCUDO ANTI-PISADO (Koldo 6617, 9-sep) ─────────────────────────────
+      // Azkarin metió los 6 cuadros, el reloj y el colchón en la ficha a las 19:51 y a las
+      // 20:03; la app, con su copia vieja de la ficha abierta, los pisó las dos veces al
+      // guardar (y a las 21:25 otra vez al reconectar). Aquí, antes de subir, se mira la
+      // nube: si tiene un guardado MÁS NUEVO que lo que cargamos, cada campo que el usuario
+      // NO ha tocado desde ese guardado se queda como está en la nube (no se manda), y los
+      // artículos igual. Lo que el usuario SÍ ha tocado después, manda.
+      var _adoptarNube = null, _conservados = [];
+      try {
+        if (window._fb && typeof window._fb.getDoc === 'function') {
+          var _snapN = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', ref));
+          if (_snapN && _snapN.exists()) {
+            var _nube = _snapN.data() || {}, _cts = _nube.timestamp || 0, _yoTs = window._lastSavedTimestamp || 0;
+            if (_cts > _yoTs) {
+              var _toc = window._camposTocados || {};
+              if (fbData.rows !== undefined && Array.isArray(_nube.rows) && (window._rowsTocadasTs || 0) < _cts) { delete fbData.rows; _conservados.push('artículos'); }
+              Object.keys(fbData).forEach(function (k) {
+                if (k === 'id' || k === 'timestamp' || k === 'rows' || k.charAt(0) === '_') return;
+                if (!(k in _nube)) return;
+                if ((_toc[k] || 0) < _cts) { delete fbData[k]; _conservados.push(k); }
+              });
+              if (_conservados.length) {
+                _adoptarNube = Object.assign({}, _nube, { id: ref });
+                console.warn('[v648 escudo] La nube (ts ' + _cts + ') es más nueva que lo cargado (ts ' + _yoTs + '): se conservan ' + _conservados.join(', '));
+              }
+            }
+          }
+        }
+      } catch (eN) { console.warn('[v648 escudo] no se pudo mirar la nube:', eN && eN.message); }
       // v129: Actualizar _lastSavedTimestamp ANTES de escribir a Firebase
       // Así cuando onSnapshot reciba nuestro propio cambio, lo ignorará correctamente
       window._lastSavedTimestamp = fbData.timestamp;
@@ -5935,6 +5988,28 @@ async function savePresupuestoFull(data) {
       savedFB = true;
       // v567: lo que acaba de subir CON valor cuenta como «cargado» — si luego se vacía, se borrará también
       try { actualizarCamposCargados(ref, data); } catch (e) {}
+      // v648 · si se ha conservado algo de la nube, el formulario tiene que enseñarlo
+      if (_adoptarNube) {
+        try {
+          var _merged = Object.assign({}, _adoptarNube);
+          Object.keys(fbData).forEach(function (k) { var v = fbData[k]; _merged[k] = (v && typeof v === 'object' && !Array.isArray(v)) ? '' : v; });
+          try { await savePresupuesto(_merged); } catch (e) {}
+          var _ae = document.activeElement;
+          var _editando = _ae && (_ae.tagName === 'INPUT' || _ae.tagName === 'TEXTAREA' || _ae.tagName === 'SELECT') && _ae.id !== 'chatbot-input' && _ae.id !== 'buzon-azkarin-input' && !!(_ae.closest && _ae.closest('#page-presupuesto'));
+          if (!_editando && String(window._currentPresupuestoRef) === String(ref)) {
+            window._presupuestoLoading = true;
+            try {
+              ['f_ref','f_nc','f_fecha','f_dni','f_nom','f_tel','f_email','f_rec','f_ent','f_fac','f_fserv','f_hserv','f_abono','f_obs','f_tipo','f_com','f_pago'].forEach(function (fid) { var el = document.getElementById(fid); if (el) el.value = ''; });
+              document.querySelectorAll('#tb .cr').forEach(function (cr) { cr.remove(); });
+              rid = 0;
+              restoreFormData(_merged);
+            } finally { window._presupuestoLoading = false; }
+            showSyncStatus('🛡️ Azkarin había cambiado esta ficha: se ha conservado (' + _conservados.join(', ') + ')', 6000);
+          } else {
+            showSyncStatus('🛡️ Azkarin había cambiado esta ficha (' + _conservados.join(', ') + '): NO se ha pisado. Pulsa Sync para verlo.', 8000);
+          }
+        } catch (eA) { console.warn('[v648 escudo] al adoptar:', eA && eA.message); }
+      }
     } catch(e) {
       console.warn('[Azkar] Firebase falló, añadiendo a cola:', e.message);
       queueOfflineOp({
@@ -6591,13 +6666,17 @@ async function initFirebase(config) {
               console.log('[Azkar v129] onSnapshot: cambio REMOTO detectado, ts=' + remoteTs + ' > ' + window._lastSavedTimestamp);
               // v129: NO recargar automáticamente si el usuario está editando (tiene el foco en un input)
               var activeEl = document.activeElement;
-              var userIsEditing = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+              // v648 · escribir en el chat de Azkarin NO es editar la ficha: con el foco en el chat
+              // (que es donde está Asier cuando Azkarin cambia la ficha) el cambio SÍ se carga.
+              var userIsEditing = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')
+                && activeEl.id !== 'chatbot-input' && activeEl.id !== 'buzon-azkarin-input' && !!(activeEl.closest && activeEl.closest('#page-presupuesto'));
               if (userIsEditing) {
                 // El usuario está escribiendo — solo mostrar aviso, NO recargar
                 console.log('[Azkar v129] Usuario editando, mostrando aviso sin recargar');
-                showSyncStatus('☁️ Hay cambios de otro dispositivo — guarda o recarga para verlos', 5000);
-                // Actualizar timestamp para no repetir el aviso
-                window._lastSavedTimestamp = remoteTs;
+                showSyncStatus('☁️ Azkarin (u otro dispositivo) ha cambiado esta ficha — guarda o pulsa Sync para verlo', 5000);
+                // v648 · NO se sube el sello: si se subiera, el siguiente guardado pisaría lo de la
+                // nube con lo viejo del formulario. El escudo de savePresupuestoFull lo mira.
+                window._nubeMasNuevaTs = remoteTs;
               } else {
                 // No está editando → recargar silenciosamente
                 const remoteData = { ...change.doc.data(), id: change.doc.id };
@@ -6694,11 +6773,22 @@ async function syncToFirebase() {
   if (!firebaseConfigured || !window._fb) return;
   try {
     const all = await getAllPresupuestos();
-    const { doc, setDoc } = window._fb;
+    const { doc, setDoc, getDoc } = window._fb;
+    // v648 · al reconectar se subían TODAS las fichas locales tal cual: una copia vieja del
+    // móvil pisaba lo que Azkarin había metido en la nube (Koldo 6617, 21:25). Ahora solo sube
+    // la que es MÁS NUEVA que la nube; si la nube es más nueva, se baja la nube al móvil.
+    let subidas = 0, bajadas = 0;
     for (const p of all) {
+      let nube = null;
+      try { if (typeof getDoc === 'function') { const sn = await getDoc(doc(window._fb.db, 'presupuestos', p.id)); if (sn && sn.exists()) nube = sn.data(); } } catch (e) { nube = null; }
+      if (nube && (nube.timestamp || 0) >= (p.timestamp || 0)) {
+        if ((nube.timestamp || 0) > (p.timestamp || 0)) { try { await savePresupuesto(Object.assign({}, nube, { id: p.id })); bajadas++; } catch (e) {} }
+        continue;
+      }
       await setDoc(doc(window._fb.db, 'presupuestos', p.id), p, { merge: true });
+      subidas++;
     }
-    showSyncStatus('✓ Sincronizado con la nube');
+    showSyncStatus('✓ Sincronizado con la nube' + (subidas || bajadas ? ' (' + subidas + ' subida(s), ' + bajadas + ' bajada(s))' : ''));
   } catch (e) {
     console.warn('[Azkar] Error sync:', e);
     showSyncStatus('⚠ Error de sincronización', 4000);
@@ -8418,6 +8508,7 @@ async function loadPresupuesto(id) {
   // v128: Registrar qué presupuesto está abierto y su timestamp
   window._currentPresupuestoRef = id;
   window._lastSavedTimestamp = data.timestamp || Date.now();
+  window._camposTocados = {}; window._rowsTocadasTs = 0; // v648: ficha recién cargada, nada tocado
   console.log('[Azkar v128] Presupuesto abierto ts=' + window._lastSavedTimestamp);
   restoreFechaAbierta();
   // Preservar estado en marcha del presupuesto cargado
@@ -10742,6 +10833,7 @@ window.addEventListener('DOMContentLoaded', function() {
             // v130: Registrar ref y timestamp para que la detección de conflictos funcione
             window._currentPresupuestoRef = backupRef;
             window._lastSavedTimestamp = data.timestamp || Date.now();
+  window._camposTocados = {}; window._rowsTocadasTs = 0; // v648: ficha recién cargada, nada tocado
             window._currentEnMarcha = !!data._enMarcha;
             window._currentEnMarchaDate = data._enMarchaDate || null;
             window._currentPagado = !!data._pagadoFinalizado;
