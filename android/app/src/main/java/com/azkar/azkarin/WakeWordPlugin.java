@@ -64,9 +64,16 @@ public class WakeWordPlugin extends Plugin {
     public void info(PluginCall call) {
         JSObject r = new JSObject();
         String version = "?";
+        long versionCode = -1, instalada = 0;
         try {
-            version = getContext().getPackageManager()
-                .getPackageInfo(getContext().getPackageName(), 0).versionName;
+            android.content.pm.PackageInfo pi = getContext().getPackageManager()
+                .getPackageInfo(getContext().getPackageName(), 0);
+            version = pi.versionName;
+            // v1.25 · Asier: «me dice que tengo la 1.23 y yo tengo la 1.24». Lo que se enseña
+            // aqui sale del propio Android (no es un numero escrito a mano), asi que se anade
+            // CUANDO se instalo, para que se vea de un vistazo si la actualizacion de ayer entro.
+            versionCode = (Build.VERSION.SDK_INT >= 28) ? pi.getLongVersionCode() : pi.versionCode;
+            instalada = pi.lastUpdateTime;
         } catch (Exception e) {}
         boolean overlay = true;
         try { if (Build.VERSION.SDK_INT >= 23) overlay = Settings.canDrawOverlays(getContext()); } catch (Exception e) {}
@@ -79,6 +86,8 @@ public class WakeWordPlugin extends Plugin {
             }
         } catch (Exception e) {}
         r.put("version", version);
+        r.put("versionCode", versionCode);   // v1.25
+        r.put("instalada", instalada);       // v1.25: cuando se instalo (ms), segun Android
         r.put("listening", WakeWordService.RUNNING);
         r.put("vigilando", WakeWordService.VIGILANDO);   // v1.20: escuchando de verdad (no solo vivo)
         r.put("ultimoOido", WakeWordService.ULTIMO_OIDO);   // v1.20: lo ultimo que entendio
