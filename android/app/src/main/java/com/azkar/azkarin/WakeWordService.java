@@ -80,7 +80,7 @@ public class WakeWordService extends Service {
     private long esperaCesion = 0;   // v1.19 · cuanto se espera al ceder el micro (crece hasta 30 s)
     private volatile boolean vieneDelReconocedor = false;   // v1.17
     // v1.9 · el cartero: cada pocos minutos pregunta si hay algo que recordarle a Asier
-    private static final long CADA_MS = 15 * 60 * 1000L;   // v1.11 · cada cuarto de hora (era 5 min)
+    private static final long CADA_MS = 5 * 60 * 1000L;    // v1.27 · cada cinco minutos: una perdida se dice «al de diez minutos como maximo» (era 15)
     private long ultimoCartero = 0;
     // v1.10 · LA SIESTA. Asier: «que le diga deja de escuchar Azkarin y se desactive».
     // Se calla el rato que diga y VUELVE SOLO. (Callado del todo no podria oir que le

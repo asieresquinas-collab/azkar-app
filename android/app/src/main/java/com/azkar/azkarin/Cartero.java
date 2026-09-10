@@ -39,7 +39,7 @@ import java.net.URL;
  * Y la app pide UNA vez quedar fuera del ahorro de bateria, que es lo que mas mata.
  */
 public class Cartero {
-    public static final long CADA_MS = 15 * 60 * 1000L;
+    public static final long CADA_MS = 5 * 60 * 1000L;   // v1.27 · cada cinco minutos (era 15): una perdida en diez como maximo
     private static final int REQ_ALARMA = 4713;
     private static final String K_ULT = "carteroUltimo";
     private static final String K_PIDE_BAT = "carteroPidioBateria";
