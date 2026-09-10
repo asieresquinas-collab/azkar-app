@@ -4883,7 +4883,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v649';
+var APP_VERSION = 'v650';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18389,6 +18389,26 @@ async function doResetWithCode() {
         // v455: Botón de ALARMA (poner_alarma) — abre el reloj del móvil con la
         // alarma preparada; Asier solo le da a GUARDAR. Una app web no puede
         // ponerla sola: Android no se lo permite a nadie.
+        // v650 · «¿DÓNDE ESTÁ EL PERMISO?» — SE LO ABRE LA APP, NO LO BUSCA ÉL.
+        // 10-sep, 21:32-21:39: Azkarin le mandó a buscar «la tarjeta de estado de Azkarin»,
+        // que solo sale si escribe /escucha, y luego a los ajustes del móvil paso a paso.
+        // Cinco mensajes y no lo encontró. Ahora se le abre la pantalla del permiso desde aquí.
+        if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'permiso_app') {
+          var _cualP = String(data.datos.cual || 'ver');
+          try {
+            var _pP = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.WakeWord) || null;
+            if (!_pP) {
+              addMsg('bot', '📲 Esto solo se puede abrir <b>dentro de la app de Azkarin</b> (Android). Ábrela desde su icono y vuelve a pedírmelo.');
+            } else if (_cualP === 'pantalla' || _cualP === 'overlay') {
+              if (_cualP === 'pantalla' && _pP.pedirPantallaCompleta) _pP.pedirPantallaCompleta();
+              else if (_cualP === 'overlay' && _pP.pedirOverlay) _pP.pedirOverlay();
+              addMsg('bot', '📲 <b>Te acabo de abrir la pantalla del permiso.</b> Dale al interruptor y vuelve aquí; yo lo compruebo solo.<br><small>Si el móvil no te deja activarlo, no pasa nada: con «Mostrar encima» ya puedo hablarte con la pantalla bloqueada.</small>');
+              setTimeout(function(){ try { window.azkarinEscuchaPermisos(); } catch(e){} }, 12000);
+            }
+            try { window.azkarinEscuchaPermisos(); } catch(e){}
+          } catch (eP) { addMsg('bot', 'No pude abrirlo: ' + (eP && eP.message)); }
+          return;
+        }
         if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'alarma') {
           // v457 · SIN TENER QUE DARLE AL BOTÓN. Asier: «¿por qué no haces que funcione
           // sin darle, y que pueda quitarlas y ponerlas?». Si la app de widgets (v1.21+)
