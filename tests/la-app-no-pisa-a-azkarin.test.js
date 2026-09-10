@@ -113,7 +113,7 @@ function montar(nube, opts) {
   c('F3 · al cargar una ficha se olvida lo tocado', (H.match(/window\._camposTocados = \{\}; window\._rowsTocadasTs = 0;/g) || []).length >= 3);
   c('F4 · 🛑 onSnapshot: el chat de Azkarin NO cuenta como «editando la ficha»', /activeEl\.id !== 'chatbot-input'/.test(H) && /activeEl\.closest\('#page-presupuesto'\)/.test(H));
   c('F5 · 🛑 y ya no sube el sello cuando no recarga', /window\._nubeMasNuevaTs = remoteTs;/.test(H) && !/Actualizar timestamp para no repetir el aviso\n\s*window\._lastSavedTimestamp = remoteTs;/.test(H));
-  c('F6 · versión v648', /var APP_VERSION = 'v648'/.test(H));
+  c('F6 · versión v648 o posterior', (function () { const m = H.match(/var APP_VERSION = 'v(\d+)'/); return !!m && Number(m[1]) >= 648; })());
 
   console.log('\n' + bien + ' bien · ' + mal + ' mal');
   process.exit(mal ? 1 : 0);
