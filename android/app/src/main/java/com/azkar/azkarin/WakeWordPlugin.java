@@ -103,7 +103,9 @@ public class WakeWordPlugin extends Plugin {
         } catch (Exception e) {}
         try {
             android.content.SharedPreferences pf = getContext().getSharedPreferences("azkarin", android.content.Context.MODE_PRIVATE);
-            r.put("soloHorario", pf.getBoolean(WakeWordService.K_SOLO_HORARIO, true));
+            r.put("soloHorario", pf.getBoolean(WakeWordService.K_SOLO_HORARIO, false));
+            r.put("horaAbre", WakeWordService.HORA_ABRE);      // v1.29 · el horario de verdad, para no decirlo de memoria
+            r.put("horaCierra", WakeWordService.HORA_CIERRA);
             r.put("minBateria", pf.getInt(WakeWordService.K_MIN_BATERIA, 15));
             r.put("cedeEnUso", pf.getBoolean(WakeWordService.K_CEDE_EN_USO, false));   // v1.18
             r.put("avisos", pf.getBoolean("avisos", true));

@@ -64,9 +64,9 @@ public class Cartero {
         try {
             SharedPreferences pf = ctx.getSharedPreferences(WakeWordService.PREF, Context.MODE_PRIVATE);
             if (!pf.getBoolean("avisos", true)) return false;
-            if (pf.getBoolean(WakeWordService.K_SOLO_HORARIO, true)) {
+            if (pf.getBoolean(WakeWordService.K_SOLO_HORARIO, false)) {   // v1.29 · sin restriccion de hora por defecto
                 int h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
-                if (h < 7 || h >= 22) return false;
+                if (h < WakeWordService.HORA_ABRE || h >= WakeWordService.HORA_CIERRA) return false;
             }
             long ult = pf.getLong(K_ULT, 0);
             if (System.currentTimeMillis() - ult < CADA_MS - 60000) return false;

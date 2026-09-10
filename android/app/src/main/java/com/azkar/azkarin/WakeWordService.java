@@ -97,7 +97,11 @@ public class WakeWordService extends Service {
     public static final String K_SOLO_HORARIO = "soloHorario";
     public static final String K_MIN_BATERIA = "minBateria";
     public static final String K_CEDE_EN_USO = "cedeEnUso";   // v1.18: soltar el micro mientras usa el movil
-    private static final int HORA_ABRE = 7, HORA_CIERRA = 22;   // v1.22: sin domingo y mas ancho
+    // v1.29 · Asier, 10-sep 22:58: «se me dice que solo se escucha de 8 a 19, para que me dices
+    // eso si son las 11». Trabaja de noche y los domingos: la restriccion de hora viene APAGADA
+    // de fabrica (K_SOLO_HORARIO por defecto false). Si algun dia quiere ahorrar bateria, se
+    // enciende desde el chat con horario_de_la_escucha.
+    public static final int HORA_ABRE = 7, HORA_CIERRA = 22;   // v1.22: sin domingo y mas ancho
     private Thread hiloVad;
     private AudioRecord rec;
     private android.media.audiofx.AcousticEchoCanceler aec;   // v1.23
@@ -446,7 +450,7 @@ public class WakeWordService extends Service {
             android.content.SharedPreferences pf = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE);
             long siesta = pf.getLong(K_SIESTA, 0);
             if (siesta > System.currentTimeMillis()) return "esta callado un rato porque se lo pediste";
-            if (pf.getBoolean(K_SOLO_HORARIO, true)) {
+            if (pf.getBoolean(K_SOLO_HORARIO, false)) {
                 int h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
                 if (h < HORA_ABRE || h >= HORA_CIERRA) return "fuera de horario (escucha de " + HORA_ABRE + " a " + HORA_CIERRA + ")";
             }
@@ -484,7 +488,7 @@ public class WakeWordService extends Service {
             //    Era esto: los DOMINGOS no escuchaba en todo el dia, por ahorrar bateria. El
             //    hombre trabaja los domingos. Fuera el domingo: solo manda la hora, y ancha
             //    (7 a 22), que a las siete y media de la tarde sigue trabajando.
-            if (pf.getBoolean(K_SOLO_HORARIO, true)) {
+            if (pf.getBoolean(K_SOLO_HORARIO, false)) {
                 java.util.Calendar c = java.util.Calendar.getInstance();
                 int h = c.get(java.util.Calendar.HOUR_OF_DAY);
                 if (h < HORA_ABRE || h >= HORA_CIERRA) return false;
