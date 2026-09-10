@@ -27,6 +27,7 @@
          activarla nunca (activarla HABLANDO cuando esta apagada es imposible: si no
          escucha, no puede oir que le llaman) -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- v1.14: para abrir el instalador con la APK que se acaba de bajar -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
@@ -84,6 +85,11 @@
             android:name=".WakeWordService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <receiver
+            android:name=".CarteroReceiver"
+            android:exported="false"
+            android:enabled="true" />
 
         <receiver
             android:name=".ArranqueReceiver"

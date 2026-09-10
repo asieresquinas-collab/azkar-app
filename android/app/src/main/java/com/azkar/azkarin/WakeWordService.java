@@ -175,6 +175,7 @@ public class WakeWordService extends Service {
         arrancarVigilante();   // v1.21 · y el que vigila al vigilante
         arrancarVigilanteDelMicro();   // v1.23 · y el que pregunta a Android quien graba
         arrancarCartero();
+        Cartero.armar(this);   // v1.26 · y la alarma, por si a este lo matan
         return START_STICKY;
     }
 

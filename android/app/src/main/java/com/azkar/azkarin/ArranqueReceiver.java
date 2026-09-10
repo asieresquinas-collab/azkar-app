@@ -25,6 +25,7 @@ public class ArranqueReceiver extends BroadcastReceiver {
                 && !"android.intent.action.QUICKBOOT_POWERON".equals(a)
                 && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(a)) return;
 
+            Cartero.armar(ctx);   // v1.26 · el cartero arranca con el movil, este o no la escucha
             boolean encendida = ctx.getSharedPreferences(WakeWordService.PREF, Context.MODE_PRIVATE)
                     .getBoolean("escuchaPuesta", false);
             if (!encendida) return;
