@@ -11,6 +11,15 @@ public class CarteroReceiver extends BroadcastReceiver {
     public void onReceive(final Context ctx, Intent intent) {
         Cartero.armar(ctx);   // la siguiente, siempre
         boolean viva = WakeWordService.RUNNING;
+        // v1.28 · un latido cada hora como mucho, para poder comprobar desde fuera que la alarma suena
+        try {
+            android.content.SharedPreferences pf = ctx.getSharedPreferences(WakeWordService.PREF, Context.MODE_PRIVATE);
+            long ultLatido = pf.getLong("carteroLatido", 0);
+            if (System.currentTimeMillis() - ultLatido > 60 * 60 * 1000L) {
+                pf.edit().putLong("carteroLatido", System.currentTimeMillis()).apply();
+                Cartero.parte(ctx, "cartero_tick", "{\"viva\":" + (viva ? "true" : "false") + "}");
+            }
+        } catch (Exception e) {}
         try {
             boolean encendida = ctx.getSharedPreferences(WakeWordService.PREF, Context.MODE_PRIVATE)
                     .getBoolean("escuchaPuesta", false);
