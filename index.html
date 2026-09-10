@@ -4883,7 +4883,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v650';
+var APP_VERSION = 'v651';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17752,7 +17752,11 @@ async function doResetWithCode() {
       if (d.dnd !== undefined) h += 'Permiso para tapar el «pi» (No molestar): ' + (d.dnd ? '✅' : '❌ <button onclick="azkarinNoMolestar()" style="padding:4px 8px;border:1px solid #1B4F8A;border-radius:8px;background:#D6E4F7;cursor:pointer;font-family:inherit;">Dar permiso</button>') + '<br>';   // v599
       // v592 · la batería, en cristiano y con su interruptor
       if (d.soloHorario !== undefined) {
-        h += '🔋 Escucha ' + (d.soloHorario ? '<b>solo de 8 a 19</b> (de lunes a sábado)' : '<b>todo el día</b>')
+        // v651 · el horario lo dice la APP (APK 1.29+), no lo escribimos a mano: el texto ponía
+        // «solo de 8 a 19 (de lunes a sábado)» cuando desde la 1.22 era 7-22 todos los días.
+        var _hA = (d.horaAbre >= 0 && d.horaAbre != null) ? d.horaAbre : 7;
+        var _hC = (d.horaCierra >= 0 && d.horaCierra != null) ? d.horaCierra : 22;
+        h += '🔋 Escucha ' + (d.soloHorario ? ('<b>solo de ' + _hA + ' a ' + _hC + '</b> (todos los días)') : '<b>a todas horas, sin restricción</b>')
           + ' · se para sola por debajo del ' + (d.minBateria || 15) + '% de batería<br>';
         h += '<button onclick="azkarinHorarioSet(' + (d.soloHorario ? 'false' : 'true') + ')" style="display:block;width:100%;text-align:left;margin:6px 0;padding:10px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:13px;">🔋 <b>' + (d.soloHorario ? 'Que escuche a todas horas' : 'Que escuche solo en horario de trabajo') + '</b> — ' + (d.soloHorario ? 'gasta más batería' : 'gasta la mitad') + '</button>';
       }
@@ -18393,6 +18397,24 @@ async function doResetWithCode() {
         // 10-sep, 21:32-21:39: Azkarin le mandó a buscar «la tarjeta de estado de Azkarin»,
         // que solo sale si escribe /escucha, y luego a los ajustes del móvil paso a paso.
         // Cinco mensajes y no lo encontró. Ahora se le abre la pantalla del permiso desde aquí.
+        // v651 · «que no tenga restricciones de hora» (10-sep, 22:58). Antes solo se podía con el
+        // botón de la tarjeta, y Azkarin le dijo «ya lo tengo guardado» sin cambiar nada.
+        if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'horario_escucha') {
+          var _sinH = !!data.datos.sin_horario;
+          try {
+            var _pH = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.WakeWord) || null;
+            if (!_pH || !_pH.configurar) {
+              addMsg('bot', '📲 Esto solo se puede cambiar <b>dentro de la app de Azkarin</b> (Android). Ábrela desde su icono y vuelve a pedírmelo.');
+            } else {
+              _pH.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off', soloHorario: !_sinH, minBateria: 15 });
+              addMsg('bot', _sinH
+                ? '🕐 <b>Hecho: sin restricción de hora.</b> Te escucho y te aviso a cualquier hora, todos los días. Gasta algo más de batería; si algún día quieres que duerma por la noche, dime «que escuche solo en horario».'
+                : '🔋 <b>Hecho: vuelvo a escuchar solo en su horario.</b> Por la noche duermo, y así gasta menos batería.');
+              setTimeout(function(){ try { window.azkarinEscuchaPermisos(); } catch(e){} }, 800);
+            }
+          } catch (eH) { addMsg('bot', 'No pude cambiarlo: ' + (eH && eH.message)); }
+          return;
+        }
         if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'permiso_app') {
           var _cualP = String(data.datos.cual || 'ver');
           try {
