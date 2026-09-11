@@ -95,6 +95,19 @@ public class WakeWordService extends Service {
     //   · si la bateria baja del 15% y no esta cargando, se para sola y vuelve al enchufarlo.
     //   · el cartero de los recados pregunta cada cuarto de hora, no cada cinco minutos.
     public static final String K_SOLO_HORARIO = "soloHorario";
+    // v1.30 · Asier, 10-sep: «que no tenga restricciones de hora». En la 1.29 se cambio el valor
+    // POR DEFECTO a false, pero el suyo estaba GUARDADO a true (de un boton de la tarjeta), y un
+    // valor guardado gana al defecto: a las 23:24, ya con la 1.29, el parte seguia diciendo
+    // «sigue sin escuchar: fuera de horario (escucha de 7 a 22)». Aqui se apaga de verdad, una
+    // sola vez; si algun dia el quiere horario, lo enciende desde el chat y esto no lo vuelve a tocar.
+    public static final String K_MIGRO_HORARIO = "migroHorario130";
+    public static void quitarHorarioUnaVez(Context ctx) {
+        try {
+            android.content.SharedPreferences pf = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            if (pf.getBoolean(K_MIGRO_HORARIO, false)) return;
+            pf.edit().putBoolean(K_MIGRO_HORARIO, true).putBoolean(K_SOLO_HORARIO, false).apply();
+        } catch (Exception e) {}
+    }
     public static final String K_MIN_BATERIA = "minBateria";
     public static final String K_CEDE_EN_USO = "cedeEnUso";   // v1.18: soltar el micro mientras usa el movil
     // v1.29 · Asier, 10-sep 22:58: «se me dice que solo se escucha de 8 a 19, para que me dices
@@ -179,6 +192,8 @@ public class WakeWordService extends Service {
         arrancarVigilante();   // v1.21 · y el que vigila al vigilante
         arrancarVigilanteDelMicro();   // v1.23 · y el que pregunta a Android quien graba
         arrancarCartero();
+        quitarHorarioUnaVez(this);   // v1.30 · sin restricciones de hora, de verdad
+        arrancarLatido();            // v1.30 · un parte cada cuarto de hora: se sabe si escucha o no
         Cartero.armar(this);   // v1.26 · y la alarma, por si a este lo matan
         return START_STICKY;
     }
@@ -188,6 +203,53 @@ public class WakeWordService extends Service {
     // telefono». Cada cinco minutos se le pregunta al servidor si hay algo que decirle. El
     // servidor es el que decide QUE y CUANDO (horario, no repetir, sin nombres de cliente):
     // aqui solo se pregunta y, si hay algo, se abre Azkarin para que se lo diga hablando.
+    // v1.30 · EL LATIDO. Asier: «estoy probando y no escucha, sale la notificacion y no
+    // funciona». Hasta ahora el estado solo se sabia si el abria la tarjeta. Ahora el propio
+    // servicio manda cada cuarto de hora que esta vivo, si esta escuchando DE VERDAD y, si no,
+    // por que: asi se ve desde fuera sin tener que pedirle nada.
+    private long ultimoLatido = 0;
+    private void arrancarLatido() {
+        handler.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (stopping) return;
+                try {
+                    if (System.currentTimeMillis() - ultimoLatido > 14 * 60 * 1000L) {
+                        ultimoLatido = System.currentTimeMillis();
+                        String motivo = porQueNoEscucha();
+                        parteAlServidor("ww_latido", "{\"vigilando\":" + (vigilando ? "true" : "false")
+                                + ",\"listening\":" + (listening ? "true" : "false")
+                                + ",\"motivo\":" + org.json.JSONObject.quote(motivo == null ? "escuchando" : motivo) + "}");
+                    }
+                } catch (Exception e) {}
+                handler.postDelayed(this, 15 * 60 * 1000L);
+            }
+        }, 30 * 1000L);
+    }
+
+    /** null si esta escuchando; si no, POR QUE no. */
+    private String porQueNoEscucha() {
+        try {
+            if (vigilando) return null;
+            if (listening) return "el reconocedor esta abierto (hablando)";
+            if (siestaHasta() > System.currentTimeMillis()) return "le has dicho que se calle un rato";
+            android.content.SharedPreferences pf = getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            if (pf.getBoolean(K_CEDE_EN_USO, false) && estaEnUso()) return "estas usando el movil y le has dicho que ceda el micro";
+            BatteryManager bm = (BatteryManager) getSystemService(Context.BATTERY_SERVICE);
+            int minBat = pf.getInt(K_MIN_BATERIA, 15);
+            if (bm != null && minBat > 0) {
+                int nivel = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+                boolean cargando = false;
+                try { cargando = bm.isCharging(); } catch (Exception e) {}
+                if (nivel > 0 && nivel < minBat && !cargando) return "bateria al " + nivel + "%";
+            }
+            if (pf.getBoolean(K_SOLO_HORARIO, false)) {
+                int h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+                if (h < HORA_ABRE || h >= HORA_CIERRA) return "fuera de horario (" + HORA_ABRE + " a " + HORA_CIERRA + ")";
+            }
+            return "el micro no se ha abierto (no se por que)";
+        } catch (Exception e) { return "no se ha podido mirar"; }
+    }
+
     private void arrancarCartero() {
         handler.postDelayed(new Runnable() {
             @Override public void run() {
@@ -540,7 +602,7 @@ public class WakeWordService extends Service {
                 NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
                 if (nm != null) nm.notify(NOTIF_ID, buildNotif(enUso
                         ? "Callado mientras usas el móvil (así puedes dictar)"
-                        : "Descansando — vuelvo a las 8:00"));
+                        : ("Descansando — vuelvo a las " + HORA_ABRE + ":00")));
             } catch (Exception e) {}
             handler.postDelayed(new Runnable() {
                 @Override public void run() { if (!stopping) arrancarVigilancia(); }

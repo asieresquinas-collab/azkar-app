@@ -38,6 +38,7 @@ public class MainActivity extends BridgeActivity {
         bajaEInstalaLoQueSeDescarga();
         handleWake(getIntent());
         handleAviso(getIntent());
+        WakeWordService.quitarHorarioUnaVez(this);   // v1.30 · sin restricciones de hora
         Cartero.armar(this);                  // v1.26 · el cartero va por alarma, no depende de la escucha
         Cartero.pedirSinAhorroDeBateria(this); // v1.26 · una vez: fuera del ahorro de bateria
     }
