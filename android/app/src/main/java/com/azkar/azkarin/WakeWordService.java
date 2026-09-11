@@ -369,6 +369,18 @@ public class WakeWordService extends Service {
     private final java.util.Map<Integer,Integer> volAntes = new java.util.HashMap<Integer,Integer>();
     private String tapaFalla = "";
     private boolean tapaAvisado = false;
+    // ══════════════════════════════════════════════════════════════════════════
+    // 🛑 v1.32 · «CADA VEZ QUE PONGO UN VIDEO SE ME BAJA LA VOZ SOLA Y VUELVE A
+    //  SUBIR» (Asier, 11-sep). Era esto: para tapar el «pi» de Android, al abrir y
+    //  cerrar el reconocedor se MUTEABA tambien el canal de la musica. Con un video
+    //  puesto, la escucha abre el reconocedor cada poco → el video se queda mudo un
+    //  segundo y vuelve. Ahora, si esta sonando algo, el canal de la musica NO se
+    //  toca: el «pi» se sigue tapando por los otros tres.
+    // ══════════════════════════════════════════════════════════════════════════
+    private boolean tapeMusica = false;
+    private boolean sonandoAlgo() {
+        try { return am != null && am.isMusicActive(); } catch (Exception e) { return false; }
+    }
     private static String nombreCanal(int c) {
         if (c == AudioManager.STREAM_MUSIC) return "music";
         if (c == AudioManager.STREAM_SYSTEM) return "system";
@@ -379,8 +391,10 @@ public class WakeWordService extends Service {
     private void tapar() {
         if (am == null || muted) return;
         muted = true;
+        tapeMusica = !sonandoAlgo();   // v1.32 · con un video puesto, la musica no se toca
         StringBuilder falla = new StringBuilder();
         for (int c : CANALES) {
+            if (c == AudioManager.STREAM_MUSIC && !tapeMusica) continue;
             boolean ok = false;
             try { am.adjustStreamVolume(c, AudioManager.ADJUST_MUTE, 0); ok = true; } catch (Exception e) {}
             if (!ok) {
@@ -400,6 +414,7 @@ public class WakeWordService extends Service {
         if (am == null || !muted) return;
         muted = false;
         for (int c : CANALES) {
+            if (c == AudioManager.STREAM_MUSIC && !tapeMusica) continue;   // v1.32 · no se tapo, no se destapa
             try { am.adjustStreamVolume(c, AudioManager.ADJUST_UNMUTE, 0); } catch (Exception e) {}
             try {
                 Integer v = volAntes.remove(c);
