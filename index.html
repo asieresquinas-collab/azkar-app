@@ -1092,7 +1092,18 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v654 · backend 2.7.725), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v655 · backend 2.7.731), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🔔 POR QUÉ NUNCA TE HABLABA CON EL MÓVIL BLOQUEADO (backend 2.7.729-731 · APK 1.31 · app v655):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Miré tus partes del 11 de septiembre, de las nueve a las doce: <strong>ni un latido, ni una alarma, ni un solo aviso hablado</strong>. Y no era por falta de cosas que contarte — tenías <strong>cuarenta compromisos pendientes</strong> y un aviso de un pago <strong>congelado desde el día anterior</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Dos fallos, los dos nuestros. El latido de la alarma lo <strong>rechazaba nuestro propio servidor</strong>, así que parecía que todo iba bien. Y la alarma <strong>se apartaba</strong> cuando la escucha estaba «viva» — pero con el móvil bloqueado Android la congela: está viva y no pregunta nada. Justo entonces, lo único que sobrevive se quitaba de en medio. Arreglado en la <strong>APK 1.31</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Y un recado sin contestar ya <strong>no se queda congelado</strong>: caduca a los cuarenta minutos y se te vuelve a ofrecer.</div></div>
+      <div class='ayuda-tip'>🔎 Pregúntale <b>«por qué no me avisas»</b> y te lo dice él: si la alarma ha dado señal, cuándo, y si hay algo esperando. No gasta el aviso, solo mira.</div>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🛑 SE ACABÓ EL PERMISO DE PANTALLA COMPLETA (app v655 · backend 2.7.731):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Te lo pidió <strong>cuatro veces en media hora</strong> y tenías razón: tu <strong>Fold 6 no lo tiene</strong> y <strong>no hace falta</strong>. El que sirve para hablarte con la pantalla bloqueada es «mostrar encima de otras apps», y ese ya lo tienes. No se te vuelve a pedir ni se te abre esa pantalla.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Y la tarjeta ya no miente.</strong> Decía «escuchando de verdad: no» y justo debajo «✅ Todo listo». Ahora, si no te está escuchando, te lo dice con esas palabras y te saca el botón de reiniciar.</div></div>
+      <div class='ayuda-tip'>🙅 Y nunca más «díselo a tu informático» ni «déjalo estar»: del código de esta app responde el encargado, y aquí no se para.</div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🚚 «EN UNA SEÑALIZACIÓN NO SE ESTÁ OCHO HORAS» — UN DÍA LLENO ES UN DÍA CON TRABAJO PARA EL EQUIPO (backend 2.7.725):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Pediste a quién llamar para llenar el lunes y el martes y te dijo <strong>cuatro veces</strong> que estaban completos. Tenías razón tú: en el calendario ponía «6393 EVA NADAL-AGENDAR» el lunes y «6514 SEÑALIZAR» + «6543 ANGEL GRUA» el martes, y <strong>cualquier cosa con referencia contaba como servicio del equipo</strong>.</div></div>
@@ -4959,7 +4970,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v654';
+var APP_VERSION = 'v655';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17811,9 +17822,14 @@ async function doResetWithCode() {
     if (!p || typeof p.info !== 'function') { addMsg('bot','Tu APK es anterior a la 1.8 y no puede decirme qué permiso le falta. Instala la última desde el enlace que te pasé y vuelve a intentarlo.'); return; }
     p.info().then(function(d){
       d = d || {};
+      // v655 (Asier, 11-sep, 15:27): «mi móvil no tiene ese permiso que me dices de pantalla
+      // completa, es un Samsung Galaxy Z Fold 6 y no lo tiene. Me estás pidiendo un permiso
+      // que no tengo, el que tengo que tener ya lo tengo puesto». Y tenía razón: el permiso
+      // que hace falta para hablarle con la pantalla bloqueada es «mostrar encima de otras
+      // apps», y ese lo tiene. El de pantalla completa es un extra. Ya NO cuenta como que
+      // falta algo, y así se le deja de marear con él cada vez que abre la app.
       var falta = [];
       if (d.overlay === false) falta.push('overlay');
-      if (d.fullscreen === false) falta.push('pantalla');
       // v644 · Asier: «me dice que tengo la 1.23 y yo tengo la 1.24». Este número lo da el
       // propio Android (no está escrito a mano); se enseña también CUÁNDO se instaló (APK 1.25+)
       // para que se vea de un vistazo si la actualización de ayer entró o no.
@@ -17838,12 +17854,20 @@ async function doResetWithCode() {
         h += '<button onclick="azkarinHorarioSet(' + (d.soloHorario ? 'false' : 'true') + ')" style="display:block;width:100%;text-align:left;margin:6px 0;padding:10px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:13px;">🔋 <b>' + (d.soloHorario ? 'Que escuche a todas horas' : 'Que escuche solo en horario de trabajo') + '</b> — ' + (d.soloHorario ? 'gasta más batería' : 'gasta la mitad') + '</button>';
       }
       h += '<br>';
-      if (!falta.length) {
+      // v655 · 🛑 LA TARJETA MENTÍA. El 11-sep decía «Escuchando de verdad ahora mismo: 🔴 no»
+      // y tres líneas después «✅ Todo listo. Bloquea el móvil y di Azkarin». Con eso él
+      // bloqueaba el móvil creyendo que funcionaba. El veredicto mira ahora si está
+      // escuchando DE VERDAD, no solo si tiene los permisos.
+      if (!falta.length && d.vigilando === false) {
+        h += '🛑 <b>Los permisos están bien, pero AHORA MISMO no te está escuchando.</b> Android ha matado la escucha.<br>'
+          + '<button onclick="azkarinReiniciarEscucha()" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;cursor:pointer;font-family:inherit;font-size:14px;">🔄 <b>Reiniciar la escucha</b></button>'
+          + '<div style="font-size:12px;color:#666;margin-top:6px">Si esto te pasa muchas veces al día, el problema es el ahorro de batería de Samsung, no los permisos.</div>';
+      } else if (!falta.length) {
         h += '✅ <b>Todo listo.</b> Bloquea el móvil y di «Azkarin»: se abrirá sola.';
       } else {
         h += '🛑 <b>Le falta permiso para abrirse sola</b> con el móvil bloqueado. Toca y dale a «Permitir»:<br>';
         if (d.overlay === false) h += '<button onclick="azkarinPermiso(\'overlay\')" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:2px solid #1B4F8A;border-radius:10px;background:#D6E4F7;cursor:pointer;font-family:inherit;font-size:14px;">1️⃣ <b>Mostrar sobre otras aplicaciones</b> — el importante</button>';
-        if (d.fullscreen === false) h += '<button onclick="azkarinPermiso(\'pantalla\')" style="display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border:1px solid #c8d0db;border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;">2️⃣ <b>Notificaciones a pantalla completa</b></button>';
+        // v655 · el de pantalla completa NO se ofrece: no hace falta, y en su Fold 6 ni existe.
         h += '<div style="font-size:12px;color:#666;margin-top:6px">Al volver, escribe <b>/escucha</b> otra vez para comprobarlo.</div>';
       }
       // v637 · si su APK es más vieja que la publicada, eso va DELANTE de todo
