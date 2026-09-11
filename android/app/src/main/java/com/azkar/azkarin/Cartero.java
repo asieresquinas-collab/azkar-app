@@ -81,7 +81,8 @@ public class Cartero {
             final String base = pf.getString("base", "");
             final String key = pf.getString("apiKey", "");
             if (base == null || base.isEmpty() || key == null || key.isEmpty()) return;
-            pf.edit().putLong(K_ULT, System.currentTimeMillis()).apply();
+            pf.edit().putLong(K_ULT, System.currentTimeMillis())
+                     .putLong("carteroPreguntas", pf.getLong("carteroPreguntas", 0) + 1).apply();   // v1.31 · para el latido
             HttpURLConnection con = null;
             try {
                 URL u = new URL(base + "/api/voz/companero?apiKey=" + key + "&via=" + origen);
@@ -96,7 +97,19 @@ public class Cartero {
                 while ((l = br.readLine()) != null) sb.append(l);
                 br.close();
                 org.json.JSONObject j = new org.json.JSONObject(sb.toString());
-                if (!j.optBoolean("hay", false)) return;
+                if (!j.optBoolean("hay", false)) {
+                    // v1.31 · cada cuatro horas se deja constancia de que SI se pregunto y no
+                    // habia nada. Antes, cuando no habia recado, no quedaba ni rastro y desde
+                    // fuera no habia forma de saber si la alarma sonaba o no.
+                    try {
+                        long ultVacio = pf.getLong("carteroVacio", 0);
+                        if (System.currentTimeMillis() - ultVacio > 4 * 60 * 60 * 1000L) {
+                            pf.edit().putLong("carteroVacio", System.currentTimeMillis()).apply();
+                            parte(ctx, "cartero_pregunta", "{\"hay\":false}");
+                        }
+                    } catch (Exception e) {}
+                    return;
+                }
                 final String texto = j.optString("texto", "");
                 final String id = j.optString("id", "");
                 if (texto.isEmpty()) return;
