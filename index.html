@@ -1092,7 +1092,19 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v655 · backend 2.7.731), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v656 · backend 2.7.732), con la APK 1.32, en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🗣️ «SÍ, MÁNDASELO» AHORA LO MANDA (app v656):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Lo dijiste <strong>tres veces</strong> y las tres te salió otra vez la tarjeta de confirmar, que hay que tocar. El correo a la clienta salió <strong>veintidós minutos tarde</strong>. Ahora, con una tarjeta esperando, si dices <strong>sí, vale, dale, mándaselo</strong> se ejecuta; y si dices <strong>no, espera, cancela</strong> se cancela. Sin tocar la pantalla.</div></div>
+      <div class='ayuda-tip'>🔒 Solo con frases cortas, y nunca si estás mandando una foto o un PDF: ahí sigue pidiendo el toque.</div>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>👀 LO QUE TÚ VES, ES (backend 2.7.732):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Le dijiste que era un <strong>sofá de dos plazas</strong> y te llevó la contraria tres veces. Le mandaste la foto de cerca, te dio la razón… y <strong>dos minutos después volvió a decir que no había sofás</strong>.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, lo que dices que ves en tu foto (o en tu calendario, o en tu móvil) <strong>manda</strong>: tú lo tienes delante y él no. La frase que te lleva la contraria se le quita, y <strong>una corrección tuya ya no se desdice</strong>. Y si una foto no deja claro qué es, tiene que decirlo en vez de inventarse las patas y el tapizado.</div></div>
+      <div class='ayuda-tip'>🔢 Y no se te vuelve a pedir el número de cliente: ese lo pone la app sola.</div>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🔉 EL VÍDEO YA NO SE TE BAJA SOLO (APK 1.32):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Era Azkarin, y llevaba así desde hace meses: para tapar el «pi» de Android cada vez que abre el micro, <strong>le bajaba el volumen a la música</strong> y se lo devolvía un segundo después. Con un vídeo puesto eso pasa cada poco. Ahora, si está sonando algo, <strong>no toca el volumen</strong>.</div></div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🔔 POR QUÉ NUNCA TE HABLABA CON EL MÓVIL BLOQUEADO (backend 2.7.729-731 · APK 1.31 · app v655):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Miré tus partes del 11 de septiembre, de las nueve a las doce: <strong>ni un latido, ni una alarma, ni un solo aviso hablado</strong>. Y no era por falta de cosas que contarte — tenías <strong>cuarenta compromisos pendientes</strong> y un aviso de un pago <strong>congelado desde el día anterior</strong>.</div></div>
@@ -4970,7 +4982,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v655';
+var APP_VERSION = 'v656';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18212,6 +18224,27 @@ async function doResetWithCode() {
     inputEl.value = '';
     inputEl.style.height = 'auto';
     var msgEnviar = msg || ((framesEnviar && framesEnviar.length) ? (framesTipo === 'fotos' ? ('Te he enviado ' + framesEnviar.length + ' fotos. Hazme el borrador del presupuesto con lo que veas.') : ('Te he enviado un vídeo (' + framesEnviar.length + ' fotogramas' + (audioEnviar ? ' y el audio de lo que voy diciendo' : '') + '). Házme el borrador del presupuesto con lo que veas' + (audioEnviar ? ', haciendo caso al audio para lo que va y lo que no va' : '') + '.')) : ((pdfsEnviar && pdfsEnviar.length) ? 'Te he enviado un documento (PDF/Word). Léelo y dime qué pone.' : 'Te he enviado una foto.'));
+    // ══════════════════════════════════════════════════════════════════════
+    // v656 · «SÍ, MÁNDASELO» POR VOZ TIENE QUE MANDARLO (Asier, 11-sep, 17:52)
+    //  Dijo «supercorrecto, mándaselo» a las 17:52, «sí mándaselo» a las 17:54 y
+    //  otra vez después: las tres veces le volvió a salir la MISMA tarjeta de
+    //  confirmar, que hay que TOCAR. Él iba conduciendo y hablando. El correo a la
+    //  clienta se quedó colgado veintidós minutos y acabó saliendo pegado a otro
+    //  mensaje que no tenía nada que ver. Ahora, con una tarjeta esperando, un sí
+    //  claro la ejecuta y un no la cancela, sin tocar la pantalla.
+    // ══════════════════════════════════════════════════════════════════════
+    if (msg && pendingAction && !fotoEnviar && !(framesEnviar && framesEnviar.length) && !(pdfsEnviar && pdfsEnviar.length)) {
+      var _r = String(msg).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+      var _corto = _r.split(' ').length <= 8;
+      var _esSi = _corto && /^(si|sii+|claro|vale|venga|dale|correcto|supercorrecto|perfecto|ok|okey|adelante|eso es|exacto|hazlo|ejecuta|manda|mandalo|mandaselo|envialo|enviaselo|confirmo|confirmado|tira|adjudicado)\b/.test(_r);
+      var _esNo = _corto && /^(no|nel|para|espera|cancela|cancelalo|dejalo|quita|anula|anulalo|todavia no|aun no|mejor no)\b/.test(_r);
+      if (_esSi || _esNo) {
+        addMsg('user', msg);
+        chatHistorial.push({ role: 'user', content: msg });
+        chatbotConfirm(_esSi);
+        return;
+      }
+    }
     // ── v653 · EL MISMO MENSAJE, DOS VECES (Asier, 11-sep) ──────────────────
     // El micro manda la transcripción duplicada con dos segundos de diferencia. El
     // servidor cortaba la segunda y contestaba «me ha llegado dos veces», y ESO era lo
