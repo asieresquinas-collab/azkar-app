@@ -1092,7 +1092,15 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v581 · backend 2.7.615), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v652 · backend 2.7.723), en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📍 «SALIENDO AHORA DESDE BERMEO» — SIN GPS YA NO SE INVENTA UN PUEBLO (backend 2.7.723 · app v652):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El 11-sep a las 10:14 te dijo <strong>«no me llega tu señal GPS ahora mismo»</strong> y a las 10:15 <strong>«saliendo ahora desde Bermeo tardas unos cuarenta y cinco minutos»</strong>. No estabas en Bermeo. Con eso montas el día y llegas tarde a casa de un cliente.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Ahora, si en ese mensaje <strong>no llega tu GPS</strong>, el código <strong>borra</strong> cualquier frase que te ponga en un pueblo («saliendo desde X», «estás en X», «si sales de X») y te pregunta desde dónde sales. Una cita del calendario o la dirección de una ficha <strong>no son</strong> dónde estás tú. Si el pueblo lo has dicho tú, todo normal.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>«No te preocupes, Koldo».</strong> Koldo es el cliente; tú eres Asier. Eso se corrige solo. Y cuando redacta un mensaje <strong>para</strong> el cliente, ahí sí va su nombre.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>«La bandeja de enviados, que no puedo leer desde aquí»</strong> — y dos mensajes después, «he revisado la bandeja de enviados de info@». Mentía la primera: los enviados <strong>se leen</strong>, y esa frase ya no sale.</div></div>
+      <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'><strong>«Esa Sonia».</strong> Te había nombrado él mismo a Sonia con su número (50 cajas en Portugalete), le pediste esa llamada y te puso <strong>dos veces la grabación de Maider</strong>. Ahora, si pides la de una persona y el audio es de otra, la herramienta <strong>se para</strong>: busca la de quien pediste, y si no hay, te lo dice.</div></div>
+      <div class='ayuda-tip'>🔋 Y el botón del horario ya no miente: decía «escucho solo de ocho a siete, de lunes a sábado» cuando la franja de verdad es <b>de 7 a 22 todos los días</b>. Ahora las horas las dice la app.</div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📣 APK 1.26 · EL CARTERO QUE TE HABLA AUNQUE EL MÓVIL ESTÉ BLOQUEADO (app v649):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Lo que pediste ya existía: de <strong>ocho a siete de la tarde</strong>, si hay algo que decirte (un pago que toca, una llamada sin devolver, un compromiso de una llamada, lo importante del día), Azkarin se abre encima de la pantalla bloqueada y te lo dice <strong>una sola vez</strong>. Pero Android <strong>mataba la escucha</strong> en cuanto el móvil llevaba un rato en el bolsillo, y con ella muerta nadie preguntaba: el 10-sep había un pago del día uno esperando desde hacía días.</div></div>
@@ -4883,7 +4891,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v651';
+var APP_VERSION = 'v652';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17776,12 +17784,23 @@ async function doResetWithCode() {
     }).catch(function(e){ addMsg('bot','No he podido preguntarle a la app: ' + (e && e.message)); });
   };
   window.azkarinHorarioSet = function(solo){
+    // v652 · el mensaje decía «escucho solo de ocho a siete, de lunes a sábado» y era MENTIRA:
+    // desde la APK 1.22 la franja es 7-22 TODOS los días. Ahora las horas las dice la app
+    // (info().horaAbre / horaCierra), no están escritas a mano aquí.
     try {
       var p = _azkWakePlugin(); if (!p || !p.configurar) return;
       p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off', soloHorario: !!solo, minBateria: 15 });
-      addMsg('bot', solo
-        ? '🔋 <b>Escucho solo de ocho a siete</b>, de lunes a sábado. Por la noche y los domingos duermo: ahí es donde se iba la batería, escuchando a nadie.'
-        : '🔋 <b>Escucho a todas horas.</b> Gasta más batería — si notas que te dura menos, dime «que escuche solo en horario» y lo dejo como estaba.');
+      if (!solo){
+        addMsg('bot','🔋 <b>Escucho a todas horas</b>, sin restricción de hora. Gasta más batería — si notas que te dura menos, dime «que escuche solo en horario» y lo dejo como estaba.');
+        return;
+      }
+      var _di = function(d){
+        d = d || {};
+        var a = (d.horaAbre != null && d.horaAbre >= 0) ? d.horaAbre : 7;
+        var cc = (d.horaCierra != null && d.horaCierra >= 0) ? d.horaCierra : 22;
+        addMsg('bot','🔋 <b>Escucho solo de ' + a + ' a ' + cc + '</b>, todos los días. Fuera de esa franja duermo: ahí es donde se iba la batería, escuchando a nadie.<br><span style="font-size:12px;color:#666">Si te hace falta a cualquier hora, dime «que escuche a todas horas» o dale al botón de arriba.</span>');
+      };
+      if (p.info) { p.info().then(_di).catch(function(){ _di(null); }); } else { _di(null); }
     } catch(e){ addMsg('bot','No pude cambiarlo: ' + e.message); }
   };
   window.azkarinPermiso = function(cual){
