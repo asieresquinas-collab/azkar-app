@@ -1092,7 +1092,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v657 · backend 2.7.735), con la APK 1.32, en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v658 · backend 2.7.737), con la APK 1.32, en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🔒 SEGURIDAD Y COPIA DE SEGURIDAD (backend 2.7.737 · app v658):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>La copia de seguridad ya no se machaca a sí misma.</strong> Era un solo archivo que se sobrescribía cada día. Si llegan <strong>menos del setenta por ciento</strong> de los presupuestos que había guardados, ya no se toca el archivo bueno y se avisa. Y además se guarda <strong>una copia por día con su fecha</strong>, cuarenta y cinco días; las viejas van a la papelera de Drive, no se borran.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>La app manda ya tu sesión en todas sus llamadas.</strong> De ochenta y tres llamadas al servidor, setenta y una iban sin ella. Eso era lo que impedía cerrar las rutas que hoy solo piden la llave. Ahora va en todas, y el cierre se puede hacer sin romper nada.</div></div>
+      <div class='ayuda-tip'>⏳ Lo que falta: cerrar esas rutas una por una (dejando fuera las que usa la APK para hablarte), rotar la llave después, y dar copia a los fichajes y las llamadas, que hoy no la tienen.</div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🔐 PROTECCIÓN DE DATOS EN EL PRESUPUESTO (app v657):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El <strong>contrato</strong> ya llevaba su cláusula 13ª de protección de datos, y bastante completa. El <strong>presupuesto no llevaba nada</strong>: el pie solo tenía el nombre, el CIF, la dirección y el teléfono. Ahora lleva debajo, en letra pequeña, quién es el responsable, para qué se usan los datos, <strong>qué pasa con las fotos de la vivienda</strong>, a quién se comunican y dónde reclamar.</div></div>
@@ -2245,6 +2250,51 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 </div>
 <!-- FIN PÁGINA REPASO -->
 
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+//  v658 · LA SESIÓN VIAJA EN TODAS LAS LLAMADAS AL SERVIDOR
+//
+//  La clave de la app está escrita en este HTML y este HTML es público: cualquiera
+//  que mire el código fuente la tiene, y con ella se entra en ~113 rutas del
+//  servidor que hoy NO piden nada más. Para poder exigir ADEMÁS la sesión del
+//  usuario en esas rutas, primero hay que asegurarse de que la app la manda: de sus
+//  83 llamadas al servidor, 71 iban SIN ella. Esto lo arregla de una vez y en un
+//  solo sitio, envolviendo fetch: a cualquier llamada a nuestro servidor se le pone
+//  el pase del login (y la llave) si no los llevaba ya.
+//  🛑 Añadir una cabecera no rompe nada: un servidor que no la mire la ignora.
+//  Solo se toca cuando la URL es una cadena (todas nuestras llamadas lo son).
+// ══════════════════════════════════════════════════════════════════════════════
+(function () {
+  try {
+    if (window._azkFetchEnvuelto) return;
+    var HOST = 'azkar-presupuestos-production.up.railway.app';
+    var _f = window.fetch;
+    if (typeof _f !== 'function') return;
+    window._azkFetchEnvuelto = true;
+    window.fetch = function (rec, ini) {
+      try {
+        if (typeof rec === 'string' && rec.indexOf(HOST) >= 0) {
+          ini = ini ? Object.assign({}, ini) : {};
+          var h = new Headers(ini.headers || {});
+          if (!h.has('Authorization')) {
+            var t = null;
+            try { t = localStorage.getItem('azkar_token'); } catch (e) {}
+            if (t) h.set('Authorization', 'Bearer ' + t);
+          }
+          if (!h.has('x-api-key')) {
+            var k = window._apiKey || '';
+            try { if (!k) k = localStorage.getItem('azkar-api-key') || ''; } catch (e) {}
+            if (k) h.set('x-api-key', k);
+          }
+          ini.headers = h;
+          return _f(rec, ini);
+        }
+      } catch (e) { /* ante cualquier duda, la llamada sale como siempre */ }
+      return _f.apply(this, arguments);
+    };
+  } catch (e) {}
+})();
+</script>
 <script>
 // ══════════════════════════════════════════════════════════════════════════
 //  REPASO DEL FIN DE SEMANA (v381)
@@ -4987,7 +5037,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v657';
+var APP_VERSION = 'v658';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
