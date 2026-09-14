@@ -78,9 +78,11 @@ public class Cartero {
     public static void preguntar(final Context ctx, String origen) {
         try {
             SharedPreferences pf = ctx.getSharedPreferences(WakeWordService.PREF, Context.MODE_PRIVATE);
-            final String base = pf.getString("base", "");
-            final String key = pf.getString("apiKey", "");
-            if (base == null || base.isEmpty() || key == null || key.isEmpty()) return;
+            // v1.33 · si llega vacia, la ultima que valio. Hasta hoy, la app le pasaba la
+            // llave en blanco y este «return» mudo dejaba a Asier sin un solo recordatorio.
+            final String base = WakeWordService.conRespaldo(pf, "base", "baseUlt");
+            final String key = WakeWordService.conRespaldo(pf, "apiKey", "apiKeyUlt");
+            if (base.isEmpty() || key.isEmpty()) return;
             pf.edit().putLong(K_ULT, System.currentTimeMillis())
                      .putLong("carteroPreguntas", pf.getLong("carteroPreguntas", 0) + 1).apply();   // v1.31 · para el latido
             HttpURLConnection con = null;
@@ -170,8 +172,9 @@ public class Cartero {
                 HttpURLConnection con = null;
                 try {
                     SharedPreferences pf = ctx.getSharedPreferences(WakeWordService.PREF, Context.MODE_PRIVATE);
-                    String base = pf.getString("base", ""), key = pf.getString("apiKey", "");
-                    if (base == null || base.isEmpty() || key == null || key.isEmpty()) return;
+                    String base = WakeWordService.conRespaldo(pf, "base", "baseUlt");   // v1.33
+                    String key = WakeWordService.conRespaldo(pf, "apiKey", "apiKeyUlt");   // v1.33
+                    if (base.isEmpty() || key.isEmpty()) return;
                     URL u = new URL(base + "/api/voz/parte");
                     con = (HttpURLConnection) u.openConnection();
                     con.setRequestMethod("POST");

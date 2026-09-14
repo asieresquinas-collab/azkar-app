@@ -44,11 +44,19 @@ public class WakeWordPlugin extends Plugin {
             String base = call.getString("base", "");
             String apiKey = call.getString("apiKey", "");
             boolean avisos = Boolean.TRUE.equals(call.getBoolean("avisos", true));
-            android.content.SharedPreferences.Editor ed = getContext()
-                .getSharedPreferences("azkarin", android.content.Context.MODE_PRIVATE).edit()
-                .putString("base", base == null ? "" : base)
-                .putString("apiKey", apiKey == null ? "" : apiKey)
-                .putBoolean("avisos", avisos);
+            android.content.SharedPreferences pf = getContext()
+                .getSharedPreferences("azkarin", android.content.Context.MODE_PRIVATE);
+            android.content.SharedPreferences.Editor ed = pf.edit().putBoolean("avisos", avisos);
+            // v1.33 · 🛑 AQUI SE PERDIA LA LLAVE Y AZKARIN SE QUEDABA MUDO CON EL MOVIL
+            // BLOQUEADO. Antes se escribian base y apiKey SIEMPRE, con lo que llegase. Y
+            // llegaba vacio en dos casos: la app pedia la llave a una variable que no
+            // existia (arreglado en la app v659), y el interruptor de «cede el micro»
+            // llamaba aqui sin base ni llave. Como el servicio y el cartero empiezan con
+            // «si no tengo llave, me callo», el resultado eran cero partes y cero recados.
+            // Ahora: lo vacio NO borra lo bueno. Y se guarda una copia de respaldo de la
+            // ultima llave que valia, por si algun dia vuelve a llegar en blanco.
+            if (base != null && !base.isEmpty()) ed.putString("base", base).putString("baseUlt", base);
+            if (apiKey != null && !apiKey.isEmpty()) ed.putString("apiKey", apiKey).putString("apiKeyUlt", apiKey);
             // v1.11 · los frenos de la batería, si la app los manda
             if (call.getData().has("soloHorario")) ed.putBoolean(WakeWordService.K_SOLO_HORARIO, Boolean.TRUE.equals(call.getBoolean("soloHorario", true)));
             if (call.getData().has("minBateria")) ed.putInt(WakeWordService.K_MIN_BATERIA, call.getInt("minBateria", 15));
@@ -109,6 +117,13 @@ public class WakeWordPlugin extends Plugin {
             r.put("minBateria", pf.getInt(WakeWordService.K_MIN_BATERIA, 15));
             r.put("cedeEnUso", pf.getBoolean(WakeWordService.K_CEDE_EN_USO, false));   // v1.18
             r.put("avisos", pf.getBoolean("avisos", true));
+            // v1.33 · LA VERDAD SOBRE LA LLAVE. Si el movil no la tiene guardada, ni el
+            // servicio ni el cartero pueden hablar con el servidor — y hasta hoy eso pasaba
+            // en silencio. Ahora se ve en la tarjeta de la escucha.
+            r.put("tieneLlave", !WakeWordService.conRespaldo(pf, "apiKey", "apiKeyUlt").isEmpty()
+                             && !WakeWordService.conRespaldo(pf, "base", "baseUlt").isEmpty());
+            r.put("vecesSinLlave", pf.getLong("sinLlave", 0));
+            r.put("ultimaVezSinLlave", pf.getLong("sinLlaveCuando", 0));
         } catch (Exception e) {}
         call.resolve(r);
     }

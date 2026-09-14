@@ -428,13 +428,32 @@ public class WakeWordService extends Service {
             return nm != null && Build.VERSION.SDK_INT >= 23 && nm.isNotificationPolicyAccessGranted();
         } catch (Exception e) { return false; }
     }
+    /**
+     * v1.33 · El valor guardado, y si viene vacio, la ultima copia que valio.
+     * La app le pasaba la llave en blanco (window._apiKey no existia) y el servicio se
+     * quedaba mudo sin decir nada. Esto es el cinturon: con una vez que llegue buena,
+     * ya no se pierde aunque vuelva a llegar vacia.
+     */
+    static String conRespaldo(android.content.SharedPreferences pf, String clave, String respaldo) {
+        String v = null;
+        try { v = pf.getString(clave, ""); } catch (Exception e) {}
+        if (v == null || v.isEmpty()) { try { v = pf.getString(respaldo, ""); } catch (Exception e) {} }
+        return v == null ? "" : v;
+    }
+
     /** v1.17 · Un parte corto al servidor (misma llave publica que el cartero). */
     private void parteAlServidor(final String evento, final String datosJson) {
         try {
             final android.content.SharedPreferences pref = getSharedPreferences("azkarin", Context.MODE_PRIVATE);
-            final String base = pref.getString("base", "");
-            final String key = pref.getString("apiKey", "");
-            if (base == null || base.isEmpty() || key == null || key.isEmpty()) return;
+            final String base = conRespaldo(pref, "base", "baseUlt");
+            final String key = conRespaldo(pref, "apiKey", "apiKeyUlt");
+            // v1.33 · si aun asi no hay llave, se apunta. Antes esto era un «return» mudo y
+            // por eso nadie se entero en tres dias de que no salia ni un parte.
+            if (base.isEmpty() || key.isEmpty()) {
+                try { pref.edit().putLong("sinLlave", pref.getLong("sinLlave", 0) + 1)
+                        .putLong("sinLlaveCuando", System.currentTimeMillis()).apply(); } catch (Exception e2) {}
+                return;
+            }
             new Thread(new Runnable() {
                 @Override public void run() {
                     HttpURLConnection con = null;
