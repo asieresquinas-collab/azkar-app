@@ -1092,7 +1092,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v660 · backend 2.7.737), con la APK 1.33, en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v661 · backend 2.7.742), con la APK 1.34, en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🗣️ LOS RECADOS, EN VOZ ALTA Y CON «DIME» (app v661 · backend 2.7.742 · APK 1.34):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>La notificación lleva el recado.</strong> Antes ponía siempre «Tengo que recordarte una cosa» y se borraba sola al minuto; el recado se quedaba dentro esperando un «sí» que con el móvil bloqueado nunca llegaba, y a los cuarenta minutos volvía a avisar. Ahora la notificación dice <strong>lo que te tiene que decir</strong> (sin nombres de clientes, como siempre) y se queda cuatro horas. Al tocarla, la app lo lee en voz alta.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Di «dime» y te lo dice.</strong> Por voz o escrito: «dime», «dímelo», «qué me tenías que decir», «qué era eso de la notificación». Te lee el último recado que te entregó y, si no hay ninguno reciente, lo siguiente que tocaba. Ya no puede contestar «no sé de qué me hablas».</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Ya no pregunta «¿te puedo decir una cosa?».</strong> Lo dice directo. Si no es buen momento, sigues pudiendo decirle «ahora no» o «en veinte minutos» y te lo repite entonces.</div></div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🔔 POR FIN: POR QUÉ NUNCA TE HABLABA CON EL MÓVIL BLOQUEADO (app v659):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>La app le pasaba al móvil una llave vacía.</strong> Cada vez que abrías la app, la app le decía a la APK con qué llave preguntarle al servidor. Pedía esa llave a un sitio que <strong>no existía</strong>, así que le pasaba <strong>nada</strong>. Y dentro del móvil, el que escucha y el cartero (el que pregunta cada cinco minutos si hay algo que decirte) empiezan con «si no tengo llave, me callo». Por eso <strong>no te ha hablado ni una sola vez</strong> con el teléfono bloqueado, y por eso no llegaba <strong>ningún</strong> parte suyo: en tres días, cero. No era la batería, ni los permisos, ni el móvil.</div></div>
@@ -5044,7 +5049,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v660';
+var APP_VERSION = 'v661';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17670,6 +17675,31 @@ async function doResetWithCode() {
     } catch(e){ return false; }
   }
   window._respuestaAlToque = _respuestaAlToque;
+  // ── v661 · «DIME» (Asier, 14-sep) ─────────────────────────────────────────
+  //  «Me ha mandado una notificación que ponía que me tenía que decir una cosa, y
+  //  luego le pregunto y no sabe de qué le hablo. Quiero que le pueda decir en voz
+  //  "dime" y me lo diga». Aquí mismo, sin pasar por el motor: se le pide al
+  //  servidor lo que te tenía que decir (2.7.742, ?dime=1) y se lee en voz alta.
+  var _RE_DIME = new RegExp('^(?:oye\\s+)?(?:azkarin[,\\s]+)?(dime|d[ií]melo|dimelo|cu[eé]ntame(?:lo)?|qu[eé] me ten[ií]as que (?:decir|contar)|qu[eé] me quer[ií]as (?:decir|contar)|qu[eé] me tienes que (?:decir|contar)|qu[eé] era eso|qu[eé] me has mandado|lo de la notificaci[oó]n|la notificaci[oó]n|qu[eé] me ibas a decir)\\s*[.!?…]*\\s*$', 'i');   // 🛑 hasta el FINAL: «dime cuánto vale la grúa» no es esto
+  function _pideElRecado(txt) {
+    try {
+      var x = String(txt || '').trim();
+      if (!x || x.split(/\s+/).length > 9) return false;
+      if (!_RE_DIME.test(x)) return false;
+      if (window._azkToque && window._azkToque.id) return false;   // eso lo atiende el toque de siempre
+      var api = RAILWAY_API + '/api/voz/companero?apiKey=' + encodeURIComponent(window._apiKey || '') + '&dime=1&x=' + Date.now();
+      try { addMsg('user', x); } catch(e){}
+      fetch(api).then(function(r){ return r.json(); }).then(function(d){
+        var t = (d && d.texto) ? String(d.texto) : 'No tengo nada pendiente que decirte ahora mismo.';
+        try { addMsg('bot', (d && d.hay ? '👋 ' : '') + t); } catch(e){}
+        try { chatTTSEnabled = true; chatSpeak(t); } catch(e){}
+      }).catch(function(){
+        try { addMsg('bot', 'No he podido sacar el recado ahora mismo. Inténtalo otra vez.'); } catch(e){}
+      });
+      return true;
+    } catch(e){ return false; }
+  }
+  window._pideElRecado = _pideElRecado;
 
   window.__azkarinAvisoDeVoz = function(texto, id, tipo){
     try {
@@ -18315,6 +18345,8 @@ async function doResetWithCode() {
     //  mensaje que no tenía nada que ver. Ahora, con una tarjeta esperando, un sí
     //  claro la ejecuta y un no la cancela, sin tocar la pantalla.
     // ══════════════════════════════════════════════════════════════════════
+    // v661 · «dime» / «qué me tenías que decir»: el recado, aquí mismo y en voz alta
+    if (msg && !pendingAction && !fotoEnviar && !(framesEnviar && framesEnviar.length) && !(pdfsEnviar && pdfsEnviar.length) && typeof window._pideElRecado === 'function' && window._pideElRecado(msg)) return;
     if (msg && pendingAction && !fotoEnviar && !(framesEnviar && framesEnviar.length) && !(pdfsEnviar && pdfsEnviar.length)) {
       var _r = String(msg).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
       var _corto = _r.split(' ').length <= 8;
@@ -19141,6 +19173,7 @@ async function doResetWithCode() {
     // v616 · ¿es la respuesta a «¿te puedo decir una cosa?»? Se atiende aquí mismo:
     // ni se manda al servidor de chat ni gasta.
     if (_respuestaAlToque(txt)) { _convLimpiarBuffer(); return; }
+    if (_pideElRecado(txt)) { _convLimpiarBuffer(); return; }   // v661 · «dime»
     // v588: si es una orden para la grabación, se hace aquí y no se le manda nada a Azkarin
     if (_mandoDeLaGrabacion(txt)) { _convLimpiarBuffer(); return; }
     // v589: ¿va dirigido a él? Si no, ni se manda ni se apunta (y no gasta un céntimo)
