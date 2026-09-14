@@ -17,7 +17,14 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+      # 14-sep-2026: setup-android@v3 falló cuatro veces seguidas en su propio paso (no en el
+      # código). El runner de GitHub ya trae el SDK de Android en ANDROID_HOME, así que si
+      # este paso falla se sigue con el que hay, y se aceptan las licencias por si Gradle
+      # tiene que bajarse alguna plataforma.
       - uses: android-actions/setup-android@v3
+        continue-on-error: true
+      - name: Licencias del SDK (por si el paso anterior no pudo)
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
       - name: Instalar dependencias
         run: npm install --no-audit --no-fund
       - name: Sincronizar Capacitor
