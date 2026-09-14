@@ -1092,7 +1092,13 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v658 · backend 2.7.737), con la APK 1.32, en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v659 · backend 2.7.737), con la APK 1.32, en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🔔 POR FIN: POR QUÉ NUNCA TE HABLABA CON EL MÓVIL BLOQUEADO (app v659):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>La app le pasaba al móvil una llave vacía.</strong> Cada vez que abrías la app, la app le decía a la APK con qué llave preguntarle al servidor. Pedía esa llave a un sitio que <strong>no existía</strong>, así que le pasaba <strong>nada</strong>. Y dentro del móvil, el que escucha y el cartero (el que pregunta cada cinco minutos si hay algo que decirte) empiezan con «si no tengo llave, me callo». Por eso <strong>no te ha hablado ni una sola vez</strong> con el teléfono bloqueado, y por eso no llegaba <strong>ningún</strong> parte suyo: en tres días, cero. No era la batería, ni los permisos, ni el móvil.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Arreglado, y no hay que instalar nada.</strong> Con abrir la app una vez, el móvil se queda ya con la llave buena guardada. A partir de ahí el cartero pregunta solo, aunque la app esté cerrada y el teléfono bloqueado.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Y el interruptor de «cédeme el micro» ya no la borra.</strong> Ese botón guardaba la llave en blanco otra vez. Ahora manda siempre las tres cosas juntas.</div></div>
+      <div class='ayuda-tip'>🛑 Lo que se sabe seguro: el servidor sí acepta esos partes (probado uno a uno) y el código del móvil está bien. Lo único que fallaba era la llave. Si tras abrir la app siguiera sin llegar nada, se verá en la tarjeta de la escucha.</div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🔒 SEGURIDAD Y COPIA DE SEGURIDAD (backend 2.7.737 · app v658):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>La copia de seguridad ya no se machaca a sí misma.</strong> Era un solo archivo que se sobrescribía cada día. Si llegan <strong>menos del setenta por ciento</strong> de los presupuestos que había guardados, ya no se toca el archivo bueno y se avisa. Y además se guarda <strong>una copia por día con su fecha</strong>, cuarenta y cinco días; las viejas van a la papelera de Drive, no se borran.</div></div>
@@ -5037,7 +5043,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v658';
+var APP_VERSION = 'v659';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -9134,6 +9140,15 @@ function chatbotMotorReal() {
 // leía de ahí. Si el backend no la pide (versión vieja), sobra y no molesta: no rompe nada.
 const AZKAR_API_KEY = 'azk_08103a9ae1a401abed02dd73db68ab89d28d421d3dbc3c710f29e456b4bec5cc';
 try { localStorage.setItem('azkar_api_key', AZKAR_API_KEY); } catch (e) {}
+// v659 · 🛑 EL FALLO QUE DEJABA MUDO A AZKARIN CON EL MOVIL BLOQUEADO.
+// Media app pedia la llave como «window._apiKey»... y esa variable no se creaba en ningun
+// sitio: valia siempre cadena vacia. En las llamadas web no se notaba (el envoltorio de fetch
+// de aqui abajo rellena la cabecera solo), pero a la APK se le pasaba el valor tal cual:
+// al configurar la APK se le pasaba esa variable inexistente, o sea cadena vacia.
+// Y dentro del movil, el servicio de escucha y el cartero empiezan con
+// «if (key.isEmpty()) return;», asi que NUNCA mandaron un latido ni preguntaron si habia
+// recados. Por eso no le hablaba nunca con el telefono bloqueado. Se define aqui de verdad.
+try { window._apiKey = AZKAR_API_KEY; } catch (e) {}
 (function () {
   var _fetchOriginal = window.fetch;
   window.fetch = function (input, init) {
@@ -17691,7 +17706,7 @@ async function doResetWithCode() {
       try {
         var p = _azkWakePlugin();
         if (!p || typeof p.configurar !== 'function') return;
-        p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off', cedeEnUso: (localStorage.getItem('azkarinCede') === 'on') });   // v606
+        p.configurar({ base: RAILWAY_API, apiKey: AZKAR_API_KEY, avisos: localStorage.getItem('azkarinAvisos') !== 'off', cedeEnUso: (localStorage.getItem('azkarinCede') === 'on') });   // v606
         // v596 · qué APK lleva de verdad, apuntado en el parte (para no adivinarlo desde fuera)
         if (typeof p.info === 'function') p.info().then(function(d){
           d = d || {}; window._apkInfo = d;
@@ -17704,7 +17719,7 @@ async function doResetWithCode() {
   })();
   window.azkarinAvisosSet = function(on){
     try { localStorage.setItem('azkarinAvisos', on ? 'on' : 'off'); } catch(e){}
-    try { var p = _azkWakePlugin(); if (p && p.configurar) p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: !!on }); } catch(e){}
+    try { var p = _azkWakePlugin(); if (p && p.configurar) p.configurar({ base: RAILWAY_API, apiKey: AZKAR_API_KEY, avisos: !!on }); } catch(e){}
     addMsg('bot', on ? '✅ <b>Te avisaré yo</b> cuando vea algo que se te puede olvidar: de ocho a siete, y fuera de esa hora solo si de verdad urge. Nunca digo el nombre del cliente en alto, digo su número de ficha.' : '🔕 <b>Ya no te aviso yo.</b> Solo hablo cuando me llames.');
   };
   // La app nativa llama a esto cuando oye "Azkarin" con el movil bloqueado
@@ -17949,7 +17964,7 @@ async function doResetWithCode() {
     // (info().horaAbre / horaCierra), no están escritas a mano aquí.
     try {
       var p = _azkWakePlugin(); if (!p || !p.configurar) return;
-      p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off', soloHorario: !!solo, minBateria: 15 });
+      p.configurar({ base: RAILWAY_API, apiKey: AZKAR_API_KEY, avisos: localStorage.getItem('azkarinAvisos') !== 'off', soloHorario: !!solo, minBateria: 15 });
       if (!solo){
         addMsg('bot','🔋 <b>Escucho a todas horas</b>, sin restricción de hora. Gasta más batería — si notas que te dura menos, dime «que escuche solo en horario» y lo dejo como estaba.');
         return;
@@ -18046,7 +18061,7 @@ async function doResetWithCode() {
     try { p.stop(); } catch(e){}
     setTimeout(function(){
       try {
-        p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off', cedeEnUso: (localStorage.getItem('azkarinCede') === 'on') });
+        p.configurar({ base: RAILWAY_API, apiKey: AZKAR_API_KEY, avisos: localStorage.getItem('azkarinAvisos') !== 'off', cedeEnUso: (localStorage.getItem('azkarinCede') === 'on') });
       } catch(e){}
       try { p.start(); } catch(e){}
       try { localStorage.setItem('azkarinEscucha','on'); } catch(e){}
@@ -18065,7 +18080,9 @@ async function doResetWithCode() {
     try { localStorage.setItem('azkarinCede', on ? 'on' : 'off'); } catch(e){}
     var p = _azkWakePlugin();
     if (!p || typeof p.configurar !== 'function') { addMsg('bot','\u{1F91D} Para esto hace falta la <b>APK 1.18</b> o más nueva: escribe <b>/apk</b> e instala.'); return; }
-    try { p.configurar({ cedeEnUso: !!on }); } catch(e){}
+    // v659 · llamar a configurar SIN base y SIN llave las borraba dentro del movil (la APK
+    // guardaba cadena vacia) y dejaba mudos al servicio y al cartero. Van siempre las tres.
+    try { p.configurar({ base: RAILWAY_API, apiKey: AZKAR_API_KEY, cedeEnUso: !!on }); } catch(e){}
     addMsg('bot', on
       ? '\u{1F91D} <b>Hecho: mientras uses el móvil me callo del todo.</b><br>🛑 Ojo: así <b>no podrás llamarme</b> con la pantalla encendida; solo con el móvil bloqueado. Normalmente no hace falta: ya te suelto el micro solo cuando otra app lo pide.'
       : '\u{1F442} <b>Hecho: te escucho siempre, también con el móvil en la mano.</b><br>Y si otra app pide el micrófono (el dictado del teclado, una nota de voz), me aparto solo y vuelvo en cuanto termines.');
@@ -18149,7 +18166,7 @@ async function doResetWithCode() {
           var viva = !!d.listening && (d.vigilando === undefined || !!d.vigilando);
           if (viva) return;
           try { _vozParte('ww_revive', { motivo: 'estaba caida al abrir, se levanta sola' }); } catch (e) {}
-          try { p.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off', cedeEnUso: (localStorage.getItem('azkarinCede') === 'on') }); } catch (e) {}
+          try { p.configurar({ base: RAILWAY_API, apiKey: AZKAR_API_KEY, avisos: localStorage.getItem('azkarinAvisos') !== 'off', cedeEnUso: (localStorage.getItem('azkarinCede') === 'on') }); } catch (e) {}
           try { p.start(); } catch (e) {}
           setTimeout(function(){
             try {
@@ -18626,7 +18643,7 @@ async function doResetWithCode() {
             if (!_pH || !_pH.configurar) {
               addMsg('bot', '📲 Esto solo se puede cambiar <b>dentro de la app de Azkarin</b> (Android). Ábrela desde su icono y vuelve a pedírmelo.');
             } else {
-              _pH.configurar({ base: RAILWAY_API, apiKey: window._apiKey || '', avisos: localStorage.getItem('azkarinAvisos') !== 'off', soloHorario: !_sinH, minBateria: 15 });
+              _pH.configurar({ base: RAILWAY_API, apiKey: AZKAR_API_KEY, avisos: localStorage.getItem('azkarinAvisos') !== 'off', soloHorario: !_sinH, minBateria: 15 });
               addMsg('bot', _sinH
                 ? '🕐 <b>Hecho: sin restricción de hora.</b> Te escucho y te aviso a cualquier hora, todos los días. Gasta algo más de batería; si algún día quieres que duerma por la noche, dime «que escuche solo en horario».'
                 : '🔋 <b>Hecho: vuelvo a escuchar solo en su horario.</b> Por la noche duermo, y así gasta menos batería.');
