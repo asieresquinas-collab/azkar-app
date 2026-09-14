@@ -95,13 +95,15 @@ ok('D2 · y esa llave sale de window._apiKey, que ahora ya vale algo',
 // ── E · la versión ──────────────────────────────────────────────────────────
 console.log('\nE · la versión sube en los tres sitios');
 
-ok('E1 · index.html dice v660', /var APP_VERSION = 'v660'/.test(HTML));
+// la versión sube en cada despliegue: lo que se vigila es que los TRES sitios digan la misma
+const _vHtml = (HTML.match(/var APP_VERSION = '(v\d+)'/) || [])[1];
 const SW = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
-ok('E2 · sw.js dice v660', /azkar-pwa-v660/.test(SW));
+const _vSw = (SW.match(/azkar-pwa-(v\d+)/) || [])[1];
 const VJ = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8'));
-ok('E3 · version.json dice v660', VJ.version === 'v660', VJ.version);
+ok('E1 · index.html tiene versión, v660 o más nueva', !!_vHtml && parseInt(_vHtml.slice(1), 10) >= 660, _vHtml);
+ok('E2 · sw.js dice la misma', _vSw === _vHtml, _vSw + ' vs ' + _vHtml);
+ok('E3 · version.json dice la misma', VJ.version === _vHtml, VJ.version + ' vs ' + _vHtml);
 
-// ── F · queda contado en la ayuda ───────────────────────────────────────────
 console.log('\nF · está contado en la ayuda');
 
 ok('F1 · la ayuda habla de la llave vacía',
