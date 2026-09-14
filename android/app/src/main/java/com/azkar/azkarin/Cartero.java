@@ -114,17 +114,25 @@ public class Cartero {
                 }
                 final String texto = j.optString("texto", "");
                 final String id = j.optString("id", "");
+                // v1.34 · el servidor manda ya un texto corto para la notificacion (2.7.742)
+                final String notif = j.optString("notificacion", "");
                 if (texto.isEmpty()) return;
                 parte(ctx, "cartero_alarma", "{\"id\":" + org.json.JSONObject.quote(id) + "}");
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
-                    @Override public void run() { abrirParaDecir(ctx, texto, id); }
+                    @Override public void run() { abrirParaDecir(ctx, texto, id, notif); }
                 });
             } finally { try { if (con != null) con.disconnect(); } catch (Exception e) {} }
         } catch (Exception e) {}
     }
 
     /** Abre Azkarin encima de lo que haya (pantalla bloqueada incluida) para que lo diga hablando. */
-    public static void abrirParaDecir(Context ctx, String texto, String id) {
+    public static void abrirParaDecir(Context ctx, String texto, String id) { abrirParaDecir(ctx, texto, id, ""); }
+    // v1.34 · LA NOTIFICACION LLEVA EL RECADO. Asier, 14-sep: «me ha mandado una notificacion
+    // que ponia que me tenia que decir una cosa, cuatro veces hoy, y luego le pregunto y no
+    // sabe de que le hablo». Antes ponia siempre «Tengo que recordarte una cosa» y el recado
+    // se quedaba dentro. Ahora la notificacion dice EL RECADO (sin nombres de clientes: viene
+    // asi del servidor), y al tocarla la app lo lee en voz alta.
+    public static void abrirParaDecir(Context ctx, String texto, String id, String notif) {
         Intent i = new Intent(ctx, MainActivity.class);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
                 | Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -137,14 +145,17 @@ public class Cartero {
             int pf = PendingIntent.FLAG_UPDATE_CURRENT;
             if (Build.VERSION.SDK_INT >= 23) pf |= PendingIntent.FLAG_IMMUTABLE;
             PendingIntent full = PendingIntent.getActivity(ctx, 8, i, pf);
+            String cuerpo = (notif == null || notif.trim().isEmpty()) ? texto : notif;
+            if (cuerpo == null || cuerpo.trim().isEmpty()) cuerpo = "Tengo que recordarte una cosa";
             Notification n = new NotificationCompat.Builder(ctx, WakeWordService.CH_LLAMA)
                 .setContentTitle("Azkarin")
-                .setContentText("Tengo que recordarte una cosa")
+                .setContentText(cuerpo)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(cuerpo))
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setAutoCancel(true)
-                .setTimeoutAfter(60000)
+                .setTimeoutAfter(4 * 60 * 60 * 1000L)   // v1.34 · antes se borraba sola al minuto; un recado se queda hasta que lo vea
                 .setContentIntent(full)
                 .setFullScreenIntent(full, true)
                 .build();

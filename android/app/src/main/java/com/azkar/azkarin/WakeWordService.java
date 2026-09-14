@@ -266,10 +266,10 @@ public class WakeWordService extends Service {
         ultimoCartero = System.currentTimeMillis();
         final android.content.SharedPreferences pref =
             getSharedPreferences("azkarin", Context.MODE_PRIVATE);
-        final String base = pref.getString("base", "");
-        final String key = pref.getString("apiKey", "");
+        final String base = conRespaldo(pref, "base", "baseUlt");       // v1.34 · con respaldo, como el cartero
+        final String key = conRespaldo(pref, "apiKey", "apiKeyUlt");
         if (!pref.getBoolean("avisos", true)) return;
-        if (base == null || base.isEmpty() || key == null || key.isEmpty()) return;
+        if (base.isEmpty() || key.isEmpty()) return;
         new Thread(new Runnable() {
             @Override public void run() {
                 HttpURLConnection con = null;
@@ -289,9 +289,10 @@ public class WakeWordService extends Service {
                     if (!j.optBoolean("hay", false)) return;
                     final String texto = j.optString("texto", "");
                     final String id = j.optString("id", "");
+                    final String notif = j.optString("notificacion", "");   // v1.34
                     if (texto.isEmpty()) return;
                     handler.post(new Runnable() {
-                        @Override public void run() { abrirParaDecir(texto, id); }
+                        @Override public void run() { abrirParaDecir(texto, id, notif); }
                     });
                 } catch (Exception e) {
                 } finally { try { if (con != null) con.disconnect(); } catch (Exception e) {} }
@@ -299,32 +300,11 @@ public class WakeWordService extends Service {
         }, "azkarin-cartero").start();
     }
 
-    private void abrirParaDecir(String texto, String id) {
-        Intent i = new Intent(this, MainActivity.class);
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                | Intent.FLAG_ACTIVITY_SINGLE_TOP
-                | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-        i.putExtra("azkarin_aviso", texto);
-        i.putExtra("azkarin_aviso_id", id);
-        try { startActivity(i); } catch (Exception e) {}
-        try {
-            int pf = PendingIntent.FLAG_UPDATE_CURRENT;
-            if (Build.VERSION.SDK_INT >= 23) pf |= PendingIntent.FLAG_IMMUTABLE;
-            PendingIntent full = PendingIntent.getActivity(this, 8, i, pf);
-            Notification n = new NotificationCompat.Builder(this, CH_LLAMA)
-                .setContentTitle("Azkarin")
-                .setContentText("Tengo que recordarte una cosa")
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setPriority(NotificationCompat.PRIORITY_MAX)
-                .setCategory(NotificationCompat.CATEGORY_REMINDER)
-                .setAutoCancel(true)
-                .setTimeoutAfter(60000)
-                .setContentIntent(full)
-                .setFullScreenIntent(full, true)
-                .build();
-            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            if (nm != null) nm.notify(NOTIF_ID + 2, n);
-        } catch (Exception e) {}
+    // v1.34 · una sola manera de abrir y avisar: la del cartero (Cartero.abrirParaDecir), que
+    // pone EL RECADO en la notificacion. Antes habia dos copias y las dos decian solo
+    // «Tengo que recordarte una cosa».
+    private void abrirParaDecir(String texto, String id, String notif) {
+        try { Cartero.abrirParaDecir(this, texto, id, notif); } catch (Exception e) {}
     }
 
     private void acquireLock() {
