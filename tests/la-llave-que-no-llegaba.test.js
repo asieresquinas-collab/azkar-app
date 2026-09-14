@@ -1,6 +1,6 @@
 /* eslint-disable */
 // ─────────────────────────────────────────────────────────────────────────────
-// LA LLAVE QUE NO LLEGABA AL MÓVIL (app v659)
+// LA LLAVE QUE NO LLEGABA AL MÓVIL (app v660)
 //
 // Asier, 11-sep: «pero es Karin se supone que me tenía que recordar cosas y no me
 // ha mandado ni un recordatorio... primera regla, que me pueda hablar y yo lo oiga
@@ -31,7 +31,7 @@ function ok(nombre, cond, detalle) {
   else { console.log('  ❌ ' + nombre + (detalle ? ' → ' + detalle : '')); fallos++; }
 }
 
-console.log('\n🔑 LA LLAVE QUE NO LLEGABA AL MÓVIL (app v659)\n');
+console.log('\n🔑 LA LLAVE QUE NO LLEGABA AL MÓVIL (app v660)\n');
 
 // ── A · la variable existe de verdad ────────────────────────────────────────
 console.log('A · «window._apiKey» tiene que existir');
@@ -95,11 +95,11 @@ ok('D2 · y esa llave sale de window._apiKey, que ahora ya vale algo',
 // ── E · la versión ──────────────────────────────────────────────────────────
 console.log('\nE · la versión sube en los tres sitios');
 
-ok('E1 · index.html dice v659', /var APP_VERSION = 'v659'/.test(HTML));
+ok('E1 · index.html dice v660', /var APP_VERSION = 'v660'/.test(HTML));
 const SW = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
-ok('E2 · sw.js dice v659', /azkar-pwa-v659/.test(SW));
+ok('E2 · sw.js dice v660', /azkar-pwa-v660/.test(SW));
 const VJ = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8'));
-ok('E3 · version.json dice v659', VJ.version === 'v659', VJ.version);
+ok('E3 · version.json dice v660', VJ.version === 'v660', VJ.version);
 
 // ── F · queda contado en la ayuda ───────────────────────────────────────────
 console.log('\nF · está contado en la ayuda');
@@ -108,6 +108,16 @@ ok('F1 · la ayuda habla de la llave vacía',
   /llave vac[íi]a/i.test(HTML));
 ok('F2 · y dice que no hay que instalar nada',
   /no hay que instalar nada/i.test(HTML));
+
+// ── G · la tarjeta de /escucha dice la verdad sobre la llave ────────────────
+console.log('\nG · la tarjeta enseña si el móvil tiene la llave');
+
+ok('G1 · la tarjeta mira d.tieneLlave', /d\.tieneLlave === false/.test(HTML));
+ok('G2 · y cuando falta, lo dice claro', /no tiene guardada la llave/i.test(HTML));
+ok('G3 · y le dice qué hacer (cerrar y abrir la app)', /vuelve a abrirla/i.test(HTML));
+ok('G4 · cuando está, también lo dice', /d\.tieneLlave === true/.test(HTML));
+ok('G5 · va ANTES del veredicto de permisos',
+  HTML.indexOf('d.tieneLlave === false') < HTML.indexOf("!falta.length && d.vigilando === false"));
 
 console.log('\n' + (fallos === 0 ? '✅ TODO BIEN' : '❌ FALLOS: ' + fallos) + '\n');
 process.exit(fallos === 0 ? 0 : 1);
