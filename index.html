@@ -1092,7 +1092,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v661 · backend 2.7.742), con la APK 1.34, en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v662 · backend 2.7.743), con la APK 1.34, en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🃏 LA TARJETA QUE NO PARABA, Y LO QUE OYE DE OTROS (app v662 · backend 2.7.743):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Ya no te pide el OK para lo que ya está.</strong> Antes de proponer cambiar el estado de una ficha, mira en qué estado está: si ya está en marcha, te lo dice y no saca tarjeta. Y si le dices «no me mandes la tarjeta», la quita y contesta a lo que has dicho.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>No escribe en el chat lo que te oye decir a otras personas.</strong> Tras un recado se queda escuchando por si le contestas, pero si hablas con otro ya no te lo repite en el chat, y el aviso de «solo contesto a mi nombre» sale una vez al día.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Las llamadas del día llevan la ficha al lado</strong> (Koldo había llamado y decía que no), <strong>la cuenta de un viaje la hace el código</strong> (combustible por vehículo, ida y vuelta, comidas, camas; el personal solo si le das horas y coste por hora), y <strong>ya no se inventa lo que vale la app</strong>.</div></div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🗣️ LOS RECADOS, EN VOZ ALTA Y CON «DIME» (app v661 · backend 2.7.742 · APK 1.34):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>La notificación lleva el recado.</strong> Antes ponía siempre «Tengo que recordarte una cosa» y se borraba sola al minuto; el recado se quedaba dentro esperando un «sí» que con el móvil bloqueado nunca llegaba, y a los cuarenta minutos volvía a avisar. Ahora la notificación dice <strong>lo que te tiene que decir</strong> (sin nombres de clientes, como siempre) y se queda cuatro horas. Al tocarla, la app lo lee en voz alta.</div></div>
@@ -5049,7 +5054,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v661';
+var APP_VERSION = 'v662';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18350,6 +18355,15 @@ async function doResetWithCode() {
     if (msg && pendingAction && !fotoEnviar && !(framesEnviar && framesEnviar.length) && !(pdfsEnviar && pdfsEnviar.length)) {
       var _r = String(msg).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
       var _corto = _r.split(' ').length <= 8;
+      // v662 · «QUE NO ME MANDES PARA QUE TE ACEPTE» (15-sep, 12:32). Con una tarjeta
+      //  pendiente, si él dice que no se la mande, se quita la tarjeta AQUÍ y su frase sigue
+      //  al chat, para que Azkarin conteste a lo que de verdad ha dicho («ya está en marcha»).
+      if (/\b(?:no me (?:lo |la )?mandes|que no me mandes|no me (?:lo )?preguntes|deja de (?:mandar|preguntar|mandarme)|no me pidas|no quiero (?:la )?tarjeta|sin tarjeta)\b/.test(_r)) {
+        pendingAction = null;
+        try { msgsDiv.querySelectorAll('.chat-confirm-btns').forEach(function(b){ b.remove(); }); } catch(e){}
+        try { addMsg('bot', '👍 Vale, tarjeta fuera.'); chatHistorial.push({ role: 'assistant', content: 'Tarjeta de confirmación retirada a petición de Asier: no se ejecuta esa acción.' }); } catch(e){}
+        // y su mensaje sigue su camino normal hacia Azkarin
+      } else {
       var _esSi = _corto && /^(si|sii+|claro|vale|venga|dale|correcto|supercorrecto|perfecto|ok|okey|adelante|eso es|exacto|hazlo|ejecuta|manda|mandalo|mandaselo|envialo|enviaselo|confirmo|confirmado|tira|adjudicado)\b/.test(_r);
       var _esNo = _corto && /^(no|nel|para|espera|cancela|cancelalo|dejalo|quita|anula|anulalo|todavia no|aun no|mejor no)\b/.test(_r);
       if (_esSi || _esNo) {
@@ -18357,6 +18371,7 @@ async function doResetWithCode() {
         chatHistorial.push({ role: 'user', content: msg });
         chatbotConfirm(_esSi);
         return;
+      }
       }
     }
     // ── v653 · EL MISMO MENSAJE, DOS VECES (Asier, 11-sep) ──────────────────
@@ -19185,9 +19200,17 @@ async function doResetWithCode() {
       try { _convAvisoCorto('🎧 Di «Azkarin» para hablarme'); } catch(e){}
       // v607 · y se DICE en el chat la primera vez, porque el cartelito de arriba se va solo y
       // no se lee: si no, parece que no le oye («la décima vez que lo digo sin respuesta»).
-      if (!window._avisadoPalabraClave) {
+      // v662 · 🛑 NI SE ESCRIBE LO QUE OYE DE OTRAS CONVERSACIONES, NI SE REPITE EL AVISO.
+      //  15-sep: tras cada recado se quedaba escuchando y escribía en el chat trozos de lo que
+      //  Asier decía a otras personas («Dime "Azkarin, No le he dicho a nadie, pero quería
+      //  llam"»), tres veces en una mañana, porque la marca de «ya avisado» se perdía al
+      //  abrirse la app de nuevo. Ahora: el aviso no lleva lo oído, y se dice una vez al día.
+      var _hoyPC = ''; try { _hoyPC = new Date().toISOString().slice(0, 10); } catch(e){}
+      var _yaPC = false; try { _yaPC = localStorage.getItem('azk_avisoPalabraClave') === _hoyPC; } catch(e){}
+      if (!window._avisadoPalabraClave && !_yaPC) {
         window._avisadoPalabraClave = true;
-        try { addMsg('bot', '🎧 Te he oído, pero me he abierto solo (con la palabra «Azkarin»), así que <b>solo contesto a lo que empiece por mi nombre</b> — es para no meterme en tus conversaciones. Dime «<b>Azkarin, ' + String(txt).slice(0, 40) + '</b>» o <b>toca la pantalla</b> y ya te escucho todo.'); } catch(e){}
+        try { localStorage.setItem('azk_avisoPalabraClave', _hoyPC); } catch(e){}
+        try { addMsg('bot', '🎧 Me he abierto solo para decirte un recado, así que <b>solo contesto a lo que empiece por mi nombre</b> — es para no meterme en tus conversaciones. Di «<b>Azkarin</b>» delante o <b>toca la pantalla</b> y ya te escucho todo.'); } catch(e){}
       }
       return;
     }

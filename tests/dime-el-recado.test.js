@@ -36,9 +36,10 @@ ok('B6 · si hay un toque esperando, se respeta el de siempre', /if \(window\._a
 ok('B7 · una tarjeta pendiente de confirmar tiene prioridad', /if \(msg && !pendingAction && [^\n]*_pideElRecado\(msg\)\) return;/.test(HTML));
 
 console.log('\nC · versión y ayuda');
-ok('C1 · index.html dice v661', /var APP_VERSION = 'v661'/.test(HTML));
-ok('C2 · sw.js dice v661', /azkar-pwa-v661/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')));
-ok('C3 · version.json dice v661', JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version === 'v661');
+const _v = (HTML.match(/var APP_VERSION = '(v\d+)'/) || [])[1];
+ok('C1 · index.html va en v661 o más nueva', parseInt(String(_v).slice(1), 10) >= 661, _v);
+ok('C2 · sw.js dice la misma', new RegExp('azkar-pwa-' + _v).test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')));
+ok('C3 · version.json dice la misma', JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version === _v);
 ok('C4 · la ayuda lo cuenta', /Di «dime» y te lo dice/.test(HTML) && /La notificación lleva el recado/.test(HTML));
 
 console.log('\n' + (fallos === 0 ? '✅ TODO BIEN' : '❌ FALLOS: ' + fallos) + '\n');

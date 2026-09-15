@@ -48,7 +48,7 @@ c('C2 · y el texto va tal cual', f('ponme la última llamada').texto === 'ponme
 console.log('\n══ D · QUE SE APAGUE SOLA ══');
 c('D1 · abierta por la palabra clave, se apaga a los dos minutos sin hablarle a él', /_convPorPalabraClave && !_hablando && !_pensando && _refSuya && \(Date\.now\(\) - _refSuya\) > 120000/.test(H));
 c('D2 · y al apagarse se olvida el modo (vuelve a la escucha de su nombre)', /window\._convPorPalabraClave = false;/.test(H));
-c('D3 · lo que no va con él ni se manda ni se apunta', /if \(!_p\.vale\) \{[\s\S]{0,900}return;\s*\n\s*\}/.test(H) && /_convLimpiarBuffer\(\);[\s\S]{0,900}return;/.test(H));
+c('D3 · lo que no va con él ni se manda ni se apunta', /if \(!_p\.vale\) \{[\s\S]{0,1800}return;\s*\n\s*\}/.test(H) && /_convLimpiarBuffer\(\);[\s\S]{0,900}return;/.test(H));
 
 console.log('\n══ E · v607 · SI TOCA LA APP, SE ESCUCHA TODO (era el «no me contesta») ══');
 c('E1 · tocar la pantalla quita el modo «solo si me llamas»', /window\._convModoNormal = function/.test(H) && /window\._convPorPalabraClave = false;\s*\n\s*window\._avisadoPalabraClave = false;/.test(H));
