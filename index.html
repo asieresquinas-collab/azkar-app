@@ -1092,7 +1092,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v663 · backend 2.7.748), con la APK 1.34, en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v664 · backend 2.7.766), con la APK 1.34, en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🕗 EL SALUDO YA SABE QUÉ HORA ES (app v664 · backend 2.7.766):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>El WhatsApp del presupuesto saluda según la hora.</strong> Mandaste la captura de la ficha 6703: a las 20:09 de la noche ponía «Buenos días Fernando». El saludo estaba escrito a mano en el mensaje. Ahora sale <strong>Buenos días</strong> hasta las 14:00, <strong>Buenas tardes</strong> de 14:00 a 20:00 y <strong>Buenas noches</strong> de 20:00 en adelante y de madrugada, con hora de España (no la del servidor ni la zona del móvil). El enlace del PDF, el de la firma y el cierre están igual que antes.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Lo mismo en todo lo que sale solo:</strong> el WhatsApp de «disculpa no haberte podido contestar», el resumen que se le manda al autónomo (que además daba la hora del servidor, una o dos menos) y los correos de permiso de estacionamiento, anulación y policía.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Y Azkarin lo tiene en el manual</strong> para los correos y WhatsApps que escribe él: si duda de la hora, saluda con «Hola» y el nombre, sin franja.</div></div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🗣️ LO QUE DICE EL ALTAVOZ NO ES LO QUE DICES TÚ (app v663 · backend 2.7.748):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>El recado que te lee ya no vuelve al chat como si lo hubieras dicho tú.</strong> Lo que Azkarin acaba de decir por el altavoz se le quita a lo que oye el micro, en el servidor y en la app, durante tres minutos. Si solo era su propia voz, no manda nada.</div></div>
@@ -2273,6 +2278,40 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 <!-- FIN PÁGINA REPASO -->
 
 <script>
+// ══════════════════════════════════════════════════════════════════════════════
+//  v664 · LA FRANJA HORARIA · UN SOLO SITIO DECIDE EL SALUDO
+//
+//  Asier, con el WhatsApp del presupuesto de Fernando (6703) delante: «cuando
+//  manda el mensaje con el presupuesto pone buenos días a las 20:00 de la noche.
+//  ¿Se puede arreglar sin romper nada y que todos los mensajes que mande
+//  automáticamente así de la aplicación sepa en qué franja horaria estamos?»
+//
+//  Siempre en hora de España, no la del móvil, que puede ir en otra zona:
+//    06:00 – 13:59  →  Buenos días
+//    14:00 – 19:59  →  Buenas tardes
+//    20:00 – 05:59  →  Buenas noches
+// ══════════════════════════════════════════════════════════════════════════════
+window._horaMadrid = function (d) {
+  try {
+    var h = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', hour: '2-digit', hour12: false }).format(d || new Date()), 10);
+    if (isFinite(h) && h >= 0 && h <= 24) return h === 24 ? 0 : h;
+  } catch (e) {}
+  return (d || new Date()).getHours();
+};
+window._franjaDelDia = function (d) {
+  var h = window._horaMadrid(d);
+  return (h >= 6 && h < 14) ? 'manana' : ((h >= 14 && h < 20) ? 'tarde' : 'noche');
+};
+window._saludoDelDia = function (d) {
+  var f = window._franjaDelDia(d);
+  return f === 'manana' ? 'Buenos días' : (f === 'tarde' ? 'Buenas tardes' : 'Buenas noches');
+};
+// «Buenos días Fernando» — solo el primer nombre, que en la ficha va el completo
+window._saludoA = function (nombre, d) {
+  var n = String(nombre == null ? '' : nombre).trim().split(/\s+/)[0] || '';
+  return window._saludoDelDia(d) + (n ? ' ' + n : '');
+};
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  v658 · LA SESIÓN VIAJA EN TODAS LAS LLAMADAS AL SERVIDOR
 //
@@ -4845,8 +4884,7 @@ function azkarinPreguntarRepaso() {
     var login = document.getElementById('login-screen');
     if (login && login.style.display !== 'none') return;   // en el login: nada
     if (document.getElementById('azkarin-repaso-ask')) return; // ya está puesta
-    var h = new Date().getHours();
-    var saludo = h < 12 ? 'Buenos días' : (h < 21 ? 'Buenas tardes' : 'Buenas noches');
+    var saludo = window._saludoDelDia();
     var div = document.createElement('div');
     div.id = 'azkarin-repaso-ask';
     div.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:10001;width:calc(100vw - 28px);max-width:360px;background:linear-gradient(135deg,#1B4F8A,#2376C5);color:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 10px 30px rgba(27,79,138,.45);font-family:Barlow,sans-serif;animation:azToastIn .3s ease';
@@ -5059,7 +5097,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v663';
+var APP_VERSION = 'v664';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -9448,7 +9486,7 @@ async function enviarPresupuestoWhatsApp() {
   num = num.replace(/^\+/, '');
   var nombre = (document.getElementById('f_nom') || {}).value || '';
   var primerNombre = nombre ? nombre.split(' ')[0] : '';
-  var saludo = 'Buenos días' + (primerNombre ? ' ' + primerNombre : '') + ', le envío su presupuesto de mudanza con Azkar Mudanzas de Vizcaya.';
+  var saludo = window._saludoA(primerNombre) + ', le envío su presupuesto de mudanza con Azkar Mudanzas de Vizcaya.';
   var texto;
   if (_whatsappPdfLink) {
     texto = saludo + '\n\n📄 Ver presupuesto: ' + _whatsappPdfLink + '\n\n✍️ Para aceptarlo, fírmelo aquí: ' + _whatsappFirmaUrl + '\n\nAl firmar podrá descargar su copia. Para cualquier duda estamos a su disposición. ¡Un saludo!';
@@ -9701,7 +9739,7 @@ function abrirWhatsApp() {
   if (num.startsWith('0')) num = '34' + num.substring(1);
   if (!num.startsWith('+') && !num.startsWith('34')) num = '34' + num;
   num = num.replace(/^\+/, '');
-  var texto = 'Hola buenos días, mi nombre es Asier de Azkar Mudanzas, ¿con quién tengo el gusto de hablar? Disculpa no haberte podido contestar, estaba en otra llamada.';
+  var texto = 'Hola ' + window._saludoDelDia().toLowerCase() + ', mi nombre es Asier de Azkar Mudanzas, ¿con quién tengo el gusto de hablar? Disculpa no haberte podido contestar, estaba en otra llamada.';
   var textoEnc = encodeURIComponent(texto);
   var isAndroid = /android/i.test(navigator.userAgent);
   var _enApp = (typeof window.Capacitor !== 'undefined') || /[?&]app=1/.test(location.search || '');
