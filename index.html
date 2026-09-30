@@ -5107,7 +5107,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v666';
+var APP_VERSION = 'v667';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18598,6 +18598,39 @@ async function doResetWithCode() {
             addMsg('bot', borradorHTML);
           }
           } catch(e) { console.warn('[Chatbot] Error mostrando borrador:', e); }
+        }
+        // v667 · «Enséñame las fotos de este cliente»: la app las PINTA en el chat (miniaturas),
+        // sin depender de que Azkarin copie enlaces. Tocar una la abre en grande.
+        if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'mostrar_fotos' && Array.isArray(data.datos.fotos)) {
+          try {
+            var divFo = document.createElement('div');
+            divFo.className = 'chat-msg bot';
+            var titFo = document.createElement('div');
+            titFo.style.cssText = 'font-weight:700;margin-bottom:6px;';
+            titFo.textContent = data.datos.titulo || '📷 Fotos';
+            divFo.appendChild(titFo);
+            var gridFo = document.createElement('div');
+            gridFo.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:4px;max-width:330px;';
+            data.datos.fotos.forEach(function(fo) {
+              if (!fo || !fo.url) return;
+              var a = document.createElement('a');
+              a.href = fo.url; a.target = '_blank'; a.rel = 'noopener';
+              a.style.cssText = 'display:block;aspect-ratio:1/1;overflow:hidden;border-radius:6px;background:#e9edf2;position:relative;';
+              if (fo.video) {
+                a.innerHTML = '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;">▶️</span>';
+                a.title = fo.nombre || 'vídeo';
+              } else {
+                var im = document.createElement('img');
+                im.loading = 'lazy'; im.alt = fo.nombre || 'foto'; im.src = fo.url;
+                im.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+                a.appendChild(im);
+              }
+              gridFo.appendChild(a);
+            });
+            divFo.appendChild(gridFo);
+            msgsDiv.appendChild(divFo);
+            msgsDiv.scrollTop = msgsDiv.scrollHeight;
+          } catch (eFo) { console.warn('[Chatbot] fotos:', eFo); }
         }
         // v297: Reproductor de grabaciones de llamadas (Gesditel) en el chat
         // — botón de velocidad (1/1,25/1,5/2×) y AUTOBORRADO por protección de datos

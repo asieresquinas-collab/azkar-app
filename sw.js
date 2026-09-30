@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  AZKAR PWA · Service Worker · Offline-first
 // ══════════════════════════════════════════════════════════════
-const CACHE_NAME = 'azkar-pwa-v666';
+const CACHE_NAME = 'azkar-pwa-v667';
 const ASSETS = [
   './',
   './index.html',
