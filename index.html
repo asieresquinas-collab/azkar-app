@@ -5134,7 +5134,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v673';
+var APP_VERSION = 'v674';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -20354,7 +20354,9 @@ async function doResetWithCode() {
       _convPedirWake();
       // El saludo se lee por TTS; el micro arranca SOLO cuando la voz termina
       // (lo reengancha el hook del TTS o el vigilante). Nunca a la vez.
-      addMsg('bot', '🎧 Te escucho. Habla tranquilo, que no te corto: espero a que termines. Y mientras hablo yo, háblame encima o toca la pantalla y me callo.');
+      // v674 · Asier: «que no me diga nada cada vez que lo abro, ya lo sé». Sin saludo (ni escrito ni hablado):
+      // solo un aviso pequeño arriba, sin voz. El micro lo arranca el vigilante en segundo y medio.
+      try { if (typeof showSyncStatus === 'function') showSyncStatus('🎧 Te escucho', 2500); } catch (e) {}
     } else {
       _convLiberarWake();
       try { _mpParar(); } catch (e) {}                    // v576: se suelta el micro
@@ -20366,7 +20368,7 @@ async function doResetWithCode() {
       _convEstadoAuto();
       // v585: y la escucha de «Azkarin» vuelve a su sitio
       try { var _pw2 = window._azkWakePluginRef && window._azkWakePluginRef(); if (_pw2 && localStorage.getItem('azkarinEscucha') === 'on') setTimeout(function(){ try { _pw2.start(); } catch(e){} }, 800); } catch (e) {}
-      addMsg('bot', '🎧 Modo conversación apagado.');
+      try { if (typeof showSyncStatus === 'function') showSyncStatus('🎧 Conversación apagada', 2500); } catch (e) {}   // v674: sin mensaje en el chat
     }
   };
   // v282b VIGILANTE: cada 1,5s — si el modo está activo y no hay voz sonando,
