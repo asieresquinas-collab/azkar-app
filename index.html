@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v668';
+var APP_VERSION = 'v669';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8773,7 +8773,48 @@ async function loadPresupuesto(id) {
   setTimeout(_v237TryReactivarBtnWA, 800);
 }
 
-async function newPresupuesto() {
+// v669 · Las fichas que abrió una llamada y aún no son de nadie. Se enseñan ANTES de coger número.
+// Devuelve la ref elegida, o null si no hay ninguna o es otro cliente. Nunca bloquea: si falla, null.
+async function _fichaDeLlamadaParaNuevo() {
+  var lista = [];
+  try {
+    var ctl = new AbortController(); var tmo = setTimeout(function () { ctl.abort(); }, 4000);
+    var r = await fetch(RAILWAY_API + '/api/fichas/de-llamada-sin-dueno?horas=8', { headers: apiHeaders(), signal: ctl.signal });
+    clearTimeout(tmo);
+    if (!r.ok) return null;
+    var d = await r.json();
+    lista = (d && Array.isArray(d.fichas)) ? d.fichas : [];
+  } catch (e) { return null; }
+  if (!lista.length) return null;
+  return await new Promise(function (resolve) {
+    var esc = function (t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+    var tel = function (t) { t = String(t || ''); return t.length === 9 ? t.slice(0, 3) + ' ' + t.slice(3, 6) + ' ' + t.slice(6) : t; };
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,25,40,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    var bx = document.createElement('div');
+    bx.style.cssText = 'background:#fff;border-radius:14px;max-width:440px;width:100%;max-height:85vh;overflow:auto;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.3);font-family:inherit;';
+    var h = '<div style="font-weight:800;font-size:17px;color:#1B4F8A;margin-bottom:4px">¿Es uno de estos?</div>'
+      + '<div style="font-size:14px;color:#555;margin-bottom:12px">Ya llamaron y su ficha está abierta. Si es uno de ellos, tócalo y sigue en esa: no se gasta un número nuevo.</div>';
+    lista.forEach(function (f) {
+      var quien = f.nombre || (f.nombre_oido ? 'se oyó «' + f.nombre_oido + '»' : 'sin nombre');
+      h += '<button type="button" data-ref="' + esc(f.ref) + '" style="display:block;width:100%;text-align:left;border:1px solid #cdd8e6;background:#f5f8fc;border-radius:10px;padding:11px 12px;margin:0 0 8px;cursor:pointer;font-family:inherit">'
+        + '<div style="font-weight:800;font-size:15px;color:#1c2530">' + esc(f.ref) + ' · ' + esc(tel(f.telefono)) + (f.hora ? ' · ' + esc(f.hora) : '') + '</div>'
+        + '<div style="font-size:13px;color:#1B4F8A;font-weight:600">' + esc(quien) + '</div>'
+        + (f.de_que ? '<div style="font-size:12.5px;color:#555;margin-top:3px">' + esc(f.de_que) + '</div>' : '')
+        + '</button>';
+    });
+    h += '<button type="button" data-ref="" style="display:block;width:100%;border:0;background:#1B4F8A;color:#fff;border-radius:10px;padding:13px;margin-top:6px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit">Es otro cliente: ficha nueva</button>';
+    bx.innerHTML = h; ov.appendChild(bx); document.body.appendChild(ov);
+    bx.addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-ref]'); if (!b) return;
+      var ref = b.getAttribute('data-ref');
+      try { ov.remove(); } catch (e) {}
+      resolve(ref || null);
+    });
+  });
+}
+
+async function newPresupuesto(opts) {
   // \U0001F6D1 v561 · UNA SOLA MANERA DE DEJAR LA FICHA EN BLANCO.
   // Antes aquí había una LISTA de campos escrita a mano que se había quedado corta:
   // no vaciaba el piso/puerta (por eso la entrega salía «, 6d» con el piso del cliente
@@ -8789,6 +8830,17 @@ async function newPresupuesto() {
   if (typeof AR_SALIDA === 'function') AR_SALIDA();
   closeMgr();
   if (typeof ST === 'function') ST('presupuesto');
+
+  // v669 · ¿ES UNO DE LOS QUE YA HAN LLAMADO? Asier: «que no duplique fichas, no quiero perder
+  // números de clientes». Si la llamada ya le abrió ficha, se abre ESA y no se gasta un número nuevo.
+  try {
+    var _deLlamada = (opts && opts.sinPreguntar) ? null : await _fichaDeLlamadaParaNuevo();
+    if (_deLlamada) {
+      await loadPresupuesto(_deLlamada);
+      showSyncStatus('📂 Abierta la ficha ' + _deLlamada + ', la que abrió su llamada. No se ha gastado ningún número nuevo.', 6000);
+      return;
+    }
+  } catch (eDL) { console.warn('[Azkar v669] fichas de llamada:', eDL && eDL.message); }
 
   // Asignar número de cliente automáticamente desde Drive
   showSyncStatus('🔄 Obteniendo nº de cliente...');
@@ -13001,7 +13053,7 @@ function txCreatePresupuesto() {
 
   // Primero crear un nuevo presupuesto (con número de Drive)
   if (typeof newPresupuesto === 'function') {
-    newPresupuesto();
+    newPresupuesto({ sinPreguntar: true });   // v669: aquí los datos vienen de la transcripción y se rellenan con un temporizador
   }
 
   // Esperar a que se asigne el número y rellenar los campos
