@@ -1092,7 +1092,11 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <div class='ayuda-section' id='sec-lo-nuevo'>
     <h3 onclick='ayudaToggle(this)'>🆕 LO NUEVO (AGOSTO 2026): QUÉ HAY Y CÓMO SE USA</h3>
     <div class='ayuda-content'>
-      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v671 · backend 2.7.839), con la APK 1.34, en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+      <p>Resumen de todo lo que hay en marcha AHORA MISMO (app v672 · backend 2.7.840), con la APK 1.34, en cristiano. Cada cosa está probada. Lo de julio sigue funcionando y está más abajo.</p>
+
+      <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🟣 CLAUDE SIN TOPE (app v672 · backend 2.7.840):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Tu Azkarin con Claude ya no tiene tope de consultas al día.</strong> Solo descansa si tu suscripción de Claude se acerca a su límite (el de cinco horas o el semanal), y mientras contesta Gemini.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>El aviso de «NO he hecho NADA» ya no sale en falso</strong> cuando Azkarin te cuenta lo que haría si se lo pides, o cómo está algo. Si de verdad dice que ha hecho algo y no lo ha hecho, sigue avisando.</div></div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>🧾 EL IVA DEL TRIMESTRE, ENTERO (app v671 · backend 2.7.839):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Pregúntale «¿cuánto IVA me toca pagar del tercer trimestre?»</strong> o «¿cuánto IVA tenemos soportado?». Te dice el IVA de tus facturas (de STEL Order, con los abonos ya restados), el de las facturas de gasto del Drive (la carpeta del trimestre en GASTOS / FACTURAS, también las de CONTABILIZADAS) y la diferencia que saldría a pagar. Lo que se puede deducir lo decide la asesoría.</div></div>
@@ -1107,7 +1111,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Lo que le escribes o le dices tú (Asier) lo piensa Claude Sonnet 5.5</strong>, con tu suscripción de Claude: no gasta euros de Gemini. Cuando contesta Claude, el punto del final sale <strong>morado 🟣</strong>.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Antonio y lo automático siguen con Gemini</strong>: correos, llamadas y sus transcripciones, tareas de fondo y la web de clientes. Las herramientas y las tarjetas de confirmar funcionan igual que siempre: Claude solo piensa, quien hace las cosas sigue siendo Azkarin.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Nunca se queda mudo:</strong> si Claude falla, tarda o descansa, contesta Gemini en ese mismo mensaje (el punto sale verde o rojo). Y para dejarte margen, si tu suscripción pasa del 85 % del límite de 5 horas o del 70 % del semanal, Claude descansa hasta que se renueva.</div></div>
-      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>El mando:</strong> <strong>/claude</strong> (o di «Claude») te dice cómo va; <strong>/claude off</strong> («apaga Claude») vuelve a Gemini; <strong>/claude on</strong> lo enciende; <strong>/claude tope 300</strong> cambia el tope de consultas al día (de entrada, 500).</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>El mando:</strong> <strong>/claude</strong> (o di «Claude») te dice cómo va; <strong>/claude off</strong> («apaga Claude») vuelve a Gemini; <strong>/claude on</strong> lo enciende. <strong>No tiene tope de consultas</strong> (desde la 2.7.840): solo descansa si tu suscripción se acerca a su límite. Si algún día quieres un freno, <strong>/claude tope 300</strong>; para quitarlo, <strong>/claude sin tope</strong>.</div></div>
       <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'><strong>Correo de Jaime de la asesoría corregido:</strong> es <strong>jaime@asesoriaheras.es</strong> (antes ponía .com). Borja sigue en borja@asesoriaheras.es.</div></div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📄 CONTRATO: RESPONSABILIDAD POR DAÑOS SOLO LA LEGAL (app v666 · backend 2.7.806):</p>
@@ -2115,7 +2119,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <p><strong>Azkarin</strong> es el asistente de inteligencia artificial de la app. Le hablas por chat (o por voz) y te ayuda con presupuestos, llamadas, calendario, correos y mucho más. Puedes escribirle como a un compañero: "haz un cliente con esta llamada", "qué tengo el viernes", "cuánto llevo gastado".</p>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🟣 Claude para Asier — comando /claude (backend 2.7.831):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Los mensajes de <strong>Asier</strong> los piensa <strong>Claude Sonnet 5.5</strong> con su suscripción de Claude (punto 🟣 al final). Todo lo demás (Antonio, tareas automáticas, llamadas, web) va con Gemini, y Gemini es la reserva si Claude falla, tarda o descansa.</div></div>
-      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>/claude</strong> dice cómo va (consultas de hoy, lo que tarda y cómo va tu suscripción); <strong>/claude off</strong> y <strong>/claude on</strong> lo apagan y lo encienden; <strong>/claude tope N</strong> cambia el tope diario. Lo de abajo (/model, /gemini, /gasto) es para Gemini.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>/claude</strong> dice cómo va (consultas de hoy, lo que tarda y cómo va tu suscripción); <strong>/claude off</strong> y <strong>/claude on</strong> lo apagan y lo encienden. No tiene tope; <strong>/claude tope N</strong> le pone uno y <strong>/claude sin tope</strong> lo quita. Lo de abajo (/model, /gemini, /gasto) es para Gemini.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Elegir el modelo de IA — comando /model:</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Escribe <strong>/model</strong> en el chat de Azkarin. Es el centro de mando de la IA: enciendes/apagas el modo AUTO y eliges qué modelo trabaja.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>MODO AUTO (recomendado):</strong> la charla ligera la contesta un modelo <strong>gratis</strong> de Ollama (gemma4) y lo pesado (presupuestos, llamadas, calendario...) lo coge <strong>Gemini</strong>, cambiando solo. No tienes que hacer nada.</div></div>
@@ -5126,7 +5130,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v671';
+var APP_VERSION = 'v672';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
