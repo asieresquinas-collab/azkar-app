@@ -1,6 +1,6 @@
 /* eslint-disable */
 // ─────────────────────────────────────────────────────────────────────────────
-//  LA VOZ DEL MÓVIL SE ELIGE DESDE /voz  ·  app v675
+//  LA VOZ DEL MÓVIL SE ELIGE DESDE /voz  ·  app v675/v676
 //  2-oct: «quiero una voz de hombre… la he cambiado en el móvil y no cambia».
 //  La app solo pedía «es-ES» y el móvil usaba siempre su voz por defecto.
 //  Ejecutar:  node tests/la-voz-del-movil.test.js
@@ -20,6 +20,9 @@ ok('A4 · dentro de la app /voz enseña las voces del móvil (las de Gemini no s
 ok('A5 · solo se listan las voces en español', /\/\^es\/i\.test\(v\.lang\)/.test(HTML));
 ok('A6 · pulsar una la guarda, la prueba y se puede volver a la de siempre (-1)', /azkarinSetVozMovil\(-1\)/.test(HTML) && /localStorage\.setItem\('azkar_tts_voz_movil'/.test(HTML));
 ok('A7 · en el navegador sigue el selector de antes', /window\.azkarinSelectorVozWeb = function/.test(HTML));
+
+ok('A8 · cada voz se distingue por su voiceURI (el «name» de Android sale igual en todas)', /String\(v\.voiceURI \|\| v\.name \|\| ''\)\.slice\(0, 34\)/.test(HTML));
+ok('A9 · el selector dice cuántas voces hay y la versión de la app', /en español · app '/.test(HTML));
 
 console.log('\nB · versión y ayuda');
 const _v = (HTML.match(/var APP_VERSION = '(v\d+)'/) || [])[1];

@@ -5135,7 +5135,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v675';
+var APP_VERSION = 'v676';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17712,12 +17712,13 @@ async function doResetWithCode() {
     var actual = localStorage.getItem('azkar_tts_voz_movil') || '';
     var idx = [];
     todas.forEach(function(v, i) { if (v && v.lang && /^es/i.test(v.lang)) idx.push(i); });
-    var html = '🎙️ <b>Elige la voz de Azkarin</b><br><small style="color:#5b6673;">Son las voces de tu móvil: suenan al instante. Pulsa una y la oyes.</small><br><br>';
+    var html = '🎙️ <b>Elige la voz de Azkarin</b><br><small style="color:#5b6673;">Son las voces de tu móvil: suenan al instante. Pulsa una y la oyes. Tu móvil tiene <b>' + idx.length + '</b> en español · app ' + _vozEsc(String(window.APP_VERSION || '')) + '.</small><br><br>';
     html += '<button onclick="azkarinSetVozMovil(-1)" style="display:block;width:100%;text-align:left;margin:4px 0;padding:11px 12px;border:2px solid #1B4F8A;border-radius:10px;background:' + (!actual ? '#D6E4F7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;color:#1B4F8A;">' + (!actual ? '✅ ' : '⚡ ') + 'La voz de siempre del móvil</button>';
     if (!idx.length) html += '<div style="margin:8px 0;color:#7a4b9a;">Tu móvil no me ha enseñado más voces en español.</div>';
     idx.forEach(function(i, n) {
       var v = todas[i], p = (actual && (v.voiceURI === actual || v.name === actual));
-      var etq = 'Voz ' + (n + 1) + ' · ' + _vozEsc((v.lang || '').replace('_', '-')) + ' · ' + _vozEsc(String(v.name || v.voiceURI || '').replace(/^es[-_]/i, '').slice(0, 28));
+      // v676: en Android «name» sale igual en todas («Spanish Spain»); lo que las distingue es el voiceURI (es-es-x-eed-local…)
+      var etq = 'Voz ' + (n + 1) + ' · ' + _vozEsc(String(v.voiceURI || v.name || '').slice(0, 34)) + (v.localService === false ? ' · necesita internet' : '');
       html += '<button onclick="azkarinSetVozMovil(' + i + ')" style="display:block;width:100%;text-align:left;margin:4px 0;padding:10px 12px;border:1px solid #c8d0db;border-radius:9px;background:' + (p ? '#D6E4F7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:14px;color:#1c2530;">' + (p ? '✅ ' : '🔊 ') + etq + '</button>';
     });
     addMsg('bot', html);
