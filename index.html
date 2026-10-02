@@ -2167,6 +2167,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <p>Azkarin puede <strong>hablar</strong> y <strong>escucharte</strong>, para usarlo con las manos libres mientras conduces o trabajas.</p>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Elegir cómo habla — comando /voz:</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Escribe <strong>/voz</strong> en el chat para elegir cómo suena Azkarin. La opción recomendada es la <strong>voz instantánea del móvil</strong> (responde al momento).</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>En la <strong>app del móvil</strong>, /voz te enseña las voces en español que tiene tu móvil: pulsas una y la oyes al momento. Se queda guardada. Si quieres otra, vuelve a escribir /voz.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Modo conversación 🎧:</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Pulsa el icono del <strong>auricular 🎧</strong> para entrar en modo conversación. Azkarin mantiene la pantalla encendida y, después de hablar, <strong>se queda escuchando</strong> tu respuesta: hablas con él como en una llamada.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Para <strong>salir</strong> del modo conversación, vuelve a tocar el auricular 🎧.</div></div>
@@ -5134,7 +5135,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v674';
+var APP_VERSION = 'v675';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17325,6 +17326,26 @@ async function doResetWithCode() {
   // cola de frases. Ahora está expuesta y el botón la encuentra.
   window.chatSpeakStop = chatSpeakStop;
 
+  // v675 · LA VOZ DEL MÓVIL SE ELIGE DESDE /voz (Asier, 2-oct: «quiero una voz de hombre… la he cambiado en
+  // el móvil y no cambia»). La app solo le decía al móvil «habla en es-ES» y el móvil usaba SIEMPRE su
+  // voz por defecto, la pusiera Asier la que la pusiera en Ajustes. Ahora se le pasa la voz concreta.
+  async function _vocesMovil(TTS) {
+    try {
+      if (window._vocesNat && window._vocesNat.length) return window._vocesNat;
+      var r = await TTS.getSupportedVoices();
+      window._vocesNat = (r && r.voices) ? r.voices : [];
+    } catch (e) { window._vocesNat = []; }
+    return window._vocesNat;
+  }
+  async function _vozMovilIdx(TTS) {
+    try {
+      var uri = localStorage.getItem('azkar_tts_voz_movil') || '';
+      if (!uri) return -1;
+      var vs = await _vocesMovil(TTS);
+      for (var i = 0; i < vs.length; i++) { if (vs[i].voiceURI === uri || vs[i].name === uri) return i; }
+    } catch (e) {}
+    return -1;
+  }
   // v314: voz NATIVA en la app (el TTS web no suena en el WebView de Android)
   async function _hablarNativo(text) {
     try {
@@ -17338,6 +17359,7 @@ async function doResetWithCode() {
       try { await TTS.stop(); } catch (e) {}
       try {
         var _ttsRate = parseFloat(localStorage.getItem('chatTTSRate')); if (!(_ttsRate >= 0.5 && _ttsRate <= 2)) _ttsRate = 1.0;
+        var _vIdx = await _vozMovilIdx(TTS);   // v675: la voz que Asier eligió en /voz (si no hay, la de siempre)
         // v334: leer el mensaje COMPLETO partiendo en frases (antes cortaba a 1500 chars y se quedaba a medias)
         var _frases = clean.split(/(?<=[.!?;:])\s+/);
         var _trozos = [], _t = '';
@@ -17348,7 +17370,7 @@ async function doResetWithCode() {
         if (_t.trim()) _trozos.push(_t.trim());
         for (var _k = 0; _k < _trozos.length; _k++) {
           if (!window._hablandoNativo) break;
-          try { await TTS.speak({ text: _trozos[_k], lang: 'es-ES', rate: _ttsRate, pitch: 1.0, volume: 1.0, category: 'playback' }); } catch (e) { break; }
+          try { var _op = { text: _trozos[_k], lang: 'es-ES', rate: _ttsRate, pitch: 1.0, volume: 1.0, category: 'playback' }; if (_vIdx >= 0) _op.voice = _vIdx; await TTS.speak(_op); } catch (e) { break; }
         }
       } catch (e) {}
       window._hablandoNativo = false;
@@ -17679,6 +17701,42 @@ async function doResetWithCode() {
     { id:'Achird', etq:'Achird — amigable', cat:'s' }
   ];
   window.azkarinSelectorVoz = function() {
+    var _T = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech;
+    if (_esAppNativa() && _T) { return window.azkarinSelectorVozMovil(); }   // v675: dentro de la app solo suenan las del móvil
+    return window.azkarinSelectorVozWeb();
+  };
+  window.azkarinSelectorVozMovil = async function() {
+    var T = window.Capacitor.Plugins.TextToSpeech;
+    window._vocesNat = null;
+    var todas = await _vocesMovil(T);
+    var actual = localStorage.getItem('azkar_tts_voz_movil') || '';
+    var idx = [];
+    todas.forEach(function(v, i) { if (v && v.lang && /^es/i.test(v.lang)) idx.push(i); });
+    var html = '🎙️ <b>Elige la voz de Azkarin</b><br><small style="color:#5b6673;">Son las voces de tu móvil: suenan al instante. Pulsa una y la oyes.</small><br><br>';
+    html += '<button onclick="azkarinSetVozMovil(-1)" style="display:block;width:100%;text-align:left;margin:4px 0;padding:11px 12px;border:2px solid #1B4F8A;border-radius:10px;background:' + (!actual ? '#D6E4F7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;color:#1B4F8A;">' + (!actual ? '✅ ' : '⚡ ') + 'La voz de siempre del móvil</button>';
+    if (!idx.length) html += '<div style="margin:8px 0;color:#7a4b9a;">Tu móvil no me ha enseñado más voces en español.</div>';
+    idx.forEach(function(i, n) {
+      var v = todas[i], p = (actual && (v.voiceURI === actual || v.name === actual));
+      var etq = 'Voz ' + (n + 1) + ' · ' + _vozEsc((v.lang || '').replace('_', '-')) + ' · ' + _vozEsc(String(v.name || v.voiceURI || '').replace(/^es[-_]/i, '').slice(0, 28));
+      html += '<button onclick="azkarinSetVozMovil(' + i + ')" style="display:block;width:100%;text-align:left;margin:4px 0;padding:10px 12px;border:1px solid #c8d0db;border-radius:9px;background:' + (p ? '#D6E4F7' : '#fff') + ';cursor:pointer;font-family:inherit;font-size:14px;color:#1c2530;">' + (p ? '✅ ' : '🔊 ') + etq + '</button>';
+    });
+    addMsg('bot', html);
+  };
+  window.azkarinSetVozMovil = async function(i) {
+    var T = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech;
+    if (!T) return;
+    var v = (i >= 0) ? (window._vocesNat || [])[i] : null;
+    if (i >= 0 && !v) return;
+    try { localStorage.setItem('azkar_tts_voz_movil', v ? (v.voiceURI || v.name) : ''); } catch (e) {}
+    try { if (typeof chatSpeakStop === 'function') chatSpeakStop(); } catch (e) {}
+    try {
+      var op = { text: 'Hola Asier, soy Azkarin. ¿Te gusta esta voz?', lang: 'es-ES', rate: 1.0, pitch: 1.0, volume: 1.0, category: 'playback' };
+      if (v) op.voice = i;
+      await T.speak(op);
+    } catch (e) {}
+    addMsg('bot', v ? '✅ Voz cambiada. Si no te gusta, escribe /voz y prueba otra.' : '✅ Vuelvo a la voz de siempre del móvil.');
+  };
+  window.azkarinSelectorVozWeb = function() {
     var todas = (window._vocesTTS && window._vocesTTS.length) ? window._vocesTTS : (('speechSynthesis' in window) ? (speechSynthesis.getVoices() || []) : []);
     var es = todas.filter(function(v){ return v && v.lang && v.lang.toLowerCase().indexOf('es') === 0; });
     if (!es.length) es = todas;
