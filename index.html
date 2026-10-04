@@ -5135,7 +5135,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v676';
+var APP_VERSION = 'v677';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -8329,6 +8329,12 @@ async function openDashboard() {
       }
     } catch(e) { console.warn('[Dashboard] No se pudo cargar calendario Google:', e.message); }
 
+    // ── BLOQUE LLAMADAS Y VISITAS POR CANAL (en vivo) ──
+    html += '<div id="dash-canal-card" style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px"><div style="font-weight:700;font-size:13px;color:#1B4F8A">📞 Llamadas y visitas por canal</div><div id="dash-canal-dias" style="display:flex;gap:4px">';
+    [7,14,30].forEach(function(n){ html += '<button onclick="cargarCanalDashboard(' + n + ')" id="dash-canal-b' + n + '" style="border:1px solid #1B4F8A;background:#fff;color:#1B4F8A;border-radius:12px;padding:3px 10px;font-size:11px;cursor:pointer">' + n + ' días</button>'; });
+    html += '</div></div><div id="dash-canal-content"><div style="text-align:center;color:#888;font-size:12px;padding:20px">Cargando…</div></div></div>';
+
     // ── BLOQUE GASTOS DEL MES (datos en vivo de Google Sheets) ──
     html += '<div ' + cs + ' id="dash-gastos-card" style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-weight:700;font-size:13px;color:#1B4F8A">💸 Gastos del mes</div><small id="dash-gastos-actualizado" style="color:#999;font-size:10px">Cargando...</small></div>';
@@ -8345,6 +8351,7 @@ async function openDashboard() {
 
     // Cargar gastos en vivo del Sheet y auto-refrescar cada hora
     cargarGastosDashboard();
+    try { cargarCanalDashboard(window._dashCanalDias || 14); } catch(eCan) {}
     if (window._dashGastosInterval) clearInterval(window._dashGastosInterval);
     window._dashGastosInterval = setInterval(function() {
       // Solo refrescar si el dashboard sigue abierto
@@ -8355,6 +8362,55 @@ async function openDashboard() {
   } catch(e) {
     content.innerHTML = '<div style="background:#fff;border-radius:10px;padding:20px;color:red;">Error cargando dashboard: ' + e.message + '</div>';
   }
+}
+
+
+// ── Llamadas y visitas por día y canal (en vivo desde el servidor) ──
+var _CANAL_INFO = [
+  ['anuncio','Anuncio de Google','#e67e22'],
+  ['google','Google (sin anuncio)','#27ae60'],
+  ['otra_web','Otra web','#8e44ad'],
+  ['directo','Directo (web)','#1B4F8A'],
+  ['no_pulso_web','No pulsó la web','#95a5a6'],
+  ['no_seguro','No se sabe seguro','#bdc3c7'],
+  ['sin_dato','Antes del 26-sep','#ecf0f1']
+];
+async function cargarCanalDashboard(dias) {
+  var cont = document.getElementById('dash-canal-content');
+  if (!cont) return;
+  dias = dias || 14; window._dashCanalDias = dias;
+  [7,14,30].forEach(function(n){ var b = document.getElementById('dash-canal-b' + n); if (b) { b.style.background = (n === dias) ? '#1B4F8A' : '#fff'; b.style.color = (n === dias) ? '#fff' : '#1B4F8A'; } });
+  cont.innerHTML = '<div style="text-align:center;color:#888;font-size:12px;padding:20px">Cargando…</div>';
+  try {
+    var token = localStorage.getItem('azkar_token');
+    var r = await fetch(RAILWAY_API + '/api/llamadas/por-dia?dias=' + dias, { headers: { 'Authorization': 'Bearer ' + token } });
+    var d = await r.json();
+    if (!r.ok || !d.exito) { cont.innerHTML = '<div style="color:#c00;font-size:12px;padding:10px">No se pudo cargar: ' + (d.error || ('error ' + r.status)) + '</div>'; return; }
+    var lista = d.dias_lista || [], t = d.totales || {}, v = d.visitas || {};
+    var max = 1; lista.forEach(function(x){ if (x.total > max) max = x.total; });
+    var W = 100 / Math.max(lista.length, 1), H = 48, svg = '<svg viewBox="0 0 100 ' + (H + 10) + '" style="width:100%;height:auto;display:block">';
+    lista.forEach(function(x, i) {
+      var y = H, bx = i * W + W * 0.15, bw = W * 0.7;
+      _CANAL_INFO.forEach(function(c) { var n = x[c[0]] || 0; if (!n) return; var h = H * n / max; y -= h; svg += '<rect x="' + bx.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + bw.toFixed(2) + '" height="' + h.toFixed(2) + '" fill="' + c[2] + '"><title>' + x.dia + ' · ' + c[1] + ': ' + n + '</title></rect>'; });
+      if (x.total) svg += '<text x="' + (bx + bw / 2).toFixed(2) + '" y="' + (y - 1).toFixed(2) + '" font-size="3.2" text-anchor="middle" fill="#333">' + x.total + '</text>';
+      if (lista.length <= 7 || (lista.length <= 14 && i % 2 === 0) || i % 4 === 0) svg += '<text x="' + (bx + bw / 2).toFixed(2) + '" y="' + (H + 6) + '" font-size="2.8" text-anchor="middle" fill="#888">' + x.dia.slice(8) + '/' + x.dia.slice(5, 7) + '</text>';
+    });
+    svg += '</svg>';
+    var h = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">';
+    h += '<div style="flex:1;min-width:110px;background:#f4f7fb;border-radius:8px;padding:10px;text-align:center"><div style="font-size:24px;font-weight:800;color:#1B4F8A">' + (t.total || 0) + '</div><div style="font-size:11px;color:#555">llamadas (' + dias + ' días)</div></div>';
+    h += '<div style="flex:1;min-width:110px;background:#f4f7fb;border-radius:8px;padding:10px;text-align:center"><div style="font-size:24px;font-weight:800;color:#1B4F8A">' + (v.total || 0) + '</div><div style="font-size:11px;color:#555">visitas a la web</div></div></div>';
+    h += svg;
+    h += '<div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin:8px 0;font-size:11px;color:#444">';
+    _CANAL_INFO.forEach(function(c) { if (!(t[c[0]] > 0)) return; h += '<span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + c[2] + ';margin-right:4px;vertical-align:-1px"></span>' + c[1] + ': <b>' + t[c[0]] + '</b></span>'; });
+    h += '</div>';
+    var vc = v.por_canal || {}, vk = Object.keys(vc);
+    if (vk.length) {
+      var nom = { anuncio: 'Anuncio', google: 'Google', otra_web: 'Otra web', directo: 'Directo', desconocido: 'Sin saber' };
+      h += '<div style="font-size:11px;color:#444;margin-top:4px">Visitas por canal: ' + vk.map(function(k){ return (nom[k] || k) + ' <b>' + vc[k] + '</b>'; }).join(' · ') + '</div>';
+    } else { h += '<div style="font-size:11px;color:#888;margin-top:4px">Las visitas se empiezan a contar cuando se publique el contador en la web.</div>'; }
+    h += '<div style="font-size:10px;color:#999;margin-top:8px">' + (d.nota || '') + '</div>';
+    cont.innerHTML = h;
+  } catch (e) { cont.innerHTML = '<div style="color:#c00;font-size:12px;padding:10px">No se pudo cargar: ' + e.message + '</div>'; }
 }
 
 // ── Cargar gastos del mes (Google Sheet 2026 PAGOS GENERALES) ──
