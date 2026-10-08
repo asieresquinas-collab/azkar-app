@@ -157,7 +157,12 @@ public class CompartirActivity extends Activity {
                         // El .zip se reconoce por dentro (empieza por «PK»), no por el
                         // nombre: muchas veces el nombre no llega o llega sin extensión.
                         boolean esZip = datos.length > 4 && datos[0] == 0x50 && datos[1] == 0x4B;
-                        if (esZip) {
+                        // v1.32 · un Word/Excel (.docx/.xlsx) TAMBIÉN empieza por «PK»: antes se
+                        // tomaba por el zip del iPhone, no se encontraba el .txt y el Word se perdía.
+                        if (esOffice(datos, nombre)) {
+                            _docsVistos++;
+                            anadirDoc(nombreOffice(datos, nombre), datos);
+                        } else if (esZip) {
                             String t = txtDentroDelZip(datos);
                             if (t != null && !t.trim().isEmpty() && texto.trim().isEmpty()) {
                                 texto = t;
@@ -202,7 +207,7 @@ public class CompartirActivity extends Activity {
                     // presupuesto). Antes, compartir solo un PDF moría con «No he podido
                     // leer la conversación» — el manifest lo aceptaba pero esto lo tiraba.
                     if ((texto == null || texto.trim().isEmpty()) && (_fotos.length() > 0 || _videos.length() > 0 || _docs.length() > 0)) {
-                        texto = "(Asier ha compartido " + _fotos.length() + " foto(s), " + _docs.length() + " PDF(s) y " + _videos.length() + " vídeo(s) del chat, sin texto)";
+                        texto = "(Asier ha compartido " + _fotos.length() + " foto(s), " + _docs.length() + " documento(s) y " + _videos.length() + " vídeo(s) del chat, sin texto)";
                     }
 
                     if (texto == null || texto.trim().isEmpty()) { fin("No he podido leer la conversación. Prueba con «Exportar chat»."); return; }
@@ -212,7 +217,7 @@ public class CompartirActivity extends Activity {
                     _nombreArchivo = nombreArchivo;
 
                     if (_fotos.length() > 0 || _docs.length() > 0 || _videos.length() > 0) aviso("Mandando la conversación con "
-                            + _fotos.length() + " foto(s), " + _docs.length() + " PDF(s) y " + _videos.length() + " vídeo(s)…");
+                            + _fotos.length() + " foto(s), " + _docs.length() + " documento(s) y " + _videos.length() + " vídeo(s)…");
                     mandar(texto, nombreArchivo, null);
                 } catch (Throwable e) {
                     // v1.29: Throwable, no Exception — si el móvil se queda sin memoria
@@ -376,15 +381,15 @@ public class CompartirActivity extends Activity {
         int guardados = j.optInt("docs_guardados", -1);
         String s;
         if (guardados >= 0) {
-            if (guardados > 0) s = " · " + guardados + " PDF(s) del chat guardados en su carpeta";
+            if (guardados > 0) s = " · " + guardados + " documento(s) del chat guardados en su carpeta";
             else {
                 String err = j.optString("docs_error", "");
-                s = " · ⚠️ los " + mandados + " PDF(s) NO se han guardado" + (err.isEmpty() || "null".equals(err) ? "" : " (" + err + ")");
+                s = " · ⚠️ los " + mandados + " documento(s) NO se han guardado" + (err.isEmpty() || "null".equals(err) ? "" : " (" + err + ")");
             }
         } else {
-            s = " · ⚠️ los " + mandados + " PDF(s) NO han entrado: el servidor aún no sabe guardarlos (falta actualizarlo)";
+            s = " · ⚠️ los " + mandados + " documento(s) NO han entrado: el servidor aún no sabe guardarlos (falta actualizarlo)";
         }
-        if (_docsVistos > mandados) s += " · " + (_docsVistos - mandados) + " PDF(s) se quedaron fuera por tamaño";
+        if (_docsVistos > mandados) s += " · " + (_docsVistos - mandados) + " documento(s) se quedaron fuera por tamaño";
         return s;
     }
 
@@ -456,6 +461,37 @@ public class CompartirActivity extends Activity {
         } catch (Exception ex) { /* un vídeo ilegible no tumba el envío */ }
     }
 
+    /** v1.32 · Un Word/Excel: por el nombre, o por dentro (zip con word/ o xl/, o el .doc viejo D0CF11E0). */
+    private boolean esOffice(byte[] d, String nombre) {
+        String n = nombre == null ? "" : nombre.toLowerCase();
+        if (n.matches(".*\\.(docx?|xlsx?|odt)$")) return true;
+        if (d == null || d.length < 8) return false;
+        if ((d[0] & 0xFF) == 0xD0 && (d[1] & 0xFF) == 0xCF && (d[2] & 0xFF) == 0x11 && (d[3] & 0xFF) == 0xE0) return true;
+        return d[0] == 0x50 && d[1] == 0x4B && tipoOfficeDelZip(d) != null;
+    }
+    /** "docx" / "xlsx" si el zip es un Word/Excel por dentro; null si es otro zip (el del iPhone). */
+    private String tipoOfficeDelZip(byte[] d) {
+        try {
+            ZipInputStream z = new ZipInputStream(new java.io.ByteArrayInputStream(d));
+            ZipEntry e; int vistos = 0;
+            while ((e = z.getNextEntry()) != null && vistos++ < 40) {
+                String nm = e.getName() == null ? "" : e.getName();
+                if (nm.startsWith("word/")) { z.close(); return "docx"; }
+                if (nm.startsWith("xl/")) { z.close(); return "xlsx"; }
+                if (nm.toLowerCase().endsWith(".txt")) { z.close(); return null; }
+            }
+            z.close();
+        } catch (Exception ex) { }
+        return null;
+    }
+    private String nombreOffice(byte[] d, String nombre) {
+        String n = nombre == null ? "" : nombre.trim();
+        if (n.toLowerCase().matches(".*\\.(docx?|xlsx?|odt)$")) return n;
+        String ext = "doc";
+        if (d != null && d.length > 4 && d[0] == 0x50 && d[1] == 0x4B) { String t = tipoOfficeDelZip(d); ext = t == null ? "docx" : t; }
+        return (n.isEmpty() ? "documento-" + (_docs.length() + 1) : n) + "." + ext;
+    }
+
     /** v1.27 · Un PDF se conoce por dentro (%PDF) o por el nombre. */
     private boolean esPdf(byte[] d, String nombre) {
         if (d != null && d.length > 4 && d[0] == 0x25 && d[1] == 0x50 && d[2] == 0x44 && d[3] == 0x46) return true;
@@ -483,7 +519,7 @@ public class CompartirActivity extends Activity {
             ZipEntry e;
             while ((e = z.getNextEntry()) != null) {
                 String nombre = e.getName() == null ? "" : e.getName();
-                if (!nombre.toLowerCase().endsWith(".pdf")) continue;
+                if (!nombre.toLowerCase().matches(".*\\.(pdf|docx?|xlsx?|odt)$")) continue;   // v1.32: y los Word/Excel
                 ByteArrayOutputStream bos = new ByteArrayOutputStream();
                 byte[] buf = new byte[8192];
                 int n, total = 0;
