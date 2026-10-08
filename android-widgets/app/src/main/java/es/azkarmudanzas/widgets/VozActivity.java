@@ -69,6 +69,10 @@ public class VozActivity extends Activity implements RecognitionListener {
     LinearLayout filaNav;
     Button btnNavMaps, btnNavSygic;
     String navMapsUrl = "", navSygicUrl = "";
+    // v1.31: botón de LLAMAR cuando la respuesta trae un teléfono (Asier: «me tendría que dar un botón»)
+    LinearLayout filaTel;
+    Button btnTel;
+    String telNum = "";
     // v1.13 (Asier): cuando Azkarin genera un ARCHIVO (PDF del borrador/informe, DOCX…) se
     // DESCARGA SOLO al móvil y aparece un botón para ABRIRLO. Sin pedir permisos ni salir del widget.
     LinearLayout filaArch;
@@ -192,6 +196,19 @@ public class VozActivity extends Activity implements RecognitionListener {
         filaArch.addView(btnArch, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         card.addView(filaArch);
         btnArch.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { abrirArchivo(); } });
+
+        // v1.31: botón verde para LLAMAR (oculto hasta que la respuesta traiga un teléfono)
+        filaTel = new LinearLayout(this);
+        filaTel.setOrientation(LinearLayout.VERTICAL);
+        filaTel.setPadding(0, pad / 2, 0, 0);
+        filaTel.setVisibility(View.GONE);
+        btnTel = new Button(this);
+        btnTel.setBackgroundColor(Color.parseColor("#27ae60"));
+        btnTel.setTextColor(Color.WHITE);
+        btnTel.setTextSize(18);
+        filaTel.addView(btnTel, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        card.addView(filaTel);
+        btnTel.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { llamarTel(); } });
 
         ScrollView sc = new ScrollView(this);
         sc.addView(card, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -608,11 +625,15 @@ public class VozActivity extends Activity implements RecognitionListener {
         limpiaLlamada(); // una respuesta de texto cierra el reproductor de la llamada anterior
         if (filaNav != null) filaNav.setVisibility(View.GONE); // y quita el botón de ruta anterior
         if (filaArch != null) filaArch.setVisibility(View.GONE); // y el botón de archivo anterior
+        if (filaTel != null) filaTel.setVisibility(View.GONE); // v1.31: y el de llamar anterior
         // tras cada respuesta de Azkarin, cuenta de silencio a cero y micro ágil (modo coche)
         ultimaVozReal = android.os.SystemClock.elapsedRealtime();
         retardoRearme = 0;
         String base = String.valueOf(texto == null ? "" : texto);
         // v1.9: para MOSTRAR conservamos los ENLACES (para poder TOCARLOS); solo quitamos el markdown feo.
+        String _telHtml = _telDeEnlace(base);                          // v1.31: <a href="tel:…">
+        base = base.replaceAll("(?is)<a\\s[^>]*href=\"tel:[^\"]*\"[^>]*>(.*?)</a>", "$1")
+                   .replaceAll("(?is)<br\\s*/?>", "\n").replaceAll("(?is)</?[a-z][^>]*>", "");
         String paraVer = base
                 .replaceAll("\\*\\*|__|`|#+", "")
                 .replaceAll("\\[([^\\]]*)\\]\\((https?://[^)]*)\\)", "$1: $2") // [texto](http…) -> texto: http… (tocable)
@@ -627,6 +648,7 @@ public class VozActivity extends Activity implements RecognitionListener {
             respuesta.setLinkTextColor(Color.parseColor("#1B4F8A"));
         } catch (Exception e) { /* si falla el Linkify, al menos se ve el texto con la URL */ }
         estado.setText("  Azkarin");
+        mostrarBotonTel(_telHtml.isEmpty() ? _telDeTexto(paraVer) : _telHtml);
         // v1.12: la voz lee la respuesta ENTERA (en trozos con _trozosVoz, sin cortar ni mandar "a la app"),
         // pero SIN leer los enlaces — los cambia por "el enlace"; en pantalla sí se ven y se tocan.
         // v1.13: si hay vozAlt, la voz lee ESO (limpio de enlaces) en vez del texto de pantalla.
@@ -669,6 +691,7 @@ public class VozActivity extends Activity implements RecognitionListener {
     // v1.11: enseña el/los botón(es) de navegación y deja el micro escuchando por si sigues hablando
     void mostrarNavegacion(String destino, String mapsUrl, String sygicUrl, String msg) {
         limpiaLlamada();
+        if (filaTel != null) filaTel.setVisibility(View.GONE);
         navMapsUrl = (mapsUrl == null ? "" : mapsUrl.trim());
         navSygicUrl = (sygicUrl == null ? "" : sygicUrl.trim());
         String limpio = String.valueOf(msg == null ? "" : msg)
@@ -686,6 +709,44 @@ public class VozActivity extends Activity implements RecognitionListener {
             try { Bundle bp = new Bundle(); tts.speak(limpio, TextToSpeech.QUEUE_FLUSH, bp, "azk"); return; } catch (Exception e) { /* sin voz */ }
         }
         ui.postDelayed(new Runnable() { @Override public void run() { escuchar(); } }, 1200);
+    }
+
+    // ─────────────── v1.31: LLAMAR con un toque ───────────────
+    static final java.util.regex.Pattern RX_TEL_HTML = java.util.regex.Pattern.compile("href=\"tel:([+\\d]+)\"");
+    static final java.util.regex.Pattern RX_TEL = java.util.regex.Pattern.compile("(?<![\\d/.,])(?:\\+?34[ .-]?)?([6789](?:[ .-]?\\d){8})(?!\\d)");
+
+    static String _telDeEnlace(String t) {
+        java.util.regex.Matcher m = RX_TEL_HTML.matcher(String.valueOf(t == null ? "" : t));
+        return m.find() ? m.group(1).replaceAll("^\\+34", "") : "";
+    }
+    static String _telDeTexto(String t) {
+        java.util.regex.Matcher m = RX_TEL.matcher(String.valueOf(t == null ? "" : t));
+        return m.find() ? m.group(1).replaceAll("\\D", "") : "";
+    }
+    static String _bonito(String n) {
+        String d = n.replaceAll("\\D", "");
+        if (d.length() != 9) return n;
+        return d.substring(0, 3) + " " + d.substring(3, 5) + " " + d.substring(5, 7) + " " + d.substring(7);
+    }
+    void mostrarBotonTel(String num) {
+        telNum = num == null ? "" : num.replaceAll("[^\\d+]", "");
+        if (telNum.isEmpty() || filaTel == null) return;
+        btnTel.setText("📞 LLAMAR AL " + _bonito(telNum));
+        filaTel.setVisibility(View.VISIBLE);
+    }
+    void llamarTel() {
+        if (telNum.isEmpty()) return;
+        try { if (tts != null) tts.stop(); } catch (Exception e) { }
+        try {
+            // Igual que los widgets: primero ZOIPER (la centralita) y, si no, el marcador.
+            Intent i = new Intent(this, AccionActivity.class);
+            i.putExtra(AccionActivity.EXTRA_TIPO, "llamar");
+            i.putExtra(AccionActivity.EXTRA_URI, "tel:" + telNum);
+            i.putExtra(AccionActivity.EXTRA_QUE, _bonito(telNum));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+            cierraYa();
+        } catch (Exception e) { estado.setText("  No pude abrir el teléfono"); }
     }
 
     void abrirUrlNav(String url) {
