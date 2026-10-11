@@ -47,7 +47,9 @@ import java.util.regex.Pattern;
  */
 public class AvisosWhatsapp extends NotificationListenerService {
 
-    static final String[] APPS = { "com.whatsapp", "com.whatsapp.w4b" };
+    // v1.34 · SOLO el WhatsApp BUSINESS (el de la empresa). Asier: «de los WhatsApp Business,
+    // no de los WhatsApp personales». Los avisos del WhatsApp normal ni se miran.
+    static final String[] APPS = { "com.whatsapp.w4b" };
     static final String P_COLA = "avisos_cola";
     static final String P_VISTOS = "avisos_vistos";
     static final String P_ULT_OK = "avisos_ult_ok";
@@ -98,8 +100,8 @@ public class AvisosWhatsapp extends NotificationListenerService {
 
     static String estadoTexto(Context c) {
         SharedPreferences p = Datos.prefs(c);
-        if (!tienePermiso(c)) return "❌ Sin permiso: Azkarin NO está leyendo los avisos de WhatsApp. Toca el botón de arriba y activa «Azkar Widgets».";
-        StringBuilder sb = new StringBuilder("✅ Permiso dado: Azkarin lee los avisos de WhatsApp (solo los que salen en la barra; los grupos no).");
+        if (!tienePermiso(c)) return "❌ Sin permiso: Azkarin NO está leyendo los avisos del WhatsApp Business. Toca el botón de arriba y activa «Azkar Widgets».";
+        StringBuilder sb = new StringBuilder("✅ Permiso dado: Azkarin lee los avisos del WhatsApp BUSINESS (el personal no; los grupos tampoco).");
         int total = p.getInt(P_TOTAL, 0);
         long ok = p.getLong(P_ULT_OK, 0);
         String err = p.getString(P_ULT_ERR, "");

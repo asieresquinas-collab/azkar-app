@@ -178,7 +178,7 @@ public class MainActivity extends Activity {
         // ══ v1.33 · LOS AVISOS DE WHATSAPP ═══════════════════════════════════════
         // Asier: «que Azkarin lea las notificaciones… hasta que conecte el WhatsApp».
         TextView tAv = new TextView(this);
-        tAv.setText("🔔 AVISOS DE WHATSAPP");
+        tAv.setText("🔔 AVISOS DE WHATSAPP BUSINESS");
         tAv.setTextSize(20);
         tAv.setTypeface(null, Typeface.BOLD);
         tAv.setTextColor(Color.parseColor("#1B4F8A"));
@@ -186,7 +186,7 @@ public class MainActivity extends Activity {
         raiz.addView(tAv);
 
         TextView expAv = new TextView(this);
-        expAv.setText("Azkarin copia lo que se VE en los avisos de WhatsApp (quién y el trocito de mensaje) para poder recordarte «revisa, que te ha escrito tal». " +
+        expAv.setText("Azkarin copia lo que se VE en los avisos del WhatsApp BUSINESS —el personal no lo mira— (quién y el trocito de mensaje) para poder recordarte «revisa, que te ha escrito tal». " +
                 "Es solo el aviso: puede venir cortado y no es la conversación entera. No contesta, no marca leído y los grupos no se leen.\n\n" +
                 "Toca el botón, busca «Azkar Widgets» en la lista y actívalo.");
         expAv.setTextSize(16);
