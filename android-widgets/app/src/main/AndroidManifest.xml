@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="es.azkarmudanzas.widgets"
-    android:versionCode="33"
-    android:versionName="1.32">
+    android:versionCode="34"
+    android:versionName="1.33">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
 
@@ -256,6 +256,21 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_equipo" />
         </receiver>
+
+        <!-- v1.33 · AZKARIN LEE LOS AVISOS DE WHATSAPP (Asier, 11-oct-2026).
+             Solo copia lo que WhatsApp enseña en la barra (quién y la vista previa) y lo
+             manda al servidor marcado como AVISO, aparte de los chats exportados.
+             🛑 No se conecta a WhatsApp, no contesta, no marca leído y los GRUPOS no salen
+             del móvil. Sin el permiso «Acceso a notificaciones» no lee nada. -->
+        <service
+            android:name=".AvisosWhatsapp"
+            android:label="Azkarin · avisos de WhatsApp"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
 
     </application>
 </manifest>

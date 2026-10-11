@@ -41,7 +41,7 @@ import org.json.JSONObject;
 public class MainActivity extends Activity {
 
     EditText usuario, clave, enlaceEq;
-    TextView estado, estadoEq;
+    TextView estado, estadoEq, estadoAvisos;
     Button actualizar, ponerEq;
     Handler ui = new Handler(Looper.getMainLooper());
     long descargaId = -1;
@@ -174,6 +174,45 @@ public class MainActivity extends Activity {
         Button hablar = new Button(this);
         hablar.setText("🎙 HABLAR CON AZKARIN");
         raiz.addView(hablar);
+
+        // ══ v1.33 · LOS AVISOS DE WHATSAPP ═══════════════════════════════════════
+        // Asier: «que Azkarin lea las notificaciones… hasta que conecte el WhatsApp».
+        TextView tAv = new TextView(this);
+        tAv.setText("🔔 AVISOS DE WHATSAPP");
+        tAv.setTextSize(20);
+        tAv.setTypeface(null, Typeface.BOLD);
+        tAv.setTextColor(Color.parseColor("#1B4F8A"));
+        tAv.setPadding(0, pad, 0, 0);
+        raiz.addView(tAv);
+
+        TextView expAv = new TextView(this);
+        expAv.setText("Azkarin copia lo que se VE en los avisos de WhatsApp (quién y el trocito de mensaje) para poder recordarte «revisa, que te ha escrito tal». " +
+                "Es solo el aviso: puede venir cortado y no es la conversación entera. No contesta, no marca leído y los grupos no se leen.\n\n" +
+                "Toca el botón, busca «Azkar Widgets» en la lista y actívalo.");
+        expAv.setTextSize(16);
+        expAv.setPadding(0, pad / 3, 0, pad / 2);
+        raiz.addView(expAv);
+
+        Button permisoAv = new Button(this);
+        permisoAv.setText("🔔 DAR PERMISO PARA LEER LOS AVISOS");
+        permisoAv.setBackgroundColor(Color.parseColor("#25A244"));
+        permisoAv.setTextColor(Color.WHITE);
+        raiz.addView(permisoAv);
+        permisoAv.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                try { startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")); }
+                catch (Exception e) {
+                    try { startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS)); estadoAvisos.setText("No he podido abrir la pantalla exacta: en Ajustes busca «Acceso a notificaciones» y activa «Azkar Widgets»."); }
+                    catch (Exception e2) { estadoAvisos.setText("No he podido abrir los Ajustes: " + e2.getMessage()); }
+                }
+            }
+        });
+
+        estadoAvisos = new TextView(this);
+        estadoAvisos.setTextSize(15);
+        estadoAvisos.setPadding(0, pad / 2, 0, pad);
+        estadoAvisos.setText(AvisosWhatsapp.estadoTexto(this));
+        raiz.addView(estadoAvisos);
 
         ScrollView sc = new ScrollView(this);
         sc.addView(raiz, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -369,6 +408,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        try { if (estadoAvisos != null) estadoAvisos.setText(AvisosWhatsapp.estadoTexto(this)); } catch (Exception e) { }
+        // v1.33: si quedó algo sin mandar, se intenta al abrir
+        try { if (AvisosWhatsapp.tienePermiso(this)) { final Context _c = getApplicationContext(); AvisosWhatsapp.manos().post(new Runnable() { public void run() { AvisosWhatsapp.mandarCola(_c); } }); } } catch (Exception e) { }
         // v1.19 · EL PERMISO DE UBICACIÓN SE PIDE AQUÍ, NO EN LA BURBUJA.
         // La tarjeta del walkie-talkie es `noHistory` + tema de diálogo: Android la DESTRUYE en
         // cuanto le sale cualquier ventana encima, así que el aviso del permiso moría ahí y la
