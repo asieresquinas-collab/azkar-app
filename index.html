@@ -5135,7 +5135,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v677';
+var APP_VERSION = 'v678';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -20610,13 +20610,62 @@ async function doResetWithCode() {
       .replace(/`(.+?)`/g, '<code style="background:#eee;padding:1px 4px;border-radius:3px;font-size:12px;">$1</code>')
       .replace(/\n/g, '<br>');
   }
+  // ══════════════════════════════════════════════════════════════════════════
+  // 🛑 v678 · EL FILTRO DEL CHAT (revisión de seguridad, 11-oct). Las respuestas de Azkarin se
+  //    pintan como HTML para que salgan los botones (llamar, WhatsApp, PDFs). Pero si un correo o
+  //    una web con trampa le colara algo y él lo repitiera, se ejecutaría en el móvil. Ahora, antes
+  //    de pintar: fuera scripts, marcos y formularios; fuera onerror/onload y compañía; fuera los
+  //    enlaces «javascript:»; y un onclick solo vale si llama a una función NUESTRA con datos
+  //    sencillos (textos, números). Se analiza en una <template>, que no ejecuta nada.
+  // ══════════════════════════════════════════════════════════════════════════
+  var _CHAT_FN_OK = {"APLICAR_PAK":1,"AR":1,"CA":1,"CT":1,"DR":1,"GD":1,"PA":1,"PL_LOOKUP":1,"RF":1,"ST":1,"SY":1,"_abrirFuera":1,"_abrirRutaEntera":1,"_azkarinLimpiarBuzon":1,"_buzonAzkAbrirHilo":1,"_buzonAzkBorrarItem":1,"_buzonAzkEnviar":1,"_buzonAzkOnResponderChange":1,"_buzonAzkRestaurarItem":1,"_rpFicha":1,"_rpLlamar":1,"_waEnviar":1,"abrirParteGrua":1,"abrirWhatsApp":1,"actualizarIvaAutonomo":1,"adjudicarOferta":1,"agendaTodosMisClientes":1,"analyzeTranscription":1,"aplicarPrecioAutonomo":1,"archivarTrabajoAutonomos":1,"ayudaIr":1,"ayudaToggle":1,"azkChatCmd":1,"azkarProbarVoz":1,"azkarinAsistente":1,"azkarinAvisosSet":1,"azkarinCederSet":1,"azkarinEscuchaPermisos":1,"azkarinEscuchaSet":1,"azkarinHeyGoogle":1,"azkarinHorarioSet":1,"azkarinNoMolestar":1,"azkarinPermiso":1,"azkarinReiniciarEscucha":1,"azkarinSetVozIdx":1,"azkarinSetVozMovil":1,"azkarinSetVozNeuronal":1,"azkarinTestPush":1,"azkarinTogglePush":1,"azkarinVozInstantanea":1,"calcAbono":1,"calcParteEditPricing":1,"cargarCanalDashboard":1,"cargarMapaRutas":1,"cargarOfertasAutonomos":1,"cerrarSesion":1,"chatbotConfirm":1,"chatbotConvToggle":1,"chatbotCopiarConv":1,"chatbotCycleSpeed":1,"chatbotHistorial":1,"chatbotMicToggle":1,"chatbotOscarAbrir":1,"chatbotOscarCambiar":1,"chatbotOscarCerrar":1,"chatbotSend":1,"chatbotToggle":1,"chatbotToggleTTS":1,"closeBuzonAzkarin":1,"closeGruaModal":1,"closeMgr":1,"closeParteEditModal":1,"closeRelacionModal":1,"closeTranscriptionModal":1,"confirmarHoraRecordatorio":1,"confirmarParteEdit":1,"copiarLink":1,"crearAutonomo":1,"crearUsuarioAdmin":1,"cycleTam":1,"doLogin":1,"doResetWithCode":1,"eliminarAutonomo":1,"eliminarUsuarioAdmin":1,"enviarParteAutonomo":1,"fcCerrar":1,"fcMover":1,"fichaje_addEmployee":1,"fichaje_approveIncidencia":1,"fichaje_closeIncidencia":1,"fichaje_editSchedule":1,"fichaje_exportExcel":1,"fichaje_fichar":1,"fichaje_nextWeek":1,"fichaje_openIncidencia":1,"fichaje_prevWeek":1,"fichaje_rejectIncidencia":1,"fichaje_removeEmployee":1,"fichaje_renderHistory":1,"fichaje_saveNewEmployee":1,"fichaje_submitIncidencia":1,"fichaje_viewEmployee":1,"filtrarPresupuestos":1,"firmarParteCliente":1,"forceSync":1,"generarParteGruaFirmado":1,"generarRelacionPDF":1,"generarTarjetaCliente":1,"gruaAddTramo":1,"gruaCalcHoras":1,"gruaLimpiarFirma":1,"guardarEnAgenda":1,"loadPresupuesto":1,"marcarPagadoDashboard":1,"mostrarServiciosDia":1,"newPresupuesto":1,"openDashboard":1,"openFirebaseConfig":1,"openParteEditModal":1,"parteEditAddHora":1,"parteEditAddItem":1,"peRemoveHora":1,"peRemoveItem":1,"peUpdatePrice":1,"permAnular":1,"permCalcPlazos":1,"permCargarDesdeHistorial":1,"permCrearDoble":1,"permDesdePresupuesto":1,"permEnviar":1,"permEnviarPolicia":1,"permGuardar":1,"permVistaPrevia":1,"ponerLineaKmAhora":1,"prepararVideo":1,"previsualizarFotos":1,"promo20EnLineas":1,"publicarPaqueteCombinado":1,"publicarParaAutonomos":1,"quitarFoto":1,"quitarVideo":1,"relAddItem":1,"resetPassAdmin":1,"restaurarTrabajoAutonomos":1,"rpActualizar":1,"rpMarcar":1,"saveFirebaseConfig":1,"sendResetCode":1,"showForgotPassword":1,"this.parentElement.remove":1,"this.parentNode.remove":1,"toggleAscensor":1,"toggleFechaAbierta":1,"toggleFotosAdmin":1,"toggleGuardamuebles":1,"toggleOruga":1,"togglePassVisibility":1,"togglePermuta":1,"togglePlataforma":1,"togglePromoManual":1,"txAddArticulo":1,"txCreatePresupuesto":1,"verArchivadosAutonomos":1,"verFotoAdmin":1,"whatsappAutonomo":1};
+  var _CHAT_LIT = "(?:'(?:[^'\\\\]|\\\\.)*'|\"(?:[^\"\\\\]|\\\\.)*\"|-?\\d+(?:\\.\\d+)?|true|false|null|event|this(?:\\.(?:value|checked|href|dataset\\.[A-Za-z]+))?)";
+  var _CHAT_CALL = new RegExp("^(?:return\\s+)?([A-Za-z_$][\\w$]*(?:\\.[A-Za-z_$][\\w$]*)*)\\(\\s*(?:" + _CHAT_LIT + "(?:\\s*,\\s*" + _CHAT_LIT + ")*)?\\s*\\)$");
+  function _chatHandlerOk(v) {
+    var partes = String(v || '').split(';');
+    for (var i = 0; i < partes.length; i++) {
+      var st = partes[i].trim();
+      if (!st || /^(return false|event\.(preventDefault|stopPropagation)\(\))$/.test(st)) continue;
+      var m = _CHAT_CALL.exec(st);
+      if (!m || !_CHAT_FN_OK[m[1]]) return false;
+    }
+    return true;
+  }
+  function _chatLimpio(html) {
+    try {
+      var tpl = document.createElement('template');
+      tpl.innerHTML = String(html == null ? '' : html);
+      var fuera = tpl.content.querySelectorAll('script,iframe,frame,frameset,object,embed,applet,link,meta,base,form,style,svg,math,noscript');
+      for (var i = 0; i < fuera.length; i++) fuera[i].remove();
+      var todos = tpl.content.querySelectorAll('*');
+      for (var j = 0; j < todos.length; j++) {
+        var el = todos[j], at = Array.prototype.slice.call(el.attributes);
+        for (var k = 0; k < at.length; k++) {
+          var n = at[k].name.toLowerCase(), v = at[k].value;
+          if (n.indexOf('on') === 0) {
+            if (!((n === 'onclick' || n === 'onchange' || n === 'oninput') && _chatHandlerOk(v))) { el.removeAttribute(at[k].name); try { console.warn('[chat] quitado', n, String(v).slice(0, 80)); } catch (e) {} }
+            continue;
+          }
+          if (n === 'srcdoc' || n === 'formaction' || n === 'action') { el.removeAttribute(at[k].name); continue; }
+          if (n === 'href' || n === 'src' || n === 'xlink:href') {
+            var limpio = String(v).replace(/[\u0000-\u0020]/g, '').toLowerCase();
+            if (/^(javascript|vbscript):/.test(limpio) || (/^data:/.test(limpio) && !/^data:image\/(png|jpe?g|gif|webp);/.test(limpio))) el.removeAttribute(at[k].name);
+          }
+        }
+      }
+      return tpl.innerHTML;
+    } catch (e) {
+      // si el filtro falla, se enseña como TEXTO (nunca sin filtrar)
+      var d = document.createElement('div'); d.textContent = String(html || '').replace(/<[^>]*>/g, ''); return d.innerHTML;
+    }
+  }
   function addMsg(type, text) {
     var div = document.createElement('div');
     div.className = 'chat-msg ' + type;
     var _h = new Date().toLocaleTimeString('es-ES', { hour12:false }); div.setAttribute('data-hora', _h); div.setAttribute('data-rol', type);
     // v212: Mensajes del bot siempre como HTML (soporta markdown y botones inyectados)
     if (type === 'bot') {
-      div.innerHTML = chatMarkdown(text);
+      div.innerHTML = _chatLimpio(chatMarkdown(text));   // v678 · filtrado
     } else {
       div.textContent = text;
     }
