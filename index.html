@@ -5135,7 +5135,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v678';
+var APP_VERSION = 'v679';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -13776,8 +13776,30 @@ function precioKmDeLaFicha(kmNum) {
 }
 // Al abrir una ficha: su tarifa es la guardada; si es tan vieja que no la tiene, la
 // que se lea en su propia línea de Desplazamiento; y si tampoco, la de cerca de siempre.
+// 🛑 v679 · PERO SOLO SI LA FICHA YA COBRA KILÓMETROS (Asier, 14-oct, ficha 6848 Getxo → Madrid).
+//  Una ficha sin línea de km no tiene ningún precio de antes que respetar: no se ha cobrado
+//  nada. Antes se le fijaba «la de cerca de siempre» (2,40) y, al guardar, se le apuntaba ese
+//  2,40 para siempre — así que un Madrid nuevo salía con el botón a 404 × 2,40 = 969,60 € en
+//  vez de 404 × 3,50 = 1.414 €, que es SU tarifa desde el 11-ago. Ahora, si no hay línea que
+//  cobre, manda la de hoy por tramos; en cuanto la ficha tiene su línea, manda la de la ficha.
+function lineaKmQueCobra() {
+  try {
+    var filas = document.querySelectorAll('#tb .cr');
+    for (var i = 0; i < filas.length; i++) {
+      var ins = filas[i].querySelectorAll('input');
+      if (ins[0] && /^Desplazamiento/i.test(ins[0].value)) {
+        if (/SIN CARGO/i.test(ins[0].value)) return false;
+        var u = parseFloat(String(ins[1] && ins[1].value).replace(',', '.')) || 0;
+        var pp = parseFloat(String(ins[2] && ins[2].value).replace(',', '.')) || 0;
+        return u > 0 && pp > 0;
+      }
+    }
+  } catch (e) {}
+  return false;
+}
 function fijarTarifaKmDeFicha(guardada) {
   var p = parseFloat(guardada);
+  if (!lineaKmQueCobra()) { soltarTarifaKm(); return; }   // v679: nada cobrado todavía → la tarifa de hoy
   if (!(p > 0)) {
     try {
       var filas = document.querySelectorAll('#tb .cr');
