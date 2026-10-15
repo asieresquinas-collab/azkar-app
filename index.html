@@ -2145,7 +2145,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Controlar el gasto — comando /gasto:</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Escribe <strong>/gasto</strong> para ver cuánto se lleva gastado en Gemini este mes. También puedes preguntárselo en lenguaje normal: "¿cuánto llevo de gasto en Gemini este mes?".</div></div>
-      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Hay un <strong>tope al mes</strong> (lo ves con /gasto). Al llegar al tope, <strong>Gemini se para</strong> hasta que lo subas o empiece el mes (ya no hay modelo gratis de reserva). Así no hay sustos en la factura. Para cambiarlo sin salir del chat: <strong>/gasto tope 200</strong>. Y si miras la factura de verdad en Google, <strong>/gasto real 77,40</strong> pone el contador en ese número exacto.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Hay un <strong>tope al mes</strong> (lo ves con /gasto). Al llegar al tope, <strong>Gemini se para</strong> hasta que lo subas o empiece el mes (ya no hay modelo gratis de reserva): mientras tanto Azkarin no puede pensar, y te lo dice con la salida. Así no hay sustos en la factura. Para cambiarlo sin salir del chat: <strong>/gasto tope 200</strong>, o dilo en voz alta: <strong>«sube el tope a 200»</strong> (funciona aunque Gemini esté parado). Y si miras la factura de verdad en Google, <strong>/gasto real 77,40</strong> pone el contador en ese número exacto.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Debajo del total, <strong>/gasto</strong> te dice <strong>en qué se va</strong> (tu chat, las rutinas automáticas, la web, los correos…), <strong>con qué modelo</strong> y <strong>por días</strong>.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>El trabajo automático — comando /rutinas:</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Lo que Azkarin hace <strong>solo</strong> (tareas programadas, repasar correos, sacar los compromisos de las llamadas, aprender de las conversaciones) va con el <strong>motor económico</strong>, que cuesta unas <strong>3 veces menos</strong>.</div></div>
@@ -5132,7 +5132,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v680';
+var APP_VERSION = 'v681';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
