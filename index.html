@@ -5132,7 +5132,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v681';
+var APP_VERSION = 'v682';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -7086,6 +7086,13 @@ function createManagerPanel() {
 
 // ── Estado de firmas: consultar Drive para saber qué presupuestos están firmados ──
 var _firmaStatusCache = { data: {}, ts: 0 };
+// v682 · si una de las consultas del panel se queda colgada (sin contestar nunca), el panel ya no se
+// queda en «Cargando dashboard...» para siempre: a los 15 segundos se sigue sin ese dato.
+function _fetchConTiempo(url, opts, ms) {
+  var c = new AbortController();
+  var t = setTimeout(function () { c.abort(); }, ms || 15000);
+  return fetch(url, Object.assign({}, opts || {}, { signal: c.signal })).finally(function () { clearTimeout(t); });
+}
 async function fetchFirmaStatus() {
   // Cache local de 2 minutos para no llamar a Drive cada vez que abres el panel
   if (Date.now() - _firmaStatusCache.ts < 120000 && Object.keys(_firmaStatusCache.data).length >= 0) {
@@ -7093,7 +7100,7 @@ async function fetchFirmaStatus() {
     if (_firmaStatusCache.ts > 0) return _firmaStatusCache.data;
   }
   try {
-    var r = await fetch(RAILWAY_API + '/api/drive/captacion/firma-status', {
+    var r = await _fetchConTiempo(RAILWAY_API + '/api/drive/captacion/firma-status', {
       headers: apiHeaders()
     });
     var d = await r.json();
@@ -8004,7 +8011,7 @@ async function openDashboard() {
 
     // v172: Auto-reparar flags _enMarcha consultando carpetas de Drive (matching robusto)
     try {
-      var emR = await fetch(RAILWAY_API + '/api/drive/en-marcha', { headers: apiHeaders() });
+      var emR = await _fetchConTiempo(RAILWAY_API + '/api/drive/en-marcha', { headers: apiHeaders() });
       var emD = await emR.json();
       if (emD.ok && emD.carpetas && emD.carpetas.length > 0) {
         // Construir mapa robusto: todas las formas posibles de identificar una carpeta
@@ -8085,7 +8092,7 @@ async function openDashboard() {
     // Ofertas autónomos
     var ofertasCount = 0, ofertasPendientes = 0, ofertasAdjudicadas = 0;
     try {
-      var ofR = await fetch(RAILWAY_API + '/api/autonomos/ofertas', { headers: apiHeaders() });
+      var ofR = await _fetchConTiempo(RAILWAY_API + '/api/autonomos/ofertas', { headers: apiHeaders() });
       var ofD = await ofR.json();
       if (ofD.ok && ofD.ofertas) {
         var ofertas = ofD.ofertas;
@@ -8240,7 +8247,7 @@ async function openDashboard() {
 
     // v171: Historial autónomos — ranking por número de adjudicaciones
     try {
-      var listaR = await fetch(RAILWAY_API + '/api/autonomos/lista', { headers: apiHeaders() });
+      var listaR = await _fetchConTiempo(RAILWAY_API + '/api/autonomos/lista', { headers: apiHeaders() });
       var listaD = await listaR.json();
       if (listaD.autonomos && listaD.autonomos.length > 0) {
         html += '<div ' + cs + ' style="background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;">';
@@ -8270,7 +8277,7 @@ async function openDashboard() {
       var calHoy = new Date();
       var calStart = calHoy.getFullYear() + '-' + String(calHoy.getMonth() + 1).padStart(2, '0') + '-01';
       var calEnd = calHoy.getFullYear() + '-' + String(calHoy.getMonth() + 1).padStart(2, '0') + '-' + new Date(calHoy.getFullYear(), calHoy.getMonth() + 1, 0).getDate();
-      var calR = await fetch(RAILWAY_API + '/api/calendar/events?start=' + calStart + '&end=' + calEnd, { headers: apiHeaders() });
+      var calR = await _fetchConTiempo(RAILWAY_API + '/api/calendar/events?start=' + calStart + '&end=' + calEnd, { headers: apiHeaders() });
       var calD = await calR.json();
       if (calD.events && calD.events.length > 0) {
         // Construir índice para deduplicar: por fecha → refs y nombres de presupuestos
