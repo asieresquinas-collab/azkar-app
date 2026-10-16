@@ -5132,7 +5132,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v683';
+var APP_VERSION = 'v684';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -14701,6 +14701,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
           hora_reserva: datos.hora_reserva,
           metros: datos.metros,
           tipo: datos.tipo,
+          vehiculos: datos.vehiculos,
           observaciones: datos.observaciones
         }
       })
@@ -14719,7 +14720,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
         permGuardarLocal();
         permRenderLista();
         enviosRegistrar('permiso-com', data.destinatarios, datos.direccion, datos.fecha_inicio, 'OK', '', data.emailId || '');
-        alert('Solicitud enviada correctamente a:\n' + data.destinatarios.join('\n'));
+        alert('Solicitud enviada correctamente a:\n' + data.destinatarios.join('\n') + (data.enviados ? '\n\nCopia guardada en «' + data.enviados + '» de info@azkarmudanzas.com.' : ''));
       } else {
         enviosRegistrar('permiso-com', [], datos.direccion, datos.fecha_inicio, 'ERROR', data.error || 'Error desconocido', '');
         alert('Error: ' + (data.error || 'Error desconocido'));
@@ -14758,6 +14759,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
           hora_reserva: datos.hora_reserva,
           metros: datos.metros,
           tipo: datos.tipo,
+          vehiculos: datos.vehiculos,
           observaciones: datos.observaciones
         }
       })
@@ -14774,7 +14776,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
         permGuardarLocal();
         permRenderLista();
         enviosRegistrar('permiso-anu', data.destinatarios, datos.direccion, datos.fecha_inicio, 'OK', '', data.emailId || '');
-        alert('Anulación enviada correctamente.');
+        alert('Anulación enviada correctamente.' + (data.enviados ? '\n\nCopia guardada en «' + data.enviados + '» de info@azkarmudanzas.com.' : ''));
       } else {
         enviosRegistrar('permiso-anu', [], datos.direccion, datos.fecha_inicio, 'ERROR', data.error || 'Error desconocido');
         alert('Error: ' + (data.error || 'Error desconocido'));
@@ -14830,7 +14832,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
         permGuardarLocal();
         permRenderLista();
         enviosRegistrar('permiso-policia', data.destinatarios, datos.direccion, datos.fecha_inicio, 'OK', '', data.emailId || '');
-        alert('Comunicación a policía enviada correctamente.');
+        alert('Comunicación a policía enviada correctamente.' + (data.enviados ? '\n\nCopia guardada en «' + data.enviados + '» de info@azkarmudanzas.com.' : ''));
       } else {
         enviosRegistrar('permiso-policia', [], datos.direccion, datos.fecha_inicio, 'ERROR', data.error || 'Error desconocido');
       }
@@ -15025,6 +15027,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
           hora_reserva: datos.hora_reserva,
           metros: datos.metros,
           tipo: datos.tipo,
+          vehiculos: datos.vehiculos,
           observaciones: datos.observaciones
         }
       };
