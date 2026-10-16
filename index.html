@@ -797,7 +797,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     <div class='perm-row'>
       <div class='perm-field'>
         <label>Vehículos en la reserva (para comunicación policía)</label>
-        <input type='text' id='perm_vehiculos' placeholder='Ej: IVECO MATRICULA: 5778JKD'>
+        <input type='text' id='perm_vehiculos' value='IVECO 5778JKD, MERCEDES 1905LKX' placeholder='IVECO 5778JKD, MERCEDES 1905LKX'>
       </div>
     </div>
     <div class='perm-row'>
@@ -5132,7 +5132,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v684';
+var APP_VERSION = 'v685';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -14639,7 +14639,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
       direccion: recVal.toUpperCase(),
       fecha_inicio: fechaVal, fecha_fin: fechaVal,
       num_dias: dias, horario: horario, hora_reserva: hora,
-      metros: metros, vehiculos: '', observaciones: 'RECOGIDA',
+      metros: metros, vehiculos: 'IVECO 5778JKD, MERCEDES 1905LKX', observaciones: 'RECOGIDA',
       estado: 'preparado', id: Date.now().toString(36) + 'a',
       fecha_creacion: new Date().toISOString()
     };
@@ -14650,7 +14650,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
       direccion: entVal.toUpperCase(),
       fecha_inicio: fechaVal, fecha_fin: fechaVal,
       num_dias: dias, horario: horario, hora_reserva: hora,
-      metros: metros, vehiculos: '', observaciones: 'ENTREGA',
+      metros: metros, vehiculos: 'IVECO 5778JKD, MERCEDES 1905LKX', observaciones: 'ENTREGA',
       estado: 'preparado', id: Date.now().toString(36) + 'b',
       fecha_creacion: new Date().toISOString()
     };
@@ -14861,7 +14861,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
       horario: document.getElementById('perm_horario').value || '8:00-20:00',
       hora_reserva: document.getElementById('perm_hora').value || '8:00',
       metros: parseInt(document.getElementById('perm_metros').value) || 8,
-      vehiculos: document.getElementById('perm_vehiculos').value.trim(),
+      vehiculos: document.getElementById('perm_vehiculos').value.trim() || 'IVECO 5778JKD, MERCEDES 1905LKX',
       observaciones: document.getElementById('perm_observaciones').value.trim()
     };
   }
@@ -14922,7 +14922,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
       document.getElementById('perm_horario').value = p.horario || '8:00-20:00';
       document.getElementById('perm_hora').value = p.hora_reserva || '8:00';
       document.getElementById('perm_metros').value = p.metros || 8;
-      document.getElementById('perm_vehiculos').value = p.vehiculos || '';
+      document.getElementById('perm_vehiculos').value = p.vehiculos || 'IVECO 5778JKD, MERCEDES 1905LKX';
       document.getElementById('perm_observaciones').value = p.observaciones || '';
       permCalcPlazos();
       // Scroll arriba al formulario
