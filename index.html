@@ -5132,7 +5132,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v682';
+var APP_VERSION = 'v683';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -14932,6 +14932,62 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
   // ============================================================
   // VISTA PREVIA (descargar docx sin enviar)
   // ============================================================
+  // v683: antes el documento se «descargaba» y en el móvil no aparecía en ningún sitio, aunque
+  // saliera «Documento descargado». Ahora se ENSEÑA dentro de la propia app (se dibuja el Word
+  // en pantalla) y, aparte, hay un botón para compartirlo o bajarlo si se quiere guardar.
+  var _permDocLibs = null;
+  function permCargarLibsDoc() {
+    if (window.docx && window.docx.renderAsync) return Promise.resolve();
+    if (_permDocLibs) return _permDocLibs;
+    function cargar(src) { return new Promise(function (ok, ko) { var sc = document.createElement('script'); sc.src = src; sc.onload = ok; sc.onerror = function () { ko(new Error('no carga ' + src)); }; document.head.appendChild(sc); }); }
+    _permDocLibs = (window.JSZip ? Promise.resolve() : cargar('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'))
+      .then(function () { return cargar('https://cdn.jsdelivr.net/npm/docx-preview@0.3.5/dist/docx-preview.min.js'); })
+      .catch(function (e) { _permDocLibs = null; throw e; });
+    return _permDocLibs;
+  }
+  window.permMostrarDocListo = function(blob, nombre) {
+    var viejo = document.getElementById('perm-doc-listo'); if (viejo) viejo.remove();
+    var url = URL.createObjectURL(blob);
+    var capa = document.createElement('div');
+    capa.id = 'perm-doc-listo';
+    capa.style.cssText = 'position:fixed;inset:0;background:#e9ecef;z-index:99999;display:flex;flex-direction:column';
+    capa.innerHTML = '<div style="display:flex;gap:8px;align-items:center;padding:10px 12px;background:#1B4F8A;color:#fff;flex-wrap:wrap">'
+      + '<div style="flex:1;min-width:160px;font-weight:700;font-size:16px">📄 Así va el documento</div>'
+      + '<button id="perm-doc-compartir" style="padding:10px 14px;border:0;border-radius:8px;background:#fff;color:#1B4F8A;font-weight:700;font-size:14px">Guardar / compartir</button>'
+      + '<button id="perm-doc-cerrar" style="padding:10px 14px;border:0;border-radius:8px;background:#E85C0D;color:#fff;font-weight:700;font-size:14px">Cerrar</button></div>'
+      + '<div style="padding:8px 12px;font-size:14px;color:#333;background:#fff8e1">Mira que esté bien rellenado. Si está bien, cierra y pulsa enviar.</div>'
+      + '<div id="perm-doc-cuerpo" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px"><div style="padding:30px;text-align:center;color:#555">⏳ Abriendo el documento...</div></div>'
+      + '<a id="perm-doc-bajar" href="' + url + '" download="' + nombre.replace(/"/g, '') + '" style="display:none">bajar</a>';
+    document.body.appendChild(capa);
+    function cerrar() { try { capa.remove(); } catch (e) {} setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) {} }, 60000); }
+    document.getElementById('perm-doc-cerrar').onclick = cerrar;
+    document.getElementById('perm-doc-compartir').onclick = function () {
+      var archivo = null;
+      try { archivo = new File([blob], nombre, { type: blob.type }); } catch (e) {}
+      if (archivo && navigator.canShare && navigator.canShare({ files: [archivo] })) {
+        navigator.share({ files: [archivo], title: nombre }).catch(function (e) {
+          if (e && e.name === 'AbortError') return;
+          document.getElementById('perm-doc-bajar').click();
+        });
+        return;
+      }
+      document.getElementById('perm-doc-bajar').click();
+    };
+    var cuerpo = document.getElementById('perm-doc-cuerpo');
+    permCargarLibsDoc().then(function () {
+      cuerpo.innerHTML = '';
+      return window.docx.renderAsync(blob, cuerpo, null, { inWrapper: true, ignoreLastRenderedPageBreak: true, breakPages: true });
+    }).then(function () {
+      // que la hoja quepa a lo ancho de la pantalla
+      var hojas = cuerpo.querySelectorAll('section.docx');
+      var ancho = cuerpo.clientWidth - 20;
+      hojas.forEach(function (h) { var w = h.offsetWidth; if (w > ancho && ancho > 100) { var k = ancho / w; h.style.transformOrigin = 'top left'; h.style.transform = 'scale(' + k + ')'; h.style.marginBottom = (-(1 - k) * h.offsetHeight + 10) + 'px'; } });
+      var env = cuerpo.querySelector('.docx-wrapper'); if (env) { env.style.padding = '0'; env.style.background = 'transparent'; env.style.alignItems = 'flex-start'; }
+    }).catch(function () {
+      cuerpo.innerHTML = '<div style="padding:30px;text-align:center;color:#333">No he podido enseñarlo aquí. Pulsa <b>Guardar / compartir</b> y ábrelo con Word o Docs.</div>';
+    });
+  };
+
   window.permVistaPrevia = function(tipoDoc) {
     var datos = permRecogerDatos();
     if (!datos) return;
@@ -14975,7 +15031,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
     }
 
     var nombres = { com: 'SOLICITUD', anu: 'ANULACION', policia: 'COMUNICACION_POLICIA' };
-    alert('Generando documento de vista previa...');
+    if (typeof showSyncStatus === 'function') showSyncStatus('⏳ Preparando el documento...', 8000);
 
     fetch(PERM_RAILWAY + '/api/permisos/generar', {
       method: 'POST',
@@ -14992,15 +15048,8 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
           byteArray[i] = byteChars.charCodeAt(i);
         }
         var blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = 'VISTA_PREVIA_' + nombres[tipoDoc] + '_' + datos.direccion.replace(/\s+/g, '_') + '.docx';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        alert('Documento descargado. Ábrelo para comprobar que está bien rellenado.\n\nSi todo está correcto, vuelve aquí y pulsa el botón de enviar.');
+        var nombreDoc = ('VISTA_PREVIA_' + nombres[tipoDoc] + '_' + datos.direccion.replace(/\s+/g, '_') + '.docx').replace(/[\\/:*?"<>|]/g, '-');
+        permMostrarDocListo(blob, nombreDoc);
       } else {
         alert('Error generando documento: ' + (data.error || 'Error desconocido'));
       }
