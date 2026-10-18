@@ -3753,15 +3753,28 @@ async function PA_SOLO_DRIVE(){
 // ══════════════════════════════════════════════════════════════
 (function () {
   var MAX_LADO = 2000, CALIDAD = 0.85;
-  function _input() {
-    var i = document.getElementById('gasto-archivo');
+  // v688: dos entradas: la cámara directa (capture) y el selector de PDF o galería.
+  function _input(camara) {
+    var id = camara ? 'gasto-camara' : 'gasto-archivo';
+    var i = document.getElementById(id);
     if (i) return i;
-    i = document.createElement('input'); i.type = 'file'; i.id = 'gasto-archivo';
-    i.accept = 'image/*,application/pdf'; i.style.display = 'none';
+    i = document.createElement('input'); i.type = 'file'; i.id = id; i.style.display = 'none';
+    if (camara) { i.accept = 'image/*'; i.setAttribute('capture', 'environment'); }
+    else { i.accept = 'image/*,application/pdf'; }
     i.addEventListener('change', function () { var f = i.files && i.files[0]; i.value = ''; if (f) gastoSubir(f); });
     document.body.appendChild(i); return i;
   }
-  window.gastoElegirArchivo = function () { _input().click(); };
+  window.gastoElegirArchivo = function () {
+    var capa = _capa('<div style="font-size:19px;font-weight:800;color:#1a7a3f">🧾 Subir un gasto</div>'
+      + '<div style="margin-top:6px;color:#555">Ticket o factura: la app mira cuál es y lo guarda en su carpeta de Drive.</div>'
+      + '<div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">'
+      + '<button id="gasto-foto" style="padding:18px;border:0;border-radius:12px;background:#1a7a3f;color:#fff;font-weight:800;font-size:18px">📷 Hacer foto</button>'
+      + '<button id="gasto-pdf" style="padding:14px;border:0;border-radius:12px;background:#2376C5;color:#fff;font-weight:700;font-size:15px">📁 PDF o foto de la galería</button>'
+      + '<button id="gasto-cerrar0" style="padding:12px;border:0;border-radius:12px;background:#eee;color:#333;font-weight:700;font-size:14px">Cerrar</button></div>');
+    document.getElementById('gasto-foto').onclick = function () { capa.remove(); _input(true).click(); };
+    document.getElementById('gasto-pdf').onclick = function () { capa.remove(); _input(false).click(); };
+    document.getElementById('gasto-cerrar0').onclick = function () { capa.remove(); };
+  };
 
   function _leer(f) { return new Promise(function (ok, ko) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.onerror = function () { ko(new Error('No se pudo leer el archivo')); }; r.readAsDataURL(f); }); }
   // Fotos grandes: a 2000 px de lado como mucho, en JPEG. Si el navegador no sabe abrirla (HEIC…), va tal cual.
@@ -5068,7 +5081,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v687';
+var APP_VERSION = 'v688';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
