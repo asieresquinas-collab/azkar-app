@@ -3848,13 +3848,34 @@ async function PA_SOLO_DRIVE(){
     };
   }
 
-  function gastoSubir(f) {
+  // v689: el servidor avisa si este gasto ya estaba (ticket y factura del mismo gasto: solo hace falta uno)
+  function _pintarDuplicado(r, f) {
+    var datos = [];
+    if (r.proveedor) datos.push('<b>' + _esc(r.proveedor) + '</b>');
+    if (r.importe) datos.push('<b>' + _esc(String(r.importe).replace('.', ',')) + ' €</b>');
+    if (r.fecha) datos.push(_fechaBonita(r.fecha));
+    var capa = _capa('<div style="font-size:20px;font-weight:800;color:#E85C0D">⚠️ Este gasto ya lo tienes</div>'
+      + (datos.length ? '<div style="margin-top:6px">' + datos.join(' · ') + '</div>' : '')
+      + '<div style="margin-top:10px;padding:10px;border-radius:8px;background:#fff8e1;color:#7a5600">' + _esc(r.aviso) + '</div>'
+      + '<div style="margin-top:10px;color:#444">Ya está como <b>' + (r.existente.tipo === 'factura' ? 'factura' : 'ticket') + '</b> en <b>' + _esc(r.existente.carpeta) + '</b>:<br><span style="font-size:13px;color:#666">' + _esc(r.existente.nombre) + '</span></div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">'
+      + _btn('gasto-igual', 'Es otro gasto, guardarlo igual', '#E85C0D')
+      + '</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">'
+      + _btn('gasto-ver', 'Ver el que ya está', '#2376C5')
+      + _btn('gasto-cerrar3', 'Vale, cerrar', '#1B4F8A')
+      + '</div>');
+    document.getElementById('gasto-cerrar3').onclick = function () { capa.remove(); };
+    document.getElementById('gasto-ver').onclick = function () { window.open(r.existente.enlace, '_blank'); };
+    document.getElementById('gasto-igual').onclick = function () { capa.remove(); gastoSubir(f, true); };
+  }
+
+  function gastoSubir(f, forzar) {
     if (f.size > 12 * 1024 * 1024) { alert('El archivo pesa más de doce megas. Haz la foto con menos resolución o manda el PDF.'); return; }
-    var capa = _capa('<div style="font-size:18px;font-weight:700">⏳ Mirando el documento…</div><div style="margin-top:8px;color:#555">Un momento: leo si es ticket o factura y lo guardo en su carpeta de Drive.</div>');
+    var capa = _capa('<div style="font-size:18px;font-weight:700">⏳ Mirando el documento…</div><div style="margin-top:8px;color:#555">Un momento: leo si es ticket o factura, compruebo que no esté ya, y lo guardo en su carpeta de Drive.</div>');
     _encoger(f).then(function (x) {
-      return fetch(RAILWAY_API + '/api/gastos/subir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base64: x.dataUrl, mime: x.mime, nombre: f.name || '' }) });
+      return fetch(RAILWAY_API + '/api/gastos/subir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base64: x.dataUrl, mime: x.mime, nombre: f.name || '', forzar: !!forzar }) });
     }).then(function (x) { return x.json().catch(function () { throw new Error('El servidor no contestó bien (' + x.status + ')'); }); })
-      .then(function (j) { if (j && j.offline) throw new Error('Sin conexión con el servidor. Vuelve a intentarlo cuando tengas cobertura: el archivo sigue en tu móvil.'); if (!j.ok) throw new Error(j.error || 'no se pudo guardar'); _pintar(j); })
+      .then(function (j) { if (j && j.offline) throw new Error('Sin conexión con el servidor. Vuelve a intentarlo cuando tengas cobertura: el archivo sigue en tu móvil.'); if (!j.ok) throw new Error(j.error || 'no se pudo guardar'); if (j.duplicado) { _pintarDuplicado(j, f); return; } _pintar(j); })
       .catch(function (e) {
         capa.remove();
         var c2 = _capa('<div style="font-size:18px;font-weight:700;color:#c00">❌ No se ha guardado</div><div style="margin-top:8px;color:#444">' + _esc(e.message) + '</div><div style="display:flex;gap:8px;margin-top:14px">' + _btn('gasto-reint', 'Volver a intentar', '#1B4F8A') + _btn('gasto-cerrar2', 'Cerrar', '#888') + '</div>');
@@ -5081,7 +5102,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v688';
+var APP_VERSION = 'v689';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
