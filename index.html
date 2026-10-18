@@ -1050,10 +1050,6 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <span class='idx-icon'>🔁</span>
       <span class='idx-title'>Portal autónomos (vuelta)</span>
     </div>
-    <div class='ayuda-index-item' onclick='ayudaIr("sec-liquidacion")'>
-      <span class='idx-icon'>🧾</span>
-      <span class='idx-title'>Liquidación final</span>
-    </div>
     <div class='ayuda-index-item' onclick='ayudaIr("sec-relacion")'>
       <span class='idx-icon'>📋</span>
       <span class='idx-title'>Relación de enseres</span>
@@ -1415,7 +1411,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al abrir OTRO cliente desde MIS PRESUPUESTOS se suelta <strong>todo</strong> lo del anterior: los kilómetros medidos, el mapa, el recorrido, los avisos de ZBE, las fotos, la oferta del autónomo y las listas de distancia y operarios. Antes, al encender «cambio de muebles» en el nuevo, entraba la línea de desplazamiento <strong>con los km del cliente de antes</strong>. Y si un cálculo (km, mapa, fotos) llega tarde, ya no se pinta en la ficha equivocada.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Los <strong>interruptores</strong> del contrato (plataforma, oruga, guardamuebles, cambio de muebles), la línea de km, la grúa, «Publicar para autónomos» y la reserva del número de «+ NUEVO» <strong>ahora guardan de verdad</strong>. Estaban llamando a un guardado que no existía fuera de su sitio y no pasaba nada. El botón «⏹ Parar» de la voz de Azkarin, igual.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Lo que <strong>desmarcas o borras</strong> se queda desmarcado o borrado: las casillas se guardan siempre (sí/no) y un email, una hora o un piso que vacíes se <strong>borra también en la nube</strong>. Antes la nube se quedaba con lo viejo y a los 60 segundos volvía solo. El «6d» que se pegaba al cambiar de calle dentro del mismo cliente, arreglado.</div></div>
-      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>En el email, la firma, la liquidación y los permisos <strong>siempre manda la ficha</strong>; los datos de una llamada analizada en «NUEVA LLAMADA» solo se usan si la ficha no los tiene y el modal está abierto para esa misma ficha. Y «FECHA ABIERTA» se ve al reabrir la ficha y el campo vuelve a ser calendario al pasar a otro cliente.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>En el email, la firma y los permisos <strong>siempre manda la ficha</strong>; los datos de una llamada analizada en «NUEVA LLAMADA» solo se usan si la ficha no los tiene y el modal está abierto para esa misma ficha. Y «FECHA ABIERTA» se ve al reabrir la ficha y el campo vuelve a ser calendario al pasar a otro cliente.</div></div>
       <div class='ayuda-tip'>🛑 Nada se borra: quitar un piso o un email de una ficha es cosa tuya y solo afecta a esa ficha. Lo demás (EN MARCHA, PAGADO, archivados) se toca solo desde sus botones y solo al cliente que tocas, aunque tengas otro abierto.</div>
 
       <p style='font-weight:700;color:#8a4b05;margin-top:16px'>📝 LA FICHA SE MONTA SOLA DESDE LA LLAMADA — TÚ SOLO LA REVISAS (app v565 · backend 2.7.587):</p>
@@ -1921,8 +1917,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Botón PDF COMPLETO (naranja):</strong> Genera un PDF con todo el presupuesto y lo envía por email al cliente. El correo del cliente se coge del campo email del dossier.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Botón SOLO DRIVE (morado):</strong> Guarda el PDF en Google Drive pero NO envía email al cliente. Útil cuando el presupuesto aún no está listo o no quieres enviarlo todavía.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Botón PARTE (naranja):</strong> Genera el parte de trabajo para el día del servicio (sin precios, solo artículos y direcciones).</div></div>
-      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Botón LIQUIDACIÓN (naranja):</strong> Genera la factura final tras el servicio, descontando el abono pagado. Ver sección "Liquidación final" para más detalle.</div></div>
-      <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'><strong>Botón RELACIÓN (morado):</strong> Genera un inventario editable de enseres por zonas, sin precios. Ver sección "Relación de enseres".</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Botón RELACIÓN (morado):</strong> Genera un inventario editable de enseres por zonas, sin precios. Ver sección "Relación de enseres".</div></div>
       <div class='ayuda-tip'>Cada vez que generas un PDF se crea una versión nueva (_v2, _v3...) en Drive. No se sobreescriben las anteriores.</div>
       <div class='ayuda-tip'>Una copia del email se envía siempre a <strong>info@azkarmudanzas.com</strong> para que quede registro.</div>
           <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'><strong>Enviar por WhatsApp (📄 PDF junto al teléfono):</strong> el botón está SIEMPRE que el presupuesto tenga teléfono (desde v481 — antes a veces no salía). Al pulsarlo crea un documento nuevo con lo de pantalla y su enlace de firma; los enlaces viejos de ese cliente quedan anulados (si el cliente abre uno, ve «Hemos actualizado su presupuesto» y no puede firmarlo).</div></div>
@@ -2075,28 +2070,6 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Se le piden al asistente <strong>Azkarin</strong> ("dame las estadísticas de autónomos"). Cuentan <strong>todos</strong> los trabajos (activos + archivados): total, adjudicados, precio medio, facturación estimada, destinos y orígenes más frecuentes y el reparto por mes.</div></div>
 
       <div class='ayuda-tip'>Desde el chat de <strong>Azkarin</strong> también puedes pedir cosas como: "archiva el trabajo 6178", "enséñame los archivados" o "cuál es el último trabajo publicado".</div>
-    </div>
-  </div>
-
-  <!-- SECCIÓN: LIQUIDACIÓN FINAL -->
-  <div class='ayuda-section' id='sec-liquidacion'>
-    <h3 onclick='ayudaToggle(this)'>LIQUIDACIÓN FINAL</h3>
-    <div class='ayuda-content'>
-      <p>La liquidación es la <strong>factura final</strong> que se genera cuando termina la mudanza. Muestra el total real del servicio, resta lo que el cliente ya pagó como señal, y calcula lo que queda pendiente.</p>
-
-      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>Cómo usarla:</p>
-      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Abre el presupuesto del cliente</strong> desde el panel de gestión (abajo del todo). Tiene que estar cargado en pantalla con todos sus datos.</div></div>
-      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Si durante la mudanza hubo cambios (más artículos, menos cosas, etc.), <strong>modifica el presupuesto</strong> antes para que refleje lo real.</div></div>
-      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Revisa que el campo <strong>"Abono"</strong> en el dossier tenga la cantidad que el cliente ya pagó como señal/depósito.</div></div>
-      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'>Pulsa el botón naranja <strong>📋 LIQUIDACIÓN</strong> (arriba, junto a los demás botones).</div></div>
-      <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'>Te preguntará si quieres enviar la liquidación por email al cliente. Si le das a <strong>Aceptar</strong>, se envía. Si le das a <strong>Cancelar</strong>, solo se guarda en Drive sin enviar.</div></div>
-      <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'>El PDF de "LIQUIDACION_FINAL" se guarda automáticamente en la carpeta del cliente en Google Drive.</div></div>
-
-      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>¿Qué incluye el PDF?</p>
-      <p style='font-size:12px;margin:8px 0'>Datos del cliente, direcciones, tabla de artículos con precios, base + IVA + total, el abono ya pagado (en verde), y lo pendiente de pago (en naranja). Si ya está todo pagado, aparece "TOTALMENTE PAGADO" en verde.</p>
-
-      <div class='ayuda-warn'><strong>Importante:</strong> tienes que tener el presupuesto del cliente abierto (cargado) antes de pulsar Liquidación. Si pulsas sin tener ningún cliente cargado, sale un aviso. Si tienes otro cliente cargado, generará la liquidación de ese cliente.</div>
-      <div class='ayuda-tip'>Si te equivocas y generas una liquidación por error, no pasa nada grave: el PDF se guarda en Drive con el nombre "LIQUIDACION_FINAL" y puedes borrarlo manualmente desde Drive. Si le diste a "Aceptar" en el email, el cliente habrá recibido el correo — en ese caso, avísale de que fue un error.</div>
     </div>
   </div>
 
@@ -3770,151 +3743,6 @@ async function PA_SOLO_DRIVE(){
 }
 
 // ══════════════════════════════════════════════════════════════
-//  GENERAR LIQUIDACIÓN FINAL
-// ══════════════════════════════════════════════════════════════
-async function generarLiquidacion(){
-  var number = (document.getElementById('f_ref')||{}).value||'';
-  var clientName = (document.getElementById('f_nom')||{}).value||'';
-  var clientEmail = (document.getElementById('f_email')||{}).value||'';
-  var numRef = parseInt(number,10);
-  if(!number||!number.trim()||numRef<1000){
-    showSyncStatus('⚠ Sin nº cliente. Pulsa "+ Nuevo" primero',4000); return;
-  }
-
-  // v236 ESCUDO ANTI-VACIADO
-  var _esc = await _v236EnsureRowsFromLocal();
-  if (!_esc.ok) {
-    showSyncStatus('⚠ El presupuesto se ha quedado sin artículos en pantalla. Recarga el cliente.', 8000);
-    return;
-  }
-  // Recoger datos del formulario
-  var clientDni = (document.getElementById('f_dni')||{}).value||'';
-  var clientTel = (document.getElementById('f_tel')||{}).value||'';
-  // v567: SIEMPRE manda la ficha; los tx-* de la llamada solo si la ficha no lo tiene y el modal está abierto para ella
-  var dirRec = datoDeLaFicha('rec');
-  var dirEnt = datoDeLaFicha('ent');
-  var fechaServ = datoDeLaFicha('fserv');
-  var horaServ = (document.getElementById('f_hserv')||{}).value||'';
-  var abono = parseFloat((document.getElementById('f_abono')||{}).value)||0;
-
-  // Recoger artículos de la tabla
-  var items=[];var base=0;
-  document.querySelectorAll('#tb .cr').forEach(function(row){
-    var ci=row.querySelector('input[list]');
-    var ns=row.querySelectorAll('input[type=number]');
-    var sel=row.querySelector('select');
-    if(!ci||!ci.value||ci.value==='Salida'||ci.value.indexOf('Servicio base')===0) return;
-    var u=parseFloat(ns[0]?ns[0].value:0)||0;
-    var p=parseFloat(ns[1]?ns[1].value:0)||0;
-    var d=parseFloat(ns[2]?ns[2].value:0)||0;
-    var tot=u*p*(1-d/100);
-    base+=tot;
-    items.push({concepto:ci.value,zona:sel?sel.value:'',u:u,p:p,d:d,tot:tot});
-  });
-  var iva=base*0.21; var total=base+iva;
-  var pendiente=total-abono; if(pendiente<0) pendiente=0;
-
-  // Formatear fecha
-  var fechaStr='';
-  if(fechaServ){try{fechaStr=new Date(fechaServ+'T12:00:00').toLocaleDateString('es-ES');}catch(e){fechaStr=fechaServ;}}
-  if(horaServ) fechaStr+=' a las '+horaServ+'h';
-  var hoy=new Date().toLocaleDateString('es-ES');
-
-  // Construir HTML de la liquidación
-  var html='<!DOCTYPE html><html><head><meta charset="utf-8">';
-  html+='<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&display=swap" rel="stylesheet">';
-  html+='<style>';
-  html+='*{margin:0;padding:0;box-sizing:border-box}';
-  html+='body{font-family:"Barlow Condensed",sans-serif;color:#222;padding:30px 40px;max-width:800px;margin:auto}';
-  html+='.header{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1B4F8A;padding-bottom:14px;margin-bottom:20px}';
-  html+='.logo-area{font-size:22px;font-weight:800;color:#1B4F8A;letter-spacing:1px}';
-  html+='.logo-area small{display:block;font-size:11px;font-weight:400;color:#666;letter-spacing:0}';
-  html+='.doc-type{background:#1B4F8A;color:#fff;padding:8px 18px;border-radius:4px;font-size:16px;font-weight:700;letter-spacing:1px}';
-  html+='.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-bottom:18px;font-size:13px}';
-  html+='.info-grid .label{font-weight:700;color:#1B4F8A}';
-  html+='table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}';
-  html+='thead th{background:#1B4F8A;color:#fff;padding:8px 10px;text-align:left;font-weight:600}';
-  html+='tbody td{padding:7px 10px;border-bottom:1px solid #ddd}';
-  html+='tbody tr:nth-child(even){background:#f5f7fa}';
-  html+='.totals{margin:16px 0;text-align:right;font-size:14px}';
-  html+='.totals .row{display:flex;justify-content:flex-end;gap:20px;padding:4px 0}';
-  html+='.totals .row .lbl{font-weight:600;min-width:180px;text-align:right}';
-  html+='.totals .row .val{min-width:100px;text-align:right}';
-  html+='.totals .highlight{background:#1B4F8A;color:#fff;padding:8px 14px;border-radius:4px;font-size:16px;font-weight:800;margin-top:6px}';
-  html+='.totals .abono-row{background:#1a7a3f;color:#fff;padding:6px 14px;border-radius:4px;font-weight:700;margin-top:4px}';
-  html+='.totals .pendiente-row{background:#E85C0D;color:#fff;padding:8px 14px;border-radius:4px;font-size:16px;font-weight:800;margin-top:4px}';
-  html+='.totals .pagado-row{background:#1a7a3f;color:#fff;padding:8px 14px;border-radius:4px;font-size:16px;font-weight:800;margin-top:4px}';
-  html+='.footer{margin-top:30px;border-top:2px solid #1B4F8A;padding-top:10px;font-size:10px;color:#666;text-align:center}';
-  html+='.firmas{display:flex;gap:40px;margin-top:30px}';
-  html+='.firma-box{flex:1;text-align:center;padding-top:60px;border-top:1px solid #999;font-size:12px;font-weight:600;color:#555}';
-  html+='</style></head><body>';
-
-  // Header
-  html+='<div class="header"><div class="logo-area">AZKAR MUDANZAS DE BIZKAIA<small>CIF B05308838 · Pol. Martiartu, Arrigorriaga · 946 959 400</small></div>';
-  html+='<div class="doc-type">LIQUIDACIÓN FINAL</div></div>';
-
-  // Info del cliente
-  html+='<div class="info-grid">';
-  html+='<div><span class="label">Nº Presupuesto:</span> '+number+'</div>';
-  html+='<div><span class="label">Fecha liquidación:</span> '+hoy+'</div>';
-  html+='<div><span class="label">Cliente:</span> '+clientName+'</div>';
-  html+='<div><span class="label">DNI/CIF:</span> '+clientDni+'</div>';
-  html+='<div><span class="label">Teléfono:</span> '+clientTel+'</div>';
-  html+='<div><span class="label">Email:</span> '+clientEmail+'</div>';
-  html+='<div><span class="label">Recogida:</span> '+dirRec+'</div>';
-  html+='<div><span class="label">Entrega:</span> '+dirEnt+'</div>';
-  if(fechaStr) html+='<div><span class="label">Fecha servicio:</span> '+fechaStr+'</div>';
-  html+='</div>';
-
-  // Tabla de artículos
-  html+='<table><thead><tr><th>Concepto</th><th>Zona</th><th>Uds.</th><th>Precio</th><th>Dto.</th><th>Total</th></tr></thead><tbody>';
-  items.forEach(function(it){
-    html+='<tr><td>'+it.concepto+'</td><td>'+it.zona+'</td><td>'+it.u+'</td><td>'+FM(it.p)+'</td><td>'+(it.d?it.d+'%':'—')+'</td><td>'+FM(it.tot)+'</td></tr>';
-  });
-  html+='</tbody></table>';
-
-  // Totales con abono
-  html+='<div class="totals">';
-  html+='<div class="row"><span class="lbl">Base imponible:</span><span class="val">'+FM(base)+'</span></div>';
-  html+='<div class="row"><span class="lbl">IVA (21%):</span><span class="val">'+FM(iva)+'</span></div>';
-  html+='<div class="row highlight"><span class="lbl">TOTAL:</span><span class="val">'+FM(total)+'</span></div>';
-  html+='<div class="row abono-row"><span class="lbl">Abono reserva pagado:</span><span class="val">- '+FM(abono)+'</span></div>';
-  if(pendiente>0){
-    html+='<div class="row pendiente-row"><span class="lbl">PENDIENTE DE PAGO:</span><span class="val">'+FM(pendiente)+'</span></div>';
-  } else {
-    html+='<div class="row pagado-row"><span class="lbl">TOTALMENTE PAGADO</span><span class="val">0,00 €</span></div>';
-  }
-  html+='</div>';
-
-  // Firmas
-  html+='<div class="firmas"><div class="firma-box">Encargado Azkar</div><div class="firma-box">Cliente</div></div>';
-
-  // Footer
-  html+='<div class="footer">AZKAR MUDANZAS DE BIZKAIA SL · CIF B05308838 · Pol. Ind. Martiartu, Arrigorriaga, Bizkaia · Tel. 946 959 400 · info@azkarmudanzasdevizcaya.es</div>';
-  html+='</body></html>';
-
-  // Preguntar si enviar por email
-  var enviarEmail=false;
-  if(clientEmail&&clientEmail.includes('@')){
-    enviarEmail=confirm('¿Enviar la liquidación por email al cliente ('+clientEmail+')?');
-  }
-
-  showSyncStatus('⏳ Generando liquidación final...',0);
-  try{
-    if(clientName&&clientName.trim()) await renameDriveFolder(numRef,clientName);
-    var emailToSend=enviarEmail?clientEmail:'';
-    var result=await savePdfViaServer(number,clientName,html,'LIQUIDACION_FINAL',emailToSend);
-    if(result&&result.success){
-      showSyncStatus('✅ Liquidación guardada en Drive → '+number+' '+(clientName||'').toUpperCase()+(enviarEmail?' (email enviado)':''),6000);
-    } else {
-      showSyncStatus('❌ Error: '+(result?(result.error||result.details||'sin respuesta'):'sin conexión'),8000);
-    }
-  }catch(e){
-    console.error('[Liquidación] Error:',e);
-    showSyncStatus('❌ Error: '+e.message,8000);
-  }
-}
-
 /* beforeprint: browser fires this BEFORE rendering print — show all pages */
 var _printMode = 'pdf'; // 'pdf' or 'parte'
 window.addEventListener('beforeprint', function(){
@@ -5132,7 +4960,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v685';
+var APP_VERSION = 'v686';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -10830,15 +10658,6 @@ window.addEventListener('DOMContentLoaded', function() {
     relBtn.title = 'Genera relación de enseres transportados (editable, sin precios)';
     relBtn.onclick = openRelacionModal;
     acts.insertBefore(relBtn, acts.firstChild);
-
-    // Botón "Liquidación Final"
-    const liqBtn = document.createElement('button');
-    liqBtn.className = 'nbtn';
-    liqBtn.style.cssText = 'background:#E85C0D;color:#fff;margin-right:4px;';
-    liqBtn.innerHTML = '📋 LIQUIDACIÓN';
-    liqBtn.title = 'Genera liquidación final descontando el abono de reserva';
-    liqBtn.onclick = generarLiquidacion;
-    acts.insertBefore(liqBtn, acts.firstChild);
 
     // Botón "Nueva Llamada" para transcripciones
     const callBtn = document.createElement('button');
