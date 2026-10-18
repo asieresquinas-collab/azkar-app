@@ -1917,7 +1917,8 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'><strong>Botón PDF COMPLETO (naranja):</strong> Genera un PDF con todo el presupuesto y lo envía por email al cliente. El correo del cliente se coge del campo email del dossier.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Botón SOLO DRIVE (morado):</strong> Guarda el PDF en Google Drive pero NO envía email al cliente. Útil cuando el presupuesto aún no está listo o no quieres enviarlo todavía.</div></div>
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Botón PARTE (naranja):</strong> Genera el parte de trabajo para el día del servicio (sin precios, solo artículos y direcciones).</div></div>
-      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Botón RELACIÓN (morado):</strong> Genera un inventario editable de enseres por zonas, sin precios. Ver sección "Relación de enseres".</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Botón GASTO (verde):</strong> Haz una foto (o elige un PDF) de un ticket o una factura de gasto. La app mira si es factura o ticket, lo nombra con la fecha, el comercio y el importe, y lo guarda solo en la carpeta de Drive del trimestre que mira la asesoría. Si se equivoca, pulsa «Era un ticket» o «Era una factura» y lo cambia de carpeta.</div></div>
+      <div class='ayuda-step'><div class='step-num'>5</div><div class='step-text'><strong>Botón RELACIÓN (morado):</strong> Genera un inventario editable de enseres por zonas, sin precios. Ver sección "Relación de enseres".</div></div>
       <div class='ayuda-tip'>Cada vez que generas un PDF se crea una versión nueva (_v2, _v3...) en Drive. No se sobreescriben las anteriores.</div>
       <div class='ayuda-tip'>Una copia del email se envía siempre a <strong>info@azkarmudanzas.com</strong> para que quede registro.</div>
           <div class='ayuda-step'><div class='step-num'>6</div><div class='step-text'><strong>Enviar por WhatsApp (📄 PDF junto al teléfono):</strong> el botón está SIEMPRE que el presupuesto tenga teléfono (desde v481 — antes a veces no salía). Al pulsarlo crea un documento nuevo con lo de pantalla y su enlace de firma; los enlaces viejos de ese cliente quedan anulados (si el cliente abre uno, ve «Hemos actualizado su presupuesto» y no puede firmarlo).</div></div>
@@ -3743,6 +3744,113 @@ async function PA_SOLO_DRIVE(){
 }
 
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+//  v687 · GASTOS: ticket o factura → Drive (carpeta del trimestre que mira la asesoría)
+//  El servidor (2.7.934) mira el documento, decide si es factura o ticket, lo nombra
+//  con fecha · comercio · concepto · importe y lo deja en su carpeta. Aquí solo:
+//  elegir el archivo (cámara o galería), encogerlo si es foto, subirlo y enseñar el
+//  resultado con «Era un ticket / Era una factura» por si se equivoca.
+// ══════════════════════════════════════════════════════════════
+(function () {
+  var MAX_LADO = 2000, CALIDAD = 0.85;
+  function _input() {
+    var i = document.getElementById('gasto-archivo');
+    if (i) return i;
+    i = document.createElement('input'); i.type = 'file'; i.id = 'gasto-archivo';
+    i.accept = 'image/*,application/pdf'; i.style.display = 'none';
+    i.addEventListener('change', function () { var f = i.files && i.files[0]; i.value = ''; if (f) gastoSubir(f); });
+    document.body.appendChild(i); return i;
+  }
+  window.gastoElegirArchivo = function () { _input().click(); };
+
+  function _leer(f) { return new Promise(function (ok, ko) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.onerror = function () { ko(new Error('No se pudo leer el archivo')); }; r.readAsDataURL(f); }); }
+  // Fotos grandes: a 2000 px de lado como mucho, en JPEG. Si el navegador no sabe abrirla (HEIC…), va tal cual.
+  function _encoger(f) {
+    if (!/^image\//.test(f.type) || f.size < 900 * 1024) return _leer(f).then(function (d) { return { dataUrl: d, mime: f.type || 'image/jpeg' }; });
+    return new Promise(function (ok) {
+      var url = URL.createObjectURL(f); var im = new Image();
+      im.onload = function () {
+        try {
+          var esc = Math.min(1, MAX_LADO / Math.max(im.width, im.height));
+          var c = document.createElement('canvas'); c.width = Math.round(im.width * esc); c.height = Math.round(im.height * esc);
+          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          var d = c.toDataURL('image/jpeg', CALIDAD); URL.revokeObjectURL(url); ok({ dataUrl: d, mime: 'image/jpeg' });
+        } catch (e) { URL.revokeObjectURL(url); _leer(f).then(function (d) { ok({ dataUrl: d, mime: f.type || 'image/jpeg' }); }); }
+      };
+      im.onerror = function () { URL.revokeObjectURL(url); _leer(f).then(function (d) { ok({ dataUrl: d, mime: f.type || 'image/jpeg' }); }); };
+      im.src = url;
+    });
+  }
+
+  function _capa(html) {
+    var v = document.getElementById('gasto-capa'); if (v) v.remove();
+    var capa = document.createElement('div'); capa.id = 'gasto-capa';
+    capa.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+    capa.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:440px;width:100%;padding:18px;font-size:15px;color:#222;box-shadow:0 10px 40px rgba(0,0,0,.35)">' + html + '</div>';
+    document.body.appendChild(capa); return capa;
+  }
+  function _esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function _btn(id, txt, color) { return '<button id="' + id + '" style="flex:1;min-width:120px;padding:12px 10px;border:0;border-radius:10px;background:' + color + ';color:#fff;font-weight:700;font-size:14px">' + txt + '</button>'; }
+  function _fechaBonita(f) { if (!/^\d{4}-\d{2}-\d{2}$/.test(f || '')) return ''; var p = f.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+
+  function _pintar(r) {
+    var esF = r.tipo === 'factura';
+    var titulo = esF ? '🧾 Es una FACTURA' : '🎫 Es un TICKET';
+    var datos = [];
+    if (r.proveedor) datos.push('<b>' + _esc(r.proveedor) + '</b>');
+    if (r.concepto && !/^otro$/i.test(r.concepto)) datos.push(_esc(r.concepto));
+    if (r.importe) datos.push('<b>' + _esc(String(r.importe).replace('.', ',')) + ' €</b>');
+    if (r.fecha) datos.push(_fechaBonita(r.fecha));
+    var html = '<div style="font-size:20px;font-weight:800;color:' + (esF ? '#1B4F8A' : '#1a7a3f') + '">' + titulo + '</div>'
+      + (datos.length ? '<div style="margin-top:6px">' + datos.join(' · ') + '</div>' : '')
+      + (r.aviso ? '<div style="margin-top:10px;padding:10px;border-radius:8px;background:#fff8e1;color:#7a5600">' + _esc(r.aviso) + '</div>' : '')
+      + '<div style="margin-top:12px;color:#444">Guardado en <b>' + _esc(r.carpeta.ruta) + '</b> como<br><span style="font-size:13px;color:#666">' + _esc(r.archivo.nombre) + '</span></div>'
+      + '<div id="gasto-estado" style="margin-top:8px;min-height:18px;font-size:13px;color:#1a7a3f"></div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">'
+      + _btn('gasto-cambiar', esF ? 'Era un ticket' : 'Era una factura', '#E85C0D')
+      + _btn('gasto-otro', '📷 Otro gasto', '#1a7a3f')
+      + '</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">'
+      + _btn('gasto-abrir', 'Ver carpeta', '#2376C5')
+      + _btn('gasto-borrar', 'Borrar', '#888')
+      + _btn('gasto-cerrar', 'Cerrar', '#1B4F8A')
+      + '</div>';
+    var capa = _capa(html);
+    var estado = document.getElementById('gasto-estado');
+    document.getElementById('gasto-cerrar').onclick = function () { capa.remove(); };
+    document.getElementById('gasto-otro').onclick = function () { capa.remove(); window.gastoElegirArchivo(); };
+    document.getElementById('gasto-abrir').onclick = function () { window.open(r.carpeta.enlace, '_blank'); };
+    document.getElementById('gasto-cambiar').onclick = function () {
+      var nuevo = esF ? 'ticket' : 'factura'; estado.textContent = '⏳ Moviendo…';
+      fetch(RAILWAY_API + '/api/gastos/mover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fileId: r.archivo.id, tipo: nuevo, fecha: r.fecha || '' }) })
+        .then(function (x) { return x.json(); })
+        .then(function (j) { if (!j.ok) throw new Error(j.error || 'no se pudo mover'); r.tipo = nuevo; r.carpeta = j.carpeta; r.aviso = ''; _pintar(r); document.getElementById('gasto-estado').textContent = '✓ Movido a ' + j.carpeta.ruta; })
+        .catch(function (e) { estado.style.color = '#c00'; estado.textContent = '❌ ' + e.message; });
+    };
+    document.getElementById('gasto-borrar').onclick = function () {
+      if (!confirm('¿Borrar este archivo de Drive?')) return; estado.textContent = '⏳ Borrando…';
+      fetch(RAILWAY_API + '/api/gastos/' + encodeURIComponent(r.archivo.id), { method: 'DELETE' })
+        .then(function (x) { return x.json(); })
+        .then(function (j) { if (!j.ok) throw new Error(j.error || 'no se pudo borrar'); capa.remove(); showSyncStatus('🗑️ Gasto borrado de Drive', 4000); })
+        .catch(function (e) { estado.style.color = '#c00'; estado.textContent = '❌ ' + e.message; });
+    };
+  }
+
+  function gastoSubir(f) {
+    if (f.size > 12 * 1024 * 1024) { alert('El archivo pesa más de doce megas. Haz la foto con menos resolución o manda el PDF.'); return; }
+    var capa = _capa('<div style="font-size:18px;font-weight:700">⏳ Mirando el documento…</div><div style="margin-top:8px;color:#555">Un momento: leo si es ticket o factura y lo guardo en su carpeta de Drive.</div>');
+    _encoger(f).then(function (x) {
+      return fetch(RAILWAY_API + '/api/gastos/subir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base64: x.dataUrl, mime: x.mime, nombre: f.name || '' }) });
+    }).then(function (x) { return x.json().catch(function () { throw new Error('El servidor no contestó bien (' + x.status + ')'); }); })
+      .then(function (j) { if (j && j.offline) throw new Error('Sin conexión con el servidor. Vuelve a intentarlo cuando tengas cobertura: el archivo sigue en tu móvil.'); if (!j.ok) throw new Error(j.error || 'no se pudo guardar'); _pintar(j); })
+      .catch(function (e) {
+        capa.remove();
+        var c2 = _capa('<div style="font-size:18px;font-weight:700;color:#c00">❌ No se ha guardado</div><div style="margin-top:8px;color:#444">' + _esc(e.message) + '</div><div style="display:flex;gap:8px;margin-top:14px">' + _btn('gasto-reint', 'Volver a intentar', '#1B4F8A') + _btn('gasto-cerrar2', 'Cerrar', '#888') + '</div>');
+        document.getElementById('gasto-reint').onclick = function () { c2.remove(); gastoSubir(f); };
+        document.getElementById('gasto-cerrar2').onclick = function () { c2.remove(); };
+      });
+  }
+})();
+
 /* beforeprint: browser fires this BEFORE rendering print — show all pages */
 var _printMode = 'pdf'; // 'pdf' or 'parte'
 window.addEventListener('beforeprint', function(){
@@ -4960,7 +5068,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v686';
+var APP_VERSION = 'v687';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -10658,6 +10766,15 @@ window.addEventListener('DOMContentLoaded', function() {
     relBtn.title = 'Genera relación de enseres transportados (editable, sin precios)';
     relBtn.onclick = openRelacionModal;
     acts.insertBefore(relBtn, acts.firstChild);
+
+    // v687: Botón "GASTO" — foto o PDF de un ticket/factura → su carpeta del trimestre en Drive
+    const gastoBtn = document.createElement('button');
+    gastoBtn.className = 'nbtn';
+    gastoBtn.style.cssText = 'background:#1a7a3f;color:#fff;margin-right:4px;';
+    gastoBtn.innerHTML = '🧾 GASTO';
+    gastoBtn.title = 'Sube un ticket o una factura de gasto y se guarda sola en su carpeta de Drive';
+    gastoBtn.onclick = function () { try { window.gastoElegirArchivo(); } catch (e) { alert('No se pudo abrir: ' + e.message); } };
+    acts.insertBefore(gastoBtn, acts.firstChild);
 
     // Botón "Nueva Llamada" para transcripciones
     const callBtn = document.createElement('button');
