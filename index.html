@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v693';
+var APP_VERSION = 'v694';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -6188,6 +6188,9 @@ async function savePresupuestoFull(data) {
       // Siempre incluir timestamp y id
       fbData.timestamp = data.timestamp || Date.now();
       if (data.id) fbData.id = data.id;
+      // v694 · huella de la subida (sin datos de nadie): versión de la app y QUÉ campos han subido. Para que el servidor,
+      // cuando diga «falta la señal», pueda decir también «la última subida desde la app fue con v694 y llevaba estos campos»
+      try { fbData._app = { v: (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?'), cuando: Date.now(), campos: Object.keys(fbData).filter(function (k) { return k !== '_app'; }).slice(0, 60), abono_en_pantalla: String((document.getElementById('f_abono') || {}).value || '').slice(0, 20) }; } catch (eH) {}
       // Siempre incluir rows aunque esté vacío (para borrado intencional)
       if (data.rows !== undefined) fbData.rows = data.rows;
       // ── v648 · ESCUDO ANTI-PISADO (Koldo 6617, 9-sep) ─────────────────────────────
