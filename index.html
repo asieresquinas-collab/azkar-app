@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v694';
+var APP_VERSION = 'v695';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18072,6 +18072,40 @@ async function doResetWithCode() {
       }
     } catch(e){}
   };
+  // ── v695 · EL COMPAÑERO HABLA ÉL SOLO CON LA APP ABIERTA (Asier, 19-oct) ──────────
+  //  «Me parece que le falta algo para interactuar como un compañero real: necesito que
+  //   me hable sin yo preguntarle cuando tenga la aplicación abierta».
+  //  Hasta hoy, con «nada salta solo» puesto, el compañero preparaba los recados pero
+  //  nadie se los pedía: solo salían si él decía «dime». Ahora, mientras la app está
+  //  abierta y a la vista, se le pregunta al servidor cada tres minutos (y nada más
+  //  abrir, y al volver a la app) y, si hay algo, Azkarin llama a la puerta como siempre
+  //  («¿te puedo decir una cosa?»); él contesta sí, no o «en veinte minutos».
+  (function(){
+    var _ultima = 0, _enCurso = false;
+    var CADA_MS = 3 * 60 * 1000, MIN_ENTRE_MS = 60 * 1000;
+    function _preguntar(motivo){
+      try {
+        if (_enCurso) return;
+        if (document.visibilityState !== 'visible') return;
+        if (!window._apiKey) return;
+        if (Date.now() - _ultima < MIN_ENTRE_MS) return;
+        if (window._azkToque && window._azkToque.id && Date.now() - (window._azkToque.ts || 0) < 120000) return;   // ya está llamando a la puerta
+        _ultima = Date.now(); _enCurso = true;
+        var api = RAILWAY_API + '/api/voz/companero?apiKey=' + encodeURIComponent(window._apiKey || '') + '&en_la_app=1&x=' + Date.now();
+        fetch(api).then(function(r){ return r.json(); }).then(function(d){
+          _enCurso = false;
+          if (!d || !d.hay || !d.texto) return;
+          try { window.__azkarinAvisoDeVoz(String(d.texto), d.id || '', d.tipo || ''); } catch(e){}
+        }).catch(function(){ _enCurso = false; });
+      } catch(e){ _enCurso = false; }
+    }
+    window._companeroPreguntaAhora = _preguntar;
+    setTimeout(function(){ _preguntar('al abrir'); }, 8000);
+    setInterval(function(){ _preguntar('cada rato'); }, CADA_MS);
+    document.addEventListener('visibilitychange', function(){
+      if (document.visibilityState === 'visible') setTimeout(function(){ _preguntar('al volver'); }, 1500);
+    });
+  })();
   // La app le pasa a la APK con qué llave preguntar (nada de contraseñas: la llave pública
   // que ya viaja en la página) para que pueda traer los recados con el móvil bloqueado.
   (function(){
