@@ -796,8 +796,14 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
     </div>
     <div class='perm-row'>
       <div class='perm-field'>
-        <label>Vehículos en la reserva (para comunicación policía)</label>
+        <label>Vehículos de Azkar (van en el permiso del ayuntamiento)</label>
         <input type='text' id='perm_vehiculos' value='IVECO 5778JKD, MERCEDES 1905LKX' placeholder='IVECO 5778JKD, MERCEDES 1905LKX'>
+      </div>
+    </div>
+    <div class='perm-row'>
+      <div class='perm-field'>
+        <label>Coches aparcados en la reserva (matrículas, solo para la comunicación a policía)</label>
+        <input type='text' id='perm_coches' value='' placeholder='Ej: SEAT 1234ABC; RENAULT 5678DEF'>
       </div>
     </div>
     <div class='perm-row'>
@@ -864,6 +870,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <!-- HISTORIAL DE PERMISOS -->
   <div class='perm-card'>
     <h3>Historial de permisos</h3>
+    <p style='font-size:12px;color:#555;margin:0 0 8px'>Toca un permiso ya mandado para recuperarlo con todos sus datos: solo tienes que poner las matrículas de los coches aparcados y pulsar «Comunicar policía».</p>
     <div id='perm-list' class='perm-list'>
       <p style='color:#888;font-size:12px;text-align:center;padding:20px'>No hay permisos guardados</p>
     </div>
@@ -5102,7 +5109,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v689';
+var APP_VERSION = 'v690';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -14764,11 +14771,13 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
   window.permEnviarPolicia = function() {
     var datos = permRecogerDatos();
     if (!datos) return;
-    if (!datos.vehiculos) {
-      alert('Rellena el campo de vehículos antes de enviar la comunicación a policía.');
-      return;
+    // v690: a la policía van los COCHES aparcados en la reserva, no los camiones de Azkar
+    if (!datos.coches) {
+      var c = prompt('Matrículas de los coches aparcados en la reserva (van en la comunicación a policía):', '');
+      if (!c || !c.trim()) { alert('Sin las matrículas de los coches no se puede mandar la comunicación a policía.'); return; }
+      document.getElementById('perm_coches').value = c.trim(); datos.coches = c.trim();
     }
-    if (!confirm('¿Enviar comunicación a policía?\n\nDirección: ' + datos.direccion + '\nVehículos: ' + datos.vehiculos)) return;
+    if (!confirm('¿Enviar comunicación a policía?\n\nDirección: ' + datos.direccion + '\nCoches en la reserva: ' + datos.coches)) return;
 
     var btn = event.target;
     btn.disabled = true;
@@ -14785,7 +14794,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
           horario: datos.horario,
           direccion: datos.direccion,
           num_dias: datos.num_dias,
-          vehiculos: datos.vehiculos,
+          vehiculos: datos.coches,
           tipo: datos.tipo
         }
       })
@@ -14832,6 +14841,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
       hora_reserva: document.getElementById('perm_hora').value || '8:00',
       metros: parseInt(document.getElementById('perm_metros').value) || 8,
       vehiculos: document.getElementById('perm_vehiculos').value.trim() || 'IVECO 5778JKD, MERCEDES 1905LKX',
+      coches: (document.getElementById('perm_coches') ? document.getElementById('perm_coches').value.trim() : ''),
       observaciones: document.getElementById('perm_observaciones').value.trim()
     };
   }
@@ -14871,7 +14881,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
         + '<div class="perm-info">'
         + '<strong>' + p.direccion + obs + '</strong>'
         + '<small>' + (p.ayuntamiento || 'bilbao').toUpperCase() + ' | ' + p.tipo + ' | ' + p.fecha_inicio + ' | ' + p.num_dias + ' día(s)</small>'
-        + '<small style="color:#2376C5;font-size:10px">Pulsa para cargar en el formulario</small>'
+        + '<small style="color:#2376C5;font-size:10px">Toca para recuperarlo (y mandar la comunicación a policía sin rellenar nada)</small>'
         + '</div>'
         + '<span class="perm-status ' + statusClass + '">' + statusText + '</span>'
         + '</div>';
@@ -14893,11 +14903,14 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
       document.getElementById('perm_hora').value = p.hora_reserva || '8:00';
       document.getElementById('perm_metros').value = p.metros || 8;
       document.getElementById('perm_vehiculos').value = p.vehiculos || 'IVECO 5778JKD, MERCEDES 1905LKX';
+      if (document.getElementById('perm_coches')) document.getElementById('perm_coches').value = p.coches || '';
       document.getElementById('perm_observaciones').value = p.observaciones || '';
       permCalcPlazos();
-      // Scroll arriba al formulario
-      document.getElementById('perm-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      alert('Permiso cargado en el formulario: ' + p.direccion + (p.observaciones ? ' (' + p.observaciones + ')' : ''));
+      // v690: lo normal al recuperar un permiso es ir a por la policía: se lleva al campo de los coches
+      var cc = document.getElementById('perm_coches');
+      if (cc) { cc.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(function () { try { cc.focus(); } catch (e) {} }, 400); }
+      else document.getElementById('perm-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showSyncStatus('📋 Permiso recuperado: ' + p.direccion + '. Pon las matrículas de los coches y pulsa «Comunicar policía».', 7000);
     } catch(e) { alert('Error cargando permiso'); }
   };
 
@@ -14966,9 +14979,10 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
 
     var bodyData;
     if (tipoDoc === 'policia') {
-      if (!datos.vehiculos) {
-        alert('Rellena el campo de vehículos para ver la comunicación policía.');
-        return;
+      if (!datos.coches) {
+        var c = prompt('Matrículas de los coches aparcados en la reserva (van en la comunicación a policía):', '');
+        if (!c || !c.trim()) { alert('Sin las matrículas de los coches no hay comunicación a policía que ver.'); return; }
+        document.getElementById('perm_coches').value = c.trim(); datos.coches = c.trim();
       }
       bodyData = {
         ayuntamiento: datos.ayuntamiento,
@@ -14979,7 +14993,7 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
           horario: datos.horario,
           direccion: datos.direccion,
           num_dias: datos.num_dias,
-          vehiculos: datos.vehiculos,
+          vehiculos: datos.coches,
           tipo: datos.tipo
         }
       };
