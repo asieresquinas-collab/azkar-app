@@ -5109,7 +5109,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v691';
+var APP_VERSION = 'v692';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17316,7 +17316,8 @@ async function doResetWithCode() {
   <div id="chatbot-foto-ind" style="display:none"></div>
   <div id="chatbot-input-area">
     <input type="file" id="chatbot-foto-input" accept="image/*,application/pdf,.doc,.docx,.xlsx,.xlsm,.xls,.csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" multiple style="display:none">
-    <button id="chatbot-foto-btn" onclick="document.getElementById('chatbot-foto-input').click()" title="Adjuntar foto">&#128206;</button>
+    <input type="file" id="chatbot-cam-input" accept="image/*" capture="environment" style="display:none">
+    <button id="chatbot-foto-btn" onclick="chatbotElegirAdjunto()" title="Hacer foto o adjuntar archivo">&#128206;</button>
     <input type="file" id="chatbot-video-input" accept="video/*" style="display:none">
     <button id="chatbot-video-btn" onclick="document.getElementById('chatbot-video-input').click()" title="Adjuntar vídeo (borrador de presupuesto)">&#127909;</button>
     <textarea id="chatbot-input" rows="1" placeholder="Escribe un mensaje..."></textarea>
@@ -21102,6 +21103,35 @@ async function doResetWithCode() {
   }
 
   var _fotoInput = document.getElementById('chatbot-foto-input');
+  // v692: el clip pregunta «Hacer foto» (cámara directa) o «Archivo o galería». Antes abría el selector de
+  // archivos del móvil, que al admitir PDF y Word no ofrecía la cámara: «no me abre la cámara».
+  window.chatbotElegirAdjunto = function () {
+    var v = document.getElementById('chatbot-adj-capa'); if (v) v.remove();
+    var capa = document.createElement('div'); capa.id = 'chatbot-adj-capa';
+    capa.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100001;display:flex;align-items:center;justify-content:center;padding:16px';
+    capa.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:420px;width:100%;padding:18px;font-size:15px;color:#222;box-shadow:0 10px 40px rgba(0,0,0,.35)">'
+      + '<div style="font-size:19px;font-weight:800;color:#1B4F8A">📎 Mandar a Azkarin</div>'
+      + '<div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">'
+      + '<button type="button" id="chatbot-adj-foto" style="padding:18px;border:0;border-radius:12px;background:#1a7a3f;color:#fff;font-weight:800;font-size:18px">📷 Hacer foto</button>'
+      + '<button type="button" id="chatbot-adj-arch" style="padding:14px;border:0;border-radius:12px;background:#2376C5;color:#fff;font-weight:700;font-size:15px">📁 Foto de la galería, PDF, Word o Excel</button>'
+      + '<button type="button" id="chatbot-adj-cerrar" style="padding:12px;border:0;border-radius:12px;background:#eee;color:#333;font-weight:700;font-size:14px">Cerrar</button></div></div>';
+    document.body.appendChild(capa);
+    document.getElementById('chatbot-adj-foto').onclick = function () { capa.remove(); document.getElementById('chatbot-cam-input').click(); };
+    document.getElementById('chatbot-adj-arch').onclick = function () { capa.remove(); document.getElementById('chatbot-foto-input').click(); };
+    document.getElementById('chatbot-adj-cerrar').onclick = function () { capa.remove(); };
+    capa.onclick = function (e) { if (e.target === capa) capa.remove(); };
+  };
+  var _camInput = document.getElementById('chatbot-cam-input');
+  if (_camInput && _fotoInput) {
+    _camInput.addEventListener('change', function () {
+      // la foto de la cámara sigue el mismo camino que un archivo adjuntado
+      var fs = Array.prototype.slice.call(this.files || []); this.value = '';
+      if (!fs.length) return;
+      try { var dt = new DataTransfer(); fs.forEach(function (f) { dt.items.add(f); }); _fotoInput.files = dt.files; }
+      catch (e) { try { _fotoInput.files = fs; } catch (e2) {} }
+      _fotoInput.dispatchEvent(new Event('change'));
+    });
+  }
   if (_fotoInput) {
     _fotoInput.addEventListener('change', async function() {
       var files = Array.from(this.files || []);
