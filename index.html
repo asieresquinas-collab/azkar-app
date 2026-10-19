@@ -870,7 +870,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
   <!-- HISTORIAL DE PERMISOS -->
   <div class='perm-card'>
     <h3>Historial de permisos</h3>
-    <p style='font-size:12px;color:#555;margin:0 0 8px'>Toca un permiso ya mandado para recuperarlo con todos sus datos: solo tienes que poner las matrículas de los coches aparcados y pulsar «Comunicar policía».</p>
+    <p style='font-size:12px;color:#555;margin:0 0 8px'>Toca un permiso ya mandado para recuperarlo con todos sus datos: solo tienes que poner las matrículas de los coches aparcados y pulsar «Comunicar policía». Cada permiso se borra solo dos semanas después del día del servicio.</p>
     <div id='perm-list' class='perm-list'>
       <p style='color:#888;font-size:12px;text-align:center;padding:20px'>No hay permisos guardados</p>
     </div>
@@ -5109,7 +5109,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v690';
+var APP_VERSION = 'v691';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -14859,6 +14859,22 @@ window._pintarDistanciaYKm = pintarDistanciaYKm;
       var data = localStorage.getItem('azkar-permisos');
       if (data) permisosGuardados = JSON.parse(data);
     } catch(e) { permisosGuardados = []; }
+    if (!Array.isArray(permisosGuardados)) permisosGuardados = [];
+    // v691: el historial se limpia solo. Cada permiso se borra DOS SEMANAS después del día del servicio
+    // (no de cuando se guardó: uno pedido con tres semanas tiene que seguir ahí el día de la mudanza).
+    // Si no tiene fecha de servicio, cuentan dos semanas desde que se guardó.
+    try {
+      var limite = 14 * 24 * 60 * 60 * 1000, ahora = Date.now(), antes = permisosGuardados.length;
+      permisosGuardados = permisosGuardados.filter(function (p) {
+        var ref = null;
+        var fs = p && (p.fecha_fin || p.fecha_inicio);
+        if (fs && /^\d{4}-\d{2}-\d{2}$/.test(fs)) ref = new Date(fs + 'T23:59:59').getTime();
+        else if (p && p.fecha_creacion) ref = new Date(p.fecha_creacion).getTime();
+        if (!ref || isNaN(ref)) return true;   // sin fechas no se toca
+        return (ahora - ref) < limite;
+      });
+      if (permisosGuardados.length !== antes) permGuardarLocal();
+    } catch (e) {}
   }
 
   // Renderizar lista de permisos
