@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v697';
+var APP_VERSION = 'v698';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -19652,6 +19652,21 @@ async function doResetWithCode() {
   // v588: «hablando» es también la GRABACIÓN sonando — así el micro no se toma la voz del
   // cliente por la de Asier, y hablándole encima se le puede parar igual que a él.
   function _convGrabacionSonando() { try { var a = window._llAudio; return !!(a && !a.paused && !a.ended); } catch(e){ return false; } }
+  // v698 · foto del micro para la copia de la conversación (nada de lo dicho, solo el estado)
+  window._azkMicEstado = function() {
+    try {
+      var m = (typeof _mp !== 'undefined') ? _mp : {};
+      return 'conversación ' + (window._azkarinConv ? 'ENCENDIDA' : 'apagada')
+        + ' · solo si dices Azkarin: ' + (window._convPorPalabraClave ? 'SÍ' : 'no')
+        + ' · micro propio: ' + (typeof _mpDisponible === 'function' && _mpDisponible() ? 'sí' : 'no')
+        + ' (abierto ' + (m.on ? 'sí' : 'no') + ', arrancando ' + (m.arrancando ? 'sí' : 'no') + ', imposible ' + (m.imposible ? 'sí' : 'no')
+        + ', permiso ' + (m.permisoEstado || '?') + ', pasando a texto ' + (m.transcribiendo ? 'sí' : 'no') + ', en vuelo ' + (m.enVuelo || 0) + ', fallos ' + (m.fallos || 0) + ')'
+        + ' · hablando: ' + (_convHablando() ? 'sí' : 'no')
+        + ' · pensando: ' + ((typeof sendBtn !== 'undefined' && sendBtn && sendBtn.disabled) ? 'sí' : 'no')
+        + ' · pantalla: ' + document.visibilityState
+        + ' · app nativa: ' + ((typeof _esAppNativa === 'function' && _esAppNativa()) ? 'sí' : 'no');
+    } catch(e) { return 'no se pudo leer (' + (e && e.message) + ')'; }
+  };
   function _convHablando() { try { return !!(window._hablandoNativo || _ttsSpeaking || (_ttsQueue && _ttsQueue.length) || _convGrabacionSonando()); } catch(e){ return false; } }
   // v360: memoria de lo ÚLTIMO que dijo Azkarin (varias frases, 12s) — para reconocer su eco AUNQUE
   // la transcripción llegue tarde (cuando ya ha dejado de hablar) y con fallos.
@@ -19895,6 +19910,15 @@ async function doResetWithCode() {
   // pasa al micrófono: si se abrió, a cuántos hercios, qué error dio, si el dictado llegó.
   // NUNCA se manda audio ni nada de un cliente.
   function _vozParte(evento, datos) {
+    // v698 · y se guarda aquí también (los últimos ochenta), para que salga al copiar la conversación:
+    //  así se ve qué le pasó al micro sin tener que entrar al servidor con la llave.
+    try {
+      var _lv = window._azkVozLog || (window._azkVozLog = []);
+      var _hh = new Date().toTimeString().slice(0, 8);
+      var _dd = ''; try { _dd = JSON.stringify(datos || {}).replace(/[{}"]/g, '').slice(0, 140); } catch(eJ){}
+      _lv.push(_hh + ' ' + evento + (_dd ? ' ' + _dd : ''));
+      if (_lv.length > 80) _lv.splice(0, _lv.length - 80);
+    } catch(eL){}
     try {
       fetch(RAILWAY_API + '/api/voz/parte', {
         method: 'POST',
@@ -21420,6 +21444,12 @@ async function doResetWithCode() {
       var txt = _lineas.join('\n\n');
       if (!txt.trim()) { alert('Aún no hay conversación que copiar.'); return; }
       txt = '=== CONVERSACIÓN AZKARIN · ' + new Date().toLocaleString('es-ES') + ' · APP ' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?') + ' ===\n\n' + txt;
+      // v698 · lo que le pasó al micro (estado y últimos partes), al final de la copia
+      try {
+        var _est = window._azkMicEstado ? window._azkMicEstado() : '';
+        var _log = (window._azkVozLog || []).slice(-50);
+        txt += '\n\n=== MICRO ===\n' + _est + (_log.length ? '\n' + _log.join('\n') : '\n(sin partes del micro en esta sesión)');
+      } catch(eM){}
       var nMsg = (chatHistorial || []).length;
       var ok = function() { alert('✅ Conversación copiada (' + nMsg + ' mensajes). Pégasela a Claude para que lo arregle.'); };
       var fallback = function() {
