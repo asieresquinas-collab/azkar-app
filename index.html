@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v705';
+var APP_VERSION = 'v706';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -20058,7 +20058,9 @@ async function doResetWithCode() {
         if (!b.size || !_gr.on || !window._azkarinConv) return;
         _gr.trozos++; _gr.ultimoKb = Math.round(b.size / 1024);
         if (_mp.ctx && _mp.ctx.state === 'running') { _mpGrabadoraParar('el audio bueno ya anda'); return; }
-        if (_convHablando()) return;                                   // mientras habla Azkarin, nada (su eco)
+        if (_convHablando()) { _gr.hablabaTs = Date.now(); return; }   // mientras habla Azkarin, nada (su eco)
+        // v706 · el trozo que empezó mientras hablaba (o justo al callarse) lleva su cola: tampoco (20:30, «Me equivoqué al mezclarlas» volvió como si fuera de Asier)
+        if (Date.now() - Math.max(_gr.hablabaTs || 0, window._ttsFinTs || 0) < 3200) return;
         var fr = new FileReader();
         fr.onload = function(){
           try {
