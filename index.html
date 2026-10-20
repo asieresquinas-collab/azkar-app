@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v703';
+var APP_VERSION = 'v704';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17277,6 +17277,7 @@ async function doResetWithCode() {
 #chatbot-estado.ver{display:block}
 #chatbot-estado.escucha{background:#fdeaea;color:#a3261a}
 #chatbot-estado.habla{background:#fdf0e3;color:#8a4b05}
+#chatbot-estado.dormido{background:#fff3c4;color:#7a5a00;font-weight:800}
 #chatbot-parar{display:none;margin:0 12px 6px;padding:9px 12px;border:none;border-radius:9px;background:#c0392b;color:#fff;font-size:13px;font-weight:700;font-family:Barlow,sans-serif;cursor:pointer;flex-shrink:0}
 #chatbot-parar.ver{display:block}
 #chatbot-mic{width:38px;height:38px;border-radius:50%;border:none;background:#e0e0e0;color:#666;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -19761,11 +19762,13 @@ async function doResetWithCode() {
         var t = e === 'escucha' ? '\ud83c\udfa7 Te escucho \u2014 habla tranquilo'
               : e === 'pensando' ? '\u23f3 Pensando\u2026 puedes seguir hablando'
               : e === 'habla' ? '\ud83d\udd0a Hablando \u2014 h\u00e1blame encima o toca la pantalla para cortarme'
+              : e === 'dormido' ? '\ud83d\udc46 Toca la pantalla una vez para que te oiga'
               : '';
         chip.textContent = t;
         chip.classList.toggle('ver', !!t);
         chip.classList.toggle('escucha', e === 'escucha');
         chip.classList.toggle('habla', e === 'habla');
+        chip.classList.toggle('dormido', e === 'dormido');
       }
     } catch(err){}
   }
@@ -19776,6 +19779,7 @@ async function doResetWithCode() {
       if (!window._azkarinConv) return _convPintarEstado('off');
       if (_convHablando()) return _convPintarEstado('habla');
       if (sendBtn && sendBtn.disabled && !(_convBuffer || '').trim()) return _convPintarEstado('pensando');
+      if (typeof _mp !== 'undefined' && _mp && _mp.on && _mp.ctx && _mp.ctx.state === 'suspended' && !(typeof _gr !== "undefined" && _gr && _gr.on)) return _convPintarEstado('dormido');   // v704
       return _convPintarEstado('escucha');
     } catch(e){}
   }
@@ -19954,8 +19958,16 @@ async function doResetWithCode() {
       .then(function(st) {
         if (!window._azkarinConv) { try { st.getTracks().forEach(function(t){ t.stop(); }); } catch(e){} _mp.arrancando = false; return; }
         var AC = window.AudioContext || window.webkitAudioContext;
-        var ctx = new AC();
+        // v704 · 🛑 EL AUDIO DE LA APP NACE EN PAUSA. Parte real del móvil de Asier (20-oct, 14:09, app de ayer):
+        //  micro abierto, pista viva, «audio: suspended», cero sonido. El motor de Chrome de dentro de la APK (WebView,
+        //  se actualiza solo) ya no deja procesar sonido a un audio creado fuera de un toque. Por eso «le doy al rojo y
+        //  no me oye». Ahora el audio se crea DENTRO del toque del botón (_mpPrepararAudio), se despierta con cualquier
+        //  toque, y si aun así no arranca, se escucha con la grabadora del navegador (sin pitidos, sin este audio).
+        var ctx = (_mp.ctxPre && _mp.ctxPre.state !== 'closed') ? _mp.ctxPre : new AC();
+        _mp.ctxPre = null;
         try { if (ctx.state === 'suspended' && ctx.resume) ctx.resume(); } catch(e){}
+        try { ctx.onstatechange = function(){ try { if (_mp.ctx !== ctx) return; _convEstadoAuto(); if (ctx.state === 'running') { _mp.corrio = true; _mp.sordo = false; _vozParte('audio_despierto', {}); } } catch(e){} }; } catch(e){}
+        setTimeout(function(){ try { if (_mp.ctx === ctx && ctx.state === 'suspended') { _mp.sordo = true; _vozParte('audio_dormido', { motivo: 'sin toque' }); _convEstadoAuto(); _mpGrabadoraArrancar('audio en pausa al arrancar'); } } catch(e){} }, 1200);
         var src = ctx.createMediaStreamSource(st);
         var proc = ctx.createScriptProcessor ? ctx.createScriptProcessor(4096, 1, 1) : null;
         if (!proc) { try { st.getTracks().forEach(function(t){ t.stop(); }); } catch(e){} _mp.arrancando = false; _mpAlNavegador('este navegador no deja escuchar el sonido'); return; }
@@ -19989,7 +20001,108 @@ async function doResetWithCode() {
       });
     });
   }
+  // v704 · el audio se prepara DENTRO del toque (Android/WebView solo lo deja ahí)…
+  function _mpPrepararAudio() {
+    try {
+      if (_mp.ctx || (_mp.ctxPre && _mp.ctxPre.state !== 'closed')) return;
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      _mp.ctxPre = new AC();
+      if (_mp.ctxPre.state === 'suspended' && _mp.ctxPre.resume) _mp.ctxPre.resume();
+    } catch(e){}
+  }
+  window._mpPrepararAudio = _mpPrepararAudio;
+  // …y cualquier toque despierta el que se quedó dormido
+  function _mpDespertarAudio() {
+    try {
+      var c = _mp.ctx || _mp.ctxPre;
+      if (c && c.state === 'suspended' && c.resume) c.resume().then(function(){ try { _convEstadoAuto(); } catch(e){} }).catch(function(){});
+    } catch(e){}
+  }
+  ['touchstart', 'pointerdown', 'click', 'keydown'].forEach(function(ev){ try { document.addEventListener(ev, _mpDespertarAudio, true); } catch(e){} });
+  // v704 · LA GRABADORA DE RESERVA. Si el audio no arranca ni con toque, se escucha con MediaRecorder sobre el MISMO
+  //  micro (no pide otro, no pita): trozos de dos segundos y medio en webm/opus; el silencio pesa casi nada y la voz
+  //  pesa, así que solo se manda a texto lo que pesa. Se apaga sola en cuanto el audio bueno arranque.
+  var _gr = { rec: null, on: false, trozos: 0, mandados: 0, mime: '' };
+  function _mpGrabadoraArrancar(porQue) {
+    try {
+      if (_gr.on || !_mp.stream || !window.MediaRecorder) return;
+      var mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].filter(function(m){ try { return MediaRecorder.isTypeSupported(m); } catch(e){ return false; } })[0];
+      if (!mime) return;
+      _gr.on = true; _gr.trozos = 0; _gr.mandados = 0; _gr.mime = mime.split(';')[0]; _gr.mimeFull = mime; _gr.conVoz = [];
+      _vozParte('grabadora_on', { motivo: String(porQue || '').slice(0, 60) });
+      _mpGrabadoraVuelta();
+      _convEstadoAuto();
+    } catch(e) { _gr.on = false; }
+  }
+  // Cada vuelta es una grabación ENTERA de dos segundos y medio (con su cabecera): así cada trozo se puede
+  // decodificar aparte para medir si hay voz. Decodificar NO necesita el audio despierto (es otra puerta).
+  function _mpGrabadoraVuelta() {
+    if (!_gr.on || !_mp.stream || !window._azkarinConv) { _gr.on = false; return; }
+    var r;
+    try { r = new MediaRecorder(_mp.stream, { mimeType: _gr.mimeFull, audioBitsPerSecond: 32000 }); } catch(e) { _mpGrabadoraParar('no arranca'); return; }
+    _gr.rec = r;
+    var partes = [];
+    r.ondataavailable = function(ev){ if (ev.data && ev.data.size) partes.push(ev.data); };
+    r.onerror = function(){ _mpGrabadoraParar('error'); };
+    r.onstop = function() {
+      try {
+        if (_gr.on) setTimeout(_mpGrabadoraVuelta, 30);
+        var b = new Blob(partes, { type: _gr.mime });
+        if (!b.size || !_gr.on || !window._azkarinConv) return;
+        _gr.trozos++; _gr.ultimoKb = Math.round(b.size / 1024);
+        if (_mp.ctx && _mp.ctx.state === 'running') { _mpGrabadoraParar('el audio bueno ya anda'); return; }
+        if (_convHablando()) return;                                   // mientras habla Azkarin, nada (su eco)
+        var fr = new FileReader();
+        fr.onload = function(){
+          try {
+            var ab = fr.result;
+            _mpHayVozEn(ab.slice(0), function(rms){
+              _gr.ultimoRms = rms;
+              if (rms < 0.012) return;                                   // silencio o ruido de fondo: no se manda
+              _gr.mandados++;
+              _mpMandarATexto(new Uint8Array(ab), 1, 2.5, { mime: _gr.mime });
+            });
+          } catch(e){}
+        };
+        fr.readAsArrayBuffer(b);
+      } catch(e){}
+    };
+    try { r.start(); } catch(e) { _mpGrabadoraParar('no arranca'); return; }
+    setTimeout(function(){ try { if (r.state !== 'inactive') r.stop(); } catch(e){} }, 2500);
+  }
+  // ¿Hay voz en este trozo? Se decodifica aparte (OfflineAudioContext no depende del toque) y se mide el nivel.
+  function _mpHayVozEn(ab, cb) {
+    try {
+      var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      if (!OAC) { cb(1); return; }
+      var o = new OAC(1, 16000, 16000);
+      var hecho = false;
+      var fin = function(buf){
+        if (hecho) return; hecho = true;
+        try {
+          var d = buf.getChannelData(0), n = d.length, win = 1600, mejor = 0;   // el tramo de cien milisegundos más alto
+          for (var i = 0; i + win <= n; i += win) { var sum = 0; for (var j = i; j < i + win; j++) sum += d[j] * d[j]; var r2 = Math.sqrt(sum / win); if (r2 > mejor) mejor = r2; }
+          cb(mejor);
+        } catch(e) { cb(1); }
+      };
+      var pr = o.decodeAudioData(ab, fin, function(){ if (!hecho) { hecho = true; cb(1); } });
+      if (pr && pr.then) pr.then(fin).catch(function(){ if (!hecho) { hecho = true; cb(1); } });
+    } catch(e) { cb(1); }
+  }
+  function _mpGrabadoraParar(porQue) {
+    var estaba = _gr.on;
+    _gr.on = false;
+    try { if (_gr.rec && _gr.rec.state !== 'inactive') _gr.rec.stop(); } catch(e){}
+    if (estaba) _vozParte('grabadora_off', { motivo: String(porQue || '').slice(0, 60), fallos: _gr.mandados });
+    _gr.rec = null;
+    try { _convEstadoAuto(); } catch(e){}
+  }
+  window._mpGrabadora = function(){ return { on: _gr.on, trozos: _gr.trozos, mandados: _gr.mandados, kb: _gr.ultimoKb, rms: _gr.ultimoRms }; };
   function _mpParar() {
+    try { _mpGrabadoraParar('micro cerrado'); } catch(e){}
+    try { if (_mp.ctxPre && _mp.ctxPre.close) _mp.ctxPre.close(); } catch(e){}
+    _mp.ctxPre = null; _mp.sordo = false; _mp.corrio = false;
     try { if (_mp.proc) { _mp.proc.onaudioprocess = null; _mp.proc.disconnect(); } } catch(e){}
     try { if (_mp.src) _mp.src.disconnect(); } catch(e){}
     try { if (_mp.sil) _mp.sil.disconnect(); } catch(e){}
@@ -20207,7 +20320,7 @@ async function doResetWithCode() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey || '',
                  'Authorization': 'Bearer ' + (window._authToken || (typeof _authToken !== 'undefined' ? _authToken : '') || '') },
-      body: JSON.stringify({ audio: _mpB64(wav), mime: 'audio/wav', segundos: Math.round((segundosVoz || 0) * 10) / 10, ignorar: _ign || undefined })
+      body: JSON.stringify({ audio: _mpB64(wav), mime: opts.mime || 'audio/wav', segundos: Math.round((segundosVoz || 0) * 10) / 10, ignorar: _ign || undefined })
     };
     try { if (AbortSignal && AbortSignal.timeout) req.signal = AbortSignal.timeout(25000); } catch(e){}
     fetch(RAILWAY_API + '/api/voz/dictado', req)
@@ -20536,6 +20649,7 @@ async function doResetWithCode() {
     var nuevo = (typeof forzar === 'boolean') ? forzar : !window._azkarinConv;
     if (nuevo === window._azkarinConv) return;
     window._azkarinConv = nuevo;
+    if (nuevo) { try { _mpPrepararAudio(); } catch (e) {} }   // v704: dentro del toque, para que el audio nazca despierto
     // v619 · 🛑 QUE NO SE QUEDE SORDO AL RECARGAR. Asier, 6-sep: «tengo todo activado y le
     // hablo y no me oye». Cada vez que la app se actualiza o se recarga, el modo conversación
     // se apagaba solo y por fuera todo se veía igual: él hablaba y no había nadie escuchando.
