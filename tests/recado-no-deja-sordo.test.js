@@ -22,7 +22,7 @@ if (SRC) {
   let r = prueba({ win: { _azkarinConv: true, _convPorPalabraClave: false }, vis: 'visible' });
   c('B1 · ya en conversación a mano: sigue escuchándolo todo', r.win._convPorPalabraClave === false && r.win._azkarinConv === true);
   r = prueba({ win: { _azkarinConv: false }, vis: 'visible', op: { en_la_app: true } });
-  c('B2 · con la app abierta: abre la conversación y lo escucha todo', r.win._azkarinConv === true && r.win._convPorPalabraClave === false);
+  c('B2 · con la app abierta y la llamada apagada: dice el recado y NO la enciende sola (v702: sin toque Android no deja oír)', r.win._azkarinConv === false);
   r = prueba({ win: { _azkarinConv: false }, vis: 'hidden' });
   c('B3 · con el móvil bloqueado: solo si dice «Azkarin» (como siempre)', r.win._azkarinConv === true && r.win._convPorPalabraClave === true);
   c('B4 · deja el parte aviso_abre', r.partes.some(p => p[0] === 'aviso_abre'));
