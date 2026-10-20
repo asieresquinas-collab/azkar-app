@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v700';
+var APP_VERSION = 'v701';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -20043,7 +20043,16 @@ async function doResetWithCode() {
         var ctx = (_mp.ctxPre && _mp.ctxPre.state !== 'closed') ? _mp.ctxPre : new AC();
         _mp.ctxPre = null;
         try { if (ctx.state === 'suspended' && ctx.resume) ctx.resume(); } catch(e){}
-        try { ctx.onstatechange = function(){ try { _convEstadoAuto(); if (ctx.state === 'running') _vozParte('audio_despierto', { motivo: 'cambio de estado' }); } catch(e){} }; } catch(e){}
+        try { ctx.onstatechange = function(){ try {
+          _convEstadoAuto();
+          if (ctx.state === 'running') { _mp.corrioTs = Date.now(); _vozParte('audio_despierto', { motivo: 'cambio de estado' }); }
+          else if (ctx.state === 'suspended' && _mp.ctx === ctx) {
+            _mp.pausas = (_mp.pausas || 0) + 1;
+            _vozParte('audio_dormido', { motivo: 'se ha vuelto a pausar', fallos: _mp.pausas });
+            // ya había arrancado (con un toque) y se vuelve a pausar solo: este móvil no lo sostiene → al de Android
+            if (_mp.corrioTs) _mpAudioNoVale('se pausa solo despues de arrancar');
+          }
+        } catch(e){} }; } catch(e){}
         setTimeout(function(){ try { if (_mp.ctx === ctx && ctx.state === 'suspended') { _vozParte('audio_dormido', { motivo: 'sin toque en la pantalla' }); _convEstadoAuto(); } } catch(e){} }, 1500);
         var src = ctx.createMediaStreamSource(st);
         var proc = ctx.createScriptProcessor ? ctx.createScriptProcessor(4096, 1, 1) : null;
@@ -20093,7 +20102,26 @@ async function doResetWithCode() {
   function _mpDespertarAudio() {
     try {
       var c = _mp.ctx || _mp.ctxPre;
-      if (c && c.state === 'suspended' && c.resume) c.resume().then(function(){ try { _convEstadoAuto(); } catch(e){} }).catch(function(){});
+      if (!(c && c.state === 'suspended' && c.resume)) return;
+      _mp.toqueDespertarTs = Date.now();
+      c.resume().then(function(){ try { _convEstadoAuto(); } catch(e){} }).catch(function(){});
+      // v701 · si ni con el toque arranca, este móvil no deja oír por aquí: se pasa al reconocedor de Android
+      setTimeout(function(){ try { if (_mp.ctx === c && c.state === 'suspended') _mpAudioNoVale('no arranca ni tocando'); } catch(e){} }, 1500);
+    } catch(e){}
+  }
+  // v701 · 🛑 Asier, 20-oct: «toco la pantalla, le voy a decir algo y se me pone otra vez "toca la pantalla", y no oye».
+  //  En su APK el audio de la página se vuelve a poner en pausa en cuanto habla. Insistir no sirve: para el resto de
+  //  esta sesión la llamada continua escucha con el reconocedor de Android (el de la APK), que no depende de ese audio.
+  function _mpAudioNoVale(porQue) {
+    try {
+      if (_mp.imposible) return;
+      _vozParte('audio_no_vale', { motivo: String(porQue || '').slice(0, 80) });
+      var _hayNativo = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition);
+      if (!_hayNativo && !(window.SpeechRecognition || window.webkitSpeechRecognition)) return;   // no hay otro: se queda pidiendo el toque
+      _mp.imposible = true;            // solo esta sesión (no se guarda): al reabrir la app se vuelve a probar el propio
+      _mpParar();
+      try { _convAvisoCorto('🎧 Cambio de micrófono — ya te oigo'); } catch(e){}
+      if (window._azkarinConv) setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 300);
     } catch(e){}
   }
   ['touchstart', 'pointerdown', 'click', 'keydown'].forEach(function(ev){ try { document.addEventListener(ev, _mpDespertarAudio, true); } catch(e){} });
