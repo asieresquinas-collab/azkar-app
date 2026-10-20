@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v704';
+var APP_VERSION = 'v705';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -19779,7 +19779,7 @@ async function doResetWithCode() {
       if (!window._azkarinConv) return _convPintarEstado('off');
       if (_convHablando()) return _convPintarEstado('habla');
       if (sendBtn && sendBtn.disabled && !(_convBuffer || '').trim()) return _convPintarEstado('pensando');
-      if (typeof _mp !== 'undefined' && _mp && _mp.on && _mp.ctx && _mp.ctx.state === 'suspended' && !(typeof _gr !== "undefined" && _gr && _gr.on)) return _convPintarEstado('dormido');   // v704
+      if (typeof _mp !== 'undefined' && _mp && _mp.on && _mp.ctx && _mp.ctx.state === 'suspended' && !(typeof _gr !== "undefined" && _gr && _gr.on)) { try { _mpGrabadoraArrancar('audio dormido (estado)'); } catch(e){} if (!(typeof _gr !== "undefined" && _gr && _gr.on)) return _convPintarEstado('dormido'); }   // v704/v705
       return _convPintarEstado('escucha');
     } catch(e){}
   }
@@ -19966,7 +19966,13 @@ async function doResetWithCode() {
         var ctx = (_mp.ctxPre && _mp.ctxPre.state !== 'closed') ? _mp.ctxPre : new AC();
         _mp.ctxPre = null;
         try { if (ctx.state === 'suspended' && ctx.resume) ctx.resume(); } catch(e){}
-        try { ctx.onstatechange = function(){ try { if (_mp.ctx !== ctx) return; _convEstadoAuto(); if (ctx.state === 'running') { _mp.corrio = true; _mp.sordo = false; _vozParte('audio_despierto', {}); } } catch(e){} }; } catch(e){}
+        try { ctx.onstatechange = function(){ try {
+          if (_mp.ctx !== ctx) return;
+          if (ctx.state === 'running') { _mp.corrio = true; _mp.sordo = false; _vozParte('audio_despierto', {}); }
+          // v705 · se duerme A MITAD (Asier, 20:21: «luego me dice que toque la pantalla»): la grabadora entra al momento
+          else if (ctx.state === 'suspended') { _mp.sordo = true; _vozParte('audio_dormido', { motivo: 'a mitad' }); _mpGrabadoraArrancar('audio dormido a mitad'); }
+          _convEstadoAuto();
+        } catch(e){} }; } catch(e){}
         setTimeout(function(){ try { if (_mp.ctx === ctx && ctx.state === 'suspended') { _mp.sordo = true; _vozParte('audio_dormido', { motivo: 'sin toque' }); _convEstadoAuto(); _mpGrabadoraArrancar('audio en pausa al arrancar'); } } catch(e){} }, 1200);
         var src = ctx.createMediaStreamSource(st);
         var proc = ctx.createScriptProcessor ? ctx.createScriptProcessor(4096, 1, 1) : null;
