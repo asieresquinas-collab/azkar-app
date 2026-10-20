@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v702';
+var APP_VERSION = 'v703';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17277,7 +17277,6 @@ async function doResetWithCode() {
 #chatbot-estado.ver{display:block}
 #chatbot-estado.escucha{background:#fdeaea;color:#a3261a}
 #chatbot-estado.habla{background:#fdf0e3;color:#8a4b05}
-#chatbot-estado.dormido{background:#fff3c4;color:#7a5a00;font-weight:800}
 #chatbot-parar{display:none;margin:0 12px 6px;padding:9px 12px;border:none;border-radius:9px;background:#c0392b;color:#fff;font-size:13px;font-weight:700;font-family:Barlow,sans-serif;cursor:pointer;flex-shrink:0}
 #chatbot-parar.ver{display:block}
 #chatbot-mic{width:38px;height:38px;border-radius:50%;border:none;background:#e0e0e0;color:#666;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -18044,7 +18043,7 @@ async function doResetWithCode() {
   }
   window._pideElRecado = _pideElRecado;
 
-  window.__azkarinAvisoDeVoz = function(texto, id, tipo, opciones){
+  window.__azkarinAvisoDeVoz = function(texto, id, tipo){
     try {
       texto = String(texto || '').trim();
       if (!texto) return;
@@ -18066,66 +18065,13 @@ async function doResetWithCode() {
         if (id) fetch(RAILWAY_API + '/api/voz/companero?dicho=' + encodeURIComponent(id) + '&apiKey=' + encodeURIComponent(window._apiKey || ''), { method: 'GET' }).catch(function(){});
       } catch(e){}
       // y se queda escuchando: es una conversación, no un altavoz
-      // v702 · 🛑 LA CAUSA DE «NO ME OYE» DE HOY (Asier, 13:11 y 17:13): desde la v695 el compañero habla solo con la app
-      //  abierta y ENCENDÍA la llamada continua sin que Asier tocara nada. Android no deja oír el micro a una página que
-      //  arranca sin toque: micro abierto, audio en pausa, cero sonido. Hasta ayer solo se encendía con su dedo (o desde la
-      //  APK al oír «Azkarin», que trae su propio permiso). Ahora, con la app abierta, el recado se DICE y punto: si la
-      //  llamada ya estaba puesta sigue; si no, no se enciende sola (el botón rojo está ahí).
-      if (opciones && opciones.en_la_app && !window._azkarinConv) { try { if (window._vozParte) window._vozParte('aviso_abre', { abierto: false, puerta: 'a_la_vista_sin_encender' }); } catch(e){} return; }
-      // v697 · 🛑 Asier, 20-oct: «le hablo en llamada continua y no me contesta, parece que no detecta el audio».
-      //  Desde v695 el compañero habla solo con la app ABIERTA (al abrir y cada tres minutos), y cada recado
-      //  ponía la conversación en «solo contesto si dices Azkarin» (pensado para el móvil bloqueado), incluso
-      //  si él ya la tenía encendida a mano. Todo lo que decía sin el nombre se tiraba en silencio.
-      //  Ahora: si la conversación ya estaba encendida, se queda como estaba; y con la app a la vista
-      //  (él delante de la pantalla) se escucha todo. El «solo si me llamas» queda para el móvil bloqueado.
-      var _yaEnConv = !!window._azkarinConv;
-      var _aLaVista = (opciones && opciones.en_la_app) || document.visibilityState === 'visible';
-      if (!_yaEnConv) window._convPorPalabraClave = !_aLaVista;
-      try { if (window._vozParte) window._vozParte('aviso_abre', { abierto: _yaEnConv, puerta: _aLaVista ? 'a_la_vista' : 'bloqueado' }); } catch(e){}
+      window._convPorPalabraClave = true;
       window._convUltimaSuya = Date.now();
       if (typeof window.chatbotConvToggle === 'function') {
         setTimeout(function(){ try { if (!window._azkarinConv) window.chatbotConvToggle(true); } catch(e){} }, 500);
       }
     } catch(e){}
   };
-  // ── v695 · EL COMPAÑERO HABLA ÉL SOLO CON LA APP ABIERTA (Asier, 19-oct) ──────────
-  //  «Me parece que le falta algo para interactuar como un compañero real: necesito que
-  //   me hable sin yo preguntarle cuando tenga la aplicación abierta».
-  //  Hasta hoy, con «nada salta solo» puesto, el compañero preparaba los recados pero
-  //  nadie se los pedía: solo salían si él decía «dime». Ahora, mientras la app está
-  //  abierta y a la vista, se le pregunta al servidor cada tres minutos (y nada más
-  //  abrir, y al volver a la app) y, si hay algo, Azkarin llama a la puerta como siempre
-  //  («¿te puedo decir una cosa?»); él contesta sí, no o «en veinte minutos».
-  (function(){
-    var _ultima = 0, _enCurso = false;
-    var CADA_MS = 3 * 60 * 1000, MIN_ENTRE_MS = 60 * 1000;
-    function _preguntar(motivo){
-      try {
-        if (_enCurso) return;
-        if (document.visibilityState !== 'visible') return;
-        if (!window._apiKey) return;
-        if (Date.now() - _ultima < MIN_ENTRE_MS) return;
-        if (window._azkToque && window._azkToque.id && Date.now() - (window._azkToque.ts || 0) < 120000) return;   // ya está llamando a la puerta
-        // v696 · Asier, 20-oct, 8:30: a mitad de una conversación le saltó «¿qué día se paga la nómina de Luis?». Si acaba de
-        //  escribirle (o está en modo conversación), el compañero espera: no se le interrumpe mientras habla.
-        if (window._azkUltimoMensajeSuyo && Date.now() - window._azkUltimoMensajeSuyo < 180000) return;
-        if (window._azkarinConv) return;
-        _ultima = Date.now(); _enCurso = true;
-        var api = RAILWAY_API + '/api/voz/companero?apiKey=' + encodeURIComponent(window._apiKey || '') + '&en_la_app=1&x=' + Date.now();
-        fetch(api).then(function(r){ return r.json(); }).then(function(d){
-          _enCurso = false;
-          if (!d || !d.hay || !d.texto) return;
-          try { window.__azkarinAvisoDeVoz(String(d.texto), d.id || '', d.tipo || '', { en_la_app: true }); } catch(e){}
-        }).catch(function(){ _enCurso = false; });
-      } catch(e){ _enCurso = false; }
-    }
-    window._companeroPreguntaAhora = _preguntar;
-    setTimeout(function(){ _preguntar('al abrir'); }, 8000);
-    setInterval(function(){ _preguntar('cada rato'); }, CADA_MS);
-    document.addEventListener('visibilitychange', function(){
-      if (document.visibilityState === 'visible') setTimeout(function(){ _preguntar('al volver'); }, 1500);
-    });
-  })();
   // La app le pasa a la APK con qué llave preguntar (nada de contraseñas: la llave pública
   // que ya viaja en la página) para que pueda traer los recados con el móvil bloqueado.
   (function(){
@@ -19659,26 +19605,6 @@ async function doResetWithCode() {
   // v588: «hablando» es también la GRABACIÓN sonando — así el micro no se toma la voz del
   // cliente por la de Asier, y hablándole encima se le puede parar igual que a él.
   function _convGrabacionSonando() { try { var a = window._llAudio; return !!(a && !a.paused && !a.ended); } catch(e){ return false; } }
-  // v698 · foto del micro para la copia de la conversación (nada de lo dicho, solo el estado)
-  window._azkMicEstado = function() {
-    try {
-      var m = (typeof _mp !== 'undefined') ? _mp : {};
-      return 'conversación ' + (window._azkarinConv ? 'ENCENDIDA' : 'apagada')
-        + ' · solo si dices Azkarin: ' + (window._convPorPalabraClave ? 'SÍ' : 'no')
-        + ' · micro propio: ' + (typeof _mpDisponible === 'function' && _mpDisponible() ? 'sí' : 'no')
-        + ' (abierto ' + (m.on ? 'sí' : 'no') + ', arrancando ' + (m.arrancando ? 'sí' : 'no') + ', imposible ' + (m.imposible ? 'sí' : 'no')
-        + ', permiso ' + (m.permisoEstado || '?') + ', pasando a texto ' + (m.transcribiendo ? 'sí' : 'no') + ', en vuelo ' + (m.enVuelo || 0) + ', fallos ' + (m.fallos || 0) + ')'
-        + ' · sonido: ' + (m.nProc || 0) + ' trozos, el último hace ' + (m.ultProcTs ? Math.round((Date.now() - m.ultProcTs) / 1000) + ' s' : 'nunca')
-        + ', nivel ' + (m.ultRms != null ? m.ultRms.toFixed(4) : '?') + ' (máximo ' + (m.maxRms != null ? m.maxRms.toFixed(4) : '?') + ', fondo ' + (m.ultFondo != null ? m.ultFondo.toFixed(4) : '?') + ')'
-        + ' · audio del navegador: ' + (m.ctx ? m.ctx.state : 'sin abrir')
-        + ' · pista: ' + (function(){ try { var tr = m.stream && m.stream.getAudioTracks()[0]; return tr ? (tr.readyState + (tr.muted ? ' SILENCIADA' : '') + (tr.enabled ? '' : ' apagada')) : 'ninguna'; } catch(e){ return '?'; } })()
-        + ' · motor elegido: ' + (function(){ try { return localStorage.getItem('azkar_voz_motor') || 'el de siempre'; } catch(e){ return '?'; } })()
-        + ' · hablando: ' + (_convHablando() ? 'sí' : 'no')
-        + ' · pensando: ' + ((typeof sendBtn !== 'undefined' && sendBtn && sendBtn.disabled) ? 'sí' : 'no')
-        + ' · pantalla: ' + document.visibilityState
-        + ' · app nativa: ' + ((typeof _esAppNativa === 'function' && _esAppNativa()) ? 'sí' : 'no');
-    } catch(e) { return 'no se pudo leer (' + (e && e.message) + ')'; }
-  };
   function _convHablando() { try { return !!(window._hablandoNativo || _ttsSpeaking || (_ttsQueue && _ttsQueue.length) || _convGrabacionSonando()); } catch(e){ return false; } }
   // v360: memoria de lo ÚLTIMO que dijo Azkarin (varias frases, 12s) — para reconocer su eco AUNQUE
   // la transcripción llegue tarde (cuando ya ha dejado de hablar) y con fallos.
@@ -19835,13 +19761,11 @@ async function doResetWithCode() {
         var t = e === 'escucha' ? '\ud83c\udfa7 Te escucho \u2014 habla tranquilo'
               : e === 'pensando' ? '\u23f3 Pensando\u2026 puedes seguir hablando'
               : e === 'habla' ? '\ud83d\udd0a Hablando \u2014 h\u00e1blame encima o toca la pantalla para cortarme'
-              : e === 'dormido' ? '\ud83d\udc46 Toca la pantalla una vez para que te oiga'
               : '';
         chip.textContent = t;
         chip.classList.toggle('ver', !!t);
         chip.classList.toggle('escucha', e === 'escucha');
         chip.classList.toggle('habla', e === 'habla');
-        chip.classList.toggle('dormido', e === 'dormido');
       }
     } catch(err){}
   }
@@ -19852,8 +19776,6 @@ async function doResetWithCode() {
       if (!window._azkarinConv) return _convPintarEstado('off');
       if (_convHablando()) return _convPintarEstado('habla');
       if (sendBtn && sendBtn.disabled && !(_convBuffer || '').trim()) return _convPintarEstado('pensando');
-      // v700 · el micro está abierto pero el audio de la app sigue en pausa: hasta que no se toque la pantalla no oye nada
-      if (typeof _mp !== 'undefined' && _mp && _mp.on && _mp.ctx && _mp.ctx.state === 'suspended') return _convPintarEstado('dormido');
       return _convPintarEstado('escucha');
     } catch(e){}
   }
@@ -19926,15 +19848,6 @@ async function doResetWithCode() {
   // pasa al micrófono: si se abrió, a cuántos hercios, qué error dio, si el dictado llegó.
   // NUNCA se manda audio ni nada de un cliente.
   function _vozParte(evento, datos) {
-    // v698 · y se guarda aquí también (los últimos ochenta), para que salga al copiar la conversación:
-    //  así se ve qué le pasó al micro sin tener que entrar al servidor con la llave.
-    try {
-      var _lv = window._azkVozLog || (window._azkVozLog = []);
-      var _hh = new Date().toTimeString().slice(0, 8);
-      var _dd = ''; try { _dd = JSON.stringify(datos || {}).replace(/[{}"]/g, '').slice(0, 140); } catch(eJ){}
-      _lv.push(_hh + ' ' + evento + (_dd ? ' ' + _dd : ''));
-      if (_lv.length > 80) _lv.splice(0, _lv.length - 80);
-    } catch(eL){}
     try {
       fetch(RAILWAY_API + '/api/voz/parte', {
         method: 'POST',
@@ -20041,24 +19954,8 @@ async function doResetWithCode() {
       .then(function(st) {
         if (!window._azkarinConv) { try { st.getTracks().forEach(function(t){ t.stop(); }); } catch(e){} _mp.arrancando = false; return; }
         var AC = window.AudioContext || window.webkitAudioContext;
-        // v700 · 🛑 Asier, 20-oct: «en llamada continua no detecta nada». Parte real: micro abierto, pista viva,
-        //  «audio del navegador: suspended» y CERO trozos de sonido. Android no deja que una página procese sonido
-        //  hasta que se TOCA la pantalla, y la llamada continua se enciende sola al abrir la app (y con los recados),
-        //  sin toque. Ahora: el audio se prepara en el mismo toque del botón (si lo hay), se despierta con el primer
-        //  toque en cualquier sitio, y mientras esté dormido el cartel lo dice en vez de poner «te escucho».
-        var ctx = (_mp.ctxPre && _mp.ctxPre.state !== 'closed') ? _mp.ctxPre : new AC();
-        _mp.ctxPre = null;
+        var ctx = new AC();
         try { if (ctx.state === 'suspended' && ctx.resume) ctx.resume(); } catch(e){}
-        try { ctx.onstatechange = function(){ try {
-          _convEstadoAuto();
-          if (ctx.state === 'running') { _mp.corrioTs = Date.now(); _vozParte('audio_despierto', { motivo: 'cambio de estado' }); }
-          else if (ctx.state === 'suspended' && _mp.ctx === ctx) {
-            _mp.pausas = (_mp.pausas || 0) + 1;
-            _vozParte('audio_dormido', { motivo: 'se ha vuelto a pausar', fallos: _mp.pausas });
-            // v702 · ya NO se salta al reconocedor de Android (pitaba sin parar): se vuelve a despertar con el siguiente toque
-          }
-        } catch(e){} }; } catch(e){}
-        setTimeout(function(){ try { if (_mp.ctx === ctx && ctx.state === 'suspended') { _vozParte('audio_dormido', { motivo: 'sin toque en la pantalla' }); _convEstadoAuto(); } } catch(e){} }, 1500);
         var src = ctx.createMediaStreamSource(st);
         var proc = ctx.createScriptProcessor ? ctx.createScriptProcessor(4096, 1, 1) : null;
         if (!proc) { try { st.getTracks().forEach(function(t){ t.stop(); }); } catch(e){} _mp.arrancando = false; _mpAlNavegador('este navegador no deja escuchar el sonido'); return; }
@@ -20092,51 +19989,13 @@ async function doResetWithCode() {
       });
     });
   }
-  // v700 · el audio de la app se prepara DENTRO del toque del botón (Android solo lo deja ahí)…
-  function _mpPrepararAudio() {
-    try {
-      if (_mp.ctx || (_mp.ctxPre && _mp.ctxPre.state !== 'closed')) return;
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      _mp.ctxPre = new AC();
-      if (_mp.ctxPre.state === 'suspended' && _mp.ctxPre.resume) _mp.ctxPre.resume();
-    } catch(e){}
-  }
-  window._mpPrepararAudio = _mpPrepararAudio;
-  // …y si se quedó dormido, el primer toque en cualquier sitio lo despierta
-  function _mpDespertarAudio() {
-    try {
-      var c = _mp.ctx || _mp.ctxPre;
-      if (!(c && c.state === 'suspended' && c.resume)) return;
-      _mp.toqueDespertarTs = Date.now();
-      c.resume().then(function(){ try { _convEstadoAuto(); } catch(e){} }).catch(function(){});
-      // v702 · (la v701 saltaba aquí al reconocedor de Android, el que PITA: fuera. El micro propio se queda y se despierta con el toque.)
-    } catch(e){}
-  }
-  // v701 · 🛑 Asier, 20-oct: «toco la pantalla, le voy a decir algo y se me pone otra vez "toca la pantalla", y no oye».
-  //  En su APK el audio de la página se vuelve a poner en pausa en cuanto habla. Insistir no sirve: para el resto de
-  //  esta sesión la llamada continua escucha con el reconocedor de Android (el de la APK), que no depende de ese audio.
-  function _mpAudioNoVale(porQue) {
-    try {
-      if (_mp.imposible) return;
-      _vozParte('audio_no_vale', { motivo: String(porQue || '').slice(0, 80) });
-      var _hayNativo = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SpeechRecognition);
-      if (!_hayNativo && !(window.SpeechRecognition || window.webkitSpeechRecognition)) return;   // no hay otro: se queda pidiendo el toque
-      _mp.imposible = true;            // solo esta sesión (no se guarda): al reabrir la app se vuelve a probar el propio
-      _mpParar();
-      try { _convAvisoCorto('🎧 Cambio de micrófono — ya te oigo'); } catch(e){}
-      if (window._azkarinConv) setTimeout(function(){ if (window._azkarinConv) window._convEscuchar(); }, 300);
-    } catch(e){}
-  }
-  ['touchstart', 'pointerdown', 'click', 'keydown'].forEach(function(ev){ try { document.addEventListener(ev, _mpDespertarAudio, true); } catch(e){} });
   function _mpParar() {
     try { if (_mp.proc) { _mp.proc.onaudioprocess = null; _mp.proc.disconnect(); } } catch(e){}
     try { if (_mp.src) _mp.src.disconnect(); } catch(e){}
     try { if (_mp.sil) _mp.sil.disconnect(); } catch(e){}
     try { if (_mp.stream) _mp.stream.getTracks().forEach(function(t){ t.stop(); }); } catch(e){}
     try { if (_mp.ctx && _mp.ctx.close) _mp.ctx.close(); } catch(e){}
-    try { if (_mp.ctxPre && _mp.ctxPre.close) _mp.ctxPre.close(); } catch(e){}
-    _mp.proc = null; _mp.src = null; _mp.sil = null; _mp.stream = null; _mp.ctx = null; _mp.ctxPre = null;
+    _mp.proc = null; _mp.src = null; _mp.sil = null; _mp.stream = null; _mp.ctx = null;
     _mp.on = false; _mp.arrancando = false; _mp.pre = []; _mp.preMs = 0; _mp.niveles = []; _mp.corteSeguidos = 0;
     _mpLimpiaTrozo();
   }
@@ -20158,9 +20017,6 @@ async function doResetWithCode() {
       for (var i = 0; i < ent.length; i++) sum += ent[i] * ent[i];
       var rms = Math.sqrt(sum / ent.length);
       var fondo = _mpFondo();
-      // v699 · cuánto sonido le llega de verdad (para la copia de la conversación)
-      _mp.nProc = (_mp.nProc || 0) + 1; _mp.ultProcTs = Date.now(); _mp.ultRms = rms; _mp.ultFondo = fondo;
-      if (!_mp.maxRms || rms > _mp.maxRms) _mp.maxRms = rms;
       var hayVoz = rms > Math.max(fondo * 3.5, 0.03);   // v584: más exigente — un golpe o la tele de fondo no es voz
       // v584: el fondo se mide SOLO con lo que no es voz. Antes entraba todo, y a los dos
       // segundos de hablar seguido el «fondo» era su propia voz: dejaba de oírle y cortaba.
@@ -20680,7 +20536,6 @@ async function doResetWithCode() {
     var nuevo = (typeof forzar === 'boolean') ? forzar : !window._azkarinConv;
     if (nuevo === window._azkarinConv) return;
     window._azkarinConv = nuevo;
-    if (nuevo) { try { _mpPrepararAudio(); } catch (e) {} }   // v700: dentro del toque, para que Android deje oír
     // v619 · 🛑 QUE NO SE QUEDE SORDO AL RECARGAR. Asier, 6-sep: «tengo todo activado y le
     // hablo y no me oye». Cada vez que la app se actualiza o se recarga, el modo conversación
     // se apagaba solo y por fuera todo se veía igual: él hablaba y no había nadie escuchando.
@@ -20895,7 +20750,6 @@ async function doResetWithCode() {
     }
   }
   function addMsg(type, text) {
-    try { if (type === 'user') window._azkUltimoMensajeSuyo = Date.now(); } catch(eU){}   // v696: para no interrumpirle si está hablando
     var div = document.createElement('div');
     div.className = 'chat-msg ' + type;
     var _h = new Date().toLocaleTimeString('es-ES', { hour12:false }); div.setAttribute('data-hora', _h); div.setAttribute('data-rol', type);
@@ -21516,15 +21370,8 @@ async function doResetWithCode() {
         _lineas.push((hora ? '[' + hora + '] ' : '') + (rol === 'user' ? 'YO: ' : 'AZKARIN: ') + c);
       }
       var txt = _lineas.join('\n\n');
-      // v699 · aunque no haya mensajes, se copia lo del micro: justo cuando no oye nada es cuando más hace falta
-      if (!txt.trim()) txt = '(sin mensajes en el chat)';
+      if (!txt.trim()) { alert('Aún no hay conversación que copiar.'); return; }
       txt = '=== CONVERSACIÓN AZKARIN · ' + new Date().toLocaleString('es-ES') + ' · APP ' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?') + ' ===\n\n' + txt;
-      // v698 · lo que le pasó al micro (estado y últimos partes), al final de la copia
-      try {
-        var _est = window._azkMicEstado ? window._azkMicEstado() : '';
-        var _log = (window._azkVozLog || []).slice(-50);
-        txt += '\n\n=== MICRO ===\n' + _est + (_log.length ? '\n' + _log.join('\n') : '\n(sin partes del micro en esta sesión)');
-      } catch(eM){}
       var nMsg = (chatHistorial || []).length;
       var ok = function() { alert('✅ Conversación copiada (' + nMsg + ' mensajes). Pégasela a Claude para que lo arregle.'); };
       var fallback = function() {
