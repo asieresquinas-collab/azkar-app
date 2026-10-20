@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v706';
+var APP_VERSION = 'v707';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17365,6 +17365,10 @@ async function doResetWithCode() {
   var panel = document.getElementById('chatbot-panel');
   var msgsDiv = document.getElementById('chatbot-msgs');
   var inputEl = document.getElementById('chatbot-input');
+  // v707 · lo que Asier PEGA en la caja no es el eco del altavoz (20-oct, 21:17 y 21:28: pegó una respuesta de Haiku para
+  //  preguntar por ella y el servidor la tiró por «eco de mi propia voz»). Se marca y el servidor no lo mira como eco.
+  window._azkPegadoEnLaCaja = false;
+  try { inputEl.addEventListener('paste', function(){ window._azkPegadoEnLaCaja = true; }); } catch(eP){}
   var sendBtn = document.getElementById('chatbot-send');
   var micBtn = document.getElementById('chatbot-mic');
   var chatHistorial = [];
@@ -18676,6 +18680,8 @@ async function doResetWithCode() {
     window._pendingPdfs = null;
     var _fInd = document.getElementById('chatbot-foto-ind');
     if (_fInd) { _fInd.style.display = 'none'; _fInd.innerHTML = ''; }
+    var _pegadoEnvio = !!(msg && window._azkPegadoEnLaCaja);   // v707
+    window._azkPegadoEnLaCaja = false;
     inputEl.value = '';
     inputEl.style.height = 'auto';
     var msgEnviar = msg || ((framesEnviar && framesEnviar.length) ? (framesTipo === 'fotos' ? ('Te he enviado ' + framesEnviar.length + ' fotos. Hazme el borrador del presupuesto con lo que veas.') : ('Te he enviado un vídeo (' + framesEnviar.length + ' fotogramas' + (audioEnviar ? ' y el audio de lo que voy diciendo' : '') + '). Házme el borrador del presupuesto con lo que veas' + (audioEnviar ? ', haciendo caso al audio para lo que va y lo que no va' : '') + '.')) : ((pdfsEnviar && pdfsEnviar.length) ? 'Te he enviado un documento (PDF/Word). Léelo y dime qué pone.' : 'Te he enviado una foto.'));
@@ -18765,6 +18771,7 @@ async function doResetWithCode() {
           // frases, sin listas ni markdown. Antes mandaba lo mismo que por escrito y soltaba
           // parrafos larguisimos ("no es una conversacion humana", Asier 5-ago).
           if (window._azkarinConv) _b.modo_voz = true;
+          if (_pegadoEnvio) _b.pegado = true;   // v707
           return _b;
         })())
       });
