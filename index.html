@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v699';
+var APP_VERSION = 'v700';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17277,6 +17277,7 @@ async function doResetWithCode() {
 #chatbot-estado.ver{display:block}
 #chatbot-estado.escucha{background:#fdeaea;color:#a3261a}
 #chatbot-estado.habla{background:#fdf0e3;color:#8a4b05}
+#chatbot-estado.dormido{background:#fff3c4;color:#7a5a00;font-weight:800}
 #chatbot-parar{display:none;margin:0 12px 6px;padding:9px 12px;border:none;border-radius:9px;background:#c0392b;color:#fff;font-size:13px;font-weight:700;font-family:Barlow,sans-serif;cursor:pointer;flex-shrink:0}
 #chatbot-parar.ver{display:block}
 #chatbot-mic{width:38px;height:38px;border-radius:50%;border:none;background:#e0e0e0;color:#666;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -19828,11 +19829,13 @@ async function doResetWithCode() {
         var t = e === 'escucha' ? '\ud83c\udfa7 Te escucho \u2014 habla tranquilo'
               : e === 'pensando' ? '\u23f3 Pensando\u2026 puedes seguir hablando'
               : e === 'habla' ? '\ud83d\udd0a Hablando \u2014 h\u00e1blame encima o toca la pantalla para cortarme'
+              : e === 'dormido' ? '\ud83d\udc46 Toca la pantalla una vez para que te oiga'
               : '';
         chip.textContent = t;
         chip.classList.toggle('ver', !!t);
         chip.classList.toggle('escucha', e === 'escucha');
         chip.classList.toggle('habla', e === 'habla');
+        chip.classList.toggle('dormido', e === 'dormido');
       }
     } catch(err){}
   }
@@ -19843,6 +19846,8 @@ async function doResetWithCode() {
       if (!window._azkarinConv) return _convPintarEstado('off');
       if (_convHablando()) return _convPintarEstado('habla');
       if (sendBtn && sendBtn.disabled && !(_convBuffer || '').trim()) return _convPintarEstado('pensando');
+      // v700 · el micro está abierto pero el audio de la app sigue en pausa: hasta que no se toque la pantalla no oye nada
+      if (typeof _mp !== 'undefined' && _mp && _mp.on && _mp.ctx && _mp.ctx.state === 'suspended') return _convPintarEstado('dormido');
       return _convPintarEstado('escucha');
     } catch(e){}
   }
@@ -20030,8 +20035,16 @@ async function doResetWithCode() {
       .then(function(st) {
         if (!window._azkarinConv) { try { st.getTracks().forEach(function(t){ t.stop(); }); } catch(e){} _mp.arrancando = false; return; }
         var AC = window.AudioContext || window.webkitAudioContext;
-        var ctx = new AC();
+        // v700 · 🛑 Asier, 20-oct: «en llamada continua no detecta nada». Parte real: micro abierto, pista viva,
+        //  «audio del navegador: suspended» y CERO trozos de sonido. Android no deja que una página procese sonido
+        //  hasta que se TOCA la pantalla, y la llamada continua se enciende sola al abrir la app (y con los recados),
+        //  sin toque. Ahora: el audio se prepara en el mismo toque del botón (si lo hay), se despierta con el primer
+        //  toque en cualquier sitio, y mientras esté dormido el cartel lo dice en vez de poner «te escucho».
+        var ctx = (_mp.ctxPre && _mp.ctxPre.state !== 'closed') ? _mp.ctxPre : new AC();
+        _mp.ctxPre = null;
         try { if (ctx.state === 'suspended' && ctx.resume) ctx.resume(); } catch(e){}
+        try { ctx.onstatechange = function(){ try { _convEstadoAuto(); if (ctx.state === 'running') _vozParte('audio_despierto', { motivo: 'cambio de estado' }); } catch(e){} }; } catch(e){}
+        setTimeout(function(){ try { if (_mp.ctx === ctx && ctx.state === 'suspended') { _vozParte('audio_dormido', { motivo: 'sin toque en la pantalla' }); _convEstadoAuto(); } } catch(e){} }, 1500);
         var src = ctx.createMediaStreamSource(st);
         var proc = ctx.createScriptProcessor ? ctx.createScriptProcessor(4096, 1, 1) : null;
         if (!proc) { try { st.getTracks().forEach(function(t){ t.stop(); }); } catch(e){} _mp.arrancando = false; _mpAlNavegador('este navegador no deja escuchar el sonido'); return; }
@@ -20065,13 +20078,33 @@ async function doResetWithCode() {
       });
     });
   }
+  // v700 · el audio de la app se prepara DENTRO del toque del botón (Android solo lo deja ahí)…
+  function _mpPrepararAudio() {
+    try {
+      if (_mp.ctx || (_mp.ctxPre && _mp.ctxPre.state !== 'closed')) return;
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      _mp.ctxPre = new AC();
+      if (_mp.ctxPre.state === 'suspended' && _mp.ctxPre.resume) _mp.ctxPre.resume();
+    } catch(e){}
+  }
+  window._mpPrepararAudio = _mpPrepararAudio;
+  // …y si se quedó dormido, el primer toque en cualquier sitio lo despierta
+  function _mpDespertarAudio() {
+    try {
+      var c = _mp.ctx || _mp.ctxPre;
+      if (c && c.state === 'suspended' && c.resume) c.resume().then(function(){ try { _convEstadoAuto(); } catch(e){} }).catch(function(){});
+    } catch(e){}
+  }
+  ['touchstart', 'pointerdown', 'click', 'keydown'].forEach(function(ev){ try { document.addEventListener(ev, _mpDespertarAudio, true); } catch(e){} });
   function _mpParar() {
     try { if (_mp.proc) { _mp.proc.onaudioprocess = null; _mp.proc.disconnect(); } } catch(e){}
     try { if (_mp.src) _mp.src.disconnect(); } catch(e){}
     try { if (_mp.sil) _mp.sil.disconnect(); } catch(e){}
     try { if (_mp.stream) _mp.stream.getTracks().forEach(function(t){ t.stop(); }); } catch(e){}
     try { if (_mp.ctx && _mp.ctx.close) _mp.ctx.close(); } catch(e){}
-    _mp.proc = null; _mp.src = null; _mp.sil = null; _mp.stream = null; _mp.ctx = null;
+    try { if (_mp.ctxPre && _mp.ctxPre.close) _mp.ctxPre.close(); } catch(e){}
+    _mp.proc = null; _mp.src = null; _mp.sil = null; _mp.stream = null; _mp.ctx = null; _mp.ctxPre = null;
     _mp.on = false; _mp.arrancando = false; _mp.pre = []; _mp.preMs = 0; _mp.niveles = []; _mp.corteSeguidos = 0;
     _mpLimpiaTrozo();
   }
@@ -20615,6 +20648,7 @@ async function doResetWithCode() {
     var nuevo = (typeof forzar === 'boolean') ? forzar : !window._azkarinConv;
     if (nuevo === window._azkarinConv) return;
     window._azkarinConv = nuevo;
+    if (nuevo) { try { _mpPrepararAudio(); } catch (e) {} }   // v700: dentro del toque, para que Android deje oír
     // v619 · 🛑 QUE NO SE QUEDE SORDO AL RECARGAR. Asier, 6-sep: «tengo todo activado y le
     // hablo y no me oye». Cada vez que la app se actualiza o se recarga, el modo conversación
     // se apagaba solo y por fuera todo se veía igual: él hablaba y no había nadie escuchando.
