@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v696';
+var APP_VERSION = 'v697';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18043,7 +18043,7 @@ async function doResetWithCode() {
   }
   window._pideElRecado = _pideElRecado;
 
-  window.__azkarinAvisoDeVoz = function(texto, id, tipo){
+  window.__azkarinAvisoDeVoz = function(texto, id, tipo, opciones){
     try {
       texto = String(texto || '').trim();
       if (!texto) return;
@@ -18065,7 +18065,16 @@ async function doResetWithCode() {
         if (id) fetch(RAILWAY_API + '/api/voz/companero?dicho=' + encodeURIComponent(id) + '&apiKey=' + encodeURIComponent(window._apiKey || ''), { method: 'GET' }).catch(function(){});
       } catch(e){}
       // y se queda escuchando: es una conversación, no un altavoz
-      window._convPorPalabraClave = true;
+      // v697 · 🛑 Asier, 20-oct: «le hablo en llamada continua y no me contesta, parece que no detecta el audio».
+      //  Desde v695 el compañero habla solo con la app ABIERTA (al abrir y cada tres minutos), y cada recado
+      //  ponía la conversación en «solo contesto si dices Azkarin» (pensado para el móvil bloqueado), incluso
+      //  si él ya la tenía encendida a mano. Todo lo que decía sin el nombre se tiraba en silencio.
+      //  Ahora: si la conversación ya estaba encendida, se queda como estaba; y con la app a la vista
+      //  (él delante de la pantalla) se escucha todo. El «solo si me llamas» queda para el móvil bloqueado.
+      var _yaEnConv = !!window._azkarinConv;
+      var _aLaVista = (opciones && opciones.en_la_app) || document.visibilityState === 'visible';
+      if (!_yaEnConv) window._convPorPalabraClave = !_aLaVista;
+      try { if (window._vozParte) window._vozParte('aviso_abre', { abierto: _yaEnConv, puerta: _aLaVista ? 'a_la_vista' : 'bloqueado' }); } catch(e){}
       window._convUltimaSuya = Date.now();
       if (typeof window.chatbotConvToggle === 'function') {
         setTimeout(function(){ try { if (!window._azkarinConv) window.chatbotConvToggle(true); } catch(e){} }, 500);
@@ -18099,7 +18108,7 @@ async function doResetWithCode() {
         fetch(api).then(function(r){ return r.json(); }).then(function(d){
           _enCurso = false;
           if (!d || !d.hay || !d.texto) return;
-          try { window.__azkarinAvisoDeVoz(String(d.texto), d.id || '', d.tipo || ''); } catch(e){}
+          try { window.__azkarinAvisoDeVoz(String(d.texto), d.id || '', d.tipo || '', { en_la_app: true }); } catch(e){}
         }).catch(function(){ _enCurso = false; });
       } catch(e){ _enCurso = false; }
     }
