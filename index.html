@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v707';
+var APP_VERSION = 'v708';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17314,6 +17314,7 @@ async function doResetWithCode() {
   <div id="chatbot-header">
     <div style="display:flex;align-items:center;gap:10px"><img src="icons/azkarin-64.png" alt="Azkarin" style="width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.3)"><div><div class="ch-title">Azkarin</div><div class="ch-sub" id="ch-sub-motor">Asistente IA &middot; Azkar Mudanzas</div></div></div>
     <div>
+      <button onclick="chatbotNuevaConv()" title="Empezar una conversación nueva">&#127381;</button>
       <button onclick="chatbotHistorial()" title="Ver historial de acciones">&#128203;</button>
       <button onclick="chatbotCopiarConv()" title="Copiar toda la conversación (para pegársela a Claude)">&#128228;</button>
       <button id="chatbot-oscar-btn" class="cargando" onclick="chatbotOscarAbrir()" title="&#211;scar &mdash; el que echa las cuentas de los presupuestos">&#211;</button>
@@ -17372,6 +17373,55 @@ async function doResetWithCode() {
   var sendBtn = document.getElementById('chatbot-send');
   var micBtn = document.getElementById('chatbot-mic');
   var chatHistorial = [];
+  // ── v708 · LA CONVERSACIÓN NO SE PIERDE AL CERRAR LA APLICACIÓN ─────────────────────────────────────────────
+  // Asier, 21-oct: «quiero que sepa todo lo que hemos hablado y aprenda de las cosas que hablamos». La conversación
+  // vivía solo en la memoria de la página: al cerrar la app, si el móvil la cerraba tras un rato o al actualizarse,
+  // empezaba vacía (lo aprendido ya vivía en el servidor; lo que se perdía era la conversación de ahora). Ahora se
+  // guarda en el móvil (las últimas ochenta) y al abrir se vuelve a pintar, en silencio. Lo que aún no tiene
+  // respuesta no se guarda: podría llevar la clave antes de que el servidor la tape. «🆕» empieza una nueva.
+  var _AZK_CONV_KEY = 'azkConversacionV1', _AZK_CONV_MAX = 80;
+  function _azkConvParaGuardar() {
+    var fin = chatHistorial.length;
+    while (fin > 0 && chatHistorial[fin - 1] && chatHistorial[fin - 1].role === 'user') fin--;
+    return chatHistorial.slice(Math.max(0, fin - _AZK_CONV_MAX), fin).map(function (m) {
+      return { role: m.role === 'user' ? 'user' : 'assistant', content: String(m.content == null ? '' : m.content).slice(0, 12000) };
+    });
+  }
+  function _azkConvGuardar() {
+    try { localStorage.setItem(_AZK_CONV_KEY, JSON.stringify({ v: 1, ts: Date.now(), msgs: _azkConvParaGuardar() })); } catch (e) {}
+  }
+  window._azkConvGuardar = _azkConvGuardar;
+  (function () {
+    var _pushOriginal = chatHistorial.push;
+    chatHistorial.push = function () {
+      var r = _pushOriginal.apply(chatHistorial, arguments);
+      // tope para lo que se lleva y se manda: el servidor usa las veinte últimas; se guardan ochenta
+      if (chatHistorial.length > _AZK_CONV_MAX + 20) chatHistorial.splice(0, chatHistorial.length - _AZK_CONV_MAX);
+      _azkConvGuardar();
+      return r;
+    };
+    function _restaurar() {
+      try {
+        var raw = localStorage.getItem(_AZK_CONV_KEY);
+        if (!raw || chatHistorial.length) return;
+        var d = JSON.parse(raw);
+        var lista = (d && Array.isArray(d.msgs)) ? d.msgs.filter(function (m) { return m && (m.role === 'user' || m.role === 'assistant') && String(m.content || '').trim(); }) : [];
+        if (!lista.length) return;
+        lista.forEach(function (m) { _pushOriginal.call(chatHistorial, { role: m.role, content: String(m.content) }); });
+        var hora = '';
+        try { hora = new Date(Number(d.ts) || Date.now()).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' }); } catch (e) {}
+        lista.forEach(function (m) { try { addMsg(m.role === 'user' ? 'user' : 'bot', String(m.content), { silencio: true, hora: hora }); } catch (e) {} });
+        var sep = document.createElement('div');
+        sep.className = 'chat-separador';
+        sep.style.cssText = 'text-align:center;font-size:12px;color:#8a97a8;margin:10px 0 6px;';
+        sep.textContent = '↩️ Seguimos donde lo dejamos';
+        msgsDiv.appendChild(sep);
+        msgsDiv.scrollTop = msgsDiv.scrollHeight;
+        window._azkConvRestaurada = lista.length;
+      } catch (e) {}
+    }
+    setTimeout(_restaurar, 0);
+  })();
   // ── v391 · GPS PARA AZKARIN ────────────────────────────────────────────────
   // Manda la posicion del movil con cada mensaje para que Azkarin sepa DESDE DONDE
   // sales y pueda decir cuanto tardas de verdad. Solo va con la app abierta y con
@@ -17793,6 +17843,15 @@ async function doResetWithCode() {
   bubble.addEventListener('pointerdown', onPointerDown);
   document.addEventListener('pointermove', onPointerMove);
   document.addEventListener('pointerup', onPointerUp);
+
+  // v708 · empezar una conversación nueva: la de ahora no se pierde (el servidor la guarda y Azkarin la busca)
+  window.chatbotNuevaConv = function() {
+    try { if (!confirm('¿Empezar una conversación nueva? La de ahora queda guardada y Azkarin la puede buscar.')) return; } catch (e) {}
+    try { chatHistorial.length = 0; } catch (e) {}
+    try { localStorage.removeItem(_AZK_CONV_KEY); } catch (e) {}
+    try { msgsDiv.innerHTML = ''; } catch (e) {}
+    try { var sep = document.createElement('div'); sep.className = 'chat-separador'; sep.style.cssText = 'text-align:center;font-size:12px;color:#8a97a8;margin:10px 0 6px;'; sep.textContent = '🆕 Conversación nueva'; msgsDiv.appendChild(sep); } catch (e) {}
+  };
 
   window.chatbotToggle = function() {
     panel.classList.toggle('open');
@@ -18604,6 +18663,7 @@ async function doResetWithCode() {
         if (chatHistorial[i] && chatHistorial[i].role === 'user') { chatHistorial[i].content = '🔑 ••••••'; break; }
       }
     } catch(e){}
+    try { _azkConvGuardar(); } catch(e){}   // v708 · lo guardado en el móvil, también tapado
     try {
       var cont = document.getElementById('chatbot-msgs');
       if (!cont) return;
@@ -20878,10 +20938,10 @@ async function doResetWithCode() {
       var d = document.createElement('div'); d.textContent = String(html || '').replace(/<[^>]*>/g, ''); return d.innerHTML;
     }
   }
-  function addMsg(type, text) {
+  function addMsg(type, text, opts) {
     var div = document.createElement('div');
     div.className = 'chat-msg ' + type;
-    var _h = new Date().toLocaleTimeString('es-ES', { hour12:false }); div.setAttribute('data-hora', _h); div.setAttribute('data-rol', type);
+    var _h = (opts && opts.hora) || new Date().toLocaleTimeString('es-ES', { hour12:false }); div.setAttribute('data-hora', _h); div.setAttribute('data-rol', type);
     // v212: Mensajes del bot siempre como HTML (soporta markdown y botones inyectados)
     if (type === 'bot') {
       div.innerHTML = _chatLimpio(chatMarkdown(text));   // v678 · filtrado
@@ -20947,7 +21007,7 @@ async function doResetWithCode() {
         } else { fallback(); }
       };
       div.appendChild(copyBtn);
-      chatSpeak(cleanForTTS);
+      if (!(opts && opts.silencio)) chatSpeak(cleanForTTS);   // v708 · lo que se vuelve a pintar al abrir no se lee
     }
   }
 
