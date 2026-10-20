@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v695';
+var APP_VERSION = 'v696';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18090,6 +18090,10 @@ async function doResetWithCode() {
         if (!window._apiKey) return;
         if (Date.now() - _ultima < MIN_ENTRE_MS) return;
         if (window._azkToque && window._azkToque.id && Date.now() - (window._azkToque.ts || 0) < 120000) return;   // ya está llamando a la puerta
+        // v696 · Asier, 20-oct, 8:30: a mitad de una conversación le saltó «¿qué día se paga la nómina de Luis?». Si acaba de
+        //  escribirle (o está en modo conversación), el compañero espera: no se le interrumpe mientras habla.
+        if (window._azkUltimoMensajeSuyo && Date.now() - window._azkUltimoMensajeSuyo < 180000) return;
+        if (window._azkarinConv) return;
         _ultima = Date.now(); _enCurso = true;
         var api = RAILWAY_API + '/api/voz/companero?apiKey=' + encodeURIComponent(window._apiKey || '') + '&en_la_app=1&x=' + Date.now();
         fetch(api).then(function(r){ return r.json(); }).then(function(d){
@@ -20784,6 +20788,7 @@ async function doResetWithCode() {
     }
   }
   function addMsg(type, text) {
+    try { if (type === 'user') window._azkUltimoMensajeSuyo = Date.now(); } catch(eU){}   // v696: para no interrumpirle si está hablando
     var div = document.createElement('div');
     div.className = 'chat-msg ' + type;
     var _h = new Date().toLocaleTimeString('es-ES', { hour12:false }); div.setAttribute('data-hora', _h); div.setAttribute('data-rol', type);
