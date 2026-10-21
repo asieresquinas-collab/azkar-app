@@ -5117,7 +5117,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v708';
+var APP_VERSION = 'v709';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17314,7 +17314,7 @@ async function doResetWithCode() {
   <div id="chatbot-header">
     <div style="display:flex;align-items:center;gap:10px"><img src="icons/azkarin-64.png" alt="Azkarin" style="width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.3)"><div><div class="ch-title">Azkarin</div><div class="ch-sub" id="ch-sub-motor">Asistente IA &middot; Azkar Mudanzas</div></div></div>
     <div>
-      <button onclick="chatbotNuevaConv()" title="Empezar una conversación nueva">&#127381;</button>
+      <button onclick="chatbotNuevaConv()" title="Empezar una conversación nueva">&#10133;</button>
       <button onclick="chatbotHistorial()" title="Ver historial de acciones">&#128203;</button>
       <button onclick="chatbotCopiarConv()" title="Copiar toda la conversación (para pegársela a Claude)">&#128228;</button>
       <button id="chatbot-oscar-btn" class="cargando" onclick="chatbotOscarAbrir()" title="&#211;scar &mdash; el que echa las cuentas de los presupuestos">&#211;</button>
@@ -17378,7 +17378,8 @@ async function doResetWithCode() {
   // vivía solo en la memoria de la página: al cerrar la app, si el móvil la cerraba tras un rato o al actualizarse,
   // empezaba vacía (lo aprendido ya vivía en el servidor; lo que se perdía era la conversación de ahora). Ahora se
   // guarda en el móvil (las últimas ochenta) y al abrir se vuelve a pintar, en silencio. Lo que aún no tiene
-  // respuesta no se guarda: podría llevar la clave antes de que el servidor la tape. «🆕» empieza una nueva.
+  // respuesta no se guarda: podría llevar la clave antes de que el servidor la tape. «➕» empieza una nueva (v709: era 🆕,
+  // que pinta letras en inglés).
   var _AZK_CONV_KEY = 'azkConversacionV1', _AZK_CONV_MAX = 80;
   function _azkConvParaGuardar() {
     var fin = chatHistorial.length;
@@ -17850,7 +17851,7 @@ async function doResetWithCode() {
     try { chatHistorial.length = 0; } catch (e) {}
     try { localStorage.removeItem(_AZK_CONV_KEY); } catch (e) {}
     try { msgsDiv.innerHTML = ''; } catch (e) {}
-    try { var sep = document.createElement('div'); sep.className = 'chat-separador'; sep.style.cssText = 'text-align:center;font-size:12px;color:#8a97a8;margin:10px 0 6px;'; sep.textContent = '🆕 Conversación nueva'; msgsDiv.appendChild(sep); } catch (e) {}
+    try { var sep = document.createElement('div'); sep.className = 'chat-separador'; sep.style.cssText = 'text-align:center;font-size:12px;color:#8a97a8;margin:10px 0 6px;'; sep.textContent = '➕ Conversación nueva'; msgsDiv.appendChild(sep); } catch (e) {}
   };
 
   window.chatbotToggle = function() {
