@@ -2401,14 +2401,19 @@ window._saludoA = function (nombre, d) {
       // v714 · se prueba con /api/version, que contesta al momento (la salud completa lee la base de datos y puede tardar)
       _casa.ultimaPrueba = Date.now();
       _casa.promesa = _f(_casa.base + '/api/version?nocache=' + Date.now(), _ctl ? { signal: _ctl.signal, cache: 'no-store' } : { cache: 'no-store' })
-        .then(function (r) { _casa.http = r.status; return r.ok ? r.json() : null; })
-        .then(function (j) {
+        .then(function (r) { _casa.http = r.status; return r.text(); })
+        .then(function (txt) {
+          // v715 · se lee como texto: si no es lo esperado, el aviso enseña qué ha contestado de verdad (23-oct: «200 sin versión»)
+          var j = null; try { j = JSON.parse(txt); } catch (eJ) { j = null; }
+          if (!(_casa.http >= 200 && _casa.http < 300)) j = null;
           clearTimeout(_tm);
           _casa.decidido = true;
           _casa.activa = !!(j && j.version);
           _casa.version = (j && j.version) || '';
           _casa.ms = Date.now() - _t0;
-          if (!_casa.activa) _casa.motivo = 'ha contestado ' + (_casa.http || '?') + ' sin versión';
+          _casa.cuerpo = String(txt || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90);
+          if (!_casa.activa) _casa.motivo = 'ha contestado ' + (_casa.http || '?') + ' sin versión' + (_casa.cuerpo ? ': «' + _casa.cuerpo + '»' : ', en blanco');
+          if (!_casa.activa && j && j.offline === true) _casa.motivo = 'el móvil no ha llegado al túnel (fallo de red)';
           try { console.log('[casa] servidor de casa ' + (_casa.activa ? 'ACTIVO · ' + _casa.version : 'sin respuesta: Railway') + ' (' + _casa.ms + ' ms)'); } catch (e) {}
           if (!_casa.activa) _avisoCambio(false, '🏠 El ordenador de casa no ha contestado bien (' + _casa.motivo + '): mientras, hablo desde Railway y lo vuelvo a probar en un minuto.');
           else _avisoCambio(true, '🏠 El ordenador de casa ya contesta: vuelvo a hablar con él.');
@@ -5226,7 +5231,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v714';
+var APP_VERSION = 'v715';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.

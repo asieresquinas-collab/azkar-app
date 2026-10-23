@@ -47,9 +47,11 @@ function navegador(o) {
       if (o.casa === 'cae' && llamadas.filter(x => x.url.indexOf('https://casa.ts.net') === 0).length > 1) throw new TypeError('Failed to fetch');
       if (o.casa === 'no') throw new TypeError('Failed to fetch');
       if (o.casa === 'lenta') return new Promise((res, rej) => { if (ini && ini.signal) ini.signal.addEventListener('abort', () => { const e = new Error('aborted'); e.name = 'AbortError'; rej(e); }); });   // nunca contesta; el fetch de verdad falla al abortar
-      return { ok: true, json: async () => ({ status: 'ok', version: '2.7.1019' }) };
+      if (o.casa === 'offline') return { ok: true, status: 200, text: async () => '{"offline":true}', json: async () => ({ offline: true }) };
+      if (o.casa === 'raro') return { ok: true, status: 200, text: async () => '{"hola":"otra cosa"}', json: async () => ({ hola: 'otra cosa' }) };
+      return { ok: true, status: 200, text: async () => JSON.stringify({ status: 'ok', version: '2.7.1019' }), json: async () => ({ status: 'ok', version: '2.7.1019' }) };
     }
-    return { ok: true, json: async () => ({ status: 'ok', version: 'railway' }) };
+    return { ok: true, status: 200, text: async () => JSON.stringify({ status: 'ok', version: 'railway' }), json: async () => ({ status: 'ok', version: 'railway' }) };
   };
   vm.createContext(win);
   vm.runInContext(TROZO, win);
@@ -151,16 +153,33 @@ const R = 'https://azkar-presupuestos-production.up.railway.app';
     const SW = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
     if (!/url\.pathname\.indexOf\('\/api\/'\) === 0 \|\| url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\)/.test(SW)) throw new Error('/api/ de cualquier servidor no va como API en el service worker');
     if (!/return Response\.error\(\);/.test(SW)) throw new Error('el catch sigue devolviendo nada');
+    // v715 · y en la rama de las API, un fallo del servidor de casa llega como fallo de red (no «200 {offline:true}»)
+    if (!/const _esCasa = url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\);\s*e\.respondWith\(fetch\(e\.request\)\.catch\(\(\) => _esCasa \? Response\.error\(\) :/.test(SW)) throw new Error('el service worker sigue tapando los fallos del servidor de casa con un 200 de mentira');
   });
-  await t('F3 · la versión ha subido a la v714 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v714';/.test(HTML), true);
-    iguales(/azkar-pwa-v714/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v714');
+  await t('F3 · la versión ha subido a la v715 en los tres sitios', async () => {
+    iguales(/var APP_VERSION = 'v715';/.test(HTML), true);
+    iguales(/azkar-pwa-v715/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
+    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v715');
+  });
+  await t('F6 · v715 · si contesta algo que no es la versión, el aviso enseña lo que ha contestado', async () => {
+    const n = navegador({ store: { azkar_servidor_casa: 'https://casa.ts.net' }, casa: 'raro' });
+    await n.win.fetch(R + '/api/chatbot/message');
+    const e = n.win._azkCasa.estado();
+    iguales(e.activa, false);
+    if (!/ha contestado 200 sin versión: «\{"hola":"otra cosa"\}»/.test(e.motivo)) throw new Error('motivo: ' + e.motivo);
   });
   await t('F5 · v714 · «/casa» vuelve a probar el ordenador en ese momento y luego cuenta cómo está', async () => {
     const i = HTML.indexOf("if (msg && /^\\/casa\\b/i.test(msg)) {");
     const trozo = HTML.slice(i, i + 3500);
     if (!/_C\.probar\(\)\.then\(function \(\) \{ _contarCasa\(_C\); \}/.test(trozo)) throw new Error('«/casa» no vuelve a probar');
+  });
+
+  await t('F7 · v715 · si un service worker viejo aún devuelve «{offline:true}», el aviso dice que es un fallo de red', async () => {
+    const n = navegador({ store: { azkar_servidor_casa: 'https://casa.ts.net' }, casa: 'offline' });
+    await n.win.fetch(R + '/api/chatbot/message');
+    const e = n.win._azkCasa.estado();
+    iguales(e.activa, false);
+    if (!/no ha llegado al túnel/.test(e.motivo)) throw new Error('motivo: ' + e.motivo);
   });
 
   console.log('\n══ G · v714 · SI EL ORDENADOR NO CONTESTÓ, SE VUELVE A PROBAR (no toda la sesión en Railway) ══');

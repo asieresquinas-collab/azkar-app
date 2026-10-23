@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  AZKAR PWA · Service Worker · Offline-first
 // ══════════════════════════════════════════════════════════════
-const CACHE_NAME = 'azkar-pwa-v714';
+const CACHE_NAME = 'azkar-pwa-v715';
 const ASSETS = [
   './',
   './index.html',
@@ -54,7 +54,10 @@ self.addEventListener('fetch', e => {
   // v712 · el servidor de casa (…ts.net) es una API como Railway: solo red, nunca caché
   // v713 · y cualquier llamada a /api/ de cualquier servidor (el de casa puede cambiar de nombre: túnel de Cloudflare…)
   if (url.pathname.indexOf('/api/') === 0 || url.hostname.endsWith('.ts.net') || url.hostname.endsWith('.trycloudflare.com') || url.hostname.includes('firestore') || url.hostname.includes('firebase') || url.hostname.includes('railway.app') || url.hostname.includes('cdnjs.cloudflare.com') || url.hostname.includes('nominatim') || url.hostname.includes('project-osrm') || url.hostname.includes('maps.google')) {
-    e.respondWith(fetch(e.request).catch(() => new Response('{"offline":true}', {
+    // v715 · al servidor de casa, un fallo de red llega COMO FALLO (no como un «200 {offline:true}» de mentira): si no,
+    //  la app creía que había contestado («ha contestado 200 sin versión», 23-oct) y no volvía a Railway
+    const _esCasa = url.hostname.endsWith('.ts.net') || url.hostname.endsWith('.trycloudflare.com');
+    e.respondWith(fetch(e.request).catch(() => _esCasa ? Response.error() : new Response('{"offline":true}', {
       headers: { 'Content-Type': 'application/json' }
     })));
     return;
