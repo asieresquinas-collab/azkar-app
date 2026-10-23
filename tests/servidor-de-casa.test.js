@@ -36,7 +36,7 @@ function navegador(o) {
     history: { replaceState: function (a, b, url) { win._urlFinal = url; } },
     console: { log: () => {}, warn: () => {} },
     setTimeout: setTimeout, clearTimeout: clearTimeout,
-    URLSearchParams: URLSearchParams, Headers: Headers, AbortController: AbortController, Promise: Promise, Object: Object, String: String, Date: Date,
+    URLSearchParams: URLSearchParams, Headers: Headers, AbortController: AbortController, Promise: Promise, Object: Object, String: String, Date: o.reloj ? (function () { const D = function () { return new Date(o.reloj.t); }; D.now = function () { return o.reloj.t; }; return D; })() : Date,
     addMsg: (rol, txt) => { avisos.push(txt); }
   };
   win.window = win;
@@ -72,22 +72,22 @@ const R = 'https://azkar-presupuestos-production.up.railway.app';
     const n = navegador({ store: { azkar_servidor_casa: 'https://casa.ts.net', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'ok' });
     await n.win.fetch(R + '/api/chatbot/message', { method: 'POST' });
     const urls = n.llamadas.map(x => x.url);
-    if (!urls[0].startsWith('https://casa.ts.net/api/health')) throw new Error('primero el health: ' + urls.join(' | '));
+    if (!urls[0].startsWith('https://casa.ts.net/api/version')) throw new Error('primero la versión (v714: /api/version, que contesta al momento): ' + urls.join(' | '));
     iguales(urls[1], 'https://casa.ts.net/api/chatbot/message');
     iguales(n.llamadas[1].headers['authorization'], 'Bearer tok'); iguales(n.llamadas[1].headers['x-api-key'], 'k1');
     const e = n.win._azkCasa.estado(); iguales(e.activa, true); iguales(e.version, '2.7.1019');
     iguales(n.avisos.length, 0, 'sin avisos');
   });
-  await t('B2 · el health se pregunta UNA vez por sesión, no en cada llamada', async () => {
+  await t('B2 · con casa contestando, se pregunta UNA vez por sesión, no en cada llamada', async () => {
     const n = navegador({ store: { azkar_servidor_casa: 'https://casa.ts.net' }, casa: 'ok' });
     await n.win.fetch(R + '/api/a'); await n.win.fetch(R + '/api/b'); await n.win.fetch(R + '/api/c');
-    iguales(n.llamadas.filter(x => x.url.indexOf('/api/health') >= 0).length, 1);
-    iguales(n.llamadas.filter(x => x.url.indexOf('https://casa.ts.net/api/') === 0 && x.url.indexOf('health') < 0).length, 3);
+    iguales(n.llamadas.filter(x => x.url.indexOf('/api/version') >= 0).length, 1);
+    iguales(n.llamadas.filter(x => x.url.indexOf('https://casa.ts.net/api/') === 0 && x.url.indexOf('/api/version') < 0).length, 3);
   });
   await t('B3 · una llamada que no es a Railway (Google, otra web) no se toca', async () => {
     const n = navegador({ store: { azkar_servidor_casa: 'https://casa.ts.net' }, casa: 'ok' });
     await n.win.fetch('https://maps.googleapis.com/x');
-    iguales(n.llamadas.filter(x => x.url.indexOf('casa.ts.net') >= 0).length, 1, 'solo el health');   // el health sale al cargar
+    iguales(n.llamadas.filter(x => x.url.indexOf('casa.ts.net') >= 0).length, 1, 'solo la prueba');   // la prueba sale al cargar
     iguales(n.llamadas[n.llamadas.length - 1].url, 'https://maps.googleapis.com/x');
   });
 
@@ -98,7 +98,7 @@ const R = 'https://azkar-presupuestos-production.up.railway.app';
     iguales(n.llamadas[n.llamadas.length - 1].url, R + '/api/chatbot/message');
     iguales(n.win._azkCasa.estado().activa, false);
     await new Promise(r => setTimeout(r, 2700));
-    if (!n.avisos.some(a => /No llego al servidor de casa/.test(a))) throw new Error('sin aviso: ' + JSON.stringify(n.avisos));
+    if (!n.avisos.some(a => /No llego al ordenador de casa/.test(a) && /lo vuelvo a probar en un minuto/.test(a))) throw new Error('sin aviso: ' + JSON.stringify(n.avisos));
   });
   await t('C2 · casa tarda más de cuatro segundos: se corta y va a Railway (no se queda colgado)', async () => {
     const n = navegador({ store: { azkar_servidor_casa: 'https://casa.ts.net' }, casa: 'lenta' });
@@ -152,10 +152,58 @@ const R = 'https://azkar-presupuestos-production.up.railway.app';
     if (!/url\.pathname\.indexOf\('\/api\/'\) === 0 \|\| url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\)/.test(SW)) throw new Error('/api/ de cualquier servidor no va como API en el service worker');
     if (!/return Response\.error\(\);/.test(SW)) throw new Error('el catch sigue devolviendo nada');
   });
-  await t('F3 · la versión ha subido a la v713 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v713';/.test(HTML), true);
-    iguales(/azkar-pwa-v713/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v713');
+  await t('F3 · la versión ha subido a la v714 en los tres sitios', async () => {
+    iguales(/var APP_VERSION = 'v714';/.test(HTML), true);
+    iguales(/azkar-pwa-v714/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
+    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v714');
+  });
+  await t('F5 · v714 · «/casa» vuelve a probar el ordenador en ese momento y luego cuenta cómo está', async () => {
+    const i = HTML.indexOf("if (msg && /^\\/casa\\b/i.test(msg)) {");
+    const trozo = HTML.slice(i, i + 3500);
+    if (!/_C\.probar\(\)\.then\(function \(\) \{ _contarCasa\(_C\); \}/.test(trozo)) throw new Error('«/casa» no vuelve a probar');
+  });
+
+  console.log('\n══ G · v714 · SI EL ORDENADOR NO CONTESTÓ, SE VUELVE A PROBAR (no toda la sesión en Railway) ══');
+  await t('G1 · no contesta al abrir → Railway; un minuto después vuelve: el siguiente MENSAJE espera a la prueba y va a casa, con aviso', async () => {
+    const o = { store: { azkar_servidor_casa: 'https://casa.ts.net' }, casa: 'no', reloj: { t: 1000000 } };
+    const n = navegador(o);
+    await n.win.fetch(R + '/api/chatbot/message');
+    iguales(n.llamadas[n.llamadas.length - 1].url, R + '/api/chatbot/message');
+    o.casa = 'ok'; o.reloj.t += 61000;
+    await n.win.fetch(R + '/api/chatbot/message');
+    iguales(n.llamadas[n.llamadas.length - 1].url, 'https://casa.ts.net/api/chatbot/message', 'el mensaje tenía que ir a casa: ' + n.llamadas.map(x => x.url).join(' | '));
+    iguales(n.win._azkCasa.estado().activa, true);
+    await new Promise(r => setTimeout(r, 1500));
+    if (!n.avisos.some(a => /ya contesta: vuelvo a hablar con él/.test(a))) throw new Error('sin aviso de vuelta: ' + JSON.stringify(n.avisos));
+  });
+  await t('G2 · antes del minuto no se vuelve a probar (ni una llamada de más a casa)', async () => {
+    const o = { store: { azkar_servidor_casa: 'https://casa.ts.net' }, casa: 'no', reloj: { t: 1000000 } };
+    const n = navegador(o);
+    await n.win.fetch(R + '/api/chatbot/message');
+    o.reloj.t += 30000;
+    await n.win.fetch(R + '/api/chatbot/message');
+    iguales(n.llamadas.filter(x => x.url.indexOf('casa.ts.net') >= 0).length, 1, 'solo la prueba del principio');
+  });
+  await t('G3 · lo que no es un mensaje a Azkarin no espera a la prueba: va a Railway mientras se prueba', async () => {
+    const o = { store: { azkar_servidor_casa: 'https://casa.ts.net' }, casa: 'no', reloj: { t: 1000000 } };
+    const n = navegador(o);
+    await n.win.fetch(R + '/api/avisos');
+    o.casa = 'lenta'; o.reloj.t += 61000;
+    const t0 = Date.now();
+    await n.win.fetch(R + '/api/avisos');
+    if (Date.now() - t0 > 1000) throw new Error('ha esperado a la prueba');
+    iguales(n.llamadas[n.llamadas.length - 1].url, R + '/api/avisos');
+    iguales(n.llamadas.filter(x => x.url.indexOf('casa.ts.net/api/version') >= 0).length, 2, 'la segunda prueba sí se ha lanzado');
+  });
+  await t('G4 · si sigue sin contestar, el aviso no se repite cada minuto', async () => {
+    const o = { store: { azkar_servidor_casa: 'https://casa.ts.net' }, casa: 'no', reloj: { t: 1000000 } };
+    const n = navegador(o);
+    await n.win.fetch(R + '/api/chatbot/message');
+    o.reloj.t += 61000; await n.win.fetch(R + '/api/chatbot/message');
+    o.reloj.t += 61000; await n.win.fetch(R + '/api/chatbot/message');
+    await new Promise(r => setTimeout(r, 1500));
+    iguales(n.avisos.filter(a => /ordenador de casa/.test(a)).length, 1, JSON.stringify(n.avisos));
+    iguales(n.llamadas.filter(x => x.url.indexOf('casa.ts.net/api/version') >= 0).length, 3, 'tres pruebas, una por minuto');
   });
 
   console.log('\n' + (mal ? '❌ ' + ok + ' bien, ' + mal + ' mal' : '✅ ' + ok + ' bien, 0 mal') + '\n');
