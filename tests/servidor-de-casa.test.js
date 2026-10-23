@@ -175,10 +175,10 @@ const R0 = R;
     // v715 · y en la rama de las API, un fallo del servidor de casa llega como fallo de red (no «200 {offline:true}»)
     if (!/const _esCasa = url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\);\s*e\.respondWith\(fetch\(e\.request\)\.catch\(\(\) => _esCasa \? Response\.error\(\) :/.test(SW)) throw new Error('el service worker sigue tapando los fallos del servidor de casa con un 200 de mentira');
   });
-  await t('F3 · la versión ha subido a la v725 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v725';/.test(HTML), true);
-    iguales(/azkar-pwa-v725/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v725');
+  await t('F3 · la versión ha subido a la v726 en los tres sitios', async () => {
+    iguales(/var APP_VERSION = 'v726';/.test(HTML), true);
+    iguales(/azkar-pwa-v726/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
+    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v726');
   });
   await t('H1 · v718 · si la dirección guardada no contesta, se pregunta a Railway la nueva, se guarda, se avisa y se va a casa', async () => {
     const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };
@@ -305,6 +305,19 @@ const R0 = R;
     n.win._candadoRailwayTodo = true;
     const r = await n.win.fetch(R + '/api/presupuestos');
     iguales(r.status, 401); iguales(n.llamadas.length, 1);
+  });
+  await t('M1 · v726 · la misma respuesta recogida dos veces del buzón (al volver a la app y en la espera del túnel) se pinta UNA vez', async () => {
+    const i0 = HTML.indexOf('  window._turnosPintados = window._turnosPintados || {};');
+    const i1 = HTML.indexOf('  // Al VOLVER a la app', i0);
+    if (i0 < 0 || i1 < 0) throw new Error('no encuentro el trozo');
+    const pintados = [];
+    const ctx = { window: {}, addMsg: (r, txt) => pintados.push(txt), chatHistorial: [], Math: Math };
+    vm.createContext(ctx);
+    vm.runInContext(HTML.slice(i0, i1) + '\nwindow._p = _pintarDelBuzon;', ctx);
+    const d = { listo: true, respuesta: { mensaje: 'Hola socio' } };
+    ctx.window._p(d, 'turnoA'); ctx.window._p(d, 'turnoA'); ctx.window._p(d, 'turnoB');
+    iguales(pintados.filter(x => /Hola socio/.test(x)).length, 2, 'una por turno');
+    iguales(ctx.window._yaPintadoTurno('turnoA'), true);
   });
   await t('H2 · v719 · con la base a mano, la dirección nueva se lee de ahí y ni se pregunta a Railway (vale aunque Railway no lleve la 2.7.1036)', async () => {
     const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };

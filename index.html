@@ -5357,7 +5357,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v725';
+var APP_VERSION = 'v726';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -19135,6 +19135,9 @@ async function doResetWithCode() {
       var data = await resp.json();
       _turnoResuelto(_turnoId);   // v574
       removeTyping();
+      // v726 · si ya se pintó recogida del buzón (al volver a la app), no se pinta otra vez
+      if (window._yaPintadoTurno && window._yaPintadoTurno(_turnoId)) { sendBtn.disabled = false; stopProgPoll(); return; }
+      if (window._marcarPintadoTurno) window._marcarPintadoTurno(_turnoId);
       // v610 · LA CLAVE NO SE QUEDA A LA VISTA. Asier la escribe en el chat (es su manera de
       // trabajar). El servidor la comprueba, la tapa y avisa con clave_oculta: aquí se borra
       // también de la burbuja y del historial que lleva la app, para que no quede en pantalla.
@@ -19560,7 +19563,7 @@ async function doResetWithCode() {
         //  se espera al buzón hasta seis minutos, con el «trabajando…» puesto
         var _porCasa = false; try { _porCasa = !!(window._azkCasa && window._azkCasa.estado().activa); } catch (eC) {}
         var _resc = await _esperarBuzon(_turnoId, (err && err.name === 'AbortError') ? 20000 : (_porCasa ? 360000 : 90000));
-        if (_resc) { _turnoResuelto(_turnoId); removeTyping(); if (_porCasa) _resc._porCasa = true; _pintarDelBuzon(_resc); sendBtn.disabled = false; return; }
+        if (_resc) { _turnoResuelto(_turnoId); removeTyping(); if (_porCasa) _resc._porCasa = true; _pintarDelBuzon(_resc, _turnoId); sendBtn.disabled = false; return; }
       } catch (eResc) { /* si el rescate falla, se sigue por el camino de siempre */ }
       removeTyping();
       if (err && err.name === 'AbortError') {
@@ -19609,6 +19612,8 @@ async function doResetWithCode() {
       var data = await resp.json();
       _turnoResuelto(_turnoIdC);   // v574
       removeTyping();
+      if (window._yaPintadoTurno && window._yaPintadoTurno(_turnoIdC)) { return; }   // v726
+      if (window._marcarPintadoTurno) window._marcarPintadoTurno(_turnoIdC);
       if (data.error) {
         addMsg('bot', '❌ Error: ' + data.error);
       } else {
@@ -19642,7 +19647,7 @@ async function doResetWithCode() {
     } catch (err) {
       try {   // v574 · el mismo rescate para lo que se confirma con el botón
         var _rescC = await _esperarBuzon(_turnoIdC, (err && err.name === 'AbortError') ? 20000 : 90000);
-        if (_rescC) { _turnoResuelto(_turnoIdC); removeTyping(); _pintarDelBuzon(_rescC); return; }
+        if (_rescC) { _turnoResuelto(_turnoIdC); removeTyping(); _pintarDelBuzon(_rescC, _turnoIdC); return; }
       } catch (eRC) {}
       removeTyping();
       addMsg('bot', '❌ Error: ' + (err.message || 'error desconocido'));
@@ -21432,8 +21437,17 @@ async function doResetWithCode() {
     return null;
   }
   // Pinta una respuesta recogida del buzón. Devuelve true si había algo que pintar.
-  function _pintarDelBuzon(d) {
+  // v726 · UNA RESPUESTA SE PINTA UNA VEZ. 23-oct: la misma contestación de Azkarin salió dos veces seguidas: el mensaje que se
+  //  cortó por el túnel esperaba su respuesta en el buzón y, a la vez, al volver a la app se recogía el «turno pendiente»; los dos
+  //  la encontraban y los dos la pintaban. Ahora cada turno se apunta al pintarse y el segundo que llega no pinta nada.
+  window._turnosPintados = window._turnosPintados || {};
+  function _yaPintado(id) { return !!(id && window._turnosPintados[id]); }
+  function _marcarPintado(id) { if (id) window._turnosPintados[id] = Date.now(); }
+  window._yaPintadoTurno = _yaPintado; window._marcarPintadoTurno = _marcarPintado;
+  function _pintarDelBuzon(d, turnoId) {
     if (!d || !d.respuesta) return false;
+    if (_yaPintado(turnoId)) return true;
+    _marcarPintado(turnoId);
     var r = d.respuesta;
     var txt = r.mensaje || r.respuesta || '';
     if (txt) {
@@ -21457,7 +21471,7 @@ async function doResetWithCode() {
       if (Date.now() - (pend.ts || 0) > 30 * 60 * 1000) { _turnoResuelto(pend.id); return; }   // el buzón dura media hora
       window._recogiendoTurno = true;
       var d = await _buzonDelTurno(pend.id);
-      if (d) { _turnoResuelto(pend.id); try { removeTyping(); } catch (e) {} _pintarDelBuzon(d); }
+      if (d) { _turnoResuelto(pend.id); try { removeTyping(); } catch (e) {} _pintarDelBuzon(d, pend.id); }
       window._recogiendoTurno = false;
     } catch (e) { window._recogiendoTurno = false; }
   }
