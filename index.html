@@ -2476,7 +2476,12 @@ window._saludoA = function (nombre, d) {
         return true;
       },
       quitar: function () { try { localStorage.removeItem('azkar_servidor_casa'); } catch (e) {} },
-      probar: function () { return _reprobar(); }
+      probar: function () { return _reprobar(); },
+      // v724 · la dirección que ha apuntado el ordenador de casa (base; si no, Railway), para «/casa sí» sin escribir nada
+      direccionGuardada: function () {
+        var valida = function (u) { u = String(u || '').replace(/\/+$/, ''); return /^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(u) ? u : ''; };
+        return _direccionEnLaBase().then(function (u) { u = valida(u); return u || _direccionEnRailway().then(valida); }).catch(function () { return ''; });
+      }
     };
     if (_casa.base) { try { _decidirCasa(); } catch (e) {} }
     function _conCabeceras(ini) {
@@ -5334,7 +5339,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v723';
+var APP_VERSION = 'v724';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18951,7 +18956,16 @@ async function doResetWithCode() {
       var _arg = (msg.split(/\s+/)[1] || '').trim();
       var _C = window._azkCasa;
       if (!_C) { addMsg('bot', 'Esta versión de la app no tiene el servidor de casa.'); return; }
-      if (/^(no|off|quitar|railway)$/i.test(_arg)) { _C.quitar(); addMsg('bot', '🏠 Quitado: este aparato vuelve a hablar con Railway. Cierra y abre la app.'); return; }
+      if (/^(no|off|quitar|railway)$/i.test(_arg)) { _C.quitar(); addMsg('bot', '🏠 Quitado: este aparato vuelve a hablar con Railway. Cierra y abre la app. Para volver al ordenador de casa: «/casa sí».'); return; }
+      // v724 · «/casa sí» → la dirección que ha apuntado el propio ordenador (sin escribirla a mano)
+      if (/^(s[ií]|on|poner|casa)$/i.test(_arg) && typeof _C.direccionGuardada === 'function') {
+        addMsg('bot', '🏠 Busco la dirección del ordenador de casa…');
+        _C.direccionGuardada().then(function (u) {
+          if (u && _C.poner(u)) addMsg('bot', '🏠 Guardado: este aparato hablará con el ordenador de casa (' + u.replace(/^https:\/\//, '') + '). Cierra y abre la app para que entre; si no contesta, vuelvo a Railway solo.');
+          else addMsg('bot', '🏠 No encuentro la dirección del ordenador de casa: puede que esté apagado o sin el túnel. Mientras, sigo con Railway.');
+        });
+        return;
+      }
       if (_arg) {
         if (!_C.poner(_arg)) { addMsg('bot', 'Esa dirección no vale: tiene que ser https://… sin nada detrás (por ejemplo https://ordenador.algo.ts.net).'); return; }
         addMsg('bot', '🏠 Guardado: este aparato hablará con el servidor de casa (' + _arg.replace(/^https:\/\//, '') + '). Cierra y abre la app para que entre; si no contesta, vuelvo a Railway solo.');
@@ -18970,7 +18984,7 @@ async function doResetWithCode() {
       var _e = _C.estado();
       addMsg('bot', _e.configurado
         ? ('🏠 Servidor de casa: <b>' + _e.configurado.replace(/^https:\/\//, '') + '</b><br>Ahora mismo: ' + (_e.activa ? '<b>activo</b> (versión ' + (_e.version || '?') + ', ' + (_e.ms || 0) + ' ms)' : (_e.decidido ? '<b>sin respuesta</b> (' + (_e.motivo || '') + '): hablando desde Railway' : 'comprobando…')) + '<br><span style="font-size:11px;color:#666">App ' + APP_VERSION + ' · ' + String(navigator.userAgent || '').replace(/^Mozilla\/5\.0 \(/, '(').slice(0, 90) + '<br>«/casa no» para volver a Railway.</span>')
-        : '🏠 Este aparato habla con Railway (no hay servidor de casa configurado). Para ponerlo: «/casa https://…».');
+        : ('🏠 Este aparato habla con Railway (no hay servidor de casa configurado). Para ponerlo: «/casa sí».<br><span style="font-size:11px;color:#666">App ' + APP_VERSION + '</span>'));
       return;
     }
     var fotoEnviar = pendingFoto;
