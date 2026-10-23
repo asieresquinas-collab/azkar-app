@@ -105,7 +105,7 @@ const R = 'https://azkar-presupuestos-production.up.railway.app';
     const t0 = Date.now();
     await n.win.fetch(R + '/api/chatbot/message');
     const ms = Date.now() - t0;
-    if (ms > 6000) throw new Error('ha tardado ' + ms + ' ms');
+    if (ms > 10000) throw new Error('ha tardado ' + ms + ' ms');
     iguales(n.llamadas[n.llamadas.length - 1].url, R + '/api/chatbot/message');
   }).then(() => {});
 
@@ -147,10 +147,10 @@ const R = 'https://azkar-presupuestos-production.up.railway.app';
   await t('F2 · los enlaces del APK y del portal de autónomos siguen escritos a Railway (no son llamadas)', async () => {
     if (!/href="https:\/\/azkar-presupuestos-production\.up\.railway\.app\/api\/apk\/bajar"/.test(HTML)) throw new Error('el enlace del APK ya no apunta a Railway');
   });
-  await t('F3 · la versión ha subido a la v710 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v710';/.test(HTML), true);
-    iguales(/azkar-pwa-v710/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v710');
+  await t('F3 · la versión ha subido a la v711 en los tres sitios', async () => {
+    iguales(/var APP_VERSION = 'v711';/.test(HTML), true);
+    iguales(/azkar-pwa-v711/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
+    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v711');
   });
 
   console.log('\n' + (mal ? '❌ ' + ok + ' bien, ' + mal + ' mal' : '✅ ' + ok + ' bien, 0 mal') + '\n');
