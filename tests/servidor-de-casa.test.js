@@ -47,6 +47,7 @@ function navegador(o) {
       if (o.casa === 'cae' && llamadas.filter(x => x.url.indexOf('https://casa.ts.net') === 0).length > 1) throw new TypeError('Failed to fetch');
       if (o.casa === 'no') throw new TypeError('Failed to fetch');
       if (o.casa === 'lenta') return new Promise((res, rej) => { if (ini && ini.signal) ini.signal.addEventListener('abort', () => { const e = new Error('aborted'); e.name = 'AbortError'; rej(e); }); });   // nunca contesta; el fetch de verdad falla al abortar
+      if (o.casa === 'corte-tarde' && url.indexOf('/api/version') < 0) { o.reloj.t += 30000; throw new TypeError('Failed to fetch'); }
       if (o.casa === 'offline') return { ok: true, status: 200, text: async () => '{"offline":true}', json: async () => ({ offline: true }) };
       if (o.casa === 'raro') return { ok: true, status: 200, text: async () => '{"hola":"otra cosa"}', json: async () => ({ hola: 'otra cosa' }) };
       return { ok: true, status: 200, text: async () => JSON.stringify({ status: 'ok', version: '2.7.1019' }), json: async () => ({ status: 'ok', version: '2.7.1019' }) };
@@ -156,10 +157,10 @@ const R = 'https://azkar-presupuestos-production.up.railway.app';
     // v715 · y en la rama de las API, un fallo del servidor de casa llega como fallo de red (no «200 {offline:true}»)
     if (!/const _esCasa = url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\);\s*e\.respondWith\(fetch\(e\.request\)\.catch\(\(\) => _esCasa \? Response\.error\(\) :/.test(SW)) throw new Error('el service worker sigue tapando los fallos del servidor de casa con un 200 de mentira');
   });
-  await t('F3 · la versión ha subido a la v716 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v716';/.test(HTML), true);
-    iguales(/azkar-pwa-v716/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v716');
+  await t('F3 · la versión ha subido a la v717 en los tres sitios', async () => {
+    iguales(/var APP_VERSION = 'v717';/.test(HTML), true);
+    iguales(/azkar-pwa-v717/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
+    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v717');
   });
   await t('F8 · v716 · con el ordenador de casa, si el túnel corta, se espera la respuesta en el buzón hasta seis minutos (y se dice por qué)', async () => {
     if (!/_esperarBuzon\(_turnoId, \(err && err\.name === 'AbortError'\) \? 20000 : \(_porCasa \? 360000 : 90000\)\)/.test(HTML)) throw new Error('no espera más con casa');
@@ -184,6 +185,24 @@ const R = 'https://azkar-presupuestos-production.up.railway.app';
     const e = n.win._azkCasa.estado();
     iguales(e.activa, false);
     if (!/no ha llegado al túnel/.test(e.motivo)) throw new Error('motivo: ' + e.motivo);
+  });
+
+  await t('D2 · v717 · 🛑 un MENSAJE (POST) que se corta a mitad, después de unos segundos, NO se reenvía a Railway (se haría dos veces): el fallo llega al chat y casa sigue activa', async () => {
+    const o = { store: { azkar_servidor_casa: 'https://casa.ts.net' }, casa: 'ok', reloj: { t: 1000000 } };
+    const n = navegador(o);
+    await n.win.fetch(R + '/api/a');   // casa contesta: queda activa
+    o.casa = 'corte-tarde';
+    let err = null;
+    try { await n.win.fetch(R + '/api/chatbot/message', { method: 'POST' }); } catch (e) { err = e; }
+    iguales(!!err, true, 'tenía que llegar el fallo');
+    iguales(n.llamadas.filter(x => x.url === R + '/api/chatbot/message').length, 0, 'no se reenvía a Railway');
+    iguales(n.win._azkCasa.estado().activa, true, 'casa sigue activa');
+  });
+  await t('D3 · v717 · si el mensaje falla AL MOMENTO (no llegó a casa), sí va a Railway', async () => {
+    const n = navegador({ store: { azkar_servidor_casa: 'https://casa.ts.net' }, casa: 'cae' });
+    await n.win.fetch(R + '/api/chatbot/message', { method: 'POST' });
+    const urls = n.llamadas.map(x => x.url);
+    iguales(urls[urls.length - 1], R + '/api/chatbot/message');
   });
 
   console.log('\n══ G · v714 · SI EL ORDENADOR NO CONTESTÓ, SE VUELVE A PROBAR (no toda la sesión en Railway) ══');

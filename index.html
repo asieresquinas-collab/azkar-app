@@ -2470,10 +2470,19 @@ window._saludoA = function (nombre, d) {
           else if (!_casa.decidido && _casa.promesa && !_esMensaje && _casa.avisadoComo === false) return _f(rec, _ini);
           return _decidirCasa().then(function (ok) {
             if (!ok) return _f(rec, _ini);
+            var _t0Casa = Date.now();
             return _f(_recCasa, _ini).catch(function (err) {
               // si falla la red con el de casa (no un 4xx/5xx: eso llega como respuesta), esta sesión vuelve a Railway
               var _abortado = err && (err.name === 'AbortError');
               if (_abortado) throw err;
+              // v717 · 23-oct (12:22): un mensaje largo a casa se cortó por el camino (el túnel no aguanta más de cien segundos)
+              //  y la app lo REENVIÓ a Railway: Railway no reconoce la sesión abierta en casa («Hace falta entrar con tu usuario»)
+              //  y, si la reconociera, el mensaje se haría DOS veces. Ahora: si se corta después de unos segundos, el mensaje ya
+              //  llegó a casa → no se reenvía (ni nada que no sea consultar); se deja el fallo para que el chat recoja la
+              //  respuesta del buzón de casa, y casa sigue siendo el servidor. Solo si falla al momento (no llegó) se va a Railway.
+              var _metodo = String((_ini && _ini.method) || 'GET').toUpperCase();
+              var _consulta = (_metodo === 'GET' || _metodo === 'HEAD');
+              if (!_consulta && Date.now() - _t0Casa > 8000) throw err;
               _casa.activa = false; _casa.motivo = 'se ha caído a mitad'; _casa.ultimaPrueba = Date.now();
               _avisoCambio(false, '🏠 El ordenador de casa ha dejado de contestar: sigo desde Railway y lo vuelvo a probar en un minuto.', true);
               return _f(rec, _ini);
@@ -5231,7 +5240,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v716';
+var APP_VERSION = 'v717';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
