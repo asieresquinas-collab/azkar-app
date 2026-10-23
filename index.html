@@ -2495,30 +2495,43 @@ window._saludoA = function (nombre, d) {
       ini.headers = h;
       return ini;
     }
-    // v721 · EL PASE DE RAILWAY, APARTE (ver «LO QUE VA AL CLIENTE, SIEMPRE POR RAILWAY» más abajo)
+    // v721/v722 · EL PASE DE CADA SERVIDOR, APARTE. Casa y Railway firman cada uno su pase del login (no tienen la misma llave):
+    //  el que da uno, el otro no lo reconoce («Hace falta entrar con tu usuario»). Por eso, en el móvil con casa puesta, se guarda
+    //  un pase para cada uno (azkar_token_casa, azkar_token_railway) y cada llamada lleva el del servidor al que va. Si uno
+    //  contesta 401, se entra en él en silencio con el usuario recordado y se repite una vez. Al entrar con el usuario, se entra
+    //  en los dos. Los aparatos sin casa (Antonio) no pasan por aquí.
     function _conPase(ini, tok) { var i = Object.assign({}, ini || {}); var h = new Headers(i.headers || {}); h.set('Authorization', 'Bearer ' + tok); i.headers = h; return i; }
-    function _loginRailway(cuerpo) {
-      return _f('https://' + HOST + '/api/usuarios/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: cuerpo })
+    function _clavePase(dest) { return dest === 'casa' ? 'azkar_token_casa' : 'azkar_token_railway'; }
+    function _baseDe(dest) { return dest === 'casa' ? _casa.base : 'https://' + HOST; }
+    function _loginEn(dest, cuerpo) {
+      var base = _baseDe(dest);
+      if (!base) return Promise.resolve('');
+      return _f(base + '/api/usuarios/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: cuerpo })
         .then(function (r) { return r.json(); })
-        .then(function (d) { if (d && d.ok && d.token) { try { localStorage.setItem('azkar_token_railway', d.token); } catch (e) {} return d.token; } return ''; })
+        .then(function (d) { if (d && d.ok && d.token) { try { localStorage.setItem(_clavePase(dest), d.token); } catch (e) {} return d.token; } return ''; })
         .catch(function () { return ''; });
     }
-    function _paseRailwayNuevo() {
+    function _usuarioRecordado() {
       var c = null;
       try { c = JSON.parse(localStorage.getItem('azkar_remember') || 'null'); } catch (e) { c = null; }
-      if (!c || !c.u || !c.p) return Promise.resolve('');
-      return _loginRailway(JSON.stringify({ usuario: c.u, password: c.p }));
+      return (c && c.u && c.p) ? JSON.stringify({ usuario: c.u, password: c.p }) : '';
     }
-    function _aRailway(rec, ini) {
-      var tr = '';
-      try { tr = localStorage.getItem('azkar_token_railway') || ''; } catch (e) {}
-      return _f(rec, tr ? _conPase(ini, tr) : ini).then(function (r) {
+    function _conSuPase(url, ini, dest) {
+      var t = '';
+      try { t = localStorage.getItem(_clavePase(dest)) || ''; } catch (e) {}
+      return _f(url, t ? _conPase(ini, t) : ini).then(function (r) {
         if (!r || r.status !== 401) return r;
-        return _paseRailwayNuevo().then(function (t) {
-          if (t) return _f(rec, _conPase(ini, t));
-          if (!_casa.avisoPase) { _casa.avisoPase = true; _avisoCasa('🔑 Para que los presupuestos y las firmas salgan por Railway, sal de la app y vuelve a entrar con tu usuario una vez. Mientras, lo hago por el ordenador de casa.'); }
-          return _decidirCasa().then(function (ok) { return ok ? _f(rec.replace('https://' + HOST, _casa.base).replace('http://' + HOST, _casa.base), ini) : r; });
-        });
+        var cuerpo = _usuarioRecordado();
+        if (!cuerpo) return r;
+        return _loginEn(dest, cuerpo).then(function (t2) { return t2 ? _f(url, _conPase(ini, t2)) : r; });
+      });
+    }
+    function _aRailwayNormal(rec, ini) { return _conSuPase(rec, ini, 'railway'); }
+    function _aRailway(rec, ini) {
+      return _conSuPase(rec, ini, 'railway').then(function (r) {
+        if (!r || r.status !== 401) return r;
+        if (!_casa.avisoPase) { _casa.avisoPase = true; _avisoCasa('🔑 Para que los presupuestos y las firmas salgan por Railway, sal de la app y vuelve a entrar con tu usuario una vez (marcando «recordar»). Mientras, lo hago por el ordenador de casa.'); }
+        return _decidirCasa().then(function (ok) { return ok ? _conSuPase(rec.replace('https://' + HOST, _casa.base).replace('http://' + HOST, _casa.base), ini, 'casa') : r; });
       });
     }
     window.fetch = function (rec, ini) {
@@ -2535,17 +2548,17 @@ window._saludoA = function (nombre, d) {
           //  Railway; si Railway dice 401, se saca uno en silencio (con el usuario recordado) y se repite; si no se puede, se hace
           //  por casa como antes y se avisa una vez. Y al entrar con el usuario, se entra también en Railway.
           if (/\/api\/(pdf\/generate-and-save|drive\/save\b|drive\/captacion\/save|email\/|drive\/pdf\/|drive\/foto\/)|firma/i.test(rec.replace(/\?.*$/, ''))) return _aRailway(rec, _ini);
-          if (rec.indexOf('/api/usuarios/login') >= 0 && _ini && typeof _ini.body === 'string') { try { _loginRailway(_ini.body); } catch (eL) {} }
+          if (rec.indexOf('/api/usuarios/login') >= 0 && _ini && typeof _ini.body === 'string') { try { _loginEn('railway', _ini.body); _loginEn('casa', _ini.body); } catch (eL) {} }
           // v710 · con servidor de casa configurado: se espera a saber si contesta (como mucho cuatro segundos) y se va a él
           var _recCasa = rec.replace('https://' + HOST, _casa.base).replace('http://' + HOST, _casa.base);
           // v714 · si el de casa no contestó, se vuelve a probar: los mensajes a Azkarin esperan a la prueba; lo demás no
           var _esMensaje = rec.indexOf('/api/chatbot/message') >= 0;
-          if (_tocaReprobar()) { var _pr = _reprobar(); if (!_esMensaje) return _f(rec, _ini); }
-          else if (!_casa.decidido && _casa.promesa && !_esMensaje && _casa.avisadoComo === false) return _f(rec, _ini);
+          if (_tocaReprobar()) { var _pr = _reprobar(); if (!_esMensaje) return _aRailwayNormal(rec, _ini); }
+          else if (!_casa.decidido && _casa.promesa && !_esMensaje && _casa.avisadoComo === false) return _aRailwayNormal(rec, _ini);
           return _decidirCasa().then(function (ok) {
-            if (!ok) return _f(rec, _ini);
+            if (!ok) return _aRailwayNormal(rec, _ini);
             var _t0Casa = Date.now();
-            return _f(_recCasa, _ini).catch(function (err) {
+            return _conSuPase(_recCasa, _ini, 'casa').catch(function (err) {
               // si falla la red con el de casa (no un 4xx/5xx: eso llega como respuesta), esta sesión vuelve a Railway
               var _abortado = err && (err.name === 'AbortError');
               if (_abortado) throw err;
@@ -2559,7 +2572,7 @@ window._saludoA = function (nombre, d) {
               if (!_consulta && Date.now() - _t0Casa > 8000) throw err;
               _casa.activa = false; _casa.motivo = 'se ha caído a mitad'; _casa.ultimaPrueba = Date.now();
               _avisoCambio(false, '🏠 El ordenador de casa ha dejado de contestar: sigo desde Railway y lo vuelvo a probar en un minuto.', true);
-              return _f(rec, _ini);
+              return _aRailwayNormal(rec, _ini);
             });
           });
         }
@@ -5314,7 +5327,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v721';
+var APP_VERSION = 'v722';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17182,7 +17195,7 @@ async function verificarSesion() {
 }
 
 function cerrarSesion() {
-  localStorage.removeItem('azkar_token'); localStorage.removeItem('azkar_user'); try { localStorage.removeItem('azkar_token_railway'); } catch (e) {}   // v721 · el pase de Railway, aparte, también se va al salir
+  localStorage.removeItem('azkar_token'); localStorage.removeItem('azkar_user'); try { localStorage.removeItem('azkar_token_railway'); localStorage.removeItem('azkar_token_casa'); } catch (e) {}   // v721 · el pase de Railway, aparte, también se va al salir
   _authToken = null; _authUser = null; showLoginScreen();
   document.getElementById('login-user').value = ''; document.getElementById('login-pass').value = '';
 }

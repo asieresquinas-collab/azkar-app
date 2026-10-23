@@ -51,6 +51,15 @@ function navegador(o) {
       const h = ini && ini.headers && ini.headers.get ? ini.headers.get('Authorization') : '';
       if (h !== 'Bearer tokR') return { ok: false, status: 401, json: async () => ({ error: 'Hace falta entrar con tu usuario.', candado: 'sesion' }) };
     }
+    if (url === 'https://casa.ts.net/api/usuarios/login') { win._loginsCasa = (win._loginsCasa || 0) + 1; const b = JSON.parse((ini && ini.body) || '{}'); const ok = b.password === 'bien'; return { ok: true, status: ok ? 200 : 401, json: async () => (ok ? { ok: true, token: 'tokC' } : { ok: false }) }; }
+    if (win._candadoCasa && url.indexOf('https://casa.ts.net') === 0 && url.indexOf('/api/version') < 0) {
+      const h = ini && ini.headers && ini.headers.get ? ini.headers.get('Authorization') : '';
+      if (h !== 'Bearer tokC') return { ok: false, status: 401, text: async () => '{}', json: async () => ({ error: 'Hace falta entrar con tu usuario.', candado: 'sesion' }) };
+    }
+    if (win._candadoRailwayTodo && url.indexOf(R0) === 0 && url.indexOf('/api/usuarios/login') < 0) {
+      const h = ini && ini.headers && ini.headers.get ? ini.headers.get('Authorization') : '';
+      if (h !== 'Bearer tokR') return { ok: false, status: 401, json: async () => ({ error: 'Hace falta entrar con tu usuario.', candado: 'sesion' }) };
+    }
     if (url.indexOf('https://casa.ts.net') === 0) {
       if (o.casa === 'cae' && llamadas.filter(x => x.url.indexOf('https://casa.ts.net') === 0).length > 1) throw new TypeError('Failed to fetch');
       if (o.casa === 'no') throw new TypeError('Failed to fetch');
@@ -166,10 +175,10 @@ const R0 = R;
     // v715 · y en la rama de las API, un fallo del servidor de casa llega como fallo de red (no «200 {offline:true}»)
     if (!/const _esCasa = url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\);\s*e\.respondWith\(fetch\(e\.request\)\.catch\(\(\) => _esCasa \? Response\.error\(\) :/.test(SW)) throw new Error('el service worker sigue tapando los fallos del servidor de casa con un 200 de mentira');
   });
-  await t('F3 · la versión ha subido a la v721 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v721';/.test(HTML), true);
-    iguales(/azkar-pwa-v721/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v721');
+  await t('F3 · la versión ha subido a la v722 en los tres sitios', async () => {
+    iguales(/var APP_VERSION = 'v722';/.test(HTML), true);
+    iguales(/azkar-pwa-v722/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
+    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v722');
   });
   await t('H1 · v718 · si la dirección guardada no contesta, se pregunta a Railway la nueva, se guarda, se avisa y se va a casa', async () => {
     const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };
@@ -230,7 +239,35 @@ const R0 = R;
     await n.win.fetch(R + '/api/usuarios/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ usuario: 'asier', password: 'bien' }) });
     await new Promise(r => setTimeout(r, 100));
     iguales(n.store.azkar_token_railway, 'tokR');
+    iguales(n.store.azkar_token_casa, 'tokC');
     if (!n.llamadas.some(x => x.url === 'https://casa.ts.net/api/usuarios/login')) throw new Error('el login de siempre tenía que ir a casa');
+  });
+  await t('J1 · v722 · casa no reconoce el pase de Railway (al volver a poner casa) → entra en casa en silencio, repite y lo guarda; el mensaje llega', async () => {
+    const n = navegador({ store: { azkar_servidor_casa: 'https://casa.ts.net', azkar_token: 'tokR', 'azkar-api-key': 'k1', azkar_remember: JSON.stringify({ u: 'asier', p: 'bien' }) } });
+    n.win._candadoCasa = true;
+    const r = await n.win.fetch(R + '/api/chatbot/message', { method: 'POST', body: '{"m":"hola"}' });
+    iguales(r.status, 200);
+    iguales(n.store.azkar_token_casa, 'tokC');
+    const ult = n.llamadas[n.llamadas.length - 1];
+    iguales(ult.url, 'https://casa.ts.net/api/chatbot/message'); iguales(ult.headers['authorization'], 'Bearer tokC');
+    iguales(n.store.azkar_token, 'tokR');
+    await n.win.fetch(R + '/api/otra', { method: 'POST', body: '{}' });
+    iguales(n.win._loginsCasa, 1, 'la segunda ya lleva el pase de casa');
+  });
+  await t('J2 · v722 · casa no contesta → lo que va a Railway lleva el pase de Railway (y si no lo tiene, entra en silencio)', async () => {
+    const n = navegador({ store: { azkar_servidor_casa: 'https://casa.ts.net', azkar_token: 'tokC', 'azkar-api-key': 'k1', azkar_remember: JSON.stringify({ u: 'asier', p: 'bien' }) }, casa: 'no' });
+    n.win._candadoRailwayTodo = true;
+    const r = await n.win.fetch(R + '/api/chatbot/message', { method: 'POST', body: '{}' });
+    iguales(r.status, 200);
+    iguales(n.store.azkar_token_railway, 'tokR');
+    iguales(n.llamadas[n.llamadas.length - 1].url, R + '/api/chatbot/message');
+  });
+  await t('J3 · v722 · sin casa (Antonio): ni pases aparte ni logins de más; todo tal cual a Railway', async () => {
+    const n = navegador({ store: { azkar_token: 'tok', 'azkar-api-key': 'k1', azkar_remember: JSON.stringify({ u: 'antonio', p: 'bien' }) } });
+    await n.win.fetch(R + '/api/usuarios/login', { method: 'POST', body: JSON.stringify({ usuario: 'antonio', password: 'bien' }) });
+    await n.win.fetch(R + '/api/pdf/generate-and-save', { method: 'POST', body: '{}' });
+    iguales(n.llamadas.length, 2); iguales(n.win._loginsRailway, 1);
+    iguales(n.store.azkar_token_railway, undefined); iguales(n.store.azkar_token_casa, undefined);
   });
   await t('H2 · v719 · con la base a mano, la dirección nueva se lee de ahí y ni se pregunta a Railway (vale aunque Railway no lleve la 2.7.1036)', async () => {
     const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };
