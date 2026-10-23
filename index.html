@@ -2500,6 +2500,12 @@ window._saludoA = function (nombre, d) {
         if (typeof rec === 'string' && rec.indexOf(HOST) >= 0) {
           var _ini = _conCabeceras(ini);
           if (!_casa.base) return _f(rec, _ini);
+          // v720 · LO QUE VA AL CLIENTE, SIEMPRE POR RAILWAY (Asier, 23-oct: a Ibon (6892) le llegó por WhatsApp un presupuesto
+          //  generado en el ordenador de casa: el enlace del PDF, firmado con la llave de casa, le daba «Enlace no válido» en
+          //  Railway; y el de la firma iba por la dirección provisional del túnel, que muere al reiniciarlo). Generar y guardar el
+          //  PDF, crear y consultar la firma, el estado del correo y servir PDFs y fotos firmados van a Railway aunque casa esté
+          //  activa: los enlaces que se mandan a un cliente tienen que valer días, esté como esté el ordenador.
+          if (/\/api\/(pdf\/generate-and-save|drive\/save\b|drive\/captacion\/save|email\/|drive\/pdf\/|drive\/foto\/)|firma/i.test(rec.replace(/\?.*$/, ''))) return _f(rec, _ini);
           // v710 · con servidor de casa configurado: se espera a saber si contesta (como mucho cuatro segundos) y se va a él
           var _recCasa = rec.replace('https://' + HOST, _casa.base).replace('http://' + HOST, _casa.base);
           // v714 · si el de casa no contestó, se vuelve a probar: los mensajes a Azkarin esperan a la prueba; lo demás no
@@ -5278,7 +5284,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v719';
+var APP_VERSION = 'v720';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
