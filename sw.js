@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  AZKAR PWA · Service Worker · Offline-first
 // ══════════════════════════════════════════════════════════════
-const CACHE_NAME = 'azkar-pwa-v711';
+const CACHE_NAME = 'azkar-pwa-v712';
 const ASSETS = [
   './',
   './index.html',
@@ -51,7 +51,8 @@ self.addEventListener('fetch', e => {
   }
 
   // API calls (Firebase + Railway) + CDN scripts: network only, never cache
-  if (url.hostname.includes('firestore') || url.hostname.includes('firebase') || url.hostname.includes('railway.app') || url.hostname.includes('cdnjs.cloudflare.com') || url.hostname.includes('nominatim') || url.hostname.includes('project-osrm') || url.hostname.includes('maps.google')) {
+  // v712 · el servidor de casa (…ts.net) es una API como Railway: solo red, nunca caché
+  if (url.hostname.endsWith('.ts.net') || url.hostname.includes('firestore') || url.hostname.includes('firebase') || url.hostname.includes('railway.app') || url.hostname.includes('cdnjs.cloudflare.com') || url.hostname.includes('nominatim') || url.hostname.includes('project-osrm') || url.hostname.includes('maps.google')) {
     e.respondWith(fetch(e.request).catch(() => new Response('{"offline":true}', {
       headers: { 'Content-Type': 'application/json' }
     })));
@@ -96,6 +97,8 @@ self.addEventListener('fetch', e => {
       if (e.request.destination === 'document') {
         return caches.match('./index.html');
       }
+      // v712 · antes aquí se devolvía «nada» y la página veía un «Failed to fetch» sin motivo; ahora, el error de red tal cual
+      return Response.error();
     })
   );
 });
