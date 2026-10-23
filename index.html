@@ -2495,6 +2495,32 @@ window._saludoA = function (nombre, d) {
       ini.headers = h;
       return ini;
     }
+    // v721 · EL PASE DE RAILWAY, APARTE (ver «LO QUE VA AL CLIENTE, SIEMPRE POR RAILWAY» más abajo)
+    function _conPase(ini, tok) { var i = Object.assign({}, ini || {}); var h = new Headers(i.headers || {}); h.set('Authorization', 'Bearer ' + tok); i.headers = h; return i; }
+    function _loginRailway(cuerpo) {
+      return _f('https://' + HOST + '/api/usuarios/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: cuerpo })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (d && d.ok && d.token) { try { localStorage.setItem('azkar_token_railway', d.token); } catch (e) {} return d.token; } return ''; })
+        .catch(function () { return ''; });
+    }
+    function _paseRailwayNuevo() {
+      var c = null;
+      try { c = JSON.parse(localStorage.getItem('azkar_remember') || 'null'); } catch (e) { c = null; }
+      if (!c || !c.u || !c.p) return Promise.resolve('');
+      return _loginRailway(JSON.stringify({ usuario: c.u, password: c.p }));
+    }
+    function _aRailway(rec, ini) {
+      var tr = '';
+      try { tr = localStorage.getItem('azkar_token_railway') || ''; } catch (e) {}
+      return _f(rec, tr ? _conPase(ini, tr) : ini).then(function (r) {
+        if (!r || r.status !== 401) return r;
+        return _paseRailwayNuevo().then(function (t) {
+          if (t) return _f(rec, _conPase(ini, t));
+          if (!_casa.avisoPase) { _casa.avisoPase = true; _avisoCasa('🔑 Para que los presupuestos y las firmas salgan por Railway, sal de la app y vuelve a entrar con tu usuario una vez. Mientras, lo hago por el ordenador de casa.'); }
+          return _decidirCasa().then(function (ok) { return ok ? _f(rec.replace('https://' + HOST, _casa.base).replace('http://' + HOST, _casa.base), ini) : r; });
+        });
+      });
+    }
     window.fetch = function (rec, ini) {
       try {
         if (typeof rec === 'string' && rec.indexOf(HOST) >= 0) {
@@ -2505,7 +2531,11 @@ window._saludoA = function (nombre, d) {
           //  Railway; y el de la firma iba por la dirección provisional del túnel, que muere al reiniciarlo). Generar y guardar el
           //  PDF, crear y consultar la firma, el estado del correo y servir PDFs y fotos firmados van a Railway aunque casa esté
           //  activa: los enlaces que se mandan a un cliente tienen que valer días, esté como esté el ordenador.
-          if (/\/api\/(pdf\/generate-and-save|drive\/save\b|drive\/captacion\/save|email\/|drive\/pdf\/|drive\/foto\/)|firma/i.test(rec.replace(/\?.*$/, ''))) return _f(rec, _ini);
+          // v721 · el pase del login de casa puede no valer en Railway (cada servidor firma el suyo): estas van con el pase de
+          //  Railway; si Railway dice 401, se saca uno en silencio (con el usuario recordado) y se repite; si no se puede, se hace
+          //  por casa como antes y se avisa una vez. Y al entrar con el usuario, se entra también en Railway.
+          if (/\/api\/(pdf\/generate-and-save|drive\/save\b|drive\/captacion\/save|email\/|drive\/pdf\/|drive\/foto\/)|firma/i.test(rec.replace(/\?.*$/, ''))) return _aRailway(rec, _ini);
+          if (rec.indexOf('/api/usuarios/login') >= 0 && _ini && typeof _ini.body === 'string') { try { _loginRailway(_ini.body); } catch (eL) {} }
           // v710 · con servidor de casa configurado: se espera a saber si contesta (como mucho cuatro segundos) y se va a él
           var _recCasa = rec.replace('https://' + HOST, _casa.base).replace('http://' + HOST, _casa.base);
           // v714 · si el de casa no contestó, se vuelve a probar: los mensajes a Azkarin esperan a la prueba; lo demás no
@@ -5284,7 +5314,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v720';
+var APP_VERSION = 'v721';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17152,7 +17182,7 @@ async function verificarSesion() {
 }
 
 function cerrarSesion() {
-  localStorage.removeItem('azkar_token'); localStorage.removeItem('azkar_user');
+  localStorage.removeItem('azkar_token'); localStorage.removeItem('azkar_user'); try { localStorage.removeItem('azkar_token_railway'); } catch (e) {}   // v721 · el pase de Railway, aparte, también se va al salir
   _authToken = null; _authUser = null; showLoginScreen();
   document.getElementById('login-user').value = ''; document.getElementById('login-pass').value = '';
 }
