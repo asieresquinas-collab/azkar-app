@@ -2348,23 +2348,104 @@ window._saludoA = function (nombre, d) {
     var _f = window.fetch;
     if (typeof _f !== 'function') return;
     window._azkFetchEnvuelto = true;
+    // ═══════════════════════════════════════════════════════════════════════════════
+    //  v710 · EL SERVIDOR DE CASA (Asier, 23-oct-2026: «lo quiero probar en el Azkarin de verdad»)
+    //  En el ordenador de casa corre una copia del servidor con el modelo de IA de casa. SOLO en el
+    //  aparato donde se active (orden «/casa https://…» en el chat de Azkarin, o abrir la app con
+    //  ?casa=https://…), todas las llamadas que iban a Railway van a esa dirección. Los demás
+    //  aparatos (Antonio…) siguen en Railway sin enterarse. Si el servidor de casa no contesta al
+    //  abrir la app (cuatro segundos) o falla una llamada, se vuelve a Railway SOLO en esta sesión
+    //  y se avisa en el chat: nunca se queda nadie sin Azkarin. «/casa no» lo quita; «/casa» lo cuenta.
+    //  🛑 Los enlaces que se abren fuera (APK, portal de autónomos) no se tocan: siguen en Railway.
+    // ═══════════════════════════════════════════════════════════════════════════════
+    var _casa = { base: '', host: '', activa: false, decidido: false, promesa: null, motivo: '' };
+    try {
+      var _qs = new URLSearchParams(location.search || '');
+      var _pc = _qs.get('casa');
+      if (_pc) {
+        if (/^(no|off|quitar|railway)$/i.test(_pc)) localStorage.removeItem('azkar_servidor_casa');
+        else if (/^https:\/\/[a-z0-9.-]+(?::\d+)?\/?$/i.test(_pc)) localStorage.setItem('azkar_servidor_casa', _pc.replace(/\/+$/, ''));
+        try { _qs.delete('casa'); history.replaceState(null, '', location.pathname + (_qs.toString() ? '?' + _qs.toString() : '') + location.hash); } catch (e) {}
+      }
+      _casa.base = String(localStorage.getItem('azkar_servidor_casa') || '').replace(/\/+$/, '');
+      if (!/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(_casa.base)) _casa.base = '';
+      _casa.host = _casa.base ? _casa.base.replace(/^https:\/\//i, '') : '';
+    } catch (e) { _casa.base = ''; _casa.host = ''; }
+    function _avisoCasa(txt) {
+      try { if (typeof window.addMsg === 'function') window.addMsg('bot', txt); else console.warn('[casa] ' + txt); } catch (e) {}
+    }
+    function _decidirCasa() {
+      if (_casa.decidido) return Promise.resolve(_casa.activa);
+      if (!_casa.base) { _casa.decidido = true; _casa.activa = false; return Promise.resolve(false); }
+      if (_casa.promesa) return _casa.promesa;
+      var _ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+      var _tm = setTimeout(function () { try { if (_ctl) _ctl.abort(); } catch (e) {} }, 4000);
+      _casa.promesa = _f(_casa.base + '/api/health?nocache=' + Date.now(), _ctl ? { signal: _ctl.signal, cache: 'no-store' } : { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          clearTimeout(_tm);
+          _casa.decidido = true;
+          _casa.activa = !!(j && j.version);
+          _casa.version = (j && j.version) || '';
+          if (!_casa.activa) _casa.motivo = 'no ha contestado bien';
+          try { console.log('[casa] servidor de casa ' + (_casa.activa ? 'ACTIVO · ' + _casa.version : 'sin respuesta: Railway')); } catch (e) {}
+          if (!_casa.activa) setTimeout(function () { _avisoCasa('🏠 El servidor de casa (' + _casa.host + ') no ha contestado al abrir la app: esta vez hablo desde Railway. «/casa» para verlo.'); }, 2500);
+          return _casa.activa;
+        })
+        .catch(function () {
+          clearTimeout(_tm);
+          _casa.decidido = true; _casa.activa = false; _casa.motivo = 'no se llega a él (¿Tailscale encendido en el móvil?)';
+          setTimeout(function () { _avisoCasa('🏠 No llego al servidor de casa (' + _casa.host + '): esta vez hablo desde Railway. Mira que Tailscale esté encendido en el móvil. «/casa» para verlo.'); }, 2500);
+          return false;
+        });
+      return _casa.promesa;
+    }
+    window._azkCasa = {
+      estado: function () { return { configurado: _casa.base, activa: _casa.activa, decidido: _casa.decidido, version: _casa.version || '', motivo: _casa.motivo }; },
+      poner: function (url) {
+        var u = String(url || '').trim().replace(/\/+$/, '');
+        if (!/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(u)) return false;
+        try { localStorage.setItem('azkar_servidor_casa', u); } catch (e) { return false; }
+        return true;
+      },
+      quitar: function () { try { localStorage.removeItem('azkar_servidor_casa'); } catch (e) {} },
+      probar: function () { _casa.decidido = false; _casa.promesa = null; return _decidirCasa(); }
+    };
+    if (_casa.base) { try { _decidirCasa(); } catch (e) {} }
+    function _conCabeceras(ini) {
+      ini = ini ? Object.assign({}, ini) : {};
+      var h = new Headers(ini.headers || {});
+      if (!h.has('Authorization')) {
+        var t = null;
+        try { t = localStorage.getItem('azkar_token'); } catch (e) {}
+        if (t) h.set('Authorization', 'Bearer ' + t);
+      }
+      if (!h.has('x-api-key')) {
+        var k = window._apiKey || '';
+        try { if (!k) k = localStorage.getItem('azkar-api-key') || ''; } catch (e) {}
+        if (k) h.set('x-api-key', k);
+      }
+      ini.headers = h;
+      return ini;
+    }
     window.fetch = function (rec, ini) {
       try {
         if (typeof rec === 'string' && rec.indexOf(HOST) >= 0) {
-          ini = ini ? Object.assign({}, ini) : {};
-          var h = new Headers(ini.headers || {});
-          if (!h.has('Authorization')) {
-            var t = null;
-            try { t = localStorage.getItem('azkar_token'); } catch (e) {}
-            if (t) h.set('Authorization', 'Bearer ' + t);
-          }
-          if (!h.has('x-api-key')) {
-            var k = window._apiKey || '';
-            try { if (!k) k = localStorage.getItem('azkar-api-key') || ''; } catch (e) {}
-            if (k) h.set('x-api-key', k);
-          }
-          ini.headers = h;
-          return _f(rec, ini);
+          var _ini = _conCabeceras(ini);
+          if (!_casa.base) return _f(rec, _ini);
+          // v710 · con servidor de casa configurado: se espera a saber si contesta (como mucho cuatro segundos) y se va a él
+          var _recCasa = rec.replace('https://' + HOST, _casa.base).replace('http://' + HOST, _casa.base);
+          return _decidirCasa().then(function (ok) {
+            if (!ok) return _f(rec, _ini);
+            return _f(_recCasa, _ini).catch(function (err) {
+              // si falla la red con el de casa (no un 4xx/5xx: eso llega como respuesta), esta sesión vuelve a Railway
+              var _abortado = err && (err.name === 'AbortError');
+              if (_abortado) throw err;
+              _casa.activa = false; _casa.motivo = 'se ha caído a mitad';
+              _avisoCasa('🏠 El servidor de casa ha dejado de contestar: sigo desde Railway hasta que vuelvas a abrir la app.');
+              return _f(rec, _ini);
+            });
+          });
         }
       } catch (e) { /* ante cualquier duda, la llamada sale como siempre */ }
       return _f.apply(this, arguments);
@@ -5117,7 +5198,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v709';
+var APP_VERSION = 'v710';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18728,6 +18809,24 @@ async function doResetWithCode() {
       if (_cmd && _cmd !== 'apk' && _cmd.length >= 3 && _cerca(_cmd, 'apk')) { inputEl.value=''; inputEl.style.height='auto'; try { azkarinApkEnlace(); } catch(e){ addMsg('bot','No pude sacar el enlace: '+e.message); } return; }
     }
     if (msg && /^\/escucha\b/i.test(msg)) { inputEl.value=''; inputEl.style.height='auto'; try { azkarinEscuchaToggle(); } catch(e){ addMsg('bot','No pude abrir la escucha: '+e.message); } return; }
+    // v710 · «/casa https://…» → este aparato habla con el servidor de casa; «/casa no» → Railway; «/casa» → cómo está
+    if (msg && /^\/casa\b/i.test(msg)) {
+      inputEl.value=''; inputEl.style.height='auto';
+      var _arg = (msg.split(/\s+/)[1] || '').trim();
+      var _C = window._azkCasa;
+      if (!_C) { addMsg('bot', 'Esta versión de la app no tiene el servidor de casa.'); return; }
+      if (/^(no|off|quitar|railway)$/i.test(_arg)) { _C.quitar(); addMsg('bot', '🏠 Quitado: este aparato vuelve a hablar con Railway. Cierra y abre la app.'); return; }
+      if (_arg) {
+        if (!_C.poner(_arg)) { addMsg('bot', 'Esa dirección no vale: tiene que ser https://… sin nada detrás (por ejemplo https://ordenador.algo.ts.net).'); return; }
+        addMsg('bot', '🏠 Guardado: este aparato hablará con el servidor de casa (' + _arg.replace(/^https:\/\//, '') + '). Cierra y abre la app para que entre; si no contesta, vuelvo a Railway solo.');
+        return;
+      }
+      var _e = _C.estado();
+      addMsg('bot', _e.configurado
+        ? ('🏠 Servidor de casa: <b>' + _e.configurado.replace(/^https:\/\//, '') + '</b><br>Ahora mismo: ' + (_e.activa ? '<b>activo</b> (versión ' + (_e.version || '?') + ')' : (_e.decidido ? '<b>sin respuesta</b> (' + (_e.motivo || '') + '): hablando desde Railway' : 'comprobando…')) + '<br><span style="font-size:11px;color:#666">«/casa no» para volver a Railway.</span>')
+        : '🏠 Este aparato habla con Railway (no hay servidor de casa configurado). Para ponerlo: «/casa https://…».');
+      return;
+    }
     var fotoEnviar = pendingFoto;
     var framesEnviar = window._pendingFrames;
     var framesTipo = window._pendingFramesTipo || 'video';
