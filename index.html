@@ -2543,7 +2543,25 @@ window._saludoA = function (nombre, d) {
       try {
         if (typeof rec === 'string' && rec.indexOf(HOST) >= 0) {
           var _ini = _conCabeceras(ini);
-          if (!_casa.base) return _f(rec, _ini);
+          if (!_casa.base) {
+            // v725 · sin casa (como Antonio): igual que siempre; solo si el servidor dice 401 (pase caducado o llave nueva,
+            //  backend 2.7.1037) y el usuario está recordado, se vuelve a entrar en silencio y se repite UNA vez.
+            if (rec.indexOf('/api/usuarios/login') >= 0) return _f(rec, _ini);
+            return _f(rec, _ini).then(function (r0) {
+              if (!r0 || r0.status !== 401) return r0;
+              var cu = _usuarioRecordado();
+              if (!cu) return r0;
+              return _f('https://' + HOST + '/api/usuarios/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: cu })
+                .then(function (rl) { return rl.json(); })
+                .then(function (d) {
+                  if (!(d && d.ok && d.token)) return r0;
+                  try { localStorage.setItem('azkar_token', d.token); if (d.usuario) localStorage.setItem('azkar_user', JSON.stringify(d.usuario)); } catch (e) {}
+                  try { if (typeof _authToken !== 'undefined') _authToken = d.token; } catch (e) {}
+                  return _f(rec, _conPase(_ini, d.token));
+                })
+                .catch(function () { return r0; });
+            });
+          }
           // v720 · LO QUE VA AL CLIENTE, SIEMPRE POR RAILWAY (Asier, 23-oct: a Ibon (6892) le llegó por WhatsApp un presupuesto
           //  generado en el ordenador de casa: el enlace del PDF, firmado con la llave de casa, le daba «Enlace no válido» en
           //  Railway; y el de la firma iba por la dirección provisional del túnel, que muere al reiniciarlo). Generar y guardar el
@@ -5339,7 +5357,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v724';
+var APP_VERSION = 'v725';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17196,6 +17214,24 @@ async function verificarSesion() {
         setTimeout(function() { try { azkarinPushSubscribe(true); } catch(e) {} }, 2500);
       }
     } else {
+      // v725 · el pase ya no vale (backend 2.7.1037 cambió la llave de los pases): si el usuario está recordado, se vuelve a
+      //  entrar solo, sin pantalla; si no, la pantalla de entrar de siempre.
+      var _rec = null;
+      try { _rec = JSON.parse(localStorage.getItem('azkar_remember') || 'null'); } catch (eR) { _rec = null; }
+      if (_rec && _rec.u && _rec.p && !window._reentrandoSolo) {
+        window._reentrandoSolo = true;
+        try {
+          var _rl = await fetch(_authBaseUrl + '/api/usuarios/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ usuario: _rec.u, password: _rec.p }) });
+          var _dl = await _rl.json();
+          if (_dl && _dl.ok && _dl.token) {
+            _authToken = _dl.token; _authUser = _dl.usuario;
+            localStorage.setItem('azkar_token', _dl.token); localStorage.setItem('azkar_user', JSON.stringify(_dl.usuario));
+            hideLoginScreen(); initAdminUI();
+            try { await _firebaseSignIn(_dl.firebaseToken); await _reintentarNube(); } catch (_) {}
+            return;
+          }
+        } catch (eL) {}
+      }
       localStorage.removeItem('azkar_token'); localStorage.removeItem('azkar_user');
       _authToken = null; showLoginScreen();
     }

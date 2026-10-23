@@ -175,10 +175,10 @@ const R0 = R;
     // v715 · y en la rama de las API, un fallo del servidor de casa llega como fallo de red (no «200 {offline:true}»)
     if (!/const _esCasa = url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\);\s*e\.respondWith\(fetch\(e\.request\)\.catch\(\(\) => _esCasa \? Response\.error\(\) :/.test(SW)) throw new Error('el service worker sigue tapando los fallos del servidor de casa con un 200 de mentira');
   });
-  await t('F3 · la versión ha subido a la v724 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v724';/.test(HTML), true);
-    iguales(/azkar-pwa-v724/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v724');
+  await t('F3 · la versión ha subido a la v725 en los tres sitios', async () => {
+    iguales(/var APP_VERSION = 'v725';/.test(HTML), true);
+    iguales(/azkar-pwa-v725/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
+    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v725');
   });
   await t('H1 · v718 · si la dirección guardada no contesta, se pregunta a Railway la nueva, se guarda, se avisa y se va a casa', async () => {
     const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };
@@ -290,6 +290,21 @@ const R0 = R;
   await t('K2 · v724 · «/casa sí» y «/casa no» en el chat (el texto de la orden está en la app)', async () => {
     if (!/\/\^\(s\[ií\]\|on\|poner\|casa\)\$\/i/.test(HTML)) throw new Error('falta «/casa sí»');
     if (HTML.indexOf('Para ponerlo: «/casa sí».') < 0) throw new Error('el aviso tiene que decir «/casa sí»');
+  });
+  await t('L1 · v725 · sin casa (Antonio), el servidor cambia la llave → 401 → entra solo con el usuario recordado, repite y guarda el pase nuevo', async () => {
+    const n = navegador({ store: { azkar_token: 'viejo', 'azkar-api-key': 'k1', azkar_remember: JSON.stringify({ u: 'antonio', p: 'bien' }) } });
+    n.win._candadoRailwayTodo = true;
+    const r = await n.win.fetch(R + '/api/presupuestos', { method: 'GET' });
+    iguales(r.status, 200);
+    iguales(n.store.azkar_token, 'tokR');
+    iguales(n.llamadas[n.llamadas.length - 1].headers['authorization'], 'Bearer tokR');
+    iguales(n.llamadas[n.llamadas.length - 1].headers['x-api-key'], 'k1', 'la repetición tiene que llevar la llave de la app');
+  });
+  await t('L2 · v725 · sin casa y sin usuario recordado → el 401 llega tal cual (la app enseña la pantalla de entrar, como siempre)', async () => {
+    const n = navegador({ store: { azkar_token: 'viejo', 'azkar-api-key': 'k1' } });
+    n.win._candadoRailwayTodo = true;
+    const r = await n.win.fetch(R + '/api/presupuestos');
+    iguales(r.status, 401); iguales(n.llamadas.length, 1);
   });
   await t('H2 · v719 · con la base a mano, la dirección nueva se lee de ahí y ni se pregunta a Railway (vale aunque Railway no lleve la 2.7.1036)', async () => {
     const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };
