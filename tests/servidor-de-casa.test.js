@@ -156,10 +156,14 @@ const R = 'https://azkar-presupuestos-production.up.railway.app';
     // v715 · y en la rama de las API, un fallo del servidor de casa llega como fallo de red (no «200 {offline:true}»)
     if (!/const _esCasa = url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\);\s*e\.respondWith\(fetch\(e\.request\)\.catch\(\(\) => _esCasa \? Response\.error\(\) :/.test(SW)) throw new Error('el service worker sigue tapando los fallos del servidor de casa con un 200 de mentira');
   });
-  await t('F3 · la versión ha subido a la v715 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v715';/.test(HTML), true);
-    iguales(/azkar-pwa-v715/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v715');
+  await t('F3 · la versión ha subido a la v716 en los tres sitios', async () => {
+    iguales(/var APP_VERSION = 'v716';/.test(HTML), true);
+    iguales(/azkar-pwa-v716/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
+    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v716');
+  });
+  await t('F8 · v716 · con el ordenador de casa, si el túnel corta, se espera la respuesta en el buzón hasta seis minutos (y se dice por qué)', async () => {
+    if (!/_esperarBuzon\(_turnoId, \(err && err\.name === 'AbortError'\) \? 20000 : \(_porCasa \? 360000 : 90000\)\)/.test(HTML)) throw new Error('no espera más con casa');
+    if (!/Ha tardado más de lo que aguanta el túnel del ordenador de casa/.test(HTML)) throw new Error('sin el aviso de casa');
   });
   await t('F6 · v715 · si contesta algo que no es la versión, el aviso enseña lo que ha contestado', async () => {
     const n = navegador({ store: { azkar_servidor_casa: 'https://casa.ts.net' }, casa: 'raro' });

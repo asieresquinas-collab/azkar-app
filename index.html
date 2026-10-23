@@ -5231,7 +5231,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v715';
+var APP_VERSION = 'v716';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -19402,8 +19402,12 @@ async function doResetWithCode() {
       //   (saliste a otra app, el móvil congeló la página y la petición se cortó, pero el
       //    servidor terminó y la dejó guardada). No se reenvía nada: solo se recoge.
       try {
-        var _resc = await _esperarBuzon(_turnoId, (err && err.name === 'AbortError') ? 20000 : 90000);
-        if (_resc) { _turnoResuelto(_turnoId); removeTyping(); _pintarDelBuzon(_resc); sendBtn.disabled = false; return; }
+        // v716 · con el ordenador de casa, el túnel de Cloudflare corta a los cien segundos aunque el servidor siga trabajando
+        //  (23-oct: la respuesta de las llamadas de la semana salió a los doscientos cincuenta y la app ya se había rendido):
+        //  se espera al buzón hasta seis minutos, con el «trabajando…» puesto
+        var _porCasa = false; try { _porCasa = !!(window._azkCasa && window._azkCasa.estado().activa); } catch (eC) {}
+        var _resc = await _esperarBuzon(_turnoId, (err && err.name === 'AbortError') ? 20000 : (_porCasa ? 360000 : 90000));
+        if (_resc) { _turnoResuelto(_turnoId); removeTyping(); if (_porCasa) _resc._porCasa = true; _pintarDelBuzon(_resc); sendBtn.disabled = false; return; }
       } catch (eResc) { /* si el rescate falla, se sigue por el camino de siempre */ }
       removeTyping();
       if (err && err.name === 'AbortError') {
@@ -21280,7 +21284,7 @@ async function doResetWithCode() {
     var r = d.respuesta;
     var txt = r.mensaje || r.respuesta || '';
     if (txt) {
-      addMsg('bot', txt + '<div style="margin-top:6px;font-size:11px;color:#888">↩️ Se quedó a medias porque saliste de la aplicación; lo he recogido del servidor'
+      addMsg('bot', txt + '<div style="margin-top:6px;font-size:11px;color:#888">' + (d._porCasa ? '↩️ Ha tardado más de lo que aguanta el túnel del ordenador de casa; lo he recogido de allí' : '↩️ Se quedó a medias porque saliste de la aplicación; lo he recogido del servidor')
         + (d.hace_segundos > 90 ? (' — terminó hace ' + Math.round(d.hace_segundos / 60) + ' min') : '') + '.</div>');
       chatHistorial.push({ role: 'assistant', content: txt });
     } else {
