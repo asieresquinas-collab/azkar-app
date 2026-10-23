@@ -147,15 +147,15 @@ const R = 'https://azkar-presupuestos-production.up.railway.app';
   await t('F2 · los enlaces del APK y del portal de autónomos siguen escritos a Railway (no son llamadas)', async () => {
     if (!/href="https:\/\/azkar-presupuestos-production\.up\.railway\.app\/api\/apk\/bajar"/.test(HTML)) throw new Error('el enlace del APK ya no apunta a Railway');
   });
-  await t('F4 · v712 · el service worker trata el servidor de casa (…ts.net) como una API: solo red, nunca caché, y un fallo de red llega como tal', async () => {
+  await t('F4 · v713 · el service worker trata el servidor de casa (…ts.net) como una API: solo red, nunca caché, y un fallo de red llega como tal', async () => {
     const SW = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
-    if (!/url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.includes\('firestore'\)/.test(SW)) throw new Error('ts.net no va como API en el service worker');
+    if (!/url\.pathname\.indexOf\('\/api\/'\) === 0 \|\| url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\)/.test(SW)) throw new Error('/api/ de cualquier servidor no va como API en el service worker');
     if (!/return Response\.error\(\);/.test(SW)) throw new Error('el catch sigue devolviendo nada');
   });
-  await t('F3 · la versión ha subido a la v712 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v712';/.test(HTML), true);
-    iguales(/azkar-pwa-v712/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v712');
+  await t('F3 · la versión ha subido a la v713 en los tres sitios', async () => {
+    iguales(/var APP_VERSION = 'v713';/.test(HTML), true);
+    iguales(/azkar-pwa-v713/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
+    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v713');
   });
 
   console.log('\n' + (mal ? '❌ ' + ok + ' bien, ' + mal + ' mal' : '✅ ' + ok + ' bien, 0 mal') + '\n');

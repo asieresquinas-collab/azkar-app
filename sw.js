@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════
 //  AZKAR PWA · Service Worker · Offline-first
 // ══════════════════════════════════════════════════════════════
-const CACHE_NAME = 'azkar-pwa-v712';
+const CACHE_NAME = 'azkar-pwa-v713';
 const ASSETS = [
   './',
   './index.html',
@@ -52,7 +52,8 @@ self.addEventListener('fetch', e => {
 
   // API calls (Firebase + Railway) + CDN scripts: network only, never cache
   // v712 · el servidor de casa (…ts.net) es una API como Railway: solo red, nunca caché
-  if (url.hostname.endsWith('.ts.net') || url.hostname.includes('firestore') || url.hostname.includes('firebase') || url.hostname.includes('railway.app') || url.hostname.includes('cdnjs.cloudflare.com') || url.hostname.includes('nominatim') || url.hostname.includes('project-osrm') || url.hostname.includes('maps.google')) {
+  // v713 · y cualquier llamada a /api/ de cualquier servidor (el de casa puede cambiar de nombre: túnel de Cloudflare…)
+  if (url.pathname.indexOf('/api/') === 0 || url.hostname.endsWith('.ts.net') || url.hostname.endsWith('.trycloudflare.com') || url.hostname.includes('firestore') || url.hostname.includes('firebase') || url.hostname.includes('railway.app') || url.hostname.includes('cdnjs.cloudflare.com') || url.hostname.includes('nominatim') || url.hostname.includes('project-osrm') || url.hostname.includes('maps.google')) {
     e.respondWith(fetch(e.request).catch(() => new Response('{"offline":true}', {
       headers: { 'Content-Type': 'application/json' }
     })));
