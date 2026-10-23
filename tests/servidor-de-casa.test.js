@@ -160,10 +160,10 @@ const R = 'https://azkar-presupuestos-production.up.railway.app';
     // v715 · y en la rama de las API, un fallo del servidor de casa llega como fallo de red (no «200 {offline:true}»)
     if (!/const _esCasa = url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\);\s*e\.respondWith\(fetch\(e\.request\)\.catch\(\(\) => _esCasa \? Response\.error\(\) :/.test(SW)) throw new Error('el service worker sigue tapando los fallos del servidor de casa con un 200 de mentira');
   });
-  await t('F3 · la versión ha subido a la v718 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v718';/.test(HTML), true);
-    iguales(/azkar-pwa-v718/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v718');
+  await t('F3 · la versión ha subido a la v719 en los tres sitios', async () => {
+    iguales(/var APP_VERSION = 'v719';/.test(HTML), true);
+    iguales(/azkar-pwa-v719/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
+    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v719');
   });
   await t('H1 · v718 · si la dirección guardada no contesta, se pregunta a Railway la nueva, se guarda, se avisa y se va a casa', async () => {
     const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };
@@ -179,6 +179,28 @@ const R = 'https://azkar-presupuestos-production.up.railway.app';
     iguales(n.win._azkCasa.estado().activa, true, 'tenía que quedar activa con la nueva');
     await n.win.fetch(R + '/api/a');
     iguales(n.llamadas[n.llamadas.length - 1].url, 'https://nueva.trycloudflare.com/api/a');
+  });
+  await t('H2 · v719 · con la base a mano, la dirección nueva se lee de ahí y ni se pregunta a Railway (vale aunque Railway no lleve la 2.7.1036)', async () => {
+    const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };
+    const n = navegador(o);
+    const pedidos = [];
+    n.win._fb = { db: {}, doc: (db, c, id) => c + '/' + id, getDoc: async (ref) => { pedidos.push(ref); return { exists: () => true, data: () => ({ url: 'https://nueva.trycloudflare.com/', ts: 1 }) }; } };
+    await n.win.fetch(R + '/api/chatbot/message', { method: 'POST' });
+    await new Promise(r => setTimeout(r, 300));
+    iguales(pedidos[0], 'config/servidor_casa');
+    iguales(n.store.azkar_servidor_casa, 'https://nueva.trycloudflare.com');
+    iguales(n.llamadas.some(x => x.url.indexOf('/api/casa/direccion') >= 0), false, 'no tenía que preguntar a Railway');
+    iguales(n.win._azkCasa.estado().activa, true);
+  });
+  await t('H3 · v719 · la base sin sesión o con la misma dirección → se pregunta a Railway; si Railway tampoco sabe, no se toca nada', async () => {
+    const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };
+    const n = navegador(o);
+    n.win._fb = { db: {}, doc: (db, c, id) => c + '/' + id, getDoc: async () => ({ exists: () => true, data: () => ({ url: 'https://vieja.trycloudflare.com' }) }) };
+    await n.win.fetch(R + '/api/chatbot/message', { method: 'POST' });
+    await new Promise(r => setTimeout(r, 300));
+    iguales(n.llamadas.some(x => x.url.indexOf('/api/casa/direccion') >= 0), true, 'tenía que preguntar a Railway');
+    iguales(n.store.azkar_servidor_casa, 'https://vieja.trycloudflare.com');
+    if (n.avisos.some(a => /ha cambiado de dirección/.test(a))) throw new Error('aviso de más');
   });
   await t('F8 · v716 · con el ordenador de casa, si el túnel corta, se espera la respuesta en el buzón hasta seis minutos (y se dice por qué)', async () => {
     if (!/_esperarBuzon\(_turnoId, \(err && err\.name === 'AbortError'\) \? 20000 : \(_porCasa \? 360000 : 90000\)\)/.test(HTML)) throw new Error('no espera más con casa');

@@ -2392,17 +2392,34 @@ window._saludoA = function (nombre, d) {
     function _reprobar() { _casa.decidido = false; _casa.promesa = null; return _decidirCasa(); }
     // v718 · LA DIRECCIÓN NUEVA, SOLA (Asier, 23-oct: «lo que necesito es que no se cierre nunca»). El túnel del ordenador de casa
     //  arranca solo con el ordenador, pero su dirección provisional cambia al volver a arrancar. El ordenador apunta la que le toca
-    //  en la base (backend 2.7.1036) y aquí, si la guardada no contesta, se le pregunta a Railway cuál es ahora: si es otra, se
+    //  en la base (backend 2.7.1036, config/servidor_casa) y aquí, si la guardada no contesta, se busca la de ahora: si es otra, se
     //  guarda, se avisa y se prueba (como mucho una vez cada dos minutos).
+    // v719 · primero se lee directamente de la base (la app ya lee «config»: el catálogo), así vale aunque Railway aún no lleve
+    //  la 2.7.1036; si no hay base o no da nada, se pregunta a Railway (/api/casa/direccion).
     var _ultBusquedaDir = 0;
+    function _direccionEnLaBase() {
+      try {
+        var fb = window._fb;
+        if (!fb || fb._sinSesion || !fb.db || typeof fb.getDoc !== 'function' || typeof fb.doc !== 'function') return Promise.resolve(null);
+        return Promise.resolve(fb.getDoc(fb.doc(fb.db, 'config', 'servidor_casa')))
+          .then(function (d) { var x = d && (typeof d.exists === 'function' ? d.exists() : d.exists) ? d.data() : null; return x && x.url ? String(x.url) : null; })
+          .catch(function () { return null; });
+      } catch (e) { return Promise.resolve(null); }
+    }
+    function _direccionEnRailway() {
+      return _f('https://' + HOST + '/api/casa/direccion?nocache=' + Date.now(), _conCabeceras({ cache: 'no-store' }))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { return j && j.url ? String(j.url) : null; })
+        .catch(function () { return null; });
+    }
     function _buscarDireccionNueva() {
       if (!_casa.base || Date.now() - _ultBusquedaDir < 120000) return Promise.resolve(false);
       _ultBusquedaDir = Date.now();
-      return _f('https://' + HOST + '/api/casa/direccion?nocache=' + Date.now(), _conCabeceras({ cache: 'no-store' }))
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) {
-          var u = String((j && j.url) || '').replace(/\/+$/, '');
-          if (!/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(u) || u === _casa.base) return false;
+      var valida = function (u) { u = String(u || '').replace(/\/+$/, ''); return /^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(u) ? u : ''; };
+      return _direccionEnLaBase()
+        .then(function (u) { u = valida(u); return (u && u !== _casa.base) ? u : _direccionEnRailway().then(valida); })
+        .then(function (u) {
+          if (!u || u === _casa.base) return false;
           try { localStorage.setItem('azkar_servidor_casa', u); } catch (e) {}
           _casa.base = u; _casa.host = u.replace(/^https:\/\//i, '');
           _avisoCasa('🏠 El ordenador de casa ha cambiado de dirección; ya la tengo (' + _casa.host + ').');
@@ -5261,7 +5278,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v718';
+var APP_VERSION = 'v719';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
