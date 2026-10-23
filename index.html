@@ -2390,6 +2390,26 @@ window._saludoA = function (nombre, d) {
       return !!(_casa.base && _casa.decidido && !_casa.activa && (Date.now() - (_casa.ultimaPrueba || 0)) > _CASA_REPRUEBA_MS);
     }
     function _reprobar() { _casa.decidido = false; _casa.promesa = null; return _decidirCasa(); }
+    // v718 · LA DIRECCIÓN NUEVA, SOLA (Asier, 23-oct: «lo que necesito es que no se cierre nunca»). El túnel del ordenador de casa
+    //  arranca solo con el ordenador, pero su dirección provisional cambia al volver a arrancar. El ordenador apunta la que le toca
+    //  en la base (backend 2.7.1036) y aquí, si la guardada no contesta, se le pregunta a Railway cuál es ahora: si es otra, se
+    //  guarda, se avisa y se prueba (como mucho una vez cada dos minutos).
+    var _ultBusquedaDir = 0;
+    function _buscarDireccionNueva() {
+      if (!_casa.base || Date.now() - _ultBusquedaDir < 120000) return Promise.resolve(false);
+      _ultBusquedaDir = Date.now();
+      return _f('https://' + HOST + '/api/casa/direccion?nocache=' + Date.now(), _conCabeceras({ cache: 'no-store' }))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          var u = String((j && j.url) || '').replace(/\/+$/, '');
+          if (!/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(u) || u === _casa.base) return false;
+          try { localStorage.setItem('azkar_servidor_casa', u); } catch (e) {}
+          _casa.base = u; _casa.host = u.replace(/^https:\/\//i, '');
+          _avisoCasa('🏠 El ordenador de casa ha cambiado de dirección; ya la tengo (' + _casa.host + ').');
+          return _reprobar();
+        })
+        .catch(function () { return false; });
+    }
     function _decidirCasa() {
       if (_casa.decidido) return Promise.resolve(_casa.activa);
       if (!_casa.base) { _casa.decidido = true; _casa.activa = false; return Promise.resolve(false); }
@@ -2415,7 +2435,7 @@ window._saludoA = function (nombre, d) {
           if (!_casa.activa) _casa.motivo = 'ha contestado ' + (_casa.http || '?') + ' sin versión' + (_casa.cuerpo ? ': «' + _casa.cuerpo + '»' : ', en blanco');
           if (!_casa.activa && j && j.offline === true) _casa.motivo = 'el móvil no ha llegado al túnel (fallo de red)';
           try { console.log('[casa] servidor de casa ' + (_casa.activa ? 'ACTIVO · ' + _casa.version : 'sin respuesta: Railway') + ' (' + _casa.ms + ' ms)'); } catch (e) {}
-          if (!_casa.activa) _avisoCambio(false, '🏠 El ordenador de casa no ha contestado bien (' + _casa.motivo + '): mientras, hablo desde Railway y lo vuelvo a probar en un minuto.');
+          if (!_casa.activa) { _avisoCambio(false, '🏠 El ordenador de casa no ha contestado bien (' + _casa.motivo + '): mientras, hablo desde Railway y lo vuelvo a probar en un minuto.'); try { _buscarDireccionNueva(); } catch (eB) {} }
           else _avisoCambio(true, '🏠 El ordenador de casa ya contesta: vuelvo a hablar con él.');
           return _casa.activa;
         })
@@ -2425,6 +2445,7 @@ window._saludoA = function (nombre, d) {
           var _n = (err && err.name) || 'Error', _m = String((err && err.message) || '');
           _casa.motivo = (_n === 'AbortError' ? 'no ha contestado en ocho segundos' : ('fallo de red: ' + _n + (_m ? ' · ' + _m : ''))) + ' · ' + _casa.ms + ' ms';
           _avisoCambio(false, '🏠 No llego al ordenador de casa (' + _casa.motivo + '): mientras, hablo desde Railway y lo vuelvo a probar en un minuto.');
+          try { _buscarDireccionNueva(); } catch (eB) {}
           return false;
         });
       return _casa.promesa;
@@ -5240,7 +5261,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v717';
+var APP_VERSION = 'v718';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.

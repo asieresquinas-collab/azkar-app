@@ -43,6 +43,9 @@ function navegador(o) {
   // la red de mentira: casa contesta (o no) según o.casa; Railway siempre
   win.fetch = async function (url, ini) {
     llamadas.push({ url: url, headers: ini && ini.headers ? Object.fromEntries(ini.headers.entries ? ini.headers.entries() : []) : {} });
+    if (url.indexOf('https://vieja.trycloudflare.com') === 0) throw new TypeError('Failed to fetch');
+    if (url.indexOf('https://nueva.trycloudflare.com') === 0) return { ok: true, status: 200, text: async () => JSON.stringify({ version: '2.7.1036' }), json: async () => ({ version: '2.7.1036' }) };
+    if (url.indexOf('/api/casa/direccion') >= 0) return { ok: true, status: 200, json: async () => ({ ok: true, url: win._dirNueva || null }) };
     if (url.indexOf('https://casa.ts.net') === 0) {
       if (o.casa === 'cae' && llamadas.filter(x => x.url.indexOf('https://casa.ts.net') === 0).length > 1) throw new TypeError('Failed to fetch');
       if (o.casa === 'no') throw new TypeError('Failed to fetch');
@@ -157,10 +160,25 @@ const R = 'https://azkar-presupuestos-production.up.railway.app';
     // v715 · y en la rama de las API, un fallo del servidor de casa llega como fallo de red (no «200 {offline:true}»)
     if (!/const _esCasa = url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\);\s*e\.respondWith\(fetch\(e\.request\)\.catch\(\(\) => _esCasa \? Response\.error\(\) :/.test(SW)) throw new Error('el service worker sigue tapando los fallos del servidor de casa con un 200 de mentira');
   });
-  await t('F3 · la versión ha subido a la v717 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v717';/.test(HTML), true);
-    iguales(/azkar-pwa-v717/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v717');
+  await t('F3 · la versión ha subido a la v718 en los tres sitios', async () => {
+    iguales(/var APP_VERSION = 'v718';/.test(HTML), true);
+    iguales(/azkar-pwa-v718/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
+    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v718');
+  });
+  await t('H1 · v718 · si la dirección guardada no contesta, se pregunta a Railway la nueva, se guarda, se avisa y se va a casa', async () => {
+    const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };
+    const n = navegador(o);
+    n.win._dirNueva = 'https://nueva.trycloudflare.com';
+    await n.win.fetch(R + '/api/chatbot/message', { method: 'POST' });
+    await new Promise(r => setTimeout(r, 300));
+    iguales(n.store.azkar_servidor_casa, 'https://nueva.trycloudflare.com', 'no ha guardado la nueva');
+    const pidio = n.llamadas.find(x => x.url.indexOf(R + '/api/casa/direccion') === 0);
+    if (!pidio) throw new Error('no ha preguntado a Railway: ' + n.llamadas.map(x => x.url).join(' | '));
+    iguales(pidio.headers['authorization'], 'Bearer tok');
+    if (!n.avisos.some(a => /ha cambiado de dirección/.test(a))) throw new Error('sin aviso: ' + JSON.stringify(n.avisos));
+    iguales(n.win._azkCasa.estado().activa, true, 'tenía que quedar activa con la nueva');
+    await n.win.fetch(R + '/api/a');
+    iguales(n.llamadas[n.llamadas.length - 1].url, 'https://nueva.trycloudflare.com/api/a');
   });
   await t('F8 · v716 · con el ordenador de casa, si el túnel corta, se espera la respuesta en el buzón hasta seis minutos (y se dice por qué)', async () => {
     if (!/_esperarBuzon\(_turnoId, \(err && err\.name === 'AbortError'\) \? 20000 : \(_porCasa \? 360000 : 90000\)\)/.test(HTML)) throw new Error('no espera más con casa');
