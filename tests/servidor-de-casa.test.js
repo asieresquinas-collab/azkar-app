@@ -175,10 +175,10 @@ const R0 = R;
     // v715 · y en la rama de las API, un fallo del servidor de casa llega como fallo de red (no «200 {offline:true}»)
     if (!/const _esCasa = url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\);\s*e\.respondWith\(fetch\(e\.request\)\.catch\(\(\) => _esCasa \? Response\.error\(\) :/.test(SW)) throw new Error('el service worker sigue tapando los fallos del servidor de casa con un 200 de mentira');
   });
-  await t('F3 · la versión ha subido a la v722 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v722';/.test(HTML), true);
-    iguales(/azkar-pwa-v722/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v722');
+  await t('F3 · la versión ha subido a la v723 en los tres sitios', async () => {
+    iguales(/var APP_VERSION = 'v723';/.test(HTML), true);
+    iguales(/azkar-pwa-v723/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
+    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v723');
   });
   await t('H1 · v718 · si la dirección guardada no contesta, se pregunta a Railway la nueva, se guarda, se avisa y se va a casa', async () => {
     const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };
@@ -268,6 +268,17 @@ const R0 = R;
     await n.win.fetch(R + '/api/pdf/generate-and-save', { method: 'POST', body: '{}' });
     iguales(n.llamadas.length, 2); iguales(n.win._loginsRailway, 1);
     iguales(n.store.azkar_token_railway, undefined); iguales(n.store.azkar_token_casa, undefined);
+  });
+  await t('J4 · v723 · casa no reconoce el pase y no hay usuario recordado → el mensaje va a Railway (con su respuesta), se avisa una vez y la sesión sigue en Railway', async () => {
+    const n = navegador({ store: { azkar_servidor_casa: 'https://casa.ts.net', azkar_token: 'tokR', 'azkar-api-key': 'k1' } });
+    n.win._candadoCasa = true;
+    const r = await n.win.fetch(R + '/api/chatbot/message', { method: 'POST', body: '{"m":"hola"}' });
+    iguales(r.status, 200);
+    iguales(n.llamadas[n.llamadas.length - 1].url, R + '/api/chatbot/message');
+    iguales(n.win._azkCasa.estado().activa, false);
+    await n.win.fetch(R + '/api/chatbot/message', { method: 'POST', body: '{"m":"otra"}' });
+    iguales(n.llamadas[n.llamadas.length - 1].url, R + '/api/chatbot/message', 'la siguiente ya va directa a Railway');
+    iguales(n.avisos.filter(a => /no reconoce tu entrada/.test(a)).length, 1);
   });
   await t('H2 · v719 · con la base a mano, la dirección nueva se lee de ahí y ni se pregunta a Railway (vale aunque Railway no lleve la 2.7.1036)', async () => {
     const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };

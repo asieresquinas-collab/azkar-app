@@ -2508,7 +2508,7 @@ window._saludoA = function (nombre, d) {
       if (!base) return Promise.resolve('');
       return _f(base + '/api/usuarios/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: cuerpo })
         .then(function (r) { return r.json(); })
-        .then(function (d) { if (d && d.ok && d.token) { try { localStorage.setItem(_clavePase(dest), d.token); } catch (e) {} return d.token; } return ''; })
+        .then(function (d) { if (d && d.ok && d.token) { try { localStorage.setItem(_clavePase(dest), d.token); } catch (e) {} if (dest === 'casa' && _casa.motivo === 'no reconoce tu pase') { _casa.ultimaPrueba = 0; _casa.avisoPaseCasa = false; } return d.token; } return ''; })
         .catch(function () { return ''; });
     }
     function _usuarioRecordado() {
@@ -2558,7 +2558,14 @@ window._saludoA = function (nombre, d) {
           return _decidirCasa().then(function (ok) {
             if (!ok) return _aRailwayNormal(rec, _ini);
             var _t0Casa = Date.now();
-            return _conSuPase(_recCasa, _ini, 'casa').catch(function (err) {
+            return _conSuPase(_recCasa, _ini, 'casa').then(function (rC) {
+              // v723 · casa sigue sin reconocer el pase (y no hay usuario recordado para entrar solo): no se queda nadie sin
+              //  Azkarin. Esta sesión pasa a Railway (un 401 no ha hecho nada en casa, se puede mandar) y se avisa una vez.
+              if (!rC || rC.status !== 401) return rC;
+              _casa.activa = false; _casa.decidido = true; _casa.motivo = 'no reconoce tu pase'; _casa.ultimaPrueba = Date.now() + 9e15;
+              if (!_casa.avisoPaseCasa) { _casa.avisoPaseCasa = true; _avisoCasa('🔑 El ordenador de casa no reconoce tu entrada: sal de la app y vuelve a entrar con tu usuario, marcando «recordar». Mientras, hablo desde Railway.'); }
+              return _aRailwayNormal(rec, _ini);
+            }, function (err) { throw err; }).catch(function (err) {
               // si falla la red con el de casa (no un 4xx/5xx: eso llega como respuesta), esta sesión vuelve a Railway
               var _abortado = err && (err.name === 'AbortError');
               if (_abortado) throw err;
@@ -5327,7 +5334,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v722';
+var APP_VERSION = 'v723';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
