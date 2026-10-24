@@ -3812,6 +3812,39 @@ function _esDireccionPrueba(x) {
   if (!t) return false;
   return /juan de la cosa|de la cosa juan|cosa juan de la|n2 2c|2 02 c/.test(t);
 }
+// ══════════════════════════════════════════════════════════════════════════
+//  v728 · APARATOS Y OBJETOS DE VALOR A PRECIO SIMBÓLICO: SE AVISA ANTES DE QUE SALGA
+//  Asier, 24-oct-2026 (Fundación Eudes, 6827-B: el ordenador con pantalla a 12 € y la
+//  impresora a 2 €, y ya firmado): «no se puede cobrar dos euros por una pantalla que vale
+//  doscientos; si se rompe nos va a costar doscientos arreglarla… que se diga ANTES de que
+//  salga el presupuesto». Antes de mandarlo (correo o WhatsApp con la firma) se miran las
+//  líneas: un aparato a menos de 25 € la unidad sale en un aviso. El precio lo decide quien
+//  lo manda: «Aceptar» lo manda igual, «Cancelar» lo para para cambiarlo.
+//  Lo mismo que el servidor (api/objetos-de-valor.js, backend 2.7.1051).
+// ══════════════════════════════════════════════════════════════════════════
+var _RE_VALOR_V728 = /\b(ordenador\w*|pc|portatil\w*|pantalla\w*|monitor\w*|televis\w*|tele|teles|tv|impresora\w*|piano\w*|proyector\w*|servidor\w*|escultura\w*|electronic\w*|equipo\s+de\s+musica)\b/;
+var _RE_MUEBLE_DE_V728 = /^(mueble|mesa|soporte|carro|armario|estanter|rack|caja|cajas|embalaje|desmontaje|montaje)\b/;
+function _preciosSimbolicosDeValor() {
+  var out = [];
+  try {
+    document.querySelectorAll('#tb .cr').forEach(function (row) {
+      var ci = row.querySelector('input[list]');
+      var ns = row.querySelectorAll('input[type=number]');
+      var c = ci ? String(ci.value || '').trim() : '';
+      if (!c) return;
+      var p = parseFloat(String(ns[1] ? ns[1].value : '').replace(',', '.')) || 0;
+      var cn = c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (_RE_VALOR_V728.test(cn) && !_RE_MUEBLE_DE_V728.test(cn) && p > 0 && p < 25) out.push(c + ' a ' + p.toFixed(2).replace('.', ',') + ' €');
+    });
+  } catch (e) {}
+  return out;
+}
+function _avisoPreciosDeValor() {
+  var l = _preciosSimbolicosDeValor();
+  if (!l.length) return true;
+  return confirm('⚠️ Antes de que salga el presupuesto, mira estos precios:\n\n• ' + l.join('\n• ') + '\n\nEs muy poco para algo que, si se rompe, cuesta mucho más arreglarlo. Pon un precio lógico.\n\n¿Lo mandas así de todas formas?');
+}
+
 async function PA(){
   const number = document.getElementById('f_ref') ? document.getElementById('f_ref').value : '';
   const clientName = document.getElementById('f_nom') ? document.getElementById('f_nom').value : '';
@@ -3832,6 +3865,8 @@ async function PA(){
       return;
     }
   }
+  // v728 · aparatos a precio simbólico: se avisa antes de mandarlo
+  if (!_avisoPreciosDeValor()) { showSyncStatus('Envío cancelado: cambia esos precios y vuelve a darle.', 6000); return; }
 
   // v236 ESCUDO ANTI-VACIADO: garantizar que el DOM tiene los items antes de generar el PDF
   var _esc = await _v236EnsureRowsFromLocal();
@@ -5369,7 +5404,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v727';
+var APP_VERSION = 'v728';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -9815,6 +9850,8 @@ async function enviarPresupuestoWhatsApp() {
   if (_esDireccionPrueba(_recWA) || _esDireccionPrueba(_entWA)) {
     if (!confirm('⚠️ La dirección parece de PRUEBA (' + (_recWA || _entWA) + '). ¿Enviar igualmente?')) return;
   }
+  // v728 · aparatos a precio simbólico: se avisa antes de mandarlo
+  if (!_avisoPreciosDeValor()) { showSyncStatus('Envío cancelado: cambia esos precios y vuelve a darle.', 6000); return; }
 
   // v274 ESCUDO ANTI-VACIADO: no crear enlace de firma si la tabla se ha quedado sin articulos
   var _escWA = await _v236EnsureRowsFromLocal();

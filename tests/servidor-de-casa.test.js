@@ -176,10 +176,11 @@ const R0 = R;
     // v715 · y en la rama de las API, un fallo del servidor de casa llega como fallo de red (no «200 {offline:true}»)
     if (!/const _esCasa = url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\);\s*e\.respondWith\(fetch\(e\.request\)\.catch\(\(\) => _esCasa \? Response\.error\(\) :/.test(SW)) throw new Error('el service worker sigue tapando los fallos del servidor de casa con un 200 de mentira');
   });
-  await t('F3 · la versión ha subido a la v727 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v727';/.test(HTML), true);
-    iguales(/azkar-pwa-v727/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v727');
+  await t('F3 · la versión es la misma en los tres sitios (y como poco la v727, la del botón)', async () => {
+    const vApp = (HTML.match(/var APP_VERSION = 'v(\d+)';/) || [])[1];
+    const vSw = (fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8').match(/azkar-pwa-v(\d+)/) || [])[1];
+    const vJson = String(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version).replace(/^v/, '');
+    iguales(vApp === vSw && vSw === vJson && Number(vApp) >= 727, true, 'app ' + vApp + ', sw ' + vSw + ', version.json ' + vJson + ':');
   });
   await t('H1 · v718 · si la dirección guardada no contesta, se pregunta a Railway la nueva, se guarda, se avisa y se va a casa', async () => {
     const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };
