@@ -158,12 +158,13 @@ const R0 = R;
   });
 
   console.log('\n══ F · LA ORDEN «/casa» EN EL CHAT Y LOS ENLACES DE FUERA ══');
-  await t('F1 · el chat entiende «/casa https://…», «/casa no» y «/casa» (y pide cerrar y abrir la app)', async () => {
+  await t('F1 · el chat entiende «/casa https://…», «/casa no» y «/casa» (v727: ya no hace falta cerrar la app: cambia al momento)', async () => {
     const i = HTML.indexOf("if (msg && /^\\/casa\\b/i.test(msg)) {");
     if (i < 0) throw new Error('no está la orden /casa en chatbotSend');
     const trozo = HTML.slice(i, i + 2500);
     if (!/_C\.quitar\(\)/.test(trozo) || !/_C\.poner\(_arg\)/.test(trozo) || !/_C\.estado\(\)/.test(trozo)) throw new Error('faltan quitar/poner/estado');
-    if (!/Cierra y abre la app/.test(trozo)) throw new Error('no dice que cierre y abra la app');
+    if (/Cierra y abre la app/.test(trozo)) throw new Error('sigue pidiendo cerrar y abrir la app');
+    if (!/habla ya con/.test(trozo) || !/_C\.probar\(\)/.test(trozo)) throw new Error('no cambia al momento');
   });
   await t('F2 · los enlaces del APK y del portal de autónomos siguen escritos a Railway (no son llamadas)', async () => {
     if (!/href="https:\/\/azkar-presupuestos-production\.up\.railway\.app\/api\/apk\/bajar"/.test(HTML)) throw new Error('el enlace del APK ya no apunta a Railway');
@@ -175,10 +176,10 @@ const R0 = R;
     // v715 · y en la rama de las API, un fallo del servidor de casa llega como fallo de red (no «200 {offline:true}»)
     if (!/const _esCasa = url\.hostname\.endsWith\('\.ts\.net'\) \|\| url\.hostname\.endsWith\('\.trycloudflare\.com'\);\s*e\.respondWith\(fetch\(e\.request\)\.catch\(\(\) => _esCasa \? Response\.error\(\) :/.test(SW)) throw new Error('el service worker sigue tapando los fallos del servidor de casa con un 200 de mentira');
   });
-  await t('F3 · la versión ha subido a la v726 en los tres sitios', async () => {
-    iguales(/var APP_VERSION = 'v726';/.test(HTML), true);
-    iguales(/azkar-pwa-v726/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
-    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v726');
+  await t('F3 · la versión ha subido a la v727 en los tres sitios', async () => {
+    iguales(/var APP_VERSION = 'v727';/.test(HTML), true);
+    iguales(/azkar-pwa-v727/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')), true);
+    iguales(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version, 'v727');
   });
   await t('H1 · v718 · si la dirección guardada no contesta, se pregunta a Railway la nueva, se guarda, se avisa y se va a casa', async () => {
     const o = { store: { azkar_servidor_casa: 'https://vieja.trycloudflare.com', azkar_token: 'tok', 'azkar-api-key': 'k1' }, casa: 'no' };

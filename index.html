@@ -2379,7 +2379,10 @@ window._saludoA = function (nombre, d) {
     //  se espera a la prueba; el resto de llamadas no esperan (van a Railway mientras se prueba). Los avisos, solo cuando
     //  cambia (de casa a Railway o al revés), no uno por minuto.
     var _CASA_REPRUEBA_MS = 60000;
+    // v727 · el botón 🏠 de arriba del chat de Azkarin enseña con quién habla este aparato
+    function _pintarCasa() { try { if (typeof window._azkPintarCasa === 'function') window._azkPintarCasa(); } catch (e) {} }
     function _avisoCambio(activa, txt, ya) {
+      _pintarCasa();
       if (_casa.avisadoComo === activa) return;
       var _primeraVezBien = (_casa.avisadoComo === undefined && activa);
       _casa.avisadoComo = activa;
@@ -2473,9 +2476,18 @@ window._saludoA = function (nombre, d) {
         var u = String(url || '').trim().replace(/\/+$/, '');
         if (!/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(u)) return false;
         try { localStorage.setItem('azkar_servidor_casa', u); } catch (e) { return false; }
+        // v727 · AL MOMENTO, sin cerrar la app (botón 🏠 de arriba del chat): el aparato pasa a probar el ordenador de casa ya
+        _casa.base = u; _casa.host = u.replace(/^https:\/\//i, ''); _casa.activa = false; _casa.decidido = false; _casa.promesa = null; _casa.avisadoComo = undefined; _casa.ultimaPrueba = 0;
+        try { localStorage.setItem('azkar_casa_boton', '1'); } catch (e) {}
+        _pintarCasa();
         return true;
       },
-      quitar: function () { try { localStorage.removeItem('azkar_servidor_casa'); } catch (e) {} },
+      quitar: function () {
+        try { localStorage.removeItem('azkar_servidor_casa'); } catch (e) {}
+        // v727 · y al quitarlo, a Railway en ese mismo momento (antes había que cerrar y abrir la app)
+        _casa.base = ''; _casa.host = ''; _casa.activa = false; _casa.decidido = true; _casa.promesa = null; _casa.avisadoComo = undefined;
+        _pintarCasa();
+      },
       probar: function () { return _reprobar(); },
       // v724 · la dirección que ha apuntado el ordenador de casa (base; si no, Railway), para «/casa sí» sin escribir nada
       direccionGuardada: function () {
@@ -5357,7 +5369,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v726';
+var APP_VERSION = 'v727';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17482,6 +17494,9 @@ async function doResetWithCode() {
 #chatbot-header .ch-title,#chatbot-header .ch-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #chatbot-header>div:last-child{display:flex;align-items:center;gap:1px;flex:0 0 auto;white-space:nowrap}
 #chatbot-header button{background:none;border:none;color:#fff;font-size:19px;cursor:pointer;padding:0 3px;line-height:1;flex:0 0 auto}
+#chatbot-casa-btn{position:relative}
+#chatbot-casa-btn.sin-respuesta{opacity:.5}
+#chatbot-casa-btn.cambiando{opacity:.4;pointer-events:none}
 
 #chatbot-speed-btn{font-size:13px;font-weight:700;border:1px solid rgba(255,255,255,.55);border-radius:10px;padding:1px 5px;min-width:30px;line-height:1.5}
 #chatbot-oscar-btn{font-size:13px;font-weight:700;border:1px solid rgba(255,255,255,.55);border-radius:10px;padding:1px 5px;min-width:30px;line-height:1.5;position:relative}
@@ -17572,6 +17587,7 @@ async function doResetWithCode() {
   <div id="chatbot-header">
     <div style="display:flex;align-items:center;gap:10px"><img src="icons/azkarin-64.png" alt="Azkarin" style="width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.3)"><div><div class="ch-title">Azkarin</div><div class="ch-sub" id="ch-sub-motor">Asistente IA &middot; Azkar Mudanzas</div></div></div>
     <div>
+      <button id="chatbot-casa-btn" onclick="azkarinCasaToggle()" title="Con quién hablas: ordenador de casa o Railway (pulsa para cambiar)" style="display:none">&#127968;</button>
       <button onclick="chatbotNuevaConv()" title="Empezar una conversación nueva">&#10133;</button>
       <button onclick="chatbotHistorial()" title="Ver historial de acciones">&#128203;</button>
       <button onclick="chatbotCopiarConv()" title="Copiar toda la conversación (para pegársela a Claude)">&#128228;</button>
@@ -18112,10 +18128,58 @@ async function doResetWithCode() {
     try { var sep = document.createElement('div'); sep.className = 'chat-separador'; sep.style.cssText = 'text-align:center;font-size:12px;color:#8a97a8;margin:10px 0 6px;'; sep.textContent = '➕ Conversación nueva'; msgsDiv.appendChild(sep); } catch (e) {}
   };
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  //  v727 · EL BOTÓN 🏠 DE ARRIBA DEL CHAT (Asier, 24-oct: «un botón en el chat para poner casa sí y casa no, y no tener que
+  //  andar escribiendo nada… en Azkarin, arriba»). Una pulsación cambia este aparato del ordenador de casa a Railway o al
+  //  revés, AL MOMENTO (sin cerrar la app). 🏠 = habla con el ordenador de casa; ☁️ = con Railway; 🏠 apagado = casa
+  //  puesta pero sin contestar (mientras, Railway). Solo sale en el aparato que ha usado alguna vez el ordenador de casa
+  //  (o si el usuario es Asier): a Antonio no le aparece y no puede cambiarse sin querer.
+  // ═══════════════════════════════════════════════════════════════════════════════
+  window._azkPintarCasa = function () {
+    var b = document.getElementById('chatbot-casa-btn');
+    var C = window._azkCasa;
+    if (!b || !C) return;
+    var e = C.estado();
+    var visto = false; try { visto = localStorage.getItem('azkar_casa_boton') === '1'; } catch (er) {}
+    if (e.configurado && !visto) { try { localStorage.setItem('azkar_casa_boton', '1'); } catch (er) {} visto = true; }
+    var esAsier = false; try { esAsier = /^asier/i.test(String((typeof _comercialActual === 'function' && _comercialActual()) || '')); } catch (er) {}
+    b.style.display = (e.configurado || visto || esAsier) ? '' : 'none';
+    b.classList.remove('sin-respuesta');
+    if (!e.configurado) { b.innerHTML = '&#9729;&#65039;'; b.title = 'Hablas con Railway. Pulsa para pasar al ordenador de casa'; return; }
+    b.innerHTML = '&#127968;';
+    if (e.activa) b.title = 'Hablas con el ordenador de casa. Pulsa para pasar a Railway';
+    else { if (e.decidido) b.classList.add('sin-respuesta'); b.title = 'Ordenador de casa puesto, pero ahora no contesta: hablas con Railway. Pulsa para quitarlo'; }
+  };
+  window.azkarinCasaToggle = function () {
+    var C = window._azkCasa;
+    var b = document.getElementById('chatbot-casa-btn');
+    if (!C) { addMsg('bot', 'Esta versión de la app no tiene el ordenador de casa.'); return; }
+    if (b && b.classList.contains('cambiando')) return;
+    var e = C.estado();
+    if (e.configurado) {
+      C.quitar();
+      addMsg('bot', '&#9729;&#65039; Ya hablas con Railway. Para volver al ordenador de casa, pulsa otra vez arriba.');
+      return;
+    }
+    if (b) b.classList.add('cambiando');
+    addMsg('bot', '&#127968; Paso al ordenador de casa…');
+    var fin = function () { if (b) b.classList.remove('cambiando'); try { window._azkPintarCasa(); } catch (er) {} };
+    C.direccionGuardada().then(function (u) {
+      if (!u || !C.poner(u)) { fin(); addMsg('bot', '&#127968; No encuentro la dirección del ordenador de casa: puede que esté apagado o sin el túnel. Sigues con Railway.'); return; }
+      return C.probar().then(function (ok) {
+        fin();
+        if (ok) addMsg('bot', '&#127968; Ya hablas con el ordenador de casa.');
+        else addMsg('bot', '&#127968; El ordenador de casa no contesta ahora (' + (C.estado().motivo || 'sin respuesta') + '). Mientras, sigues con Railway y lo vuelvo a probar en un minuto.');
+      });
+    }).catch(function () { fin(); addMsg('bot', '&#127968; No he podido llegar al ordenador de casa. Sigues con Railway.'); });
+  };
+  try { setTimeout(function () { window._azkPintarCasa(); }, 0); } catch (er) {}
+
   window.chatbotToggle = function() {
     panel.classList.toggle('open');
     window._chatbotActivo = panel.classList.contains('open');
     if (panel.classList.contains('open')) {
+      try { window._azkPintarCasa(); } catch (eCasa) {}
       inputEl.focus();
       msgsDiv.scrollTop = msgsDiv.scrollHeight;
       try { if (typeof window.chatbotOscarSync === 'function') window.chatbotOscarSync(); } catch (e) {}
@@ -18992,19 +19056,19 @@ async function doResetWithCode() {
       var _arg = (msg.split(/\s+/)[1] || '').trim();
       var _C = window._azkCasa;
       if (!_C) { addMsg('bot', 'Esta versión de la app no tiene el servidor de casa.'); return; }
-      if (/^(no|off|quitar|railway)$/i.test(_arg)) { _C.quitar(); addMsg('bot', '🏠 Quitado: este aparato vuelve a hablar con Railway. Cierra y abre la app. Para volver al ordenador de casa: «/casa sí».'); return; }
+      if (/^(no|off|quitar|railway)$/i.test(_arg)) { _C.quitar(); addMsg('bot', '🏠 Quitado: este aparato ya habla con Railway. Para volver al ordenador de casa, el botón 🏠 de arriba o «/casa sí».'); return; }
       // v724 · «/casa sí» → la dirección que ha apuntado el propio ordenador (sin escribirla a mano)
       if (/^(s[ií]|on|poner|casa)$/i.test(_arg) && typeof _C.direccionGuardada === 'function') {
         addMsg('bot', '🏠 Busco la dirección del ordenador de casa…');
         _C.direccionGuardada().then(function (u) {
-          if (u && _C.poner(u)) addMsg('bot', '🏠 Guardado: este aparato hablará con el ordenador de casa (' + u.replace(/^https:\/\//, '') + '). Cierra y abre la app para que entre; si no contesta, vuelvo a Railway solo.');
+          if (u && _C.poner(u)) { addMsg('bot', '🏠 Guardado: este aparato habla ya con el ordenador de casa (' + u.replace(/^https:\/\//, '') + '); si no contesta, vuelvo a Railway solo.'); try { _C.probar(); } catch (eP) {} }
           else addMsg('bot', '🏠 No encuentro la dirección del ordenador de casa: puede que esté apagado o sin el túnel. Mientras, sigo con Railway.');
         });
         return;
       }
       if (_arg) {
         if (!_C.poner(_arg)) { addMsg('bot', 'Esa dirección no vale: tiene que ser https://… sin nada detrás (por ejemplo https://ordenador.algo.ts.net).'); return; }
-        addMsg('bot', '🏠 Guardado: este aparato hablará con el servidor de casa (' + _arg.replace(/^https:\/\//, '') + '). Cierra y abre la app para que entre; si no contesta, vuelvo a Railway solo.');
+        addMsg('bot', '🏠 Guardado: este aparato habla ya con el servidor de casa (' + _arg.replace(/^https:\/\//, '') + '); si no contesta, vuelvo a Railway solo.'); try { _C.probar(); } catch (eP) {}
         return;
       }
       // v714 · «/casa» vuelve a probar el ordenador en ese momento y luego cuenta cómo está
