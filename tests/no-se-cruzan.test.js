@@ -32,8 +32,8 @@ const SRC_COLLECT = trozo('function collectFormData() {', 'function restoreFormD
 const SRC_RESTORE = trozo('function restoreFormData(data) {', '//  FIREBASE SYNC (configurable)');
 const SRC_SAVE    = trozo('function rellenaFlagsQueFaltan(destino, origen) {', '  return { savedIDB, savedFB };\n}') + '  return { savedIDB, savedFB };\n}';
 const SRC_CLOSURE = trozo('  function pintarBorradorAviso(data) {', '  // Escuchar cambios en TODOS los campos');
-const SRC_LOAD    = trozo('async function loadPresupuesto(id) {', 'async function newPresupuesto() {');
-const SRC_NEW     = trozo('async function newPresupuesto() {', 'async function delPresupuesto');
+const SRC_LOAD    = trozo('async function loadPresupuesto(id) {', 'async function newPresupuesto(');   // (newPresupuesto ahora recibe opciones)
+const SRC_NEW     = trozo('async function newPresupuesto(', 'async function delPresupuesto');
 const SRC_PINTAR  = trozo('function pintarDistanciaYKm() {', '\n// ── ZONA DE INFLUENCIA') || trozo('function pintarDistanciaYKm() {', '\n  return;\n}');
 const SRC_PISOS   = trozo('function limpiarPisos() {', 'window.dirCompleta = dirCompleta;');
 const SRC_DIRC    = trozo('function dirCompleta(p) {', '// Reparte una dirección');
@@ -202,8 +202,9 @@ console.log('\n══ B · 🛑 SIEMPRE MANDA LA FICHA, NO LA LLAMADA DE HACE D�
   c('B9 · 🛑 ya no queda ningún «tx-recogida … || f_rec» (la prioridad al revés) en el fichero',
     !/getElementById\('tx-recogida'\)\s*\|\|\s*\{\}\)\.value\s*\|\|\s*\(document\.getElementById\('f_rec'\)/.test(H)
     && !/dir = document\.getElementById\('tx-entrega'\);/.test(H));
-  c('B10 · el email/firma (PA), la firma para WA, la liquidación y los permisos pasan por datoDeLaFicha',
-    (H.match(/datoDeLaFicha\('rec'\)/g) || []).length >= 5 && (H.match(/datoDeLaFicha\('fserv'\)/g) || []).length >= 5);
+  // (la liquidación se quitó en la v686 —no se usaba—: quedan el email/firma, la firma para WA y los dos de los permisos)
+  c('B10 · el email/firma (PA), la firma para WA y los permisos pasan por datoDeLaFicha',
+    (H.match(/datoDeLaFicha\('rec'\)/g) || []).length >= 4 && (H.match(/datoDeLaFicha\('fserv'\)/g) || []).length >= 4);
   // txCreatePresupuesto: copia lo de la llamada ANTES de que la ficha nueva lo vacíe, y avisa por «input»
   const d2 = montarDom({ 'tx-recogida': 'Calle Llamada 5, Bilbao', 'tx-entrega': 'Calle Destino 7, Getxo', 'tx-fecha': '2026-10-02', 'tx-nombre': 'Raquel' });
   const ctx2 = contexto(d2.doc);
@@ -461,7 +462,9 @@ console.log('\n══ H/I/J · LO QUE LLEGA TARDE NO PINTA EN LA FICHA EQUIVOCAD
   c('I3 · con la ficha en blanco, nada', (els.f_ref.value = '', ctx.selloDeFicha() === ''));
   const fn = (n) => funcionEntera(n) || '';
   c('I4 · 🛑 calcularDistancia apunta el sello al salir y no pinta si cambió', /var refAlEmpezar = \(typeof selloDeFicha/.test(fn('calcularDistancia')) && (fn('calcularDistancia').match(/sigueSiendoLaMisma\(\)/g) || []).length >= 3);
-  c('I5 · la galería de fotos (cargar) también', /refAlEmpezar/.test(fn('cargar')) && /if \(!sigue\(\)\) return;/.test(fn('cargar')));
+  // (hay más de una función «cargar» en el fichero: la de la galería es la que empieza mirando la ficha)
+  const _gal = (function () { const i = H.indexOf('async function cargar() {\n    var ref = refFicha();'); return i < 0 ? '' : H.slice(i, i + 3000); })();
+  c('I5 · la galería de fotos (cargar) también', /refAlEmpezar/.test(_gal) && /if \(!sigue\(\)\) return;/.test(_gal));
   c('I6 · y la foto del mapa (fotoMapaPara)', /refAlEmpezar/.test(fn('fotoMapaPara')) && /if \(!sigue\(\)\) \{ _ultima\[prefijo\] = null; return; \}/.test(fn('fotoMapaPara')));
   c('I7 · y los km de la grúa', /refAlEmpezar/.test(fn('kmDeLaGrua')) && /!sigue\(\)\) return;/.test(fn('kmDeLaGrua')));
   c('I8 · la oferta del autónomo comprueba la ficha al volver y al aplicar',

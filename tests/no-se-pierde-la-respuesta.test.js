@@ -16,11 +16,12 @@ const c = (n, x, d) => { if (x) { bien++; console.log('  ✅ ' + n); } else { ma
 function trozo(desde, hasta) { const i = H.indexOf(desde); const j = H.indexOf(hasta, i); return (i < 0 || j < 0) ? null : H.slice(i, j); }
 
 console.log('\n══ A · EL RESCATE, CON CÓDIGO REAL ══');
-const SRC = trozo('  function _pintarDelBuzon(d) {', '  // Al VOLVER a la app');
-c('A1 · la función que pinta lo recogido existe', !!SRC);
+// v726 · la función lleva delante su apunte de «ya pintado» (una respuesta se pinta una vez): se coge entero
+const SRC = trozo('  window._turnosPintados = window._turnosPintados || {};', '  // Al VOLVER a la app');
+c('A1 · la función que pinta lo recogido existe', !!SRC && /function _pintarDelBuzon\(d, turnoId\)/.test(SRC));
 if (SRC) {
   const pintados = [];
-  const fn = new Function('addMsg', 'chatHistorial', SRC + '\nreturn _pintarDelBuzon;')((quien, t) => pintados.push(t), []);
+  const fn = new Function('addMsg', 'chatHistorial', 'window', SRC + '\nreturn _pintarDelBuzon;')((quien, t) => pintados.push(t), [], {});
   c('A2 · pinta la respuesta que estaba guardada', fn({ respuesta: { mensaje: 'El 6626 está EN MARCHA' }, hace_segundos: 12 }) === true && /6626 está EN MARCHA/.test(pintados[0]));
   c('A3 · y le dice por qué llega ahora, sin culpar a nadie', /saliste de la aplicación/.test(pintados[0]) && /recogido del servidor/.test(pintados[0]));
   pintados.length = 0;

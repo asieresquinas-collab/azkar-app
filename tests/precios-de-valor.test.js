@@ -48,7 +48,8 @@ const pa = HTML.slice(HTML.indexOf('async function PA(){'), HTML.indexOf('async 
 t('C1 · mandar por correo (PA): el aviso va antes del PDF y de la firma', pa.indexOf('_avisoPreciosDeValor()') > 0 && pa.indexOf('_avisoPreciosDeValor()') < pa.indexOf("/api/firma/crear") && pa.indexOf('_avisoPreciosDeValor()') < pa.indexOf('savePdfViaServer('));
 const wa = HTML.slice(HTML.indexOf('async function enviarPresupuestoWhatsApp() {'), HTML.indexOf('async function enviarPresupuestoWhatsApp() {') + 4000);
 t('C2 · mandar por WhatsApp: el aviso va antes de crear el enlace', wa.indexOf('_avisoPreciosDeValor()') > 0 && wa.indexOf('_avisoPreciosDeValor()') < wa.indexOf('_v236EnsureRowsFromLocal'));
-t('C3 · la versión es la v728 (la app y el service worker)', /var APP_VERSION = 'v728';/.test(HTML) && /azkar-pwa-v728/.test(fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8')));
+// (la versión ya no es la v728: se mira que la app y el service worker digan la MISMA, y que sea la v728 o posterior)
+t('C3 · la app y el service worker dicen la misma versión (v728 o posterior)', (function () { const v = (HTML.match(/var APP_VERSION = 'v(\d+)';/) || [])[1]; return v && Number(v) >= 728 && fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8').indexOf("azkar-pwa-v" + v + "'") >= 0; })());
 
 console.log('\n' + (mal ? '❌ ' : '✅ ') + ok + ' bien, ' + mal + ' mal');
 process.exit(mal ? 1 : 0);

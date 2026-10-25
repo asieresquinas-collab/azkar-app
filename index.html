@@ -5405,7 +5405,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v730';
+var APP_VERSION = 'v731';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -19084,6 +19084,14 @@ async function doResetWithCode() {
   window.chatbotSend = async function() {
     try {
     var msg = inputEl.value.trim();
+    // v731 · «/claude sonnet» con el ordenador de casa puesto (24-oct, 4:52): Claude piensa desde Railway, y desde casa contestaba
+    //  «Claude todavía no está conectado» y seguía el modelo de casa. Ahora se pasa a Railway y el mando se manda allí.
+    if (msg && /^\/(claude|claud|clau|clod)\b/i.test(msg)) {
+      try {
+        var _Cc = window._azkCasa;
+        if (_Cc && _Cc.estado().configurado) { _Cc.quitar(); try { window._azkPintarCasa && window._azkPintarCasa(); } catch (eP) {} addMsg('bot', '&#9729;&#65039; Claude piensa desde Railway: paso a Railway para que te conteste él. Para volver al ordenador de casa, pulsa la casita de arriba.'); }
+      } catch (eCc) {}
+    }
     if (msg && /^\/voz\b/i.test(msg)) { inputEl.value = ''; inputEl.style.height = 'auto'; try { azkarinSelectorVoz(); } catch(e) { addMsg('bot', 'No pude abrir el selector de voz: ' + e.message); } return; }
     if (msg && /^\/micro\b/i.test(msg)) {
       inputEl.value = ''; inputEl.style.height = 'auto';
@@ -19709,12 +19717,26 @@ async function doResetWithCode() {
         //  (23-oct: la respuesta de las llamadas de la semana salió a los doscientos cincuenta y la app ya se había rendido):
         //  se espera al buzón hasta seis minutos, con el «trabajando…» puesto
         var _porCasa = false; try { _porCasa = !!(window._azkCasa && window._azkCasa.estado().activa); } catch (eC) {}
+        // v731 · UN TRABAJO LARGO NO SE DA POR PERDIDO (24-oct, 5:03: «revisa y transcribe todas las llamadas de la semana…» → «He cortado
+        //  la espera» y la respuesta no llegó). Si la app deja de esperar a los cuatro minutos, el servidor SIGUE trabajando y guarda la
+        //  respuesta: se sigue mirando en segundo plano hasta quince minutos (sin bloquear el chat) y se pinta aquí en cuanto esté.
+        if (err && err.name === 'AbortError' && !_porCasa) {
+          removeTyping(); sendBtn.disabled = false;
+          addMsg('bot', '&#9203; Es un trabajo largo y sigue en marcha. Te pongo aquí la respuesta en cuanto acabe; mientras, puedes seguir escribiendo.');
+          var _tidLargo = _turnoId;
+          (async function () {
+            var _dl = await _esperarBuzon(_tidLargo, 15 * 60000);
+            if (_dl) { _turnoResuelto(_tidLargo); _dl._largo = true; _pintarDelBuzon(_dl, _tidLargo); }
+            else if (!(window._yaPintadoTurno && window._yaPintadoTurno(_tidLargo))) addMsg('bot', '&#9201;&#65039; El trabajo largo no ha terminado en quince minutos. Si sigue sin llegar, pídemelo otra vez.');
+          })();
+          return;
+        }
         var _resc = await _esperarBuzon(_turnoId, (err && err.name === 'AbortError') ? 20000 : (_porCasa ? 360000 : 90000));
         if (_resc) { _turnoResuelto(_turnoId); removeTyping(); if (_porCasa) _resc._porCasa = true; _pintarDelBuzon(_resc, _turnoId); sendBtn.disabled = false; return; }
       } catch (eResc) { /* si el rescate falla, se sigue por el camino de siempre */ }
       removeTyping();
       if (err && err.name === 'AbortError') {
-        addMsg('bot', '⏱️ He cortado la espera: el servidor llevaba más de 4 minutos sin responder. Si estaba con un trabajo largo, al terminar te llega el resultado por notificación (v2.7.261) y lo ya hecho no se pierde. Si no te llega nada en unos minutos, reenvía el mensaje.');
+        addMsg('bot', '⏱️ He cortado la espera: el servidor llevaba más de 4 minutos sin responder. Si estaba con un trabajo largo, lo ya hecho no se pierde: al volver a la aplicación te pongo aquí la respuesta. Si no llega, reenvía el mensaje.');
       } else {
         addMsg('bot', '❌ No pude conectar con el servidor: ' + (err.message || 'error desconocido'));
       }
@@ -21600,7 +21622,7 @@ async function doResetWithCode() {
     var r = d.respuesta;
     var txt = r.mensaje || r.respuesta || '';
     if (txt) {
-      addMsg('bot', txt + '<div style="margin-top:6px;font-size:11px;color:#888">' + (d._porCasa ? '↩️ Ha tardado más de lo que aguanta el túnel del ordenador de casa; lo he recogido de allí' : '↩️ Se quedó a medias porque saliste de la aplicación; lo he recogido del servidor')
+      addMsg('bot', txt + '<div style="margin-top:6px;font-size:11px;color:#888">' + (d._largo ? '↩️ Es la respuesta del trabajo largo de antes' : (d._porCasa ? '↩️ Ha tardado más de lo que aguanta el túnel del ordenador de casa; lo he recogido de allí' : '↩️ Se quedó a medias porque saliste de la aplicación; lo he recogido del servidor'))
         + (d.hace_segundos > 90 ? (' — terminó hace ' + Math.round(d.hace_segundos / 60) + ' min') : '') + '.</div>');
       chatHistorial.push({ role: 'assistant', content: txt });
     } else {

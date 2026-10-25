@@ -133,7 +133,7 @@ c('D2.4 · 🛑 además del barrido de TODOS los campos de la página (el segund
 console.log('\n══ E · 🛑 UNA SOLA PUERTA, PARA QUE NO VUELVAN A SEPARARSE ══');
 c('E1 · «Limpiar» llama a la función común',
   /function RF\(\)\{\s*if\(!confirm\([^)]*\)\) return;\s*dejarLaFichaEnBlanco\(\);\s*\}/.test(H));
-c('E2 · 🛑 «Nuevo presupuesto» también', /async function newPresupuesto\(\) \{[\s\S]{0,900}?dejarLaFichaEnBlanco\(\);/.test(H));
+c('E2 · 🛑 «Nuevo presupuesto» también', /async function newPresupuesto\((?:opts)?\) \{[\s\S]{0,900}?dejarLaFichaEnBlanco\(\);/.test(H));
 const _np = H.slice(H.indexOf('async function newPresupuesto() {'), H.indexOf('async function delPresupuesto'));
 c('E3 · 🛑 y ya NO tiene su propia lista de campos escrita a mano',
   !/const fields = \['f_ref'/.test(_np));
