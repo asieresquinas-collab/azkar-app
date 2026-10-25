@@ -3127,7 +3127,9 @@ function CT(){
   // Operarios: el trabajo se divide, el transporte no
   var opSel=document.getElementById('num-operarios');
   var ops=opSel?parseInt(opSel.value)||2:2;
-  var tiempoTrabajoReal=Math.ceil(totalMin/ops);
+  // v732 · tiempos REALES: lo que dice la tabla × lo que tarda de verdad la cuadrilla (medido en los partes firmados)
+  var _fReal=_ttFactor();
+  var tiempoTrabajoReal=Math.ceil(totalMin*_fReal/ops);
   var tiempoTotal=tiempoTrabajoReal+tiempoTransporte;
 
   // Formatear
@@ -3142,7 +3144,7 @@ function CT(){
   var desg=document.getElementById('tiempo-desglose');
   if(desg){
     var parts=[];
-    if(tiempoTrabajoReal>0) parts.push('Servicio: '+fmtT(tiempoTrabajoReal));
+    if(tiempoTrabajoReal>0) parts.push('Servicio: '+fmtT(tiempoTrabajoReal)+(_fReal!==1?' (tabla × '+String(_fReal).replace('.',',')+' según los partes reales)':' (tabla; aún sin partes para corregir)'));
     parts.push('Transporte: '+fmtT(tiempoTransporte));
     desg.textContent=parts.join(' + ');
   }
@@ -3302,6 +3304,116 @@ function SY(){
   // Actualizar fecha al editar datos del cliente
   updateFechaModificacion();
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  v732 · EL HISTORIAL DE LA FICHA: QUÉ ARTÍCULOS SE CAMBIARON Y QUIÉN (también desde la app)
+//
+//  Asier, 25-oct-2026, 7:48 (Eudes, 6827): «el historial tiene que tener cambios de artículos y quién».
+//  La app no apuntaba nada: ni artículos ni campos. Ahora, al guardar en la nube, se compara lo que
+//  había en la nube con lo que sube y se apunta en `_historialArticulos` (y en `_historialCampos`)
+//  quién lo cambió (quien tiene la sesión abierta), desde la app y cuándo. Los guardados seguidos
+//  de la misma sesión se juntan en un solo apunte. Misma lógica que api/historial-articulos.js del
+//  servidor (que apunta lo que cambia Azkarin, el parte firmado y lo automático).
+// ═══════════════════════════════════════════════════════════════════════════
+window._HA = (function () {
+  var MAX_ENTRADAS = 60, MAX_ITEMS = 40, MAX_CAMPOS = 40, VENTANA_MS = 15 * 60000;
+  var sesion = 'app-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  var bases = {};
+  function num(v) { if (v == null || v === '') return 0; if (typeof v === 'number') return isFinite(v) ? v : 0; var n = parseFloat(String(v).replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : 0; }
+  function r2(x) { return Math.round(x * 100) / 100; }
+  function norm(t) { return String(t == null ? '' : t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
+  function sinNumeros(t) { return norm(t).replace(/[0-9]+(?:[.,][0-9]+)?/g, ' ').replace(/[^a-zñ ]/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function fila(r) { if (!r || typeof r !== 'object') return null; var c = String(r.c == null ? '' : r.c).trim(), u = num(r.u), p = num(r.p), d = num(r.d); if (!c && !u && !p) return null; return { c: c, u: r2(u), p: r2(p), d: r2(d), k: norm(c), k2: sinNumeros(c) }; }
+  function v(f) { var o = { u: f.u, p: f.p }; if (f.d) o.d = f.d; return o; }
+  function linea(f) { var o = v(f); o.c = f.c; return o; }
+  function igual(a, b) { return Math.abs(a.u - b.u) < 0.005 && Math.abs(a.p - b.p) < 0.005 && Math.abs(a.d - b.d) < 0.005; }
+  function suma(rows) { var s = 0; (Array.isArray(rows) ? rows : []).forEach(function (r) { var f = fila(r); if (f) s += f.u * f.p * (1 - f.d / 100); }); return r2(s); }
+  function diferencias(antes, despues) {
+    var A = (Array.isArray(antes) ? antes : []).map(fila).filter(Boolean), B = (Array.isArray(despues) ? despues : []).map(fila).filter(Boolean);
+    var gA = {}, gB = {}, orden = [];
+    B.forEach(function (f) { if (!gB[f.k]) { gB[f.k] = []; orden.push(f.k); } gB[f.k].push(f); });
+    A.forEach(function (f) { if (!gA[f.k]) { gA[f.k] = []; if (!gB[f.k]) orden.push(f.k); } gA[f.k].push(f); });
+    var cambiadas = [], q0 = [], a0 = [];
+    orden.forEach(function (k) {
+      var a = gA[k] || [], b = gB[k] || [], m = Math.min(a.length, b.length), i;
+      for (i = 0; i < m; i++) if (!igual(a[i], b[i])) cambiadas.push({ c: b[i].c, antes: v(a[i]), despues: v(b[i]) });
+      a.slice(m).forEach(function (f) { q0.push(f); }); b.slice(m).forEach(function (f) { a0.push(f); });
+    });
+    var usadas = {}, quitadas = [];
+    q0.forEach(function (q) {
+      var j = -1, i;
+      if (q.k2) for (i = 0; i < a0.length; i++) if (!usadas[i] && a0[i].k2 === q.k2) { j = i; break; }
+      if (j < 0) { quitadas.push(linea(q)); return; }
+      usadas[j] = true; var n = a0[j], an = v(q); an.c = q.c;
+      cambiadas.push({ c: n.c, antes: an, despues: v(n) });
+    });
+    var anadidas = a0.filter(function (f, i) { return !usadas[i]; }).map(linea);
+    return { anadidas: anadidas, quitadas: quitadas, cambiadas: cambiadas, lineas_antes: A.length, lineas_despues: B.length };
+  }
+  function corta(l) { return l.length > MAX_ITEMS ? { l: l.slice(0, MAX_ITEMS), mas: l.length - MAX_ITEMS } : { l: l, mas: 0 }; }
+  function apunte(antes, despues, info) {
+    var i = info || {}, d = diferencias(antes || [], despues);
+    if (!d.anadidas.length && !d.quitadas.length && !d.cambiadas.length) return null;
+    var e = { cuando: new Date(i.ahora || Date.now()).toISOString(), quien: String(i.quien || '?'), via: 'app', sesion: sesion };
+    if (antes === null) e.creada = true;
+    var an = corta(d.anadidas), qu = corta(d.quitadas), ca = corta(d.cambiadas);
+    if (an.l.length) e.anadidas = an.l; if (an.mas) e.anadidas_mas = an.mas;
+    if (qu.l.length) e.quitadas = qu.l; if (qu.mas) e.quitadas_mas = qu.mas;
+    if (ca.l.length) e.cambiadas = ca.l; if (ca.mas) e.cambiadas_mas = ca.mas;
+    e.lineas_antes = d.lineas_antes; e.lineas_despues = d.lineas_despues;
+    e.suma_antes = suma(antes || []); e.suma_despues = suma(despues);
+    return e;
+  }
+  function copia(rows) { try { return JSON.parse(JSON.stringify(Array.isArray(rows) ? rows : [])); } catch (e) { return []; } }
+  // el historial de artículos tal como tiene que quedar al subir rowsNuevas sobre la ficha de la nube (prev, o null si no existe)
+  function historialNuevo(prev, rowsNuevas, info) {
+    if (!Array.isArray(rowsNuevas)) return undefined;
+    var i = info || {}, ref = String(i.ref || ''), ahora = i.ahora || Date.now();
+    var hist = Array.isArray(prev && prev._historialArticulos) ? prev._historialArticulos.filter(function (x) { return x && typeof x === 'object'; }) : [];
+    var prevRows = prev ? (Array.isArray(prev.rows) ? prev.rows : []) : null;
+    var ult = hist[hist.length - 1], base = ref ? bases[ref] : null;
+    if (ult && ult.sesion === sesion && base && ahora - Date.parse(ult.cuando || 0) < VENTANA_MS) {
+      var e1 = apunte(base.creada ? null : base.rows, rowsNuevas, i), out = hist.slice(0, -1);
+      if (e1) out.push(e1);
+      return out.slice(-MAX_ENTRADAS);
+    }
+    var e = apunte(prevRows, rowsNuevas, i);
+    if (!e) return undefined;
+    if (ref) bases[ref] = { rows: copia(prevRows || []), creada: prevRows === null };
+    return hist.concat([e]).slice(-MAX_ENTRADAS);
+  }
+  function campoSeguido(k) { return (/^f_[a-z0-9_]+$/i.test(k) && k !== 'f_ref') || k === '_promoManual' || k === 'asc_rec' || k === 'asc_ent' || k === '_grua'; }
+  function valor(x) { if (x == null) return ''; if (typeof x === 'object') return ''; return x; }
+  function mismo(a, b) { return String(valor(a)).trim() === String(valor(b)).trim(); }
+  function camposNuevos(prev, data, info) {
+    if (!prev || !data) return undefined;
+    var i = info || {}, ahora = i.ahora || Date.now(), cambio = false;
+    var hist = Array.isArray(prev._historialCampos) ? prev._historialCampos.filter(function (x) { return x && typeof x === 'object'; }).slice() : [];
+    Object.keys(data).forEach(function (k) {
+      if (!campoSeguido(k)) return;
+      var antes = prev[k], despues = valor(data[k]);
+      if (mismo(antes, despues)) return;
+      var j = -1, x;
+      for (x = hist.length - 1; x >= Math.max(0, hist.length - 12); x--) { var h = hist[x]; if (h && h.campo === k && h.sesion === sesion && ahora - Date.parse(h.cuando || 0) < VENTANA_MS) { j = x; break; } }
+      if (j >= 0) { var h2 = Object.assign({}, hist[j], { despues: despues, cuando: new Date(ahora).toISOString() }); if (mismo(h2.antes, despues)) hist.splice(j, 1); else hist[j] = h2; cambio = true; return; }
+      hist.push({ campo: k, antes: antes === undefined ? null : antes, despues: despues, cuando: new Date(ahora).toISOString(), quien: String(i.quien || '?'), via: 'app', sesion: sesion });
+      cambio = true;
+    });
+    return cambio ? hist.slice(-MAX_CAMPOS) : undefined;
+  }
+  // lo que se añade a lo que sube (fbData) para que quede apuntado; nube = la ficha tal cual está en la nube (null si no existe)
+  function apuntar(ref, nube, fbData) {
+    var out = {};
+    try {
+      var quien = (typeof _comercialActual === 'function' && _comercialActual()) || 'alguien desde la app';
+      var info = { ref: ref, quien: quien };
+      if (Array.isArray(fbData.rows)) { var h = historialNuevo(nube, fbData.rows, info); if (h) out._historialArticulos = h; }
+      if (nube) { var hc = camposNuevos(nube, fbData, info); if (hc) out._historialCampos = hc; }
+    } catch (e) { console.warn('[v732 historial]', e && e.message); }
+    return out;
+  }
+  return { diferencias: diferencias, apunte: apunte, historialNuevo: historialNuevo, camposNuevos: camposNuevos, campoSeguido: campoSeguido, apuntar: apuntar, suma: suma, sesion: sesion, _bases: bases, MAX_ENTRADAS: MAX_ENTRADAS };
+})();
 
 // v377: nombre del comercial = quien ha iniciado sesión en la app (Asier / Toni).
 // Antes el campo se quedaba con el del presupuesto anterior (p.ej. 'Azkarin' de una ficha
@@ -4278,97 +4390,118 @@ var PRECIOS_ZONA = {
 
 // ── Tiempos estimados por artículo (minutos, 1 operario) ─────
 // Formato: { nombre: [desmontaje+embalaje, montaje] } o { nombre: [manipulación, 0] }
+// v732 · LA MISMA TABLA QUE EL SERVIDOR (api/catalogo-precios.js): faltaban 52 cosas (armarios por puertas, mesillas, camas…)
 var TIEMPOS_BASE = {
-  // Muebles desmontables
-  'Armario 1 módulo':  [25, 20],   // v482: la escalera de Asier (19-ago) — tiempos por módulo
-  'Armario 2 módulos': [50, 40],
-  'Armario 3 módulos': [75, 60],
+  // 2.7.671 · los que faltaban, vistos en las 600 fichas reales (/api/plan/huecos).
+  // Formato: [desmontar+forrar, montar]. Puestos por lo que cuesta cada cosa de verdad
+  // y coherentes con los de al lado (un somier 10+10, una cómoda 15+0, un armario 25+20).
+  // 2.7.677 · EL TIEMPO DE LOS ARMARIOS COMO LOS ESCRIBE ASIER («armario (3 PUERTAS ESPEJO)»).
+  // Solo TIEMPO — el precio no se toca, que ya está bien. Un módulo de armario es de dos
+  // puertas, así que: 2 puertas = 1 módulo · 3 puertas = 2 módulos · 4 puertas = 2 módulos ·
+  // 5 o 6 puertas = 3 módulos. Si para Asier no es así, se cambian estas cuatro líneas.
+  'Armario 1 puerta':[25, 20], 'Armario 2 puertas':[25, 20],
+  'Armario 3 puertas':[50, 40], 'Armario 4 puertas':[50, 40],
+  'Armario 5 puertas':[75, 60], 'Armario 6 puertas':[75, 60],
+  'Mesilla':[5, 0], 'Mesillas':[5, 0],   // en singular también: en las fichas sale «Mesilla (alta)», «Mesilla (marmol)»
+  'Cama estructura':[20, 20], 'Camas estructura':[20, 20], 'Cama articulada':[30, 30], 'Cama ariculada':[30, 30], 'Binoteca':[10, 5],
+  'Mesa centro':[10, 5], 'Mesa aux':[5, 0], 'Mesa auxiliar':[5, 0],
+  'Armario módulo':[25, 20], 'Armario tela':[15, 10],
+  'Sofá chaise longue':[25, 10], 'Sofá chaisse longue':[25, 10], 'Chaise longue':[25, 10], 'Mecedora':[10, 0], 'Banqueta':[5, 0],
+  'Taburete':[3, 0], 'Revistero':[3, 0], 'Reposapiés':[3, 0],
+  'Televisor':[10, 5], 'Pantalla':[10, 5], 'Televisores':[10, 5],
+  'Sinfonier':[10, 0], 'Tocador':[15, 10], 'Baúl':[10, 0],
+  'Reloj de pie':[15, 10], 'Bureau':[20, 15], 'Alacena':[20, 15],
+  'Mueble bajo':[20, 15], 'Baldas':[5, 0], 'Burro':[5, 5],
+  'Bicicleta estática':[10, 5], 'Escalera':[5, 0], 'Escalera pequeña':[3, 0],
+  'Tabla de planchar':[3, 0], 'Mesa de planchar':[3, 0],
+  'Aspiradora':[3, 0], 'Cafetera':[2, 0], 'Aire acondicionado':[15, 0], 'Ventilador':[5, 0],
+  'Mesa terraza':[10, 10], 'Planta grande':[10, 0], 'Plantas medianas':[5, 0],
+  'Macetas + planta pequeña':[3, 0], 'Maceta':[3, 0], 'Cuadro grande':[5, 0],
+  'Armario 1 módulo':[25, 20],
+  'Armario 2 módulos':[50, 40],
+  'Armario 3 módulos':[75, 60],
   'Armario 4+ módulos':[100, 80],
-  'Estantería':      [20, 20],
-  'Estantería pequeña': [15, 15],
-  'Cama individual': [15, 15],   // Se añade vía nombre genérico
-  'Canapé':          [25, 25],
+  'Estantería':[20, 20],
+  'Estantería pequeña':[15, 15],
+  'Cama individual':[15, 15],
+  'Canapé':[25, 25],
   'Canapé/Cama nido':[25, 25],
-  'Cuna':            [20, 20],
-  'Litera':          [30, 30],   // No está en PRECIOS_FLAT pero por si se añade
-  'Somier':          [10, 10],
-  'Colchón':         [5, 0],     // Solo embalar y mover
-  'Mesa comedor':    [15, 15],
-  'Mesa cocina':     [15, 15],
-  'Escritorio':      [15, 10],
-  'Escritorio sin cajoneras': [15, 10],
-  'Escritorio con cajoneras': [20, 15],
-  'Módulo cocina':   [30, 25],
-  'Mueble baño':     [20, 15],
-  'Mueble grande':   [40, 35],
-  'Mueble mediano':  [25, 20],
-  // Muebles enteros (solo forrar + trasladar)
-  'Mesillas':        [5, 0],
-  'Mesita auxiliar': [5, 0],
-  'Zapatero':        [10, 0],
-  'Taquillón':       [10, 0],
-  'Comoda':          [15, 0],
-  'Aparador':        [20, 0],
-  'Vitrina':         [20, 0],
-  'Consola':         [10, 0],
-  'Mueble TV pequeño': [10, 0],
-  'Cabecero':        [8, 0],
-  'Cajonera':        [10, 0],
-  'Cambiador':       [10, 0],
-  'Puf':             [3, 0],
-  'Trona bebé':      [5, 0],
-  'Mesa niño con sillas': [8, 0],
-  'Mesa niño':       [5, 0],
-  'Arcón':           [10, 0],
-  'Banco':           [8, 0],
-  // Sofás y sillas
-  'Sofá dos plazas': [15, 0],
+  'Cuna':[20, 20],
+  'Litera':[30, 30],
+  'Somier':[10, 10],
+  'Colchón':[5, 0],
+  'Mesa comedor':[15, 15],
+  'Mesa cocina':[15, 15],
+  'Escritorio':[15, 10],
+  'Escritorio sin cajoneras':[15, 10],
+  'Escritorio con cajoneras':[20, 15],
+  'Módulo cocina':[30, 25],
+  'Mueble baño':[20, 15],
+  'Mueble grande':[40, 35],
+  'Mueble mediano':[25, 20],
+  'Mesillas':[5, 0],
+  'Mesita auxiliar':[5, 0],
+  'Zapatero':[10, 0],
+  'Taquillón':[10, 0],
+  'Comoda':[15, 0],
+  'Aparador':[20, 0],
+  'Vitrina':[20, 0],
+  'Consola':[10, 0],
+  'Mueble TV pequeño':[10, 0],
+  'Cabecero':[8, 0],
+  'Cajonera':[10, 0],
+  'Cambiador':[10, 0],
+  'Puf':[3, 0],
+  'Trona bebé':[5, 0],
+  'Mesa niño con sillas':[8, 0],
+  'Mesa niño':[5, 0],
+  'Arcón':[10, 0],
+  'Banco':[8, 0],
+  'Sofá dos plazas':[15, 0],
   'Sofá tres plazas':[20, 0],
-  'Butacas':         [10, 0],
-  'Sillas comedor':  [3, 0],
-  'Sillas cocina':   [3, 0],
+  'Butacas':[10, 0],
+  'Sillas comedor':[3, 0],
+  'Sillas cocina':[3, 0],
   'Sillas escritorio':[3, 0],
-  'Sillas galán':    [3, 0],
-  'Sillas':          [3, 0],
-  // Electrónica y electrodomésticos
-  'Televisor pequeño': [10, 0],
-  'Televisor grande':  [15, 0],
-  'Nevera':          [20, 0],
-  'Lavadora':        [15, 0],
-  'Secadora':        [15, 0],
-  'Lavavajillas':    [15, 0],
-  'Horno':           [10, 0],
-  'Campana':         [15, 5],
-  'Fregadero':       [15, 10],
-  'Encimera':        [20, 15],
-  'Panificadora':    [5, 0],
+  'Sillas galán':[3, 0],
+  'Sillas':[3, 0],
+  'Televisor pequeño':[10, 0],
+  'Televisor grande':[15, 0],
+  'Nevera':[20, 0],
+  'Lavadora':[15, 0],
+  'Secadora':[15, 0],
+  'Lavavajillas':[15, 0],
+  'Horno':[10, 0],
+  'Campana':[15, 5],
+  'Fregadero':[15, 10],
+  'Encimera':[20, 15],
+  'Panificadora':[5, 0],
   'Arcón congelador':[15, 0],
-  'Microondas':      [5, 0],
-  // Decoración y otros
-  'Espejo grande':   [15, 0],
-  'Espejo':          [10, 0],
-  'Cuadros grandes (hasta 1 m)': [10, 0],
-  'Cuadros pequeños':[5, 0],   'Cuadros medianos':[7, 0],
-  'Cuadros':         [5, 0],
-  'Lámpara techo':   [10, 8],
-  'Lámpara pie':     [5, 0],
-  'Lámpara mesa':    [3, 0],
-  'Alfombras':       [5, 0],
-  'Cortinas':        [10, 0],
-  'Mampara':         [15, 10],
-  'Perchero':        [5, 0],
-  'Vinoteca':        [10, 0],
-  'Tendedero':       [3, 0],
+  'Microondas':[5, 0],
+  'Espejo grande':[15, 0],
+  'Espejo':[10, 0],
+  'Cuadros grandes (hasta 1 m)':[10, 0],
+  'Cuadros pequeños':[5, 0],
+  'Cuadros medianos':[7, 0],
+  'Cuadros':[5, 0],
+  'Lámpara techo':[10, 8],
+  'Lámpara pie':[5, 0],
+  'Lámpara mesa':[3, 0],
+  'Alfombras':[5, 0],
+  'Cortinas':[10, 0],
+  'Mampara':[15, 10],
+  'Perchero':[5, 0],
+  'Vinoteca':[10, 0],
+  'Tendedero':[3, 0],
   'Armario escobero':[10, 0],
-  'Bicicletas':      [5, 0],
-  'Piano pared eléctrico': [30, 0],
-  'Caballetes':      [5, 0],
-  // Cajas (incluye bajar+subir, se llevan de 3-6 a la vez → ~3 min por caja)
-  'Cajas/Maletas (max 15kg)': [3, 0],  // caja hecha = cargar + bajar/subir
-  'Bultos':          [3, 0],
-  'Hacer cajas':     [13, 0],          // hacer caja (10 min media) + bajar/subir (3 min)
-  'Rag':             [15, 0],
-  'Caja perchero':   [5, 0]           // caja armario para perchas: montar + cargar
+  'Bicicletas':[5, 0],
+  'Piano pared eléctrico':[30, 0],
+  'Caballetes':[5, 0],
+  'Cajas/Maletas (max 15kg)':[3, 0],
+  'Bultos':[3, 0],
+  'Hacer cajas':[13, 0],
+  'Rag':[15, 0],
+  'Caja perchero':[5, 0]
 };
 
 // Tiempos extra por piso (minutos por piso, por viaje)
@@ -4424,14 +4557,82 @@ function PL_LOOKUP(inp){
   // Auto-rellenar tiempo
   TL_LOOKUP(inp);
 }
+// ═══════════════════════════════════════════════════════════════════════════
+//  v732 · UN TIEMPO PARA CADA LÍNEA, Y TIEMPOS REALES (Asier, 25-oct-2026)
+//
+//  «Que los tiempos de la app sean tiempos reales como los que vamos a poner ahora, contando todo».
+//  Antes solo se rellenaban los minutos de lo que estaba en la tabla con el nombre exacto: las cajas,
+//  las mesas de escritorio, el armario de 10 puertas o los corchos se quedaban a cero y el tiempo total
+//  salía corto. Ahora, igual que el servidor (api/catalogo-precios.js · tiempoEstimadoDe):
+//   · tabla: el nombre está en la tabla (también sin tilde, en plural o dentro de un paréntesis)
+//   · puertas: «armario … de 10 puertas» = 5 módulos de 2 puertas (25 + 20 min cada uno)
+//   · cajas: cada caja, bulto o maleta 3 min; hacerlas, 13
+//   · familia: «mesa de escritorio» → escritorio; «mesa de reuniones» → la media alta de las mesas
+//   · medio: lo que no se parece a nada lleva el tiempo medio de la tabla
+//  Y el total se corrige con lo que tarda DE VERDAD la cuadrilla: el factor medido en los partes
+//  firmados, que el servidor deja en config/tiempos_reales (plan-hora.contrastarConLaRealidad).
+// ═══════════════════════════════════════════════════════════════════════════
+var _TT_NUM = { un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12 };
+var _TT_VACIAS = { de:1, del:1, la:1, el:1, los:1, las:1, un:1, una:1, unos:1, unas:1, con:1, sin:1, para:1, y:1, o:1, en:1, al:1, a:1, grande:1, grandes:1, pequeno:1, pequena:1, pequenos:1, pequenas:1, mediano:1, mediana:1, medianos:1, medianas:1, duda:1, destino:1 };
+function _ttNorm(t){ return String(t==null?'':t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
+function _ttToks(c){ return c.replace(/\(.*?\)/g,' ').replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(function(t){ return t && !_TT_VACIAS[t]; }); }
+function _ttSing(t){ t=String(t||''); return (t.slice(-2)==='es' && t.length>4) ? t.slice(0,-2) : ((t.slice(-1)==='s' && t.length>3) ? t.slice(0,-1) : t); }
+var _TT_IDX=null, _TT_MEDIO=null;
+function _ttIdx(){
+  if(_TT_IDX) return _TT_IDX;
+  _TT_IDX={}; var tot=[], ant=[], des=[];
+  Object.keys(TIEMPOS_BASE).forEach(function(k){ var p=TIEMPOS_BASE[k]; _TT_IDX[_ttNorm(k)]=p; if(p[0]+p[1]>0){ ant.push(p[0]); des.push(p[1]); } });
+  function med(a){ var s=a.slice().sort(function(x,y){return x-y;}); var n=s.length; return n?(n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2):0; }
+  _TT_MEDIO={ antes: Math.round(med(ant)), despues: Math.round(med(des)) };
+  return _TT_IDX;
+}
+// → { antes, despues, total, como: 'tabla'|'puertas'|'cajas'|'familia'|'medio' }
+function tiempoEstimadoApp(concepto){
+  var idx=_ttIdx(), c=_ttNorm(concepto);
+  if(!c) return null;
+  var tam=/\bgrande|\bgran\b|xl\b|\bl\b/.test(c)?'grande':(/pequen|chic[oa]|mini\b|\bbajo\b|\bbaja\b/.test(c)?'pequeno':'');
+  var mP=c.match(/armario[^0-9]*?(\d{1,2}|un|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\s*puertas?/)||c.match(/(\d{1,2}|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\s*puertas?[^a-z]*armario/);
+  if(mP){ var nP=/^\d+$/.test(mP[1])?parseInt(mP[1],10):(_TT_NUM[mP[1]]||0); if(nP>0){ var mod=Math.max(1,Math.ceil(nP/2)); return { antes:25*mod, despues:20*mod, total:45*mod, como:'puertas' }; } }
+  var ex=idx[c]||idx[c.slice(-1)==='s'?c.slice(0,-1):c+'s'];
+  if(!ex){ var sp=_ttNorm(String(concepto).replace(/\(.*?\)/g,' ')); ex=idx[sp]||idx[sp.slice(-1)==='s'?sp.slice(0,-1):sp+'s']; }
+  if(ex) return { antes:ex[0], despues:ex[1], total:ex[0]+ex[1], como:'tabla' };
+  if(/\bhacer\b.*\bcajas?\b|\bcajas?\b.*\bhacer\b|\bembalar\b/.test(c)) return { antes:13, despues:0, total:13, como:'cajas' };
+  if(/\bcajas?\b|\bbultos?\b|\bmaletas?\b/.test(c)) return { antes:3, despues:0, total:3, como:'cajas' };
+  var toks=_ttToks(c), ks=Object.keys(idx), i, k;
+  if(toks.length){
+    for(i=1;i<toks.length;i++){ var st=_ttSing(toks[i]); for(var q=0;q<ks.length;q++){ k=ks[q]; if(k===toks[i]||k===st||_ttSing(k)===st) return { antes:idx[k][0], despues:idx[k][1], total:idx[k][0]+idx[k][1], como:'familia' }; } }
+    var cab=_ttSing(toks[0]), fam=[];
+    ks.forEach(function(kn){ var ts=_ttToks(kn); if(ts.length && _ttSing(ts[0])===cab && idx[kn][0]+idx[kn][1]>0) fam.push(idx[kn]); });
+    if(fam.length){
+      var tot=fam.map(function(p){return p[0]+p[1];}).sort(function(x,y){return x-y;}), el;
+      if(tam==='grande') el=fam.reduce(function(m,p){return p[0]+p[1]>m[0]+m[1]?p:m;},fam[0]);
+      else if(tam==='pequeno') el=fam.reduce(function(m,p){return p[0]+p[1]<m[0]+m[1]?p:m;},fam[0]);
+      else { var medT=tot[Math.min(tot.length-1,Math.max(0,Math.ceil(tot.length*0.75)-1))]; el=null; for(i=0;i<fam.length;i++) if(fam[i][0]+fam[i][1]===medT){ el=fam[i]; break; } el=el||fam[0]; }
+      return { antes:el[0], despues:el[1], total:el[0]+el[1], como:'familia' };
+    }
+  }
+  var kk=tam==='grande'?2:(tam==='pequeno'?0.5:1);
+  return { antes:Math.round(_TT_MEDIO.antes*kk), despues:Math.round(_TT_MEDIO.despues*kk), total:Math.round((_TT_MEDIO.antes+_TT_MEDIO.despues)*kk), como:'medio' };
+}
+// el factor medido en los partes firmados (lo deja el servidor en config/tiempos_reales); 1 = todavía no medido
+window._tiemposReales = null;
+function _ttCargarFactor(){
+  try{
+    if(!(firebaseConfigured && window._fb && typeof window._fb.getDoc==='function')) return;
+    window._fb.getDoc(window._fb.doc(window._fb.db,'config','tiempos_reales')).then(function(sn){
+      if(sn && sn.exists && sn.exists()){ var d=sn.data()||{}; if(d.factor>0){ window._tiemposReales=d; try{ CT(); }catch(e){} } }
+    }).catch(function(){});
+  }catch(e){}
+}
+function _ttFactor(){ var d=window._tiemposReales; return (d && d.factor>0) ? d.factor : 1; }
 // ── Buscar tiempo estimado del artículo ──────────────────────
 function TL_LOOKUP(inp){
   var row=inp.closest('.cr'); if(!row) return;
   var tInp=row.querySelector('.tiempo-input'); if(!tInp||tInp.value) return;
   var name=inp.value.trim();
-  if(TIEMPOS_BASE[name]){
-    var t=TIEMPOS_BASE[name];
-    tInp.value=t[0]+t[1]; // desmontaje + montaje = tiempo total por unidad
+  var t=TIEMPOS_BASE[name] ? { total: TIEMPOS_BASE[name][0]+TIEMPOS_BASE[name][1] } : tiempoEstimadoApp(name);   // v732: todo lleva su tiempo
+  if(t && t.total>0){
+    tInp.value=t.total; // desmontaje + montaje = tiempo total por unidad
     CT();
   }
 }
@@ -4710,9 +4911,10 @@ function AR(c,z,u,p,d,tm,tam){
     +'<button class="bdel" onclick="DR('+id+')" title="Eliminar">✕</button>';
   document.getElementById('tb').appendChild(div);
   div.querySelector('input[list]').focus();
-  if(c && !tm && TIEMPOS_BASE[c]){
-    var t=TIEMPOS_BASE[c];
-    div.querySelector('.tiempo-input').value=t[0]+t[1];
+  if(c && !tm){
+    // v732 · todo lleva su tiempo: la tabla, o el tiempo medio (puertas, cajas, familia, media) si no está
+    var t=TIEMPOS_BASE[c] ? { total: TIEMPOS_BASE[c][0]+TIEMPOS_BASE[c][1] } : tiempoEstimadoApp(c);
+    if(t && t.total>0) div.querySelector('.tiempo-input').value=t.total;
   }
   CA(); CT();
   // v448 · CADA CANAPÉ, SU TAPA — también cuando la fila entra por código (catálogo,
@@ -5405,7 +5607,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v731';
+var APP_VERSION = 'v732';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -6488,12 +6690,14 @@ async function savePresupuestoFull(data) {
       // nube: si tiene un guardado MÁS NUEVO que lo que cargamos, cada campo que el usuario
       // NO ha tocado desde ese guardado se queda como está en la nube (no se manda), y los
       // artículos igual. Lo que el usuario SÍ ha tocado después, manda.
-      var _adoptarNube = null, _conservados = [];
+      var _adoptarNube = null, _conservados = [], _nubeHA = null, _leidaHA = false;
       try {
         if (window._fb && typeof window._fb.getDoc === 'function') {
           var _snapN = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', ref));
+          _leidaHA = true;   // v732 · se ha podido mirar la nube (si no existe la ficha, es nueva)
           if (_snapN && _snapN.exists()) {
             var _nube = _snapN.data() || {}, _cts = _nube.timestamp || 0, _yoTs = window._lastSavedTimestamp || 0;
+            _nubeHA = _nube;
             if (_cts > _yoTs) {
               var _toc = window._camposTocados || {};
               if (fbData.rows !== undefined && Array.isArray(_nube.rows) && (window._rowsTocadasTs || 0) < _cts) { delete fbData.rows; _conservados.push('artículos'); }
@@ -6510,12 +6714,16 @@ async function savePresupuestoFull(data) {
           }
         }
       } catch (eN) { console.warn('[v648 escudo] no se pudo mirar la nube:', eN && eN.message); }
+      // v732 · QUIÉN CAMBIÓ QUÉ: lo que sube frente a lo que hay en la nube, apuntado con el nombre de quien tiene la sesión
+      // (artículos añadidos, quitados o cambiados; campos). Si no se pudo mirar la nube, no se apunta nada a ciegas.
+      try { if (_leidaHA && window._HA) { var _apHA = window._HA.apuntar(ref, _nubeHA, fbData); if (Object.keys(_apHA).length) { Object.assign(fbData, _apHA); fbData.__conHistorial = true; } } } catch (eH) { console.warn('[v732 historial]', eH && eH.message); }
       // v129: Actualizar _lastSavedTimestamp ANTES de escribir a Firebase
       // Así cuando onSnapshot reciba nuestro propio cambio, lo ignorará correctamente
       window._lastSavedTimestamp = fbData.timestamp;
       console.log('[savePresupuestoFull] Guardando campos=' + Object.keys(fbData).length + ' ts=' + fbData.timestamp);
       await window._fb.setDoc(window._fb.doc(window._fb.db, 'presupuestos', ref), fbData, { merge: true });
       savedFB = true;
+      delete fbData.__conHistorial;   // v732: la marca era solo para la subida
       // v567: lo que acaba de subir CON valor cuenta como «cargado» — si luego se vacía, se borrará también
       try { actualizarCamposCargados(ref, data); } catch (e) {}
       // v648 · si se ha conservado algo de la nube, el formulario tiene que enseñarlo
@@ -7121,7 +7329,19 @@ async function initFirebase(config) {
     
     // Store Firebase modules globally
     // v567: deleteField, para poder BORRAR en la nube un campo que el usuario ha vaciado (ver savePresupuestoFull)
-    window._fb = { collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, deleteField, db: firestoreDB };
+    // v732 · el historial de la ficha (_historialArticulos, _historialCampos) solo lo escribe quien lo ha calculado contra la nube
+    // (savePresupuestoFull, con la marca __conHistorial). Una copia local entera que se sube por otro camino (EN MARCHA, PAGADO…)
+    // no lo manda: si estuviera vieja, pisaría apuntes de otros. Lo demás de la copia sube igual que siempre.
+    var _setDocHA = function (refDoc, data, opts) {
+      try {
+        if (data && typeof data === 'object' && refDoc && refDoc.path && /^presupuestos\//.test(refDoc.path)) {
+          if (data.__conHistorial === true) { data = Object.assign({}, data); delete data.__conHistorial; }
+          else if ('_historialArticulos' in data || '_historialCampos' in data) { data = Object.assign({}, data); delete data._historialArticulos; delete data._historialCampos; }
+        }
+      } catch (e) {}
+      return opts === undefined ? setDoc(refDoc, data) : setDoc(refDoc, data, opts);
+    };
+    window._fb = { collection, doc, setDoc: _setDocHA, getDoc, getDocs, deleteDoc, onSnapshot, deleteField, db: firestoreDB };
 
     // v409 · Si estaba puesto el aviso de que no hay nube, se retira: ya la hay.
     try {
@@ -7273,7 +7493,7 @@ async function initFirebase(config) {
             let uploaded = 0;
             for (const p of local) {
               if (!cloudIds.has(p.id)) {
-                await setDoc(doc(firestoreDB, 'presupuestos', p.id), p, { merge: true });
+                await window._fb.setDoc(doc(firestoreDB, 'presupuestos', p.id), p, { merge: true });   // v732: por el mismo sitio (sin pisar el historial)
                 uploaded++;
               }
             }
@@ -7289,6 +7509,7 @@ async function initFirebase(config) {
 
     console.log('[Azkar] Firebase conectado');
     showSyncStatus('☁️ Firebase conectado');
+    try { _ttCargarFactor(); } catch (e) {}   // v732 · el factor de los tiempos reales
 
     // v121b: Cargar catálogo personalizado desde Firebase (fuente principal) y actualizar datalist
     getCatalogo().then(items => {
@@ -7318,7 +7539,7 @@ async function syncToFirebase() {
         if ((nube.timestamp || 0) > (p.timestamp || 0)) { try { await savePresupuesto(Object.assign({}, nube, { id: p.id })); bajadas++; } catch (e) {} }
         continue;
       }
-      await setDoc(doc(window._fb.db, 'presupuestos', p.id), p, { merge: true });
+      await window._fb.setDoc(doc(window._fb.db, 'presupuestos', p.id), p, { merge: true });   // v732: sin pisar el historial
       subidas++;
     }
     showSyncStatus('✓ Sincronizado con la nube' + (subidas || bajadas ? ' (' + subidas + ' subida(s), ' + bajadas + ' bajada(s))' : ''));
