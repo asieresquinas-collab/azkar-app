@@ -5405,7 +5405,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v729';
+var APP_VERSION = 'v730';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -7185,6 +7185,8 @@ async function initFirebase(config) {
           hasChanges = true;
         }
       }
+      // v730 · si la nube ha cambiado la ficha abierta (Azkarin le quita la marca de «no aceptado»), el cartel se vuelve a mirar
+      try { if (hasChanges && window._currentPresupuestoRef && window._cartelNoElegidaPinta && changes.some(function (c) { return c.doc && c.doc.id === window._currentPresupuestoRef; })) setTimeout(window._cartelNoElegidaPinta, 300); } catch (eP) {}
       // v129: Si el presupuesto abierto cambió REMOTAMENTE (otro dispositivo), actualizar formulario
       // IMPORTANTE: NO recargar si el cambio es NUESTRO (timestamp coincide con _lastSavedTimestamp)
       if (hasChanges && window._currentPresupuestoRef) {
@@ -21389,6 +21391,8 @@ async function doResetWithCode() {
     }
   }
   function addMsg(type, text, opts) {
+    // v730 · cada respuesta de Azkarin puede haber cambiado la ficha abierta (quitar la marca de «no aceptado»): el cartel se vuelve a mirar
+    try { if (type === 'bot' && window._cartelNoElegidaPinta && window._currentPresupuestoRef) setTimeout(window._cartelNoElegidaPinta, 1500); } catch (eP) {}
     var div = document.createElement('div');
     div.className = 'chat-msg ' + type;
     var _h = (opts && opts.hora) || new Date().toLocaleTimeString('es-ES', { hour12:false }); div.setAttribute('data-hora', _h); div.setAttribute('data-rol', type);
@@ -24916,6 +24920,22 @@ async function doResetWithCode() {
       if (!ref) { c.style.display = 'none'; return; }
       var data = null;
       try { data = await getPresupuesto(ref); } catch (e) {}
+      // v730 · «SIGUE LA SEÑAL» (Asier, 24-oct, 23:01): Azkarin le quitó la marca a la 6827-B en la nube y el cartel seguía, porque
+      //  se pintaba con la copia del móvil y no se volvía a mirar. Antes de enseñarlo se pregunta a la nube; si allí ya no está
+      //  marcada, se arregla la copia del móvil y el cartel se va.
+      if (data && data._noElegida && typeof firebaseConfigured !== 'undefined' && firebaseConfigured && window._fb && typeof window._fb.getDoc === 'function') {
+        try {
+          var _sn = await window._fb.getDoc(window._fb.doc(window._fb.db, 'presupuestos', ref));
+          if (_sn && _sn.exists()) {
+            var _nb = _sn.data() || {};
+            if (!_nb._noElegida) {
+              data = Object.assign({}, data, { _noElegida: false, _noElegidaQuitadaTs: _nb._noElegidaQuitadaTs || Date.now() });
+              try { await savePresupuesto(data); } catch (e) {}
+            }
+          }
+        } catch (e) {}
+      }
+      if (String(((document.getElementById('f_ref') || {}).value || '').trim().toUpperCase()) !== ref) return;   // mientras tanto se abrió otra ficha
       if (data && data._noElegida) {
         c.innerHTML = '❌ ESTE PRESUPUESTO NO HA SIDO ACEPTADO — el cliente eligió el <b>'
           + (data._eleccionCliente || 'otro') + '</b>.<br>'
