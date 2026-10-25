@@ -29,7 +29,7 @@ console.log('\n══ B · UN TIEMPO PARA CADA COSA ══');
 const e = ctx.tiempoEstimadoApp;
 t('B1 · la tabla, aunque venga sin tilde o con paréntesis', e('sofa tres plazas').total === 20 && e('Mesilla (alta)').total === 5 && e('Sofá tres plazas').como === 'tabla');
 t('B2 · el armario de 10 puertas = 5 de 2 puertas (125 + 100)', e('Armario de material de 10 puertas').total === 225 && e('Armario de material de 10 puertas').como === 'puertas');
-t('B3 · las cajas 3 min; hacerlas 13', e('Cajas de ropa y varios').total === 3 && e('Hacer cajas en cocina').total === 13);
+t('B3 · las cajas, lo medido: 1,7 min la hecha; hacerla 9,7', e('Cajas de ropa y varios').total === 1.7 && e('Hacer cajas en cocina').total === 9.7);
 t('B4 · la mesa de escritorio es un escritorio (25); la L grande, la mesa mayor (30)', e('Mesa de escritorio').total === 25 && e('Mesa L grande').total === 30, J([e('Mesa de escritorio'), e('Mesa L grande')]));
 t('B5 · lo que no se parece a nada: el tiempo medio, y nunca cero', e('Corchos de pared').como === 'medio' && ['Corchos de pared', 'Taquillas', 'Fichero', 'Calefactor', 'Patinetes', 'Colgador'].every(x => e(x).total > 0));
 t('B6 · vacío → nada', e('') === null);

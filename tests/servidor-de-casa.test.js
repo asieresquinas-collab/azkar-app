@@ -343,8 +343,8 @@ const R0 = R;
     iguales(n.store.azkar_servidor_casa, 'https://vieja.trycloudflare.com');
     if (n.avisos.some(a => /ha cambiado de dirección/.test(a))) throw new Error('aviso de más');
   });
-  await t('F8 · v716 · con el ordenador de casa, si el túnel corta, se espera la respuesta en el buzón hasta seis minutos (y se dice por qué)', async () => {
-    if (!/_esperarBuzon\(_turnoId, \(err && err\.name === 'AbortError'\) \? 20000 : \(_porCasa \? 360000 : 90000\)\)/.test(HTML)) throw new Error('no espera más con casa');
+  await t('F8 · v716 · con el ordenador de casa, si el túnel corta, se espera la respuesta en el buzón hasta doce minutos (v733; y se dice por qué)', async () => {
+    if (!/_esperarBuzon\(_turnoId, \(err && err\.name === 'AbortError'\) \? 20000 : \(_porCasa \? 720000 : 90000\)\)/.test(HTML)) throw new Error('no espera más con casa');
     if (!/Ha tardado más de lo que aguanta el túnel del ordenador de casa/.test(HTML)) throw new Error('sin el aviso de casa');
   });
   await t('F6 · v715 · si contesta algo que no es la versión, el aviso enseña lo que ha contestado', async () => {

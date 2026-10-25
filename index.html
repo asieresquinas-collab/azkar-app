@@ -4497,9 +4497,11 @@ var TIEMPOS_BASE = {
   'Bicicletas':[5, 0],
   'Piano pared eléctrico':[30, 0],
   'Caballetes':[5, 0],
-  'Cajas/Maletas (max 15kg)':[3, 0],
-  'Bultos':[3, 0],
-  'Hacer cajas':[13, 0],
+  // 2.7.1063 · LOS TIEMPOS MEDIDOS DE ASIER (25-oct): coger y bajar cajas ya hechas, tres cajas en cinco minutos (1,7 min la caja);
+  //  hacer una caja, ocho minutos, y luego bajarla (1,7 más): 9,7 por caja hecha por nosotros
+  'Cajas/Maletas (max 15kg)':[1.7, 0],
+  'Bultos':[1.7, 0],
+  'Hacer cajas':[9.7, 0],
   'Rag':[15, 0],
   'Caja perchero':[5, 0]
 };
@@ -4566,7 +4568,7 @@ function PL_LOOKUP(inp){
 //  salía corto. Ahora, igual que el servidor (api/catalogo-precios.js · tiempoEstimadoDe):
 //   · tabla: el nombre está en la tabla (también sin tilde, en plural o dentro de un paréntesis)
 //   · puertas: «armario … de 10 puertas» = 5 módulos de 2 puertas (25 + 20 min cada uno)
-//   · cajas: cada caja, bulto o maleta 3 min; hacerlas, 13
+//   · cajas: lo medido por Asier (25-oct): caja hecha 1,7 min (tres en cinco minutos); hacerla, 8 más bajarla (9,7)
 //   · familia: «mesa de escritorio» → escritorio; «mesa de reuniones» → la media alta de las mesas
 //   · medio: lo que no se parece a nada lleva el tiempo medio de la tabla
 //  Y el total se corrige con lo que tarda DE VERDAD la cuadrilla: el factor medido en los partes
@@ -4596,8 +4598,9 @@ function tiempoEstimadoApp(concepto){
   var ex=idx[c]||idx[c.slice(-1)==='s'?c.slice(0,-1):c+'s'];
   if(!ex){ var sp=_ttNorm(String(concepto).replace(/\(.*?\)/g,' ')); ex=idx[sp]||idx[sp.slice(-1)==='s'?sp.slice(0,-1):sp+'s']; }
   if(ex) return { antes:ex[0], despues:ex[1], total:ex[0]+ex[1], como:'tabla' };
-  if(/\bhacer\b.*\bcajas?\b|\bcajas?\b.*\bhacer\b|\bembalar\b/.test(c)) return { antes:13, despues:0, total:13, como:'cajas' };
-  if(/\bcajas?\b|\bbultos?\b|\bmaletas?\b/.test(c)) return { antes:3, despues:0, total:3, como:'cajas' };
+  // v733 · medido por Asier (25-oct): hacer una caja ocho minutos más bajarla; coger y bajar las ya hechas, tres en cinco minutos
+  if(/\bhacer\b.*\bcajas?\b|\bcajas?\b.*\bhacer\b|\bembalar\b/.test(c)) return { antes:9.7, despues:0, total:9.7, como:'cajas' };
+  if(/\bcajas?\b|\bbultos?\b|\bmaletas?\b/.test(c)) return { antes:1.7, despues:0, total:1.7, como:'cajas' };
   var toks=_ttToks(c), ks=Object.keys(idx), i, k;
   if(toks.length){
     for(i=1;i<toks.length;i++){ var st=_ttSing(toks[i]); for(var q=0;q<ks.length;q++){ k=ks[q]; if(k===toks[i]||k===st||_ttSing(k)===st) return { antes:idx[k][0], despues:idx[k][1], total:idx[k][0]+idx[k][1], como:'familia' }; } }
@@ -5607,7 +5610,7 @@ window.forceSync = forceSync;
 // ══════════════════════════════════════════════════════════════
 //  SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════════════
-var APP_VERSION = 'v732';
+var APP_VERSION = 'v733';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -19952,11 +19955,15 @@ async function doResetWithCode() {
           })();
           return;
         }
-        var _resc = await _esperarBuzon(_turnoId, (err && err.name === 'AbortError') ? 20000 : (_porCasa ? 360000 : 90000));
+        // v732 · con el ordenador de casa, doce minutos (el servidor de casa tiene nueve por mensaje desde la 2.7.1062): un trabajo largo
+        //  (revisar la semana, transcribir varias llamadas) ya no se da por «no completado por el túnel»
+        var _resc = await _esperarBuzon(_turnoId, (err && err.name === 'AbortError') ? 20000 : (_porCasa ? 720000 : 90000));
         if (_resc) { _turnoResuelto(_turnoId); removeTyping(); if (_porCasa) _resc._porCasa = true; _pintarDelBuzon(_resc, _turnoId); sendBtn.disabled = false; return; }
       } catch (eResc) { /* si el rescate falla, se sigue por el camino de siempre */ }
       removeTyping();
-      if (err && err.name === 'AbortError') {
+      if (_porCasa && !(err && err.name === 'AbortError')) {
+        addMsg('bot', '🏠 El ordenador de casa lleva más de doce minutos con esto y no me ha llegado la respuesta. Lo ya hecho no se pierde: al volver a la aplicación te la pongo aquí si está. Si no llega, pídemelo otra vez o pulsa la casita para pasar a Railway.');
+      } else if (err && err.name === 'AbortError') {
         addMsg('bot', '⏱️ He cortado la espera: el servidor llevaba más de 4 minutos sin responder. Si estaba con un trabajo largo, lo ya hecho no se pierde: al volver a la aplicación te pongo aquí la respuesta. Si no llega, reenvía el mensaje.');
       } else {
         addMsg('bot', '❌ No pude conectar con el servidor: ' + (err.message || 'error desconocido'));
