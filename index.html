@@ -2618,7 +2618,9 @@ window._saludoA = function (nombre, d) {
           // v721 · el pase del login de casa puede no valer en Railway (cada servidor firma el suyo): estas van con el pase de
           //  Railway; si Railway dice 401, se saca uno en silencio (con el usuario recordado) y se repite; si no se puede, se hace
           //  por casa como antes y se avisa una vez. Y al entrar con el usuario, se entra también en Railway.
-          if (/\/api\/(pdf\/generate-and-save|drive\/save\b|drive\/captacion\/save|email\/|drive\/pdf\/|drive\/foto\/)|firma/i.test(rec.replace(/\?.*$/, ''))) return _aRailway(rec, _ini);
+          // v735 · y la pestaña WhatsApp entera (chats, conversación, contestar): los enlaces firmados de las fotos los sirve Railway
+          //  y la llave de Dualhook está en Railway; la base es la misma, así que casa no aporta nada aquí
+          if (/\/api\/(pdf\/generate-and-save|drive\/save\b|drive\/captacion\/save|email\/|drive\/pdf\/|drive\/foto\/|whatsapp\/chats)|firma/i.test(rec.replace(/\?.*$/, ''))) return _aRailway(rec, _ini);
           if (rec.indexOf('/api/usuarios/login') >= 0 && _ini && typeof _ini.body === 'string') { try { _loginEn('railway', _ini.body); _loginEn('casa', _ini.body); } catch (eL) {} }
           // v710 · con servidor de casa configurado: se espera a saber si contesta (como mucho cuatro segundos) y se va a él
           var _recCasa = rec.replace('https://' + HOST, _casa.base).replace('http://' + HOST, _casa.base);
@@ -5653,6 +5655,22 @@ window.forceSync = forceSync;
 var _wa = { chats: [], tel: '', ref: '', temporizador: null, cargando: false, ultimoN: -1 };
 function _waApi() { return (typeof RAILWAY_API !== 'undefined' ? RAILWAY_API : 'https://azkar-presupuestos-production.up.railway.app'); }
 function _waEsc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+// v735 · el globo del botón: cuántos chats hay SIN LEER (abrir uno lo deja leído). Se mira cada dos minutos desde que arranca
+//  la app, con el pase puesto; y al momento al entrar en la pestaña.
+function _waPintarGlobo(d) {
+  var g = document.getElementById('wa-globo'); if (!g || !d) return;
+  var n = Number(d.sin_leer || 0);
+  if (n > 0) { g.textContent = n; g.style.display = 'inline-block'; } else g.style.display = 'none';
+  try { if (navigator.setAppBadge) { if (n > 0) navigator.setAppBadge(n); else navigator.clearAppBadge && navigator.clearAppBadge(); } } catch (e) {}
+}
+function waSondearGlobo() {
+  var t = ''; try { t = localStorage.getItem('azkar_token') || ''; } catch (e) {}
+  if (!t) return;
+  fetch(_waApi() + '/api/whatsapp/chats?n=60', { headers: _rpHead() }).then(function (r) { return r.json(); }).then(function (d) { if (d && d.ok) _waPintarGlobo(d); }).catch(function () {});
+}
+setTimeout(waSondearGlobo, 8000); setInterval(waSondearGlobo, 120000);
+// y si la app se abre desde el aviso del móvil (?whatsapp=TEL), va derecha a ese chat
+try { var _waQ = new URLSearchParams(location.search).get('whatsapp'); if (_waQ) setTimeout(function () { try { ST('whatsapp'); if (/^\d{9}$/.test(_waQ)) waAbrir(_waQ); } catch (e) {} }, 1500); } catch (e) {}
 function waEntrar() { waCargarChats(false); if (_wa.temporizador) clearInterval(_wa.temporizador); _wa.temporizador = setInterval(function () { waCargarChats(false); if (_wa.tel) waAbrir(_wa.tel, true); }, 30000); }
 function waSalir() { if (_wa.temporizador) { clearInterval(_wa.temporizador); _wa.temporizador = null; } }
 function waCargarChats(aMano) {
@@ -5666,7 +5684,7 @@ function waCargarChats(aMano) {
       if (!d || !d.ok) { lista.innerHTML = "<div style='padding:18px;color:#c0392b;font-size:12px'>No he podido traer los chats" + (d && d.error ? ': ' + _waEsc(d.error) : '') + ".</div>"; return; }
       _wa.chats = d.chats || [];
       var g = document.getElementById('wa-globo');
-      if (g) { if (d.sin_contestar > 0) { g.textContent = d.sin_contestar; g.style.display = 'inline-block'; } else g.style.display = 'none'; }
+      _waPintarGlobo(d);
       var a = document.getElementById('wa-asistente');
       if (a && d.asistente) {
         var m = d.asistente.modo;
@@ -5680,6 +5698,7 @@ function waCargarChats(aMano) {
         var quien = u.lado === 'cliente' ? '' : (u.asistente ? '🤖 ' : '↩ ');
         h += "<div onclick=\"waAbrir('" + c.tel + "')\" style='padding:10px 12px;border-bottom:1px solid var(--gb);cursor:pointer;background:" + (c.tel === _wa.tel ? 'var(--azc)' : (c.sin_contestar ? '#fff7f0' : '#fff')) + "'>" +
           "<div style='display:flex;align-items:center;gap:6px'><div style='font-weight:800;font-size:13.5px;color:var(--az);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + _waEsc(c.contacto) + (c.ref ? " <span style='font-weight:600;color:#8a8f98;font-size:11px'>· " + _waEsc(c.ref) + "</span>" : '') + "</div>" +
+          (c.sin_leer ? "<span style='width:10px;height:10px;border-radius:50%;background:#2376C5;display:inline-block'></span>" : '') +
           (c.sin_contestar ? "<span style='background:#E85C0D;color:#fff;border-radius:9px;padding:1px 7px;font-size:10px;font-weight:700'>sin contestar</span>" : '') +
           "<div style='font-size:10px;color:#8a8f98;white-space:nowrap'>" + _waEsc(u.hora || '') + "</div></div>" +
           "<div style='font-size:12px;color:#555;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + quien + _waEsc(u.texto || '') + "</div></div>";
@@ -5712,10 +5731,17 @@ function waAbrir(tel, silencioso) {
         var de = mio ? (m.asistente ? '🤖 Azkarin' : (m.de && m.de !== 'Azkar' ? m.de : 'Azkar')) : '';
         h += "<div style='display:flex;justify-content:" + (mio ? 'flex-end' : 'flex-start') + ";margin:4px 0'><div style='max-width:78%;background:" + (mio ? (m.asistente ? '#e6f0ff' : '#dcf8c6') : '#fff') + ";border-radius:10px;padding:7px 10px;box-shadow:0 1px 1px rgba(0,0,0,.08)'>" +
           (de ? "<div style='font-size:10px;font-weight:700;color:" + (m.asistente ? '#2376C5' : '#1a7a3f') + ";margin-bottom:2px'>" + _waEsc(de) + "</div>" : '') +
+          (m.adjunto && m.adjunto.url ? (m.adjunto.tipo === 'image' ? "<a href='" + _waEsc(m.adjunto.url) + "' target='_blank' rel='noopener'><img src='" + _waEsc(m.adjunto.url) + "' loading='lazy' style='max-width:100%;max-height:260px;border-radius:8px;display:block;margin-bottom:4px'></a>" : "<a href='" + _waEsc(m.adjunto.url) + "' target='_blank' rel='noopener' style='display:block;font-size:12px;font-weight:700;color:#2376C5;margin-bottom:4px'>\uD83D\uDCCE " + _waEsc(m.adjunto.nombre || 'archivo') + "</a>") : '') +
           "<div style='font-size:13.5px;line-height:1.4;white-space:pre-wrap;word-break:break-word'>" + _waEsc(m.texto) + "</div>" +
           "<div style='font-size:9.5px;color:#8a8f98;text-align:right;margin-top:2px'>" + _waEsc(m.hora || '') + "</div></div></div>";
       }
+      // las fotos de antes de esta versión (en la carpeta del cliente, sin enganchar a su mensaje): una tira arriba
+      var fotosSueltas = (d.fotos || []).filter(function (f) { return !d.mensajes.some(function (m) { return m.adjunto && m.adjunto.url === f.url; }); });
+      if (fotosSueltas.length) {
+        h = "<div style='background:#fff;border-radius:10px;padding:8px;margin-bottom:8px'><div style='font-size:10.5px;font-weight:700;color:#8a8f98;margin-bottom:5px'>FOTOS QUE HA MANDADO</div><div style='display:flex;gap:6px;overflow-x:auto'>" + fotosSueltas.map(function (f) { return "<a href='" + _waEsc(f.url) + "' target='_blank' rel='noopener'><img src='" + _waEsc(f.url) + "' loading='lazy' style='height:84px;border-radius:6px;display:block'></a>"; }).join('') + "</div></div>" + h;
+      }
       caja.innerHTML = h || "<div style='padding:18px;text-align:center;color:#8a8f98'>Sin mensajes.</div>";
+      waSondearGlobo();
       caja.scrollTop = caja.scrollHeight;
       var esc = document.getElementById('wa-escribir'); esc.style.display = 'block';
       var np = document.getElementById('wa-no-puede'); var btn = document.getElementById('wa-btn-mandar'); var ta = document.getElementById('wa-texto');
@@ -5740,7 +5766,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v734';
+var APP_VERSION = 'v735';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
