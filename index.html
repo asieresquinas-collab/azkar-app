@@ -5671,7 +5671,7 @@ function waSondearGlobo() {
 setTimeout(waSondearGlobo, 8000); setInterval(waSondearGlobo, 120000);
 // y si la app se abre desde el aviso del móvil (?whatsapp=TEL), va derecha a ese chat
 try { var _waQ = new URLSearchParams(location.search).get('whatsapp'); if (_waQ) setTimeout(function () { try { ST('whatsapp'); if (/^\d{9}$/.test(_waQ)) waAbrir(_waQ); } catch (e) {} }, 1500); } catch (e) {}
-function waEntrar() { waCargarChats(false); if (_wa.temporizador) clearInterval(_wa.temporizador); _wa.temporizador = setInterval(function () { waCargarChats(false); if (_wa.tel) waAbrir(_wa.tel, true); }, 30000); }
+function waEntrar() { waCargarChats(false); if (_wa.temporizador) clearInterval(_wa.temporizador); _wa.temporizador = setInterval(function () { waCargarChats(false); if (_wa.tel) waAbrir(_wa.tel, true); }, 15000); }
 function waSalir() { if (_wa.temporizador) { clearInterval(_wa.temporizador); _wa.temporizador = null; } }
 function waCargarChats(aMano) {
   if (_wa.cargando) return;
@@ -5717,8 +5717,10 @@ function waAbrir(tel, silencioso) {
     .then(function (d) {
       if (!d || !d.ok) { caja.innerHTML = "<div style='padding:18px;color:#c0392b;font-size:12px'>No he podido abrir el chat" + (d && d.error ? ': ' + _waEsc(d.error) : '') + ".</div>"; return; }
       if (d.tel !== _wa.tel) return;
-      if (silencioso && d.mensajes.length === _wa.ultimoN) return;
-      _wa.ultimoN = d.mensajes.length;
+      // v736 · la huella de la conversación cuenta también las fotos (se enganchan unos segundos después del mensaje)
+      var huella = d.mensajes.length + ':' + d.mensajes.filter(function (m) { return m.adjunto; }).length + ':' + ((d.fotos || []).length);
+      if (silencioso && huella === _wa.ultimoN) return;
+      _wa.ultimoN = huella;
       document.getElementById('wa-conv-cab').style.display = 'flex';
       document.getElementById('wa-conv-nombre').textContent = d.contacto || d.tel;
       document.getElementById('wa-conv-sub').textContent = '+34 ' + d.tel + (d.ref ? ' · ficha ' + d.ref : '') + (d.asistente && d.asistente.pausado_hasta > Date.now() ? ' · ' + (d.asistente.pausado_por || 'asistente apartado') : '');
@@ -5762,11 +5764,11 @@ function waMandar() {
     .then(function (d) {
       btn.disabled = false; btn.innerHTML = 'Mandar &#10148;';
       if (!d || !d.ok) { alert('No ha salido: ' + ((d && d.error) || 'sin respuesta')); return; }
-      ta.value = ''; _wa.ultimoN = -1; waAbrir(_wa.tel, true);
+      ta.value = ''; _wa.ultimoN = -1; waAbrir(_wa.tel, true); setTimeout(function () { if (_wa.tel) waAbrir(_wa.tel, true); }, 4000);
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v735';
+var APP_VERSION = 'v736';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
