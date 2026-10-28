@@ -5769,7 +5769,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v737';
+var APP_VERSION = 'v738';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -20085,8 +20085,7 @@ async function doResetWithCode() {
           })();
         }
       } else if (data.tipo === 'confirmacion') {
-        pendingAction = data.accion;
-        addConfirmMsg(data.accion.descripcion);
+        _pintarConfirmacion(data);   // v738 · con su texto, en voz alta y en la conversación
       } else if (data.tipo === 'resultado') {
         addMsg('bot', (/^\s*[❌⚠️🛑🚫]/.test(data.mensaje || '') ? '' : '✅ ') + data.mensaje); // v386: un fallo no lleva ✅ delante
         chatHistorial.push({ role: 'assistant', content: data.mensaje });
@@ -20172,6 +20171,14 @@ async function doResetWithCode() {
       if (window._marcarPintadoTurno) window._marcarPintadoTurno(_turnoIdC);
       if (data.error) {
         addMsg('bot', '❌ Error: ' + data.error);
+      } else if (data.tipo === 'confirmacion' && data.accion) {
+        // v738 · lo de antes ya está hecho y falta OTRO paso: su tarjeta (antes se quedaba en «Hecho ✅. Siguiente paso:» y nada más)
+        if (accion.herramienta === 'agregar_articulos' || accion.herramienta === 'modificar_campo') {
+          if (window._currentPresupuestoRef && accion.argumentos && accion.argumentos.ref === window._currentPresupuestoRef) {
+            setTimeout(function() { try { if (typeof forceSync === 'function') forceSync(); } catch(e) {} }, 1500);
+          }
+        }
+        _pintarConfirmacion(data);
       } else {
         addMsg('bot', (/^\s*[❌⚠️🛑🚫]/.test(data.mensaje || '') ? '' : '✅ ') + (data.mensaje || 'Hecho')); // v386: idem
         chatHistorial.push({ role: 'assistant', content: data.mensaje || 'Acción ejecutada' });
@@ -21917,6 +21924,22 @@ async function doResetWithCode() {
     msgsDiv.appendChild(div);
     msgsDiv.scrollTop = msgsDiv.scrollHeight;
   }
+  // ── v738 · LA TARJETA DE CONFIRMAR, DICHA Y RECORDADA (Asier, 28-oct: «¿qué es ese ejecutable que me has mandado?… dime qué es,
+  //  no lo quiero leer»). Antes la app enseñaba SOLO la tarjeta: el texto de Azkarin no salía, no se leía en voz alta y no quedaba en
+  //  la conversación, así que si preguntaba qué era, Azkarin no lo sabía. Y el paso SIGUIENTE de un plan (la tarjeta que llega al
+  //  confirmar la anterior) ni se pintaba: solo salía «Hecho ✅. Siguiente paso:» y ahí se quedaba. Ahora, venga de donde venga:
+  //  el texto se enseña y se lee, la tarjeta se pinta, y lo que hace la tarjeta queda en la conversación para Azkarin.
+  function _pintarConfirmacion(data) {
+    if (!data || !data.accion) return false;
+    pendingAction = data.accion;
+    var txt = String(data.mensaje || '').trim();
+    var desc = String(data.accion.descripcion || '').trim();
+    if (txt) addMsg('bot', txt);
+    addConfirmMsg(desc || (txt ? 'Lo que te he dicho arriba.' : 'Una acción.'));
+    chatHistorial.push({ role: 'assistant', content: (txt || 'Te he pedido el OK para una acción.') + '\n[TARJETA PENDIENTE DE TU OK: ' + (desc || data.accion.herramienta || '').slice(0, 700) + ']' });
+    return true;
+  }
+  window._pintarConfirmacion = _pintarConfirmacion;
   var _typingInterval = null;
   function addTyping() {
     removeTyping();
@@ -22007,6 +22030,8 @@ async function doResetWithCode() {
     if (_yaPintado(turnoId)) return true;
     _marcarPintado(turnoId);
     var r = d.respuesta;
+    // v738 · si lo que esperaba en el buzón era una tarjeta de confirmar, se pinta como tal (con su texto, en voz alta)
+    if (r && r.tipo === 'confirmacion' && r.accion) { _pintarConfirmacion(r); if (d.aviso) addMsg('bot', 'ℹ️ ' + d.aviso); return true; }
     var txt = r.mensaje || r.respuesta || '';
     if (txt) {
       addMsg('bot', txt + '<div style="margin-top:6px;font-size:11px;color:#888">' + (d._largo ? '↩️ Es la respuesta del trabajo largo de antes' : (d._porCasa ? '↩️ Ha tardado más de lo que aguanta el túnel del ordenador de casa; lo he recogido de allí' : '↩️ Se quedó a medias porque saliste de la aplicación; lo he recogido del servidor'))
