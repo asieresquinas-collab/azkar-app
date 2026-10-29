@@ -3012,6 +3012,58 @@ var PROMO_CONCEPTOS_EXCLUIDOS = ['Cajas/Maletas (max 15kg)', 'Bultos', 'Hacer ca
 // coste fijo de sacar el camión y el equipo a la calle: no es margen que se pueda regalar.
 // Se excluye por NOMBRE y también por la marca de fila fija, por si alguna vez se renombra.;
 window._promoManual = false;
+// ══════════════════════════════════════════════════════════════════════════
+//  🛑 v741 · LA CUENTA QUE FIRMÓ EL CLIENTE (Asier, 29-oct-2026; backend 2.7.1142, api/dinero-ficha.js cuentaFirmada)
+//  El documento que firmó Yolanda descontó el veinte por ciento también a «Hacer cajas» y a «Bultos». Asier: «el precio que le queda
+//  a un cliente ya no lo cambio; si lleva más cosas se le suma, y si lleva menos se le descuenta» (un precio cerrado no vale: no se
+//  movería). Si el documento firmado DEMUESTRA esa cuenta (su total cuadra con el veinte por ciento también en esas líneas, y con la de
+//  siempre no), la ficha se sigue contando así, en pantalla y en el PDF: lo que se añada o se quite entra con el mismo descuento. La
+//  salida y el servicio base, nunca. La misma cuenta que el servidor.
+// ══════════════════════════════════════════════════════════════════════════
+window._promoCajasFirmada = false;
+function _numEurApp(x) {
+  if (typeof x === 'number') return isFinite(x) ? x : 0;
+  var t = String(x == null ? '' : x).replace(/[€\s]/g, '');
+  if (!t) return 0;
+  if (/,\d{1,2}$/.test(t)) t = t.replace(/\./g, '').replace(',', '.'); else t = t.replace(/,/g, '');
+  var n = parseFloat(t); return isFinite(n) ? n : 0;
+}
+function _baseFilasFirmadas(rows, promo, cajasConPromo) {
+  var b = 0;
+  (rows || []).forEach(function (r) {
+    if (!r || typeof r !== 'object') return;
+    var linea = (parseFloat(r.u) || 0) * (parseFloat(r.p) || 0) * (1 - ((parseFloat(r.d) || 0) / 100));
+    if (!isFinite(linea)) return;
+    var n = String(r.c == null ? '' : r.c).trim();
+    var excl = PROMO_CONCEPTOS_EXCLUIDOS.indexOf(n) >= 0;
+    if (excl && cajasConPromo && n !== 'Salida' && n.indexOf('Servicio base') !== 0) excl = false;
+    if (r.dp || /\(2[ºo] del cambio\)/i.test(n)) excl = true;
+    if (promo && linea > 0 && !excl) linea = linea - linea * 0.20;
+    b += linea;
+  });
+  return b;
+}
+function cuentaFirmadaApp(data) {
+  try {
+    var d = data || {};
+    var doc = _numEurApp(d._totalFirmado);
+    if (!(doc > 0) || !Array.isArray(d._rowsFirmadas) || !d._rowsFirmadas.length) return false;
+    if (d._firmadoVariante && !d._firmadaDirecta) return false;   // la copia puede ser la de su -B
+    var r2 = function (x) { return Math.round(x * 100) / 100; };
+    var promoA = !!d._promoAlFirmar;
+    if (Math.abs(r2(_baseFilasFirmadas(d._rowsFirmadas, promoA, false) * 1.21) - doc) <= 0.05) return false;   // la cuenta de siempre
+    return promoA && Math.abs(r2(_baseFilasFirmadas(d._rowsFirmadas, true, true) * 1.21) - doc) <= 0.05;
+  } catch (e) { return false; }
+}
+window.cuentaFirmadaApp = cuentaFirmadaApp;
+function _cajasConLaPromoFirmada(nombre, fila) {
+  if (!window._promoCajasFirmada) return false;
+  var n = String(nombre || '').trim();
+  if (n === 'Salida' || n.indexOf('Servicio base') === 0) return false;
+  if (fila && (fila.getAttribute('data-2p') || fila.getAttribute('data-fijo') === 'salida')) return false;
+  if (/\(2[ºo] del cambio\)/i.test(n)) return false;
+  return PROMO_CONCEPTOS_EXCLUIDOS.indexOf(n) >= 0;
+}
 function isPromoQuincenal() {
   return !!window._promoManual;
 }
@@ -3037,6 +3089,7 @@ function promoBaseDescontable() {
     var u = parseFloat(ns[0].value) || 0, p = parseFloat(ns[1].value) || 0, d = parseFloat(ns[2].value) || 0;
     var t = u * p * (1 - d / 100);
     var esExcluido = PROMO_CONCEPTOS_EXCLUIDOS.indexOf(nombre) >= 0 || !!rows[i].getAttribute('data-2p') || rows[i].getAttribute('data-fijo') === 'salida' || /\(2[\u00bao] del cambio\)/i.test(nombre);
+    if (esExcluido && _cajasConLaPromoFirmada(nombre, rows[i])) esExcluido = false;   // v741 · como la firmó el cliente
     if (!esExcluido && t > 0) base += t;
   }
   return base;
@@ -3098,6 +3151,7 @@ function CA(){
     // v393: lo que va ENTRE DOS no lleva descuento de ningún tipo, tampoco la promo:
     // si no, el recargo que cubre a la segunda persona se lo comería el descuento.
     var esExcluido = PROMO_CONCEPTOS_EXCLUIDOS.indexOf(nombre) >= 0 || !!rows[i].getAttribute('data-2p') || rows[i].getAttribute('data-fijo') === 'salida' || /\(2[ºo] del cambio\)/i.test(nombre);   // v407: la Salida no lleva promo · v473: y la línea del cambio ya lleva SU 20%, no se descuenta dos veces
+    if (esExcluido && _cajasConLaPromoFirmada(nombre, rows[i])) esExcluido = false;   // v741 · como la firmó el cliente (las cajas y los bultos, también)
     if(promo && !esExcluido && t > 0) {
       var dtoPromo = t * 0.20;
       basePromo += dtoPromo;
@@ -3512,6 +3566,7 @@ function _comercialActual(){
 function dejarLaFichaEnBlanco(){
   window._fichaRecienAbierta = false;   // v566
   window._currentBorrador = false; window._tocadoPorPersona = false;   // v565: sin cartel de borrador
+  window._promoCajasFirmada = false;   // v741 · la cuenta firmada es de cada ficha
   try { if (typeof pintarBorradorAviso === 'function') pintarBorradorAviso(null); } catch (e) {}
   soltarEstadoDeRuta();   // v567: km, ruta, tiempo, grúa, autónomo, Drive — todo del cliente anterior, fuera
   window._camposCargados = null;   // v567: una ficha nueva no tenía nada: nunca se manda a borrar nada de ella
@@ -5293,6 +5348,7 @@ function LD(){
     // v194: Restaurar ascensor
     if(typeof setAscensor==='function'){setAscensor('rec',data.asc_rec||'');setAscensor('ent',data.asc_ent||'');}
     // v199: Restaurar promo manual
+    window._promoCajasFirmada = typeof cuentaFirmadaApp === 'function' && cuentaFirmadaApp(data);   // v741 · como la firmó el cliente
     window._promoManual=!!data._promoManual;
     CA(); SY(); CT();
   }catch(e){}
@@ -5769,7 +5825,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v740';
+var APP_VERSION = 'v741';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -7204,6 +7260,7 @@ function collectFormData() {
 
 function restoreFormData(data) {
   if (!data) return;
+  window._promoCajasFirmada = typeof cuentaFirmadaApp === 'function' && cuentaFirmadaApp(data);   // v741 · como la firmó el cliente (antes de la primera cuenta)
   // ── v545 · ¿ES LA MISMA FICHA QUE HABÍA ABIERTA? ────────────────────────────
   //  Asier, 28-ago: «he hecho un presupuesto que no tiene nada que ver ni con la
   //  plataforma ni con las orugas y se me han marcado las dos, las tenía
@@ -10911,6 +10968,7 @@ function buildCompleteHTML(pageIds) {
       // MISMA cuenta que CA(): descuento de línea y, si toca, el 20% de la promo
       var t = u * pr * (1 - dt / 100);
       var excluido = (typeof PROMO_CONCEPTOS_EXCLUIDOS !== 'undefined' && PROMO_CONCEPTOS_EXCLUIDOS.indexOf(nombre) >= 0) || !!cr.getAttribute('data-2p') || cr.getAttribute('data-fijo') === 'salida';   // v407
+      if (excluido && typeof _cajasConLaPromoFirmada === 'function' && _cajasConLaPromoFirmada(nombre, cr)) excluido = false;   // v741 · como la firmó el cliente
       if (_promoOn && !excluido && t > 0) t = t * 0.80;
       var neto = (Math.round((t / u) * 100) / 100).toFixed(2);
       precioSav.push({ inp: ns[1], v: ns[1].value });
