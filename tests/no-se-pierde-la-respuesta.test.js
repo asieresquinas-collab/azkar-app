@@ -39,7 +39,8 @@ c('B1 · al volver a la app (visibilitychange)', /visibilitychange[\s\S]{0,90}_r
 c('B2 · al volver el foco', /addEventListener\('focus', function \(\) \{ _recogerTurnoPendiente\(\); \}\)/.test(H));
 c('B3 · y al abrir la app, por si Android la mató', /setTimeout\(_recogerTurnoPendiente, 2500\)/.test(H));
 c('B4 · el turno pendiente se guarda también en el móvil (aguanta que la maten)', /localStorage\.setItem\(_TURNO_PEND_K/.test(H));
-c('B5 · 🛑 y se BORRA en cuanto llega la respuesta (si no, se repetiría sola)', /var data = await resp\.json\(\);\s*\n\s*_turnoResuelto\(_turnoId\);/.test(H));
+// v740 · si casa ha dicho «sigo con ello» (en_marcha), la respuesta todavía no ha llegado: el turno sigue apuntado hasta que llega la de verdad del buzón
+c('B5 · 🛑 y se BORRA en cuanto llega la respuesta (si no, se repetiría sola)', /var data = await resp\.json\(\);\s*\n(?:\s*\/\/ v740[^\n]*\n\s*if \(data && data\.tipo === 'en_marcha'\) \{[\s\S]{0,700}?data = _dEM;\s*\}\s*\n)?\s*_turnoResuelto\(_turnoId\);/.test(H));
 c('B6 · un turno de hace más de media hora se descarta (el buzón ya no lo tiene)', /Date\.now\(\) - \(pend\.ts \|\| 0\) > 30 \* 60 \* 1000/.test(H));
 c('B7 · 🛑 NO se reenvía la pregunta: solo se recoge', !/_recogerTurnoPendiente[\s\S]{0,700}chatbot\/message/.test(H));
 

@@ -5769,7 +5769,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v739';
+var APP_VERSION = 'v740';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -19679,11 +19679,22 @@ async function doResetWithCode() {
           // parrafos larguisimos ("no es una conversacion humana", Asier 5-ago).
           if (window._azkarinConv) _b.modo_voz = true;
           if (_pegadoEnvio) _b.pegado = true;   // v707
+          _b.buzon_si_tarda = true;   // v740 · detrás del túnel de casa: si va a tardar, «sigo con ello» y la respuesta al buzón
           return _b;
         })())
       });
       if (_tAbort) clearTimeout(_tAbort);
       var data = await resp.json();
+      // v740 · casa ha dicho «sigo con ello» antes de que corte el túnel: se espera a la respuesta en el buzón y se pinta como siempre
+      if (data && data.tipo === 'en_marcha') {
+        var _dEM = await _seguirEnMarcha(data, _turnoId);
+        if (!_dEM) {
+          removeTyping(); stopProgPoll(); sendBtn.disabled = false;
+          if (!(window._yaPintadoTurno && window._yaPintadoTurno(_turnoId))) addMsg('bot', '🏠 El ordenador de casa lleva más de doce minutos con esto y todavía no ha terminado. Lo ya hecho no se pierde: si termina, al volver a la aplicación te lo pongo aquí. Si no llega, pídemelo otra vez.');
+          return;
+        }
+        data = _dEM;
+      }
       _turnoResuelto(_turnoId);   // v574
       removeTyping();
       // v726 · si ya se pintó recogida del buzón (al volver a la app), no se pinta otra vez
@@ -20178,11 +20189,22 @@ async function doResetWithCode() {
           historial: chatHistorial,
           turno_id: _turnoIdC,
           ubicacion: _ubicNowC, // v391
-          confirmar_accion: { herramienta: accion.herramienta, argumentos: accion.argumentos, confirmado: true }
+          confirmar_accion: { herramienta: accion.herramienta, argumentos: accion.argumentos, confirmado: true },
+          buzon_si_tarda: true   // v740 · detrás del túnel de casa: si va a tardar, «sigo con ello» y la respuesta al buzón
         })
       });
       if (_tAbortC) clearTimeout(_tAbortC);
       var data = await resp.json();
+      // v740 · casa ha dicho «sigo con ello» antes de que corte el túnel: se espera a la respuesta en el buzón y se pinta como siempre
+      if (data && data.tipo === 'en_marcha') {
+        var _dEMC = await _seguirEnMarcha(data, _turnoIdC);
+        if (!_dEMC) {
+          removeTyping();
+          if (!(window._yaPintadoTurno && window._yaPintadoTurno(_turnoIdC))) addMsg('bot', '🏠 El ordenador de casa lleva más de doce minutos con esto y todavía no ha terminado. Lo ya hecho no se pierde: si termina, al volver a la aplicación te lo pongo aquí. Si no llega, pídemelo otra vez.');
+          return;
+        }
+        data = _dEMC;
+      }
       _turnoResuelto(_turnoIdC);   // v574
       removeTyping();
       if (window._yaPintadoTurno && window._yaPintadoTurno(_turnoIdC)) { return; }   // v726
@@ -22061,6 +22083,22 @@ async function doResetWithCode() {
     }
     return null;
   }
+  // ══════════════════════════════════════════════════════════════════════════
+  //  🛑 v740 · «QUE NO LO TENGA QUE COGER DEL TÚNEL, QUE LE DÉ TIEMPO PARA HACERLO» (Asier, 29-oct-2026)
+  //  El túnel del ordenador de casa (Cloudflare) corta a los cien segundos aunque casa siga trabajando, y la respuesta se
+  //  recogía del buzón con el aviso «↩️ Ha tardado más de lo que aguanta el túnel…». Ahora la app pide «buzon_si_tarda» y,
+  //  si va a tardar, casa contesta ANTES del corte «sigo con ello» (tipo en_marcha, backend 2.7.1140): aquí se espera a la
+  //  respuesta de verdad en el buzón (hasta doce minutos, con el «trabajando…» puesto) y se devuelve como si hubiera llegado
+  //  por la petición, para pintarla igual que siempre, sin avisos. Si no llega en doce minutos, null.
+  // ══════════════════════════════════════════════════════════════════════════
+  async function _seguirEnMarcha(data, turnoId) {
+    if (!(data && data.tipo === 'en_marcha')) return data;
+    var d = await _esperarBuzon(String(data.turno_id || turnoId || ''), 12 * 60000);
+    if (!(d && d.respuesta)) return null;
+    if (d.aviso) { var _av = d.aviso; setTimeout(function () { try { addMsg('bot', 'ℹ️ ' + _av); } catch (e) {} }, 400); }
+    return d.respuesta;
+  }
+  window._seguirEnMarchaTurno = _seguirEnMarcha;
   // Pinta una respuesta recogida del buzón. Devuelve true si había algo que pintar.
   // v726 · UNA RESPUESTA SE PINTA UNA VEZ. 23-oct: la misma contestación de Azkarin salió dos veces seguidas: el mensaje que se
   //  cortó por el túnel esperaba su respuesta en el buzón y, a la vez, al volver a la app se recogía el «turno pendiente»; los dos
