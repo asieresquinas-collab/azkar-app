@@ -5769,7 +5769,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v738';
+var APP_VERSION = 'v739';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -17953,6 +17953,7 @@ async function doResetWithCode() {
 .chat-confirm-btns{display:flex;gap:8px;margin-top:8px}
 .chat-confirm-btns button{padding:6px 16px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer}
 .chat-confirm-btns .btn-si{background:#1a7a3f;color:#fff}
+.chat-confirm-btns .btn-si[disabled]{opacity:.55;cursor:default}
 .chat-confirm-btns .btn-no{background:#c0392b;color:#fff}
 .chat-typing{align-self:flex-start;padding:10px 14px;background:#f0f4ff;border:1px solid #c5d4e8;border-radius:12px;font-size:13px;color:#1B4F8A;display:flex;align-items:center;gap:8px}
 .chat-typing-dots{display:flex;gap:4px;align-items:center}
@@ -19607,9 +19608,21 @@ async function doResetWithCode() {
       if (_esSi || _esNo) {
         addMsg('user', msg);
         chatHistorial.push({ role: 'user', content: msg });
-        chatbotConfirm(_esSi);
+        chatbotConfirm(_esSi, true);
         return;
       }
+      // v739 · «NO. VE QUE ME HAYAS PUESTO EL DE YOLANDA…» (Asier, 29-oct, 6:03). Con la tarjeta de quitar una rutina esperando,
+      //  escribió eso (empieza por «No», pero es largo) y la tarjeta se quedó viva: un toque después, la rutina quitada. Ahora, si
+      //  con una tarjeta esperando escribe otra cosa que no es un «sí» corto, la tarjeta se RETIRA sin hacer (si empieza por «no»,
+      //  se cancela) y su frase sigue al chat. Si la quiere, se la vuelven a proponer.
+      var _empiezaNo = /^(no|nop|nope|para|espera|cancela|mejor no|todavia no|aun no)\b/.test(_r);
+      var _descRet = String((pendingAction && pendingAction.descripcion) || (pendingAction && pendingAction.herramienta) || '').slice(0, 300);
+      pendingAction = null;
+      try { msgsDiv.querySelectorAll('.chat-confirm-btns').forEach(function(b){ b.remove(); }); } catch(e){}
+      try {
+        addMsg('bot', _empiezaNo ? '❌ Tarjeta cancelada: no se ha hecho.' : '↩️ La tarjeta de antes se queda sin hacer, porque me has escrito otra cosa.');
+        chatHistorial.push({ role: 'assistant', content: (_empiezaNo ? 'Tarjeta CANCELADA por Asier (empezó su mensaje con «no»): NO se ha hecho: ' : 'Tarjeta retirada SIN hacer porque Asier ha escrito otra cosa: ') + _descRet });
+      } catch(e){}
       }
     }
     // ── v653 · EL MISMO MENSAJE, DOS VECES (Asier, 11-sep) ──────────────────
@@ -20131,9 +20144,14 @@ async function doResetWithCode() {
     } catch(fatalErr) { console.error('[Chatbot] Error fatal aislado:', fatalErr); sendBtn.disabled = false; }
   };
 
-  window.chatbotConfirm = async function(si) {
+  window.chatbotConfirm = async function(si, porVoz) {
     try {
     if (!pendingAction) return;
+    // v739 · un toque en «Sí» antes de tiempo no vale (el «sí» dicho o escrito, sí: eso no es un toque reflejo)
+    if (si && !porVoz && _azkTarjeta && _azkTarjeta.ts && (Date.now() - _azkTarjeta.ts) < _azkTarjeta.espera) {
+      try { var _b = msgsDiv.querySelector('.chat-confirm-btns .btn-si'); if (_b) { var _t0 = _b.textContent; _b.textContent = 'Léela y vuelve a tocar'; setTimeout(function(){ if (_b.isConnected && _b.textContent === 'Léela y vuelve a tocar') _b.textContent = _t0; }, 1200); } } catch(e){}
+      return;
+    }
     var accion = pendingAction;
     pendingAction = null;
     var btns = msgsDiv.querySelectorAll('.chat-confirm-btns');
@@ -21915,14 +21933,40 @@ async function doResetWithCode() {
     // Pre-cargar voces (algunos navegadores las cargan async)
     if ('speechSynthesis' in window) speechSynthesis.getVoices();
   })();
-  function addConfirmMsg(desc) {
+  // v739 · «UN TOQUE REFLEJO NO VALE» (29-oct, 6:04): la tarjeta de borrar la nota de las nueve salió y a los dos segundos ya
+  //  estaba aceptada. Ahora el «Sí» de una tarjeta que BORRA o QUITA algo espera tres segundos (con la cuenta a la vista: así da
+  //  tiempo a leer QUÉ se borra) y el de las demás, un segundo. Un toque antes de tiempo no hace nada.
+  var _azkTarjeta = { ts: 0, espera: 0 };
+  function _tarjetaBorra(accion) {
+    var re = /^(borrar|eliminar|quitar|desinstalar|vaciar|purgar|destruir|resetear)_/;
+    try {
+      if (!accion) return false;
+      if (re.test(String(accion.herramienta || ''))) return true;
+      var pasos = (accion.argumentos && accion.argumentos.acciones) || [];
+      return Array.isArray(pasos) && pasos.some(function(a){ return a && re.test(String(a.herramienta || '')); });
+    } catch(e) { return false; }
+  }
+  function addConfirmMsg(desc, accion) {
+    var borra = _tarjetaBorra(accion);
     var div = document.createElement('div');
     div.className = 'chat-msg bot confirm';
-    div.innerHTML = '<strong>⚠️ Confirmar acción:</strong><br>' + escHtml(desc) +
-      '<div class="chat-confirm-btns"><button class="btn-si" onclick="chatbotConfirm(true)">✅ Sí, ejecutar</button>' +
+    var espera = borra ? 3000 : 1000;
+    _azkTarjeta = { ts: Date.now(), espera: espera };
+    var txtSi = borra ? '✅ Sí, quitarlo' : '✅ Sí, ejecutar';
+    div.innerHTML = '<strong>' + (borra ? '⚠️ Esto BORRA o QUITA algo:' : '⚠️ Confirmar acción:') + '</strong><br>' + escHtml(desc) +
+      '<div class="chat-confirm-btns"><button class="btn-si" onclick="chatbotConfirm(true)"' + (borra ? ' disabled' : '') + '>' + txtSi + (borra ? ' (3)' : '') + '</button>' +
       '<button class="btn-no" onclick="chatbotConfirm(false)">❌ No, cancelar</button></div>';
     msgsDiv.appendChild(div);
     msgsDiv.scrollTop = msgsDiv.scrollHeight;
+    if (borra) {
+      var btn = div.querySelector('.btn-si'), n = 3;
+      var tic = setInterval(function() {
+        n--;
+        if (!btn || !btn.isConnected) { clearInterval(tic); return; }
+        if (n <= 0) { clearInterval(tic); btn.disabled = false; btn.textContent = txtSi; }
+        else btn.textContent = txtSi + ' (' + n + ')';
+      }, 1000);
+    }
   }
   // ── v738 · LA TARJETA DE CONFIRMAR, DICHA Y RECORDADA (Asier, 28-oct: «¿qué es ese ejecutable que me has mandado?… dime qué es,
   //  no lo quiero leer»). Antes la app enseñaba SOLO la tarjeta: el texto de Azkarin no salía, no se leía en voz alta y no quedaba en
@@ -21935,7 +21979,7 @@ async function doResetWithCode() {
     var txt = String(data.mensaje || '').trim();
     var desc = String(data.accion.descripcion || '').trim();
     if (txt) addMsg('bot', txt);
-    addConfirmMsg(desc || (txt ? 'Lo que te he dicho arriba.' : 'Una acción.'));
+    addConfirmMsg(desc || (txt ? 'Lo que te he dicho arriba.' : 'Una acción.'), data.accion);
     chatHistorial.push({ role: 'assistant', content: (txt || 'Te he pedido el OK para una acción.') + '\n[TARJETA PENDIENTE DE TU OK: ' + (desc || data.accion.herramienta || '').slice(0, 700) + ']' });
     return true;
   }

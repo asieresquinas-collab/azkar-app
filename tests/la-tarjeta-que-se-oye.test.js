@@ -41,7 +41,8 @@ console.log('\nB · los tres caminos por los que llega una tarjeta');
 ok('B1 · la respuesta normal', /\} else if \(data\.tipo === 'confirmacion'\) \{\s*_pintarConfirmacion\(data\);/.test(HTML));
 ok('B2 · el paso siguiente que llega al confirmar el anterior (antes: «Hecho ✅. Siguiente paso:» y nada)', /\} else if \(data\.tipo === 'confirmacion' && data\.accion\) \{[\s\S]{0,600}_pintarConfirmacion\(data\);\s*\} else \{\s*addMsg\('bot', \(\/\^\\s\*\[❌⚠️🛑🚫\]\//.test(HTML));
 ok('B3 · la respuesta recogida del buzón', /if \(r && r\.tipo === 'confirmacion' && r\.accion\) \{ _pintarConfirmacion\(r\);/.test(HTML));
-ok('B4 · el «sí» hablado sigue ejecutando la tarjeta pendiente', /var _esSi = _corto && \/\^\(si\|/.test(HTML) && /chatbotConfirm\(_esSi\);/.test(HTML));
+// (v739: con «true» detrás = es un sí dicho o escrito, no un toque: no le afecta la espera del botón)
+ok('B4 · el «sí» hablado sigue ejecutando la tarjeta pendiente', /var _esSi = _corto && \/\^\(si\|/.test(HTML) && /chatbotConfirm\(_esSi(?:, true)?\);/.test(HTML));
 
 console.log('\nC · versión');
 const _v = (HTML.match(/var APP_VERSION = '(v\d+)'/) || [])[1];
