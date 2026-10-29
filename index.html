@@ -5825,7 +5825,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v741';
+var APP_VERSION = 'v742';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18054,7 +18054,13 @@ async function doResetWithCode() {
 .hist-item{border:1px solid #e0e0e0;border-radius:8px;padding:10px;margin-bottom:8px;font-size:12px}
 .hist-item .hist-fecha{color:#999;font-size:11px}
 .hist-item .hist-accion{color:#1B4F8A;font-weight:600}
+/* v742 · PANTALLA COMPLETA (Asier: «un botón para que se expanda el chat a toda la pantalla») y LOS TOKENS POR SEGUNDO de cada respuesta */
+#chatbot-panel.grande{top:0;left:0;right:0;bottom:0;width:100%;max-width:none;height:100%;max-height:none;border-radius:0}
+#chatbot-panel.grande .chat-msg{max-width:min(85%,900px)}
+#chatbot-grande-btn svg{width:17px;height:17px;display:block}
+.chat-tokens{font-size:10.5px;color:#8a97a8;margin-top:2px;line-height:1.35}
 @media(max-width:480px){
+  #chatbot-grande-btn{display:none}
   #chatbot-header{padding:12px 10px}
   #chatbot-header>div:first-child>img{width:30px!important;height:30px!important}
   #chatbot-header button{font-size:18px;padding:0 2px}
@@ -18076,6 +18082,7 @@ async function doResetWithCode() {
       <button id="chatbot-oscar-btn" class="cargando" onclick="chatbotOscarAbrir()" title="&#211;scar &mdash; el que echa las cuentas de los presupuestos">&#211;</button>
       <button id="chatbot-speed-btn" onclick="chatbotCycleSpeed()" title="Velocidad del audio (pulsa para acelerar)">1&times;</button>
       <button id="chatbot-tts-btn" onclick="chatbotToggleTTS()" title="Activar/silenciar voz">&#128264;</button>
+      <button id="chatbot-grande-btn" onclick="chatbotPantallaCompleta()" title="Ver el chat en pantalla completa" aria-label="Ver el chat en pantalla completa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
       <button onclick="chatbotToggle()" title="Cerrar">&times;</button>
     </div>
   </div>
@@ -18695,6 +18702,24 @@ async function doResetWithCode() {
   };
   try { setTimeout(function () { window._azkPintarCasa(); }, 0); } catch (er) {}
 
+  // ── v742 · PANTALLA COMPLETA. Un botón arriba (al lado de cerrar) agranda el chat a toda la pantalla y lo devuelve a su tamaño;
+  //  se acuerda en este aparato. En el móvil estrecho el chat ya ocupa toda la pantalla y el botón no sale.
+  var _ICO_GRANDE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+  var _ICO_PEQUE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>';
+  function _pintarGrande(on) {
+    try {
+      panel.classList.toggle('grande', !!on);
+      var b = document.getElementById('chatbot-grande-btn');
+      if (b) { b.innerHTML = on ? _ICO_PEQUE : _ICO_GRANDE; b.title = on ? 'Volver al tamaño de antes' : 'Ver el chat en pantalla completa'; b.setAttribute('aria-label', b.title); }
+      msgsDiv.scrollTop = msgsDiv.scrollHeight;
+    } catch (e) {}
+  }
+  window.chatbotPantallaCompleta = function () {
+    var on = !panel.classList.contains('grande');
+    _pintarGrande(on);
+    try { localStorage.setItem('azkarin_grande', on ? '1' : '0'); } catch (e) {}
+  };
+  try { _pintarGrande(localStorage.getItem('azkarin_grande') === '1'); } catch (e) {}
   window.chatbotToggle = function() {
     panel.classList.toggle('open');
     window._chatbotActivo = panel.classList.contains('open');
@@ -19765,6 +19790,7 @@ async function doResetWithCode() {
       // v653 · si el servidor cortó una COPIA del mismo mensaje, no se pinta nada: ese
       // cartel era lo único que llegaba y la respuesta buena se perdía (Asier, 11-sep).
       if (data && data.duplicado) { sendBtn.disabled = false; stopProgPoll(); return; }
+      try { window._azkTokensDe(data); } catch (eTk) {}   // v742
       if (data.error) {
         addMsg('bot', '❌ Error: ' + data.error);
       } else if (data.tipo === 'texto') {
@@ -20267,6 +20293,7 @@ async function doResetWithCode() {
       removeTyping();
       if (window._yaPintadoTurno && window._yaPintadoTurno(_turnoIdC)) { return; }   // v726
       if (window._marcarPintadoTurno) window._marcarPintadoTurno(_turnoIdC);
+      try { window._azkTokensDe(data); } catch (eTk) {}   // v742
       if (data.error) {
         addMsg('bot', '❌ Error: ' + data.error);
       } else if (data.tipo === 'confirmacion' && data.accion) {
@@ -21904,6 +21931,37 @@ async function doResetWithCode() {
       var d = document.createElement('div'); d.textContent = String(html || '').replace(/<[^>]*>/g, ''); return d.innerHTML;
     }
   }
+  // ── v742 · LOS TOKENS POR SEGUNDO (Asier: «un contador… digo tokens por segundo»). El servidor (2.7.1144) manda en cada respuesta
+  //  lo que escribió el modelo y lo que tardó (con el ordenador de casa, lo que mide su servidor solo al escribir). Sale debajo del
+  //  primer mensaje que se pinta tras la respuesta, en gris y sin leerse en voz alta.
+  window._azkTokensPend = null;
+  window._azkTokensDe = function (d) {
+    try { var t = d && d.tokens; window._azkTokensPend = (t && (t.salida || t.entrada)) ? { t: Date.now(), tk: t } : null; } catch (e) { window._azkTokensPend = null; }
+  };
+  function _azkNum(n, dec) {
+    try { return Number(n || 0).toLocaleString('es-ES', { maximumFractionDigits: dec || 0, minimumFractionDigits: 0 }); } catch (e) { return String(n || 0); }
+  }
+  function _azkTokensTexto(tk) {
+    if (!tk) return '';
+    var ps = Number(tk.por_segundo) || 0;
+    var txt = ps > 0
+      ? '⚡ ' + _azkNum(ps, ps < 10 ? 1 : 0) + ' tokens por segundo · ' + _azkNum(tk.salida) + ' escritos' + (tk.segundos ? ' en ' + _azkNum(tk.segundos, 1) + ' s' : '')
+      : '⚡ ' + _azkNum(tk.salida) + ' tokens escritos';
+    if (Number(tk.leyendo_por_segundo) > 0) txt += ' · leyendo ' + _azkNum(tk.leyendo_por_segundo) + ' por segundo';
+    return txt;
+  }
+  function _azkTokensEn(div) {
+    var p = window._azkTokensPend;
+    if (!p || !p.tk || Date.now() - p.t > 15000) return;
+    window._azkTokensPend = null;
+    var tk = p.tk, l = document.createElement('div');
+    l.className = 'chat-tokens';
+    l.textContent = _azkTokensTexto(tk);
+    l.title = (tk.medido === 'escribiendo' ? 'Lo que tarda en escribir, medido por el ordenador de casa' : 'Contado de punta a punta, con la espera')
+      + ' · ' + _azkNum(tk.entrada) + ' tokens leídos' + (tk.cache ? ' (' + _azkNum(tk.cache) + ' reaprovechados)' : '') + ' · ' + (tk.llamadas || 1) + ' llamada(s) al modelo';
+    div.appendChild(l);
+  }
+  window._azkTokensTexto = _azkTokensTexto;
   function addMsg(type, text, opts) {
     // v730 · cada respuesta de Azkarin puede haber cambiado la ficha abierta (quitar la marca de «no aceptado»): el cartel se vuelve a mirar
     try { if (type === 'bot' && window._cartelNoElegidaPinta && window._currentPresupuestoRef) setTimeout(window._cartelNoElegidaPinta, 1500); } catch (eP) {}
@@ -21917,6 +21975,7 @@ async function doResetWithCode() {
       div.textContent = text;
     }
     try { var _hs = document.createElement('div'); _hs.className='chat-hora'; _hs.textContent=_h; _hs.style.cssText='font-size:10px;color:#9aa7b8;margin-top:2px;opacity:.85;'; div.appendChild(_hs); } catch(e){}
+    try { if (type === 'bot' && !(opts && opts.silencio)) _azkTokensEn(div); } catch (eTk) {}   // v742 · los tokens por segundo
     msgsDiv.appendChild(div);
     msgsDiv.scrollTop = msgsDiv.scrollHeight;
     // Leer en voz alta si es respuesta del bot (solo texto limpio)
@@ -22170,6 +22229,7 @@ async function doResetWithCode() {
     if (_yaPintado(turnoId)) return true;
     _marcarPintado(turnoId);
     var r = d.respuesta;
+    try { if (window._azkTokensDe) window._azkTokensDe(r); } catch (eTk) {}   // v742 · también la que esperaba en el buzón
     // v738 · si lo que esperaba en el buzón era una tarjeta de confirmar, se pinta como tal (con su texto, en voz alta)
     if (r && r.tipo === 'confirmacion' && r.accion) { _pintarConfirmacion(r); if (d.aviso) addMsg('bot', 'ℹ️ ' + d.aviso); return true; }
     var txt = r.mensaje || r.respuesta || '';
