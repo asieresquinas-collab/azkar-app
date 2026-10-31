@@ -99,6 +99,16 @@ public class CompartirActivity extends Activity {
     private final JSONArray _videos = new JSONArray();
     private int _videosVistos = 0;
 
+    // v1.35 · FOTOS SUELTAS, NO UN CHAT (Asier, 31-oct-2026, ficha 6920: «no es un chat; copio las fotos de Drive y le doy a compartir
+    // con Azkarin»). Las fotos de Drive, la galería o WeTransfer van a tamaño original (de tres a diez megas cada una): con los topes de
+    // siempre se quedaban fuera casi todas. Ahora las grandes se achican antes de mandarlas (lado largo de 2048 puntos, calidad 85,
+    // derechas según el giro de la cámara), la pregunta es «¿de qué cliente son estas fotos?» y, si el nombre casa con varias fichas,
+    // se le enseñan para que toque la buena. El final sale en una ventana con «Vale» (el aviso de abajo se perdía).
+    private static final int LADO_MAX = 2048;
+    private static final int ACHICAR_DESDE = 1536 * 1024;   // las de más de metro y medio de megas
+    private int _achicadas = 0;
+    private boolean _soloArchivos = false;   // lo compartido son fotos/documentos sueltos, no una conversación
+
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -208,6 +218,7 @@ public class CompartirActivity extends Activity {
                     // leer la conversación» — el manifest lo aceptaba pero esto lo tiraba.
                     if ((texto == null || texto.trim().isEmpty()) && (_fotos.length() > 0 || _videos.length() > 0 || _docs.length() > 0)) {
                         texto = "(Asier ha compartido " + _fotos.length() + " foto(s), " + _docs.length() + " documento(s) y " + _videos.length() + " vídeo(s) del chat, sin texto)";
+                        _soloArchivos = true;
                     }
 
                     if (texto == null || texto.trim().isEmpty()) { fin("No he podido leer la conversación. Prueba con «Exportar chat»."); return; }
@@ -235,11 +246,11 @@ public class CompartirActivity extends Activity {
             public void run() {
                 try {
                     final android.widget.EditText caja = new android.widget.EditText(CompartirActivity.this);
-                    caja.setHint("Nombre del cliente o su teléfono");
+                    caja.setHint(_soloArchivos ? "Número de ficha (por ejemplo 6920) o nombre" : "Nombre del cliente o su teléfono");
                     caja.setSingleLine(true);
                     new android.app.AlertDialog.Builder(CompartirActivity.this)
-                        .setTitle("¿De quién es esta conversación?")
-                        .setMessage("Eso venía sin nombres. Dime de qué cliente es y lo guardo con él.")
+                        .setTitle(_soloArchivos ? "¿De qué cliente son estas fotos?" : "¿De quién es esta conversación?")
+                        .setMessage(_soloArchivos ? "Dime el número de su ficha (lo más seguro) o su nombre, y las guardo en su carpeta." : "Eso venía sin nombres. Dime de qué cliente es y lo guardo con él.")
                         .setView(caja)
                         .setCancelable(false)
                         .setPositiveButton("Guardar", new android.content.DialogInterface.OnClickListener() {
@@ -333,21 +344,29 @@ public class CompartirActivity extends Activity {
             if (code >= 400 || !j.optBoolean("ok", false)) {
                 String err = j.optString("error", "");
                 if (j.optBoolean("falta_contacto", false) && (contacto == null || contacto.isEmpty())) { preguntarDeQuien(); return; }
-                fin(err.isEmpty() ? ("No se ha podido guardar (HTTP " + code + ")") : err);
+                String _e = err.isEmpty() ? ("No se ha podido guardar (HTTP " + code + ")") : err;
+                if (_soloArchivos || _fotos.length() > 0) finConVentana(_e); else fin(_e);
                 return;
             }
             String quien = j.optString("contacto", contacto == null ? "" : contacto);
             String ref = j.optString("ref", "");
+            JSONArray cand = j.optJSONArray("candidatas");
+            if ((ref == null || ref.isEmpty() || "null".equals(ref)) && cand != null && cand.length() > 0 && !j.optString("key", "").isEmpty()) {
+                preguntarCualEs(j.optString("key", ""), cand, j.optInt("fotos_guardadas", 0));
+                return;
+            }
             int n = j.optInt("guardados", j.optInt("total", 0));
-            String msg = "Guardado el WhatsApp de " + (quien.isEmpty() ? "ese cliente" : quien)
-                    + " (" + n + " mensajes)"
+            String msg = (_soloArchivos ? ("Guardado lo de " + (quien.isEmpty() ? "ese cliente" : quien)) : ("Guardado el WhatsApp de " + (quien.isEmpty() ? "ese cliente" : quien)
+                    + " (" + n + " mensajes)"))
                     + (ref == null || ref.isEmpty() || "null".equals(ref) ? " — sin ficha que le cuadre" : " → ficha " + ref);
             msg += trozoDeLasFotos(j);
             msg += trozoDeLosDocs(j);
             msg += trozoDeLosVideos(j);
-            if (j.optBoolean("suelto", false)) msg += ". Ojo: venía sin fechas, así que sé lo que pone pero no a qué hora.";
-            fin(msg);
-        } catch (Exception e) { fin("No se ha podido guardar: " + e.getMessage()); }
+            if (j.optBoolean("suelto", false) && !_soloArchivos) msg += ". Ojo: venía sin fechas, así que sé lo que pone pero no a qué hora.";
+            if (_achicadas > 0) msg += ". (" + _achicadas + " foto(s) achicadas para que entraran todas)";
+            if (!j.optString("carpeta_creada", "").isEmpty() && !"null".equals(j.optString("carpeta_creada", ""))) msg += ". La ficha no tenía carpeta: se la he creado.";
+            if (_soloArchivos || _fotos.length() > 0) finConVentana(msg); else fin(msg);
+        } catch (Exception e) { String _e = "No se ha podido guardar: " + e.getMessage(); if (_soloArchivos || _fotos.length() > 0) finConVentana(_e); else fin(_e); }
     }
 
     /**
@@ -630,6 +649,11 @@ public class CompartirActivity extends Activity {
     private void anadirFoto(String nombre, byte[] datos, String mime) {
         try {
             if (_fotos.length() >= MAX_FOTOS) return;
+            byte[] chica = achicarSiHaceFalta(datos);
+            if (chica != datos) {
+                datos = chica; mime = "image/jpeg"; _achicadas++;
+                if (nombre != null && nombre.toLowerCase().matches(".*\\.(png|webp|jpeg)$")) nombre = nombre.replaceAll("(?i)\\.(png|webp|jpeg)$", ".jpg");
+            }
             if (datos.length > MAX_BYTES_FOTO) return;
             if (_bytesFotos + datos.length > MAX_BYTES_TOTAL) return;
             JSONObject f = new JSONObject();
@@ -669,6 +693,128 @@ public class CompartirActivity extends Activity {
         } catch (Exception e) { /* da igual: se saca el contacto de los mensajes */ }
         String p = uri.getLastPathSegment();
         return p == null ? "" : p;
+    }
+
+    /** v1.35 · Una foto grande (Drive, galería, WeTransfer) se achica: lado largo de 2048 puntos, JPEG al 85, derecha según el giro de la
+     *  cámara. Se lee ya reducida (inSampleSize) para no llenar la memoria. Si algo falla, va la original (y si no cabe, consta). */
+    private byte[] achicarSiHaceFalta(byte[] datos) {
+        try {
+            if (datos == null || datos.length < ACHICAR_DESDE) return datos;
+            android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            android.graphics.BitmapFactory.decodeByteArray(datos, 0, datos.length, o);
+            int w = o.outWidth, h = o.outHeight;
+            if (w <= 0 || h <= 0) return datos;
+            int muestra = 1;
+            while (Math.max(w, h) / muestra > LADO_MAX * 3 / 2) muestra *= 2;
+            android.graphics.BitmapFactory.Options o2 = new android.graphics.BitmapFactory.Options();
+            o2.inSampleSize = muestra;
+            android.graphics.Bitmap bm = android.graphics.BitmapFactory.decodeByteArray(datos, 0, datos.length, o2);
+            if (bm == null) return datos;
+            int lado = Math.max(bm.getWidth(), bm.getHeight());
+            float escala = lado > LADO_MAX ? (float) LADO_MAX / lado : 1f;
+            int giro = giroDeLaCamara(datos);
+            android.graphics.Bitmap bm2 = bm;
+            if (escala < 1f || giro != 0) {
+                android.graphics.Matrix m = new android.graphics.Matrix();
+                if (escala < 1f) m.postScale(escala, escala);
+                if (giro != 0) m.postRotate(giro);
+                bm2 = android.graphics.Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), m, true);
+            }
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            bm2.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, bos);
+            if (bm2 != bm) bm2.recycle();
+            bm.recycle();
+            byte[] out = bos.toByteArray();
+            return (out.length > 0 && out.length < datos.length) ? out : datos;
+        } catch (Throwable t) { return datos; }
+    }
+
+    /** El giro que la cámara apuntó en la foto (al volver a guardarla se pierde: hay que aplicarlo). */
+    private int giroDeLaCamara(byte[] datos) {
+        try {
+            android.media.ExifInterface ex = new android.media.ExifInterface(new java.io.ByteArrayInputStream(datos));
+            int or = ex.getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION, android.media.ExifInterface.ORIENTATION_NORMAL);
+            if (or == android.media.ExifInterface.ORIENTATION_ROTATE_90) return 90;
+            if (or == android.media.ExifInterface.ORIENTATION_ROTATE_180) return 180;
+            if (or == android.media.ExifInterface.ORIENTATION_ROTATE_270) return 270;
+        } catch (Throwable t) { }
+        return 0;
+    }
+
+    /** v1.35 · El nombre casa con varias fichas: se le enseñan y toca la buena (se une sin volver a subir nada). */
+    private void preguntarCualEs(final String key, final JSONArray cand, final int fotos) {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            public void run() {
+                try {
+                    final int n = Math.min(cand.length(), 6);
+                    final String[] refs = new String[n];
+                    final String[] filas = new String[n + 1];
+                    for (int i = 0; i < n; i++) {
+                        JSONObject c = cand.getJSONObject(i);
+                        refs[i] = c.optString("ref", "");
+                        filas[i] = refs[i] + " · " + c.optString("nombre", "");
+                    }
+                    filas[n] = "Ninguna (que se queden esperando)";
+                    new android.app.AlertDialog.Builder(CompartirActivity.this)
+                        .setTitle("¿Cuál de estas fichas es?")
+                        .setCancelable(false)
+                        .setItems(filas, new android.content.DialogInterface.OnClickListener() {
+                            public void onClick(android.content.DialogInterface d, int w) {
+                                if (w >= n) { finConVentana("Guardado, pero sin ficha: " + fotos + " foto(s) esperando en WHATSAPP SIN FICHA. Dile a Azkarin de quién son y las mueve."); return; }
+                                final String ref = refs[w];
+                                new Thread(new Runnable() { public void run() { enganchar(key, ref); } }).start();
+                            }
+                        })
+                        .show();
+                } catch (Exception e) { finConVentana("Guardado, pero no he podido preguntarte la ficha: " + e.getMessage()); }
+            }
+        });
+    }
+
+    /** v1.35 · Une lo compartido a la ficha elegida (el servidor mueve los archivos a su carpeta). */
+    private void enganchar(String key, String ref) {
+        try {
+            String jwt = Datos.prefs(CompartirActivity.this).getString("jwt", "");
+            HttpURLConnection c = Datos.conecta(Datos.BASE + "/api/widget/whatsapp/enganchar", "POST", jwt);
+            c.setConnectTimeout(20000); c.setReadTimeout(120000);
+            c.setDoOutput(true);
+            JSONObject b = new JSONObject();
+            b.put("key", key); b.put("ref", ref);
+            OutputStream os = c.getOutputStream();
+            os.write(b.toString().getBytes(StandardCharsets.UTF_8));
+            os.close();
+            int code = c.getResponseCode();
+            String resp = Datos.leerTodo(code < 400 ? c.getInputStream() : c.getErrorStream());
+            JSONObject j; try { j = new JSONObject(resp); } catch (Exception e) { j = new JSONObject(); }
+            if (code >= 400 || !j.optBoolean("ok", false)) { finConVentana("No he podido unirlo a la ficha " + ref + ": " + j.optString("error", "HTTP " + code)); return; }
+            String carpeta = j.optString("carpeta", "");
+            finConVentana("Unido a la ficha " + ref + ". " + j.optInt("movidos", 0) + " archivo(s) en su carpeta" + (carpeta.isEmpty() || "null".equals(carpeta) ? "" : " «" + carpeta + "»") + (j.optBoolean("carpeta_creada", false) ? " (no tenía: se la he creado)" : "") + "." + (j.optString("aviso", "").isEmpty() ? "" : " " + j.optString("aviso", "")));
+        } catch (Exception e) { finConVentana("No he podido unirlo a la ficha " + ref + ": " + e.getMessage()); }
+    }
+
+    /** v1.35 · El final en una ventana con «Vale» (el aviso de abajo dura tres segundos y se perdía). */
+    private void finConVentana(final String t) {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            public void run() {
+                try {
+                    new android.app.AlertDialog.Builder(CompartirActivity.this)
+                        .setTitle("Azkarin")
+                        .setMessage(t)
+                        .setCancelable(true)
+                        .setPositiveButton("Vale", new android.content.DialogInterface.OnClickListener() {
+                            public void onClick(android.content.DialogInterface d, int w) { finish(); }
+                        })
+                        .setOnCancelListener(new android.content.DialogInterface.OnCancelListener() {
+                            public void onCancel(android.content.DialogInterface d) { finish(); }
+                        })
+                        .show();
+                } catch (Exception e) {
+                    try { Toast.makeText(CompartirActivity.this, t, Toast.LENGTH_LONG).show(); } catch (Exception e2) { }
+                    finish();
+                }
+            }
+        });
     }
 
     // ── avisar y cerrar (siempre en el hilo de la pantalla) ──────────────────
