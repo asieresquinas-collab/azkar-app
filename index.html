@@ -4469,7 +4469,9 @@ var PRECIOS_FLAT = {
   'Caja perchero':17.00,
   'Permiso CON señalización':90.00,'Permiso SIN señalización':50.00,
   // v743 · precios que dio Asier el 31-oct (los mismos que api/catalogo-precios.js)
-  'Microondas':20.00,'Aire acondicionado':20.00,'Armario 2 puertas correderas':260.00,'Taburetes':13.33
+  'Microondas':20.00,'Aire acondicionado':20.00,'Armario 2 puertas correderas':260.00,'Taburetes':13.33,
+  // v744 · la litera se cobra como la cama nido (Asier, 31-oct-2026) y lleva sus dos colchones aparte (se ponen solos, como la tapa del canapé)
+  'Litera':80.60,'Cama nido':80.60
 };
 
 // ── Overrides por zona (mismo artículo, precio diferente según habitación) ──
@@ -4981,6 +4983,44 @@ function chkCanape(inp) {
   } catch (e) { console.warn('[Canapé]', e && e.message); }
 }
 window.chkCanape = chkCanape;
+// ══════════════════════════════════════════════════════════════════════════════
+//  v744 · CADA LITERA, SUS DOS COLCHONES (Asier, 31-oct-2026)
+//  «La litera nosotros cobramos lo mismo que una cama nido; en el listín pone cama
+//  nido/litera y se cobra el precio más dos colchones». La litera lleva el precio de
+//  la cama nido (PRECIOS_FLAT) y, en cuanto se escribe, se pone sola la línea de sus
+//  dos colchones, como la tapa del canapé. Nunca al abrir una ficha guardada.
+// ══════════════════════════════════════════════════════════════════════════════
+var COLCHON_LITERA = 'Colchón (de la litera)';
+function esLitera(nombre) {
+  var n = String(nombre || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (!n) return false;
+  if (/colch|somier|tapa/.test(n)) return false;   // el colchón de la litera no es la litera
+  return /\blitera/.test(n);
+}
+function hayColchonesLitera() {
+  var filas = document.querySelectorAll('#tb .cr');
+  for (var i = 0; i < filas.length; i++) {
+    var c = filas[i].querySelector('input[list]');
+    if (c && /colch/i.test(c.value) && /litera/i.test(c.value)) return filas[i];
+  }
+  return null;
+}
+function chkLitera(inp) {
+  try {
+    if (window._restaurandoFicha) return;        // 🛑 abrir una ficha NO añade nada
+    if (!inp || !esLitera(inp.value)) return;
+    if (hayColchonesLitera()) return;            // ya están: no se duplican
+    if (typeof AR !== 'function') return;
+    var row = inp.closest ? inp.closest('.cr') : null;
+    var u = row ? row.querySelectorAll('input[type=number]')[0] : null;
+    var nLit = Math.max(1, parseFloat(String(u && u.value).replace(',', '.')) || 1);
+    var precio = (typeof PRECIOS_FLAT !== 'undefined' && PRECIOS_FLAT['Colchón']) || 19.91;
+    AR(COLCHON_LITERA, 'Dormitorio 2', String(2 * nLit), String(precio), '0');
+    try { if (typeof CA === 'function') CA(); } catch (e) {}
+    try { if (typeof showSyncStatus === 'function') showSyncStatus('🛏️ Litera → se cobra como la cama nido y te he puesto aparte sus ' + (2 * nLit) + ' colchones (' + precio + ' € cada uno). Si ya los habías contado, quita la línea.', 7000); } catch (e) {}
+  } catch (e) { console.warn('[Litera]', e && e.message); }
+}
+window.chkLitera = chkLitera;
 
 function chk2p(inp){
   var row=(inp&&inp.closest)?inp.closest('.cr'):null;
@@ -5001,7 +5041,7 @@ function AR(c,z,u,p,d,tm,tam){
   div.className='cr'; div.id='r'+id;
   var tamOpts='<option'+(tam==='Estándar'?' selected':'')+'>Estándar</option><option'+(tam==='Pequeño'?' selected':'')+'>Pequeño</option><option'+(tam==='Grande'?' selected':'')+'>Grande</option><option'+(tam==='Muy grande'?' selected':'')+'>Muy grande</option>';
   div.innerHTML='<div class="move-btns"><button title="Subir" data-dir="up">▲</button><button title="Bajar" data-dir="down">▼</button></div>'
-    +'<div style="display:flex;align-items:center;gap:2px"><input list="dl" placeholder="Concepto..." value="'+c+'" oninput="PL_LOOKUP(this);CA();chk2p(this);chkCanape(this)" onchange="PL_LOOKUP(this);CA();chk2p(this);chkCanape(this)" style="flex:1;min-width:0"><span class="tamano-badge" onclick="cycleTam(this)" title="Click para cambiar tamaño" data-tam="'+tam+'" style="font-size:7px;padding:2px 4px;border-radius:3px;cursor:pointer;font-weight:700;letter-spacing:.3px;white-space:nowrap;flex-shrink:0;user-select:none;'+tamBadgeStyle(tam)+'">'+tamLabel(tam)+'</span></div>'
+    +'<div style="display:flex;align-items:center;gap:2px"><input list="dl" placeholder="Concepto..." value="'+c+'" oninput="PL_LOOKUP(this);CA();chk2p(this);chkCanape(this);chkLitera(this)" onchange="PL_LOOKUP(this);CA();chk2p(this);chkCanape(this);chkLitera(this)" style="flex:1;min-width:0"><span class="tamano-badge" onclick="cycleTam(this)" title="Click para cambiar tamaño" data-tam="'+tam+'" style="font-size:7px;padding:2px 4px;border-radius:3px;cursor:pointer;font-weight:700;letter-spacing:.3px;white-space:nowrap;flex-shrink:0;user-select:none;'+tamBadgeStyle(tam)+'">'+tamLabel(tam)+'</span></div>'
     +'<input type="number" min="0" step="0.1" placeholder="0" value="'+u+'" oninput="CA()">'
     +'<input type="number" min="0" step="0.01" placeholder="0,00" value="'+p+'" oninput="CA()">'
     +'<input type="number" class="col-dto" min="0" max="100" step="1" placeholder="0" value="'+d+'" oninput="CA()">'
@@ -5827,7 +5867,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v743';
+var APP_VERSION = 'v744';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
