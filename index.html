@@ -4648,6 +4648,8 @@ function PL_LOOKUP(inp){
   var name=inp.value.trim(), price=null;
   // v189: zona eliminada — buscar solo en catálogo fijo
   if(PRECIOS_FLAT[name]!==undefined) price=PRECIOS_FLAT[name];
+  // v744 · «Litera con cajón», «litera con escalera»: la litera, se escriba como se escriba (Asier: se cobra como la cama nido)
+  if(price===null&&typeof esLitera==='function'&&esLitera(name)&&PRECIOS_FLAT['Litera']!==undefined) price=PRECIOS_FLAT['Litera'];
   // 3. v120: Buscar en catálogo personalizado (artículos aprendidos)
   if(price===null&&_catalogoCache){
     var found=_catalogoCache.find(function(c){return c.nombre===name;});
