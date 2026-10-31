@@ -5060,6 +5060,8 @@ function AR(c,z,u,p,d,tm,tam){
   // botones, dictado). Al teclear ya salta por oninput; al abrir ficha guardada,
   // chkCanape se frena solo con _restaurandoFicha (la norma de siempre).
   try { if (c && typeof chkCanape === 'function') { var _ciC = div.querySelector('input[list]'); if (_ciC) chkCanape(_ciC); } } catch (e) {}
+  // v744 · y la litera, sus dos colchones, también cuando la fila entra por código
+  try { if (c && typeof chkLitera === 'function') { var _ciL = div.querySelector('input[list]'); if (_ciL) chkLitera(_ciL); } } catch (e) {}
   // v393 · ENTRE DOS: si la fila viene de una ficha guardada con su marca, se restaura
   // tal cual (sin volver a preguntar); si es un canapé/colchón NUEVO, se pregunta.
   try{
