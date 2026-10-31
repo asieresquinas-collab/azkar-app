@@ -227,6 +227,10 @@ public class CompartirActivity extends Activity {
                     _textoPendiente = texto;
                     _nombreArchivo = nombreArchivo;
 
+                    // v1.36 · fotos sueltas: primero «¿de qué cliente son?» y luego se suben UNA vez (antes se subían enteras, el servidor
+                    // contestaba que faltaba el cliente y se volvían a subir; si en medio se salía de esta pantalla, la pregunta ya no salía
+                    // y no se guardaba nada: lo que pasó con las fotos de la ficha 6920).
+                    if (_soloArchivos) { preguntarDeQuien(); return; }
                     if (_fotos.length() > 0 || _docs.length() > 0 || _videos.length() > 0) aviso("Mandando la conversación con "
                             + _fotos.length() + " foto(s), " + _docs.length() + " documento(s) y " + _videos.length() + " vídeo(s)…");
                     mandar(texto, nombreArchivo, null);
@@ -244,6 +248,7 @@ public class CompartirActivity extends Activity {
     private void preguntarDeQuien() {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             public void run() {
+                quitarSubiendo();
                 try {
                     final android.widget.EditText caja = new android.widget.EditText(CompartirActivity.this);
                     caja.setHint(_soloArchivos ? "Número de ficha (por ejemplo 6920) o nombre" : "Nombre del cliente o su teléfono");
@@ -279,6 +284,7 @@ public class CompartirActivity extends Activity {
         try {
             String jwt = Datos.prefs(CompartirActivity.this).getString("jwt", "");
             if (jwt.isEmpty()) { fin("Primero entra en la app de Azkar con tu usuario, y vuelve a compartir."); return; }
+            if (_fotos.length() > 0 || _docs.length() > 0 || _videos.length() > 0) mostrarSubiendo("Subiendo " + _fotos.length() + " foto(s)" + (_docs.length() > 0 ? ", " + _docs.length() + " documento(s)" : "") + (_videos.length() > 0 ? ", " + _videos.length() + " vídeo(s)" : "") + "…\n\nEspera a que diga que está hecho.");
 
             HttpURLConnection c = Datos.conecta(Datos.BASE + "/api/widget/whatsapp", "POST", jwt);
             // v1.26: subir fotos y que el servidor las coloque en Drive lleva su tiempo.
@@ -746,6 +752,7 @@ public class CompartirActivity extends Activity {
     private void preguntarCualEs(final String key, final JSONArray cand, final int fotos) {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             public void run() {
+                quitarSubiendo();
                 try {
                     final int n = Math.min(cand.length(), 6);
                     final String[] refs = new String[n];
@@ -774,6 +781,7 @@ public class CompartirActivity extends Activity {
 
     /** v1.35 · Une lo compartido a la ficha elegida (el servidor mueve los archivos a su carpeta). */
     private void enganchar(String key, String ref) {
+        mostrarSubiendo("Llevando las fotos a la carpeta de la ficha " + ref + "…");
         try {
             String jwt = Datos.prefs(CompartirActivity.this).getString("jwt", "");
             HttpURLConnection c = Datos.conecta(Datos.BASE + "/api/widget/whatsapp/enganchar", "POST", jwt);
@@ -793,10 +801,28 @@ public class CompartirActivity extends Activity {
         } catch (Exception e) { finConVentana("No he podido unirlo a la ficha " + ref + ": " + e.getMessage()); }
     }
 
+    /** v1.36 · Mientras se suben las fotos, una ventana que no se cierra sola. */
+    private android.app.AlertDialog _subiendo = null;
+    private void mostrarSubiendo(final String t) {
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            public void run() {
+                try {
+                    if (_subiendo != null) { _subiendo.setMessage(t); return; }
+                    _subiendo = new android.app.AlertDialog.Builder(CompartirActivity.this).setTitle("Azkarin").setMessage(t).setCancelable(false).create();
+                    _subiendo.show();
+                } catch (Exception e) { }
+            }
+        });
+    }
+    private void quitarSubiendo() {
+        try { if (_subiendo != null) { _subiendo.dismiss(); _subiendo = null; } } catch (Exception e) { _subiendo = null; }
+    }
+
     /** v1.35 · El final en una ventana con «Vale» (el aviso de abajo dura tres segundos y se perdía). */
     private void finConVentana(final String t) {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             public void run() {
+                quitarSubiendo();
                 try {
                     new android.app.AlertDialog.Builder(CompartirActivity.this)
                         .setTitle("Azkarin")
@@ -829,6 +855,7 @@ public class CompartirActivity extends Activity {
     private void fin(final String t) {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             public void run() {
+                quitarSubiendo();
                 try { Toast.makeText(CompartirActivity.this, t, Toast.LENGTH_LONG).show(); } catch (Exception e) { }
                 finish();
             }
