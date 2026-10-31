@@ -4467,7 +4467,9 @@ var PRECIOS_FLAT = {
   'Guardamuebles (mes)':227.16,'Plataforma elevadora 2h':210.20,
   'Sillas':13.33,'Espejo':34.84,'Cuadros':12.16,'Lámpara mesa':8.57,
   'Caja perchero':17.00,
-  'Permiso CON señalización':90.00,'Permiso SIN señalización':50.00
+  'Permiso CON señalización':90.00,'Permiso SIN señalización':50.00,
+  // v743 · precios que dio Asier el 31-oct (los mismos que api/catalogo-precios.js)
+  'Microondas':20.00,'Aire acondicionado':20.00,'Armario 2 puertas correderas':260.00,'Taburetes':13.33
 };
 
 // ── Overrides por zona (mismo artículo, precio diferente según habitación) ──
@@ -5825,7 +5827,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v742';
+var APP_VERSION = 'v743';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
