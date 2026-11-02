@@ -8,6 +8,8 @@ import android.os.Bundle;
 import android.provider.AlarmClock;
 import android.widget.Toast;
 
+import java.util.ArrayList;
+
 /**
  * v1.20 — EL DESPERTADOR DE AZKARIN. Lo pidió Asier (13-ago-2026):
  *   «¿puedes hacer que Azkarin me pueda activar el despertador del móvil, que yo le
@@ -26,6 +28,12 @@ import android.widget.Toast;
  *     azkarwidget://alarma?h=5&m=55&t=Salir%20a%20por%20la%20gr%C3%BAa   → poner
  *     azkarwidget://alarma?q=quitar&h=5&m=55                            → quitar esa
  *     azkarwidget://alarma?q=ver                                        → ver las que hay
+ *     azkarwidget://alarma?h=7&m=30&t=Pastillas&d=2,3,4,5,6,7,1         → poner, que se repita esos días
+ *
+ * v1.37 — QUE SE REPITAN. Asier (2-nov-2026): «ponme estas alarmas para todos los días, cada una con su
+ * nombre» (nueve). Se ponían para una sola vez. Ahora la orden puede llevar los días (d=…, como los cuenta
+ * Android: domingo 1, lunes 2… sábado 7) y el reloj la repite esos días. Y la burbuja las pone TODAS cuando
+ * Azkarin manda varias de golpe (antes, solo la última).
  *
  * REGLA DURA DE LA CASA: NUNCA UN TOQUE MUERTO NI UNA MENTIRA. Cada camino dice en
  * voz alta lo que ha pasado de verdad, y si el reloj del móvil no deja hacerlo solo,
@@ -38,6 +46,11 @@ public class AlarmaActivity extends Activity {
      * VERDAD — es lo que Azkarin le dice a Asier por voz, así que aquí no se adorna.
      */
     public static String aplicar(Context ctx, String modo, int hora, int minutos, String texto) {
+        return aplicar(ctx, modo, hora, minutos, texto, null);
+    }
+
+    /** v1.37 · los días que se repite (domingo 1 … sábado 7). Vacío o null = una sola vez. */
+    public static String aplicar(Context ctx, String modo, int hora, int minutos, String texto, ArrayList<Integer> dias) {
         if (ctx == null) return "No he podido tocar el reloj.";
         String m = (modo == null ? "poner" : modo.trim().toLowerCase());
         if (texto == null || texto.trim().length() == 0) texto = "Azkar";
@@ -85,16 +98,19 @@ public class AlarmaActivity extends Activity {
         }
 
         // PONERLA: se pone sola en el reloj, sin confirmar nada.
+        final boolean repite = dias != null && !dias.isEmpty();
+        final String cuando = repite ? " (" + textoDias(dias) + ")" : "";
         try {
             Intent sola = new Intent(AlarmClock.ACTION_SET_ALARM);
             sola.putExtra(AlarmClock.EXTRA_HOUR, hora);
             sola.putExtra(AlarmClock.EXTRA_MINUTES, minutos);
             sola.putExtra(AlarmClock.EXTRA_MESSAGE, texto);
+            if (repite) sola.putIntegerArrayListExtra(AlarmClock.EXTRA_DAYS, dias);
             sola.putExtra(AlarmClock.EXTRA_SKIP_UI, true);
             sola.putExtra(AlarmClock.EXTRA_VIBRATE, true);
             sola.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             ctx.startActivity(sola);
-            return "⏰ Alarma puesta a las " + hhmm + " · " + texto;
+            return "⏰ Alarma puesta a las " + hhmm + " · " + texto + cuando;
         } catch (Exception e) { /* algunos relojes obligan a confirmar: plan B */ }
 
         try {
@@ -102,9 +118,10 @@ public class AlarmaActivity extends Activity {
             conReloj.putExtra(AlarmClock.EXTRA_HOUR, hora);
             conReloj.putExtra(AlarmClock.EXTRA_MINUTES, minutos);
             conReloj.putExtra(AlarmClock.EXTRA_MESSAGE, texto);
+            if (repite) conReloj.putIntegerArrayListExtra(AlarmClock.EXTRA_DAYS, dias);
             conReloj.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             ctx.startActivity(conReloj);
-            return "Tu reloj pide confirmar: dale a GUARDAR (" + hhmm + ").";
+            return "Tu reloj pide confirmar: dale a GUARDAR (" + hhmm + cuando + ").";
         } catch (Exception e2) {
             return "No he podido abrir el reloj para la alarma de las " + hhmm + ".";
         }
@@ -115,6 +132,7 @@ public class AlarmaActivity extends Activity {
         super.onCreate(b);
         int hora = -1, minutos = 0;
         String texto = "Azkar", modo = "poner";
+        ArrayList<Integer> dias = null;
         try {
             Intent in = getIntent();
             Uri d = in == null ? null : in.getData();
@@ -125,6 +143,7 @@ public class AlarmaActivity extends Activity {
                 if (t != null && t.trim().length() > 0) texto = t.trim();
                 String q = d.getQueryParameter("q");
                 if (q != null && q.trim().length() > 0) modo = q.trim();
+                dias = diasDe(d.getQueryParameter("d"));
             } else if (in != null) {
                 hora = in.getIntExtra("azkar_hora", -1);
                 minutos = in.getIntExtra("azkar_min", 0);
@@ -135,8 +154,33 @@ public class AlarmaActivity extends Activity {
             }
         } catch (Exception e) { hora = -1; }
 
-        aviso(aplicar(this, modo, hora, minutos, texto));
+        aviso(aplicar(this, modo, hora, minutos, texto, dias));
         finish();
+    }
+
+    /** «2,3,4,5,6,7,1» → [2,3,4,5,6,7,1] (solo del 1 al 7, sin repetir). Vacío → null (una sola vez). */
+    public static ArrayList<Integer> diasDe(String s) {
+        if (s == null || s.trim().length() == 0) return null;
+        ArrayList<Integer> out = new ArrayList<Integer>();
+        for (String p : s.split("[^0-9]+")) {
+            if (p.length() == 0) continue;
+            int n = entero(p, 0);
+            if (n >= 1 && n <= 7 && !out.contains(n)) out.add(n);
+        }
+        return out.isEmpty() ? null : out;
+    }
+
+    /** Los días, en cristiano, para lo que se dice y se ve. */
+    public static String textoDias(ArrayList<Integer> dias) {
+        if (dias == null || dias.isEmpty()) return "una vez";
+        if (dias.size() == 7) return "todos los días";
+        String[] nombres = { "", "domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado" };
+        int[] orden = { 2, 3, 4, 5, 6, 7, 1 };
+        StringBuilder sb = new StringBuilder();
+        int n = 0;
+        for (int k : orden) if (dias.contains(k)) { if (n++ > 0) sb.append(", "); sb.append(nombres[k]); }
+        if (dias.size() == 5 && !dias.contains(1) && !dias.contains(7)) return "de lunes a viernes";
+        return sb.toString();
     }
 
     private static int entero(String s, int porDefecto) {

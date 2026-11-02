@@ -429,11 +429,17 @@ public class VozActivity extends Activity implements RecognitionListener {
                         // haces que funcione sin tener que darle al botón, y que pueda quitarlas
                         // y ponerlas?». Como la burbuja YA es la app, aquí no hace falta ningún
                         // enlace: se toca el reloj directamente y se dice lo que ha pasado.
+                        // v1.37 · VARIAS DE GOLPE (y que se repitan): Asier pidió nueve «para todos los días»
+                        //  y solo se ponía la última. Ahora se ponen todas, una detrás de otra.
+                        if (datos != null && "alarma".equals(datos.optString("accion")) && "varias".equals(datos.optString("modo")) && datos.optJSONArray("alarmas") != null) {
+                            ponerVariasAlarmas(datos.optJSONArray("alarmas"), msg);
+                            return;
+                        }
                         if (datos != null && "alarma".equals(datos.optString("accion"))) {
                             String _modoAl = datos.optString("modo", "poner");
                             String _hechoAl = AlarmaActivity.aplicar(VozActivity.this, _modoAl,
                                     datos.optInt("hora", -1), datos.optInt("minutos", 0),
-                                    datos.optString("mensaje", "Azkar"));
+                                    datos.optString("mensaje", "Azkar"), diasDeJson(datos.optJSONArray("dias")));
                             String _decir = msg.isEmpty() ? _hechoAl : (msg + " " + _hechoAl);
                             meteHistorial("assistant", _decir);
                             di(_decir);
@@ -614,6 +620,41 @@ public class VozActivity extends Activity implements RecognitionListener {
         try { if (mpLl != null) { mpLl.release(); mpLl = null; } } catch (Exception e) { /* nada */ }
         sonandoLl = false; cidLl = null;
         if (filaLl != null) filaLl.setVisibility(View.GONE);
+    }
+
+    /** v1.37 · los días que se repite una alarma, del JSON de Azkarin ([2,3,4,5,6,7,1]); null = una sola vez. */
+    static ArrayList<Integer> diasDeJson(JSONArray a) {
+        if (a == null || a.length() == 0) return null;
+        ArrayList<Integer> out = new ArrayList<Integer>();
+        for (int i = 0; i < a.length(); i++) { int n = a.optInt(i, 0); if (n >= 1 && n <= 7 && !out.contains(n)) out.add(n); }
+        return out.isEmpty() ? null : out;
+    }
+
+    /** v1.37 · VARIAS ALARMAS DE GOLPE: se ponen una detrás de otra (con un respiro, que cada una abre el reloj por
+     *  dentro) y al final se dice cuántas han entrado de verdad y cuáles no. Nunca se da por puesta una que no. */
+    void ponerVariasAlarmas(final JSONArray lista, final String msg) {
+        final int total = lista.length();
+        final ArrayList<String> hechas = new ArrayList<String>();
+        final ArrayList<String> malas = new ArrayList<String>();
+        for (int i = 0; i < total; i++) {
+            final int k = i;
+            ui.postDelayed(new Runnable() { public void run() {
+                JSONObject a = lista.optJSONObject(k);
+                if (a != null) {
+                    String r = AlarmaActivity.aplicar(VozActivity.this, a.optString("modo", "poner"), a.optInt("hora", -1),
+                            a.optInt("minutos", 0), a.optString("mensaje", "Azkar"), diasDeJson(a.optJSONArray("dias")));
+                    if (r != null && (r.startsWith("⏰ Alarma puesta") || r.startsWith("⏰ Quitada"))) hechas.add(a.optString("hora_texto", ""));
+                    else malas.add(a.optString("hora_texto", "") + ": " + r);
+                }
+                if (k == total - 1) {
+                    String fin = "⏰ " + hechas.size() + " de " + total + " alarmas mandadas al reloj"
+                            + (malas.isEmpty() ? "." : ". Estas no: " + android.text.TextUtils.join(" · ", malas));
+                    String decir = (msg == null || msg.isEmpty()) ? fin : (msg + " " + fin);
+                    meteHistorial("assistant", decir);
+                    di(decir);
+                }
+            } }, 900L * i);
+        }
     }
 
     /** Enseña y LEE la respuesta (limpia markdown/enlaces para que la voz no lea garabatos). */

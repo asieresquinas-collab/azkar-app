@@ -1834,6 +1834,7 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>⏰ Despertador con Azkarin (v455):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Dile a Azkarin <strong>«ponme el despertador a las 6 menos 5»</strong> y, con la <strong>app de widgets (v1.21 o más nueva)</strong> instalada, la alarma se pone <strong>SOLA</strong> en el reloj — sin tocar nada. Si se lo dices por la <strong>burbuja</strong> del widget, te lo confirma hablando; si escribes desde la web, sale además un botón por si acaso.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>También las quita y te las enseña: <strong>«quítame la alarma de las 7»</strong> o <strong>«¿qué alarmas tengo?»</strong> (esto último te abre la lista del reloj: Azkarin no ve las que pusiste tú a mano).</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Varias de golpe y para todos los días (v746):</strong> «ponme estas alarmas para todos los días, cada una con su nombre: 7:30 …, 13:30 …». Salen todas en una tarjeta y se mandan al reloj <strong>una a una</strong>, cada una con su nombre y repitiéndose los días que digas («todos los días», «de lunes a viernes», «los sábados»). Para que se repitan hace falta la <strong>app de widgets 1.37</strong> (te sale el botón 🔄 ACTUALIZAR). Mira el reloj: si alguna no ha entrado, toca su botón en la tarjeta. Antes, de varias solo se ponía la última.</div></div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🗺️ Mapas con memoria justa (v454):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>La ruta y las coordenadas de los mapas son <strong>de esta ficha</strong>: al cambiar de presupuesto, lo del cliente anterior se tira y se recalcula. Antes podía colarse el recorrido del cliente de antes (pasó con el 6524 de Usansolo, que enseñaba un trayecto de Bilbao).</div></div>
@@ -5873,7 +5874,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v745';
+var APP_VERSION = 'v746';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -20156,6 +20157,12 @@ async function doResetWithCode() {
           } catch (eP) { addMsg('bot', 'No pude abrirlo: ' + (eP && eP.message)); }
           return;
         }
+        // v746 · VARIAS ALARMAS DE GOLPE (Asier, 2-nov: nueve, «para todos los días, cada una con su nombre»). Antes llegaba
+        //  solo la última y se ponía una. Ahora llegan todas en una lista: se mandan al reloj UNA A UNA (por la app de widgets, sin
+        //  tocar nada) y cada una lleva su botón por si alguna no entra. Si se repite, va en la orden (d=…) y lo pone el reloj.
+        if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'alarma' && data.datos.modo === 'varias' && Array.isArray(data.datos.alarmas) && data.datos.alarmas.length) {
+          window._ponerVariasAlarmas(data.datos.alarmas);
+        } else
         if (data.datos && data.datos.requiere_frontend && data.datos.accion === 'alarma') {
           // v457 · SIN TENER QUE DARLE AL BOTÓN. Asier: «¿por qué no haces que funcione
           // sin darle, y que pueda quitarlas y ponerlas?». Si la app de widgets (v1.21+)
@@ -22875,6 +22882,50 @@ async function doResetWithCode() {
 })();
 </script>
 
+<script>
+// ── v746 · VARIAS ALARMAS DE GOLPE ───────────────────────────────────────────────────────────────────────────
+//  Una tarjeta con todas (hora · nombre · si se repite) y su botón cada una; y se mandan al reloj por la app de widgets
+//  una detrás de otra, con un respiro entre medias (cada orden abre y cierra la app de widgets). Nunca se da por puesta:
+//  se le pide que mire el reloj, y si alguna no ha entrado, toca su botón.
+window._ponerVariasAlarmas = function (lista) {
+  try {
+    var esc = function (t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+    var al = (lista || []).filter(function (a) { return a && (a.alarma_apk_url || a.alarma_url); }).slice(0, 30);
+    if (!al.length) return;
+    var base = 'alv' + Date.now();
+    var filas = al.map(function (a, i) {
+      var qui = String(a.modo || 'poner') === 'quitar';
+      return '<div style="display:flex;align-items:center;gap:8px;margin:5px 0">'
+        + '<a href="javascript:void(0)" id="' + base + '_' + i + '" style="flex:none;padding:6px 11px;background:' + (qui ? '#8a4b4b' : '#E85C0D') + ';color:#fff;border-radius:14px;text-decoration:none;font-weight:bold;font-size:13px">⏰ ' + (qui ? 'Quitar' : 'Poner') + '</a>'
+        + '<span><b>' + esc(a.hora_texto) + '</b>' + (a.mensaje ? ' · ' + esc(a.mensaje) : '') + (a.dias_texto ? ' <span style="color:#667;font-size:12px">(' + esc(a.dias_texto) + ')</span>' : (qui ? '' : ' <span style="color:#667;font-size:12px">(una vez)</span>')) + '</span></div>';
+    }).join('');
+    addMsg('bot', '⏰ <b>' + al.length + ' alarmas</b> — te las mando al reloj una a una<br>' + filas
+      + '<a href="javascript:void(0)" id="' + base + '_todas" style="display:inline-block;margin:8px 0 0 0;padding:9px 15px;background:#1B4F8A;color:#fff;border-radius:16px;text-decoration:none;font-weight:bold;">⏰ Mandarlas todas otra vez</a>'
+      + '<br><span style="font-size:11px;color:#889">Con la app de widgets se ponen solas. Mira el reloj: si alguna no ha entrado, toca su botón.</span>');
+    var lanzar = function (url) {
+      try { var f = document.createElement('iframe'); f.style.display = 'none'; f.src = url; document.body.appendChild(f); setTimeout(function () { try { f.remove(); } catch (e) {} }, 4000); } catch (e) {}
+    };
+    var tanda = function () { al.forEach(function (a, i) { setTimeout(function () { if (a.alarma_apk_url) lanzar(a.alarma_apk_url); }, i * 1800); }); };
+    tanda();
+    setTimeout(function () {
+      al.forEach(function (a, i) {
+        var b = document.getElementById(base + '_' + i); if (!b) return;
+        b.onclick = function () {
+          try {
+            if (a.alarma_apk_url) {
+              var volvio = false; var fuera = function () { volvio = true; };
+              document.addEventListener('visibilitychange', fuera, { once: true });
+              window.location.href = a.alarma_apk_url;
+              setTimeout(function () { document.removeEventListener('visibilitychange', fuera); if (!volvio && !document.hidden && a.alarma_url) window.location.href = a.alarma_url; }, 1200);
+            } else if (a.alarma_url) window.location.href = a.alarma_url;
+          } catch (e) { if (a.alarma_url) window.location.href = a.alarma_url; }
+        };
+      });
+      var bt = document.getElementById(base + '_todas'); if (bt) bt.onclick = tanda;
+    }, 60);
+  } catch (e) { console.warn('[Alarmas]', e && e.message); }
+};
+</script>
 <script>
 // v281: "Hey Google, abre Azkarin" — arranque manos libres.
 // Si la app se abre con ?azkarin=voz (acceso directo del icono o rutina de Google),
