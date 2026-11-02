@@ -4464,7 +4464,9 @@ var PRECIOS_FLAT = {
   'Mueble baño':64.63,
   'Tendedero':14.55,'Armario escobero':58.67,
   'Mesa niño':29.83,'Hacer cajas':16.00,'Bicicletas':15.68,'Escalera':8.00,
-  'Guardamuebles (mes)':227.16,'Plataforma elevadora 2h':210.20,
+  // v745 · el guardamuebles, 170 € al mes MÁS IVA (Asier, 2-nov-2026: «hay que ponerlo a 170 euros más IVA siempre, la aplicación está mal»).
+  //  Estaba a 227,16 de base, y con el IVA encima salían 274,86 € al mes.
+  'Guardamuebles (mes)':170.00,'Plataforma elevadora 2h':210.20,
   'Sillas':13.33,'Espejo':34.84,'Cuadros':12.16,'Lámpara mesa':8.57,
   'Caja perchero':17.00,
   'Permiso CON señalización':90.00,'Permiso SIN señalización':50.00,
@@ -5871,7 +5873,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v744';
+var APP_VERSION = 'v745';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
