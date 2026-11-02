@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="es.azkarmudanzas.widgets"
-    android:versionCode="38"
-    android:versionName="1.37">
+    android:versionCode="39"
+    android:versionName="1.38">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
 
@@ -189,7 +189,7 @@
             android:exported="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
             android:excludeFromRecents="true"
-            android:noHistory="true"
+            android:noHistory="false"
             android:label="Alarma Azkar">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

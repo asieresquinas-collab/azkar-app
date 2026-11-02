@@ -437,9 +437,12 @@ public class VozActivity extends Activity implements RecognitionListener {
                         }
                         if (datos != null && "alarma".equals(datos.optString("accion"))) {
                             String _modoAl = datos.optString("modo", "poner");
-                            String _hechoAl = AlarmaActivity.aplicar(VozActivity.this, _modoAl,
+                            String _idAl = datos.optString("id", "");
+                            String _hechoAl = (_idAl.length() > 0 && Datos.yaPuesta(VozActivity.this, _idAl)) ? "⏰ Esa alarma ya la tenías puesta."
+                                    : AlarmaActivity.aplicar(VozActivity.this, _modoAl,
                                     datos.optInt("hora", -1), datos.optInt("minutos", 0),
                                     datos.optString("mensaje", "Azkar"), diasDeJson(datos.optJSONArray("dias")));
+                            if (_idAl.length() > 0 && _hechoAl != null && _hechoAl.startsWith("⏰")) { Datos.apuntarPuesta(VozActivity.this, _idAl); Datos.avisarPuesta(VozActivity.this, _idAl); }   // v1.38
                             String _decir = msg.isEmpty() ? _hechoAl : (msg + " " + _hechoAl);
                             meteHistorial("assistant", _decir);
                             di(_decir);
@@ -641,10 +644,17 @@ public class VozActivity extends Activity implements RecognitionListener {
             ui.postDelayed(new Runnable() { public void run() {
                 JSONObject a = lista.optJSONObject(k);
                 if (a != null) {
-                    String r = AlarmaActivity.aplicar(VozActivity.this, a.optString("modo", "poner"), a.optInt("hora", -1),
-                            a.optInt("minutos", 0), a.optString("mensaje", "Azkar"), diasDeJson(a.optJSONArray("dias")));
-                    if (r != null && (r.startsWith("⏰ Alarma puesta") || r.startsWith("⏰ Quitada"))) hechas.add(a.optString("hora_texto", ""));
-                    else malas.add(a.optString("hora_texto", "") + ": " + r);
+                    String idA = a.optString("id", "");
+                    if (idA.length() > 0 && Datos.yaPuesta(VozActivity.this, idA)) { hechas.add(a.optString("hora_texto", "")); Datos.avisarPuesta(VozActivity.this, idA); }
+                    else {
+                        String r = AlarmaActivity.aplicar(VozActivity.this, a.optString("modo", "poner"), a.optInt("hora", -1),
+                                a.optInt("minutos", 0), a.optString("mensaje", "Azkar"), diasDeJson(a.optJSONArray("dias")));
+                        if (r != null && (r.startsWith("⏰ Alarma puesta") || r.startsWith("⏰ Quitada"))) {
+                            hechas.add(a.optString("hora_texto", ""));
+                            if (idA.length() > 0) { Datos.apuntarPuesta(VozActivity.this, idA); Datos.avisarPuesta(VozActivity.this, idA); }   // v1.38 · que no entre dos veces
+                        }
+                        else malas.add(a.optString("hora_texto", "") + ": " + r);
+                    }
                 }
                 if (k == total - 1) {
                     String fin = "⏰ " + hechas.size() + " de " + total + " alarmas mandadas al reloj"

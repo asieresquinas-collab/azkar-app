@@ -8,6 +8,9 @@ import android.os.Bundle;
 import android.provider.AlarmClock;
 import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 
 /**
@@ -29,6 +32,14 @@ import java.util.ArrayList;
  *     azkarwidget://alarma?q=quitar&h=5&m=55                            → quitar esa
  *     azkarwidget://alarma?q=ver                                        → ver las que hay
  *     azkarwidget://alarma?h=7&m=30&t=Pastillas&d=2,3,4,5,6,7,1         → poner, que se repita esos días
+ *     …&id=alp_…                                                        → (v1.38) su número: no entra dos veces
+ *     azkarwidget://alarma?q=recoger                                    → (v1.38) mete todas las que tiene apuntadas el servidor
+ *
+ * v1.38 — QUE LAS META ESTA APP, TODAS. Asier (2-nov-2026, noche) volvió a pedir las nueve y entró una: la app de
+ * Azkarin no se había cambiado a la versión nueva (no lo hace con el chat abierto). Ahora cada alarma que pide va
+ * también a la cola del servidor con su número, y esta app la mete en el reloj con sus días: al momento si se lo
+ * pide la pantalla (q=recoger), y si no al abrirla, por la burbuja o al refrescarse los widgets. La que ya entró
+ * (por su número) no se vuelve a poner.
  *
  * v1.37 — QUE SE REPITAN. Asier (2-nov-2026): «ponme estas alarmas para todos los días, cada una con su
  * nombre» (nueve). Se ponían para una sola vez. Ahora la orden puede llevar los días (d=…, como los cuenta
@@ -131,7 +142,8 @@ public class AlarmaActivity extends Activity {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         int hora = -1, minutos = 0;
-        String texto = "Azkar", modo = "poner";
+        String texto = "Azkar", modo = "poner", id = "";
+        boolean forzar = false;   // v1.38 · tocada a mano en la tarjeta: se pone aunque ya entrara (igual la quitó él)
         ArrayList<Integer> dias = null;
         try {
             Intent in = getIntent();
@@ -144,6 +156,9 @@ public class AlarmaActivity extends Activity {
                 String q = d.getQueryParameter("q");
                 if (q != null && q.trim().length() > 0) modo = q.trim();
                 dias = diasDe(d.getQueryParameter("d"));
+                String i2 = d.getQueryParameter("id");
+                if (i2 != null) id = i2.trim();
+                forzar = "1".equals(d.getQueryParameter("f"));
             } else if (in != null) {
                 hora = in.getIntExtra("azkar_hora", -1);
                 minutos = in.getIntExtra("azkar_min", 0);
@@ -154,8 +169,92 @@ public class AlarmaActivity extends Activity {
             }
         } catch (Exception e) { hora = -1; }
 
-        aviso(aplicar(this, modo, hora, minutos, texto, dias));
+        // v1.38 · «recoger»: que meta todas las que le ha apuntado Azkarin. Se trae la lista en otro hilo y se ponen
+        //  AQUÍ, con esta pantalla (invisible) todavía abierta: Android no deja a una app abrir el reloj desde segundo
+        //  plano, así que la pantalla se queda hasta que entra la última, y entonces se cierra.
+        if (modo.toLowerCase().startsWith("recog")) {
+            recogerAqui();
+            return;
+        }
+        // v1.38 · la que ya entró (por su número) no se pone otra vez
+        if (id.length() > 0 && !forzar && Datos.yaPuesta(this, id)) {
+            aviso("⏰ Esa alarma ya la tenías puesta.");
+            Datos.avisarPuesta(this, id);
+            finish();
+            return;
+        }
+        String hecho = aplicar(this, modo, hora, minutos, texto, dias);
+        if (id.length() > 0 && hecho != null && hecho.startsWith("⏰")) { Datos.apuntarPuesta(this, id); Datos.avisarPuesta(this, id); }
+        aviso(hecho);
         finish();
+    }
+
+    private final android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
+    private boolean cerrada = false;
+    private volatile boolean conLlave = false;   // v1.38 · esta pantalla tiene la recogida (nadie más mete alarmas a la vez)
+
+    private void soltarLlave() { if (conLlave) { conLlave = false; Datos.acabarRecogida(); } }
+
+    @Override
+    protected void onDestroy() { cerrada = true; soltarLlave(); super.onDestroy(); }
+
+    /** v1.38 · trae del servidor las alarmas apuntadas y las mete en el reloj una a una (con esta pantalla abierta). */
+    private void recogerAqui() {
+        aviso("⏰ Metiendo en el reloj las alarmas que te ha puesto Azkarin…");
+        final Context app = getApplicationContext();
+        ui.postDelayed(new Runnable() { public void run() { cerrar(); } }, 40000);   // pase lo que pase, a los cuarenta segundos se cierra
+        new Thread(new Runnable() { public void run() {
+            // si hay otra recogida en marcha (un widget, la app), se espera a que acabe: así ninguna entra dos veces
+            boolean tengo = false;
+            for (int k = 0; k < 30 && !cerrada; k++) {
+                if (Datos.empezarRecogida()) { tengo = true; break; }
+                try { Thread.sleep(500); } catch (InterruptedException ie) { }
+            }
+            conLlave = tengo;   // con llave o sin ella (a los quince segundos), se sigue: la que ya entró la salta por su número
+            if (cerrada) { soltarLlave(); return; }
+            Datos.ultimaRecogida = System.currentTimeMillis();
+            JSONArray lista = null;
+            try { lista = Datos.alarmasPendientes(app); } catch (Exception e) { lista = null; }
+            final JSONArray l = lista;
+            ui.post(new Runnable() { public void run() { ponerDeLaLista(l, 0, 0, new JSONArray(), 0); } });
+        } }).start();
+    }
+
+    private void ponerDeLaLista(final JSONArray lista, final int i, final int metidas, final JSONArray puestas, final int fallos) {
+        if (cerrada) return;
+        if (lista == null || i >= lista.length() || i >= 20) {
+            final Context app = getApplicationContext();
+            final JSONArray ids = puestas;
+            new Thread(new Runnable() { public void run() { try { Datos.alarmasPuestas(app, ids); } catch (Exception e) { } } }).start();
+            soltarLlave();
+            if (lista == null) aviso("No he podido traer las alarmas del servidor. Abre la app de widgets y lo vuelvo a intentar.");
+            else if (metidas == 0 && fallos == 0) aviso("⏰ No había ninguna alarma nueva que meter.");
+            else aviso("⏰ " + metidas + (metidas == 1 ? " alarma metida" : " alarmas metidas") + " en el reloj" + (fallos > 0 ? " (" + fallos + " no han entrado: ábrelas desde la tarjeta de Azkarin)" : "") + ".");
+            ui.postDelayed(new Runnable() { public void run() { cerrar(); } }, 1500);
+            return;
+        }
+        JSONObject a = lista.optJSONObject(i);
+        String id = a == null ? "" : a.optString("id", "");
+        if (a == null || Datos.yaPuesta(this, id)) {
+            if (a != null && id.length() > 0) puestas.put(id);
+            ponerDeLaLista(lista, i + 1, metidas, puestas, fallos);
+            return;
+        }
+        String hecho = aplicar(this, "poner", a.optInt("hora", -1), a.optInt("minutos", 0), a.optString("texto", "Azkar"), diasDeJson(a.optJSONArray("dias")));
+        boolean ok = hecho != null && hecho.startsWith("⏰");
+        if (ok) { puestas.put(id); Datos.apuntarPuesta(this, id); }
+        final int m2 = metidas + (ok ? 1 : 0), f2 = fallos + (ok ? 0 : 1);
+        ui.postDelayed(new Runnable() { public void run() { ponerDeLaLista(lista, i + 1, m2, puestas, f2); } }, 900);   // un respiro al reloj
+    }
+
+    private void cerrar() { if (cerrada) return; cerrada = true; soltarLlave(); try { finish(); } catch (Exception e) { } }
+
+    /** v1.38 · los días de la lista JSON del servidor ([2,3,4,5,6,7,1]); vacío o null = una sola vez. */
+    public static ArrayList<Integer> diasDeJson(JSONArray a) {
+        if (a == null || a.length() == 0) return null;
+        ArrayList<Integer> out = new ArrayList<Integer>();
+        for (int i = 0; i < a.length(); i++) { int n = a.optInt(i, 0); if (n >= 1 && n <= 7 && !out.contains(n)) out.add(n); }
+        return out.isEmpty() ? null : out;
     }
 
     /** «2,3,4,5,6,7,1» → [2,3,4,5,6,7,1] (solo del 1 al 7, sin repetir). Vacío → null (una sola vez). */

@@ -109,6 +109,38 @@ public class Datos {
     //  widget refrescando) recoge lo que haya y lo mete en el reloj.
     // ══════════════════════════════════════════════════════════════════════════
     static String ultimoErrorAlarmas = "";
+    /** v1.38 · lo que sabe hacer esta app con las alarmas (el servidor lo mira): la lista con sus días y sin repetirlas. */
+    static final int VERSION_ALARMAS = 38;
+
+    /** v1.38 · ¿esta alarma (por su número) ya la ha metido esta app en el reloj? Así ninguna entra dos veces,
+     *  venga por la pantalla de Azkarin, por la burbuja o por el recadero. */
+    static synchronized boolean yaPuesta(Context ctx, String id) {
+        if (ctx == null || id == null || id.length() == 0) return false;
+        return prefs(ctx).getString("alarmas_puestas", "|").contains("|" + id + "|");
+    }
+    static synchronized void apuntarPuesta(Context ctx, String id) {
+        if (ctx == null || id == null || id.length() == 0) return;
+        String s = prefs(ctx).getString("alarmas_puestas", "|");
+        if (s.contains("|" + id + "|")) return;
+        s = s + id + "|";
+        if (s.length() > 6000) { int k = s.indexOf('|', s.length() - 4000); s = k > 0 ? s.substring(k) : "|"; }
+        prefs(ctx).edit().putString("alarmas_puestas", s).apply();
+    }
+    /** v1.38 · una sola recogida a la vez (los tres widgets, la app, la burbuja y la pantalla de Azkarin podían
+     *  ir a por la misma lista a la vez y meter la misma alarma dos veces). */
+    private static final java.util.concurrent.atomic.AtomicBoolean recogiendo = new java.util.concurrent.atomic.AtomicBoolean(false);
+    static volatile long ultimaRecogida = 0;
+    static boolean empezarRecogida() { return recogiendo.compareAndSet(false, true); }
+    static void acabarRecogida() { recogiendo.set(false); }
+
+    /** v1.38 · le dice al servidor, sin esperar, que esa alarma ya ha entrado (en su propio hilo). */
+    static void avisarPuesta(final Context ctx, final String id) {
+        if (ctx == null || id == null || id.length() == 0) return;
+        final Context app = ctx.getApplicationContext();
+        new Thread(new Runnable() { public void run() {
+            try { JSONArray ids = new JSONArray(); ids.put(id); alarmasPuestas(app, ids); } catch (Exception e) { }
+        } }).start();
+    }
 
     /** Trae las alarmas que el móvil tiene que poner ahora (null si no se puede). */
     static JSONArray alarmasPendientes(Context ctx) {
@@ -125,7 +157,8 @@ public class Datos {
 
     private static JSONArray pedirAlarmas(String jwt) {
         try {
-            HttpURLConnection c = conecta(BASE + "/api/widget/alarmas", "GET", jwt);
+            // v1.38 · con la versión: desde la 1.38 el servidor da también las alarmas que pide Asier (con sus días)
+            HttpURLConnection c = conecta(BASE + "/api/widget/alarmas?v=" + VERSION_ALARMAS + "&max=20", "GET", jwt);
             int code = c.getResponseCode();
             if (code != 200) { ultimoErrorAlarmas = "HTTP " + code; return null; }
             JSONObject j = new JSONObject(leerTodo(c.getInputStream()));
@@ -159,23 +192,38 @@ public class Datos {
     static void recogerAlarmas(final Context ctx) {
         if (ctx == null) return;
         final Context app = ctx.getApplicationContext();
+        // v1.38 · desde un widget que se refresca solo (sin ninguna pantalla de esta app delante) Android no deja
+        //  abrir el reloj: la alarma no entraría aunque pareciera que sí. Las que ha pedido Asier se dejan para cuando
+        //  haya una pantalla delante (abrir la app, la burbuja o la tarjeta de Azkarin), y así nunca se pierden.
+        final boolean conPantalla = ctx instanceof android.app.Activity;
+        ultimaRecogida = System.currentTimeMillis();
         new Thread(new Runnable() {
             @Override
             public void run() {
+                if (!empezarRecogida()) return;   // ya hay otra recogida en marcha: esa las mete
                 try {
                     JSONArray lista = alarmasPendientes(app);
                     if (lista == null || lista.length() == 0) return;
                     JSONArray puestas = new JSONArray();
-                    for (int i = 0; i < lista.length() && i < 10; i++) {
+                    int metidas = 0;
+                    for (int i = 0; i < lista.length() && i < 20; i++) {
                         JSONObject a = lista.optJSONObject(i);
                         if (a == null) continue;
+                        String id = a.optString("id", "");
+                        // v1.38 · la que ya entró (por la pantalla de Azkarin o por la burbuja) no se vuelve a poner
+                        if (yaPuesta(app, id)) { puestas.put(id); continue; }
+                        if (!conPantalla && (a.optBoolean("pedida", false) || id.startsWith("alp_"))) continue;   // espera a una pantalla
+                        if (metidas > 0) { try { Thread.sleep(700); } catch (InterruptedException ie) { } }   // un respiro al reloj entre una y otra
                         String hecho = AlarmaActivity.aplicar(app, "poner",
-                                a.optInt("hora", -1), a.optInt("minutos", 0), a.optString("texto", "Azkar"));
+                                a.optInt("hora", -1), a.optInt("minutos", 0), a.optString("texto", "Azkar"),
+                                AlarmaActivity.diasDeJson(a.optJSONArray("dias")));
+                        metidas++;
                         // Solo se da por puesta si el reloj la ha cogido de verdad.
-                        if (hecho != null && hecho.startsWith("⏰")) puestas.put(a.optString("id", ""));
+                        if (hecho != null && hecho.startsWith("⏰")) { puestas.put(id); apuntarPuesta(app, id); }
                     }
                     alarmasPuestas(app, puestas);
                 } catch (Exception e) { /* nunca puede tumbar al widget */ }
+                finally { acabarRecogida(); }
             }
         }).start();
     }

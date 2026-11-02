@@ -408,6 +408,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        // v1.38 · al VOLVER a la app (si ya estaba abierta por detrás no pasa por el arranque) también se recogen las
+        //  alarmas que Azkarin haya dejado: «ábrela y te las mete» tiene que valer siempre
+        try { if (System.currentTimeMillis() - Datos.ultimaRecogida > 15000) Datos.recogerAlarmas(this); } catch (Exception e) { }
         try { if (estadoAvisos != null) estadoAvisos.setText(AvisosWhatsapp.estadoTexto(this)); } catch (Exception e) { }
         // v1.33: si quedó algo sin mandar, se intenta al abrir
         try { if (AvisosWhatsapp.tienePermiso(this)) { final Context _c = getApplicationContext(); AvisosWhatsapp.manos().post(new Runnable() { public void run() { AvisosWhatsapp.mandarCola(_c); } }); } } catch (Exception e) { }
