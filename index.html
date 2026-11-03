@@ -1837,6 +1837,9 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Varias de golpe y para todos los días (v746):</strong> «ponme estas alarmas para todos los días, cada una con su nombre: 7:30 …, 13:30 …». Salen todas en una tarjeta y se mandan al reloj <strong>una a una</strong>, cada una con su nombre y repitiéndose los días que digas («todos los días», «de lunes a viernes», «los sábados»). Para que se repitan hace falta la <strong>app de widgets 1.37</strong> (te sale el botón 🔄 ACTUALIZAR). Mira el reloj: si alguna no ha entrado, toca su botón en la tarjeta. Antes, de varias solo se ponía la última.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Las mete la app de widgets (v747, widgets 1.38):</strong> cada alarma que le pides a Azkarin queda apuntada en el servidor, y la <strong>app de widgets</strong> las mete todas en el reloj ella sola, cada una con sus días y sin repetir ninguna: al momento si se las pides desde la app, y si no, al abrir la app de widgets o al hablarle por la burbuja. Por eso también se pueden pedir <strong>por Telegram</strong>. Si alguna no ha entrado, <strong>abre la app de widgets</strong> y la mete; y el botón ⏰ de cada alarma en la tarjeta la pone aunque ya hubiera entrado (por si la quitaste tú).</div></div>
 
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📇 El contacto a la agenda al mandar un WhatsApp (v748):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al mandar un WhatsApp desde la ficha (el del presupuesto o el de «abrir WhatsApp»), o desde Azkarin (el botón verde o «mándale un WhatsApp»), el contacto del cliente se apunta en la agenda del móvil como <strong>número de cliente y nombre</strong> («6945 Cristina»), sin tocar nada. Lo que ya tenías guardado no se pisa. Si el número no es de ninguna ficha, no se inventa nada: dile a Azkarin «apúntalo en la agenda como …».</div></div>
+
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🗺️ Mapas con memoria justa (v454):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>La ruta y las coordenadas de los mapas son <strong>de esta ficha</strong>: al cambiar de presupuesto, lo del cliente anterior se tira y se recalcula. Antes podía colarse el recorrido del cliente de antes (pasó con el 6524 de Usansolo, que enseñaba un trayecto de Bilbao).</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Si en una dirección se escribe <strong>«Guardamuebles»</strong>, la app sabe que es nuestra nave: los mapas y los kilómetros van al polígono de Arrigorriaga, y en el papel se queda escrito «Guardamuebles».</div></div>
@@ -5875,7 +5878,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v747';
+var APP_VERSION = 'v748';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -10405,6 +10408,7 @@ async function enviarPresupuestoWhatsApp() {
   if (!num.startsWith('+') && !num.startsWith('34')) num = '34' + num;
   num = num.replace(/^\+/, '');
   var nombre = (document.getElementById('f_nom') || {}).value || '';
+  try { agendaGuardarSolo(typeof collectFormData === 'function' ? collectFormData() : null); } catch (e) {}   // v748 · el contacto a la agenda al mandar el WhatsApp (sin esperar)
   var primerNombre = nombre ? nombre.split(' ')[0] : '';
   var saludo = window._saludoA(primerNombre) + ', le envío su presupuesto de mudanza con Azkar Mudanzas de Vizcaya.';
   var texto;
@@ -10659,6 +10663,7 @@ function abrirWhatsApp() {
   if (num.startsWith('0')) num = '34' + num.substring(1);
   if (!num.startsWith('+') && !num.startsWith('34')) num = '34' + num;
   num = num.replace(/^\+/, '');
+  try { agendaGuardarSolo(typeof collectFormData === 'function' ? collectFormData() : null); } catch (e) {}   // v748 · el contacto a la agenda al abrir el WhatsApp (sin esperar)
   var texto = 'Hola ' + window._saludoDelDia().toLowerCase() + ', mi nombre es Asier de Azkar Mudanzas, ¿con quién tengo el gusto de hablar? Disculpa no haberte podido contestar, estaba en otra llamada.';
   var textoEnc = encodeURIComponent(texto);
   var isAndroid = /android/i.test(navigator.userAgent);
