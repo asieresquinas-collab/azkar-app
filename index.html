@@ -1837,9 +1837,9 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Varias de golpe y para todos los días (v746):</strong> «ponme estas alarmas para todos los días, cada una con su nombre: 7:30 …, 13:30 …». Salen todas en una tarjeta y se mandan al reloj <strong>una a una</strong>, cada una con su nombre y repitiéndose los días que digas («todos los días», «de lunes a viernes», «los sábados»). Para que se repitan hace falta la <strong>app de widgets 1.37</strong> (te sale el botón 🔄 ACTUALIZAR). Mira el reloj: si alguna no ha entrado, toca su botón en la tarjeta. Antes, de varias solo se ponía la última.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Las mete la app de widgets (v747, widgets 1.38):</strong> cada alarma que le pides a Azkarin queda apuntada en el servidor, y la <strong>app de widgets</strong> las mete todas en el reloj ella sola, cada una con sus días y sin repetir ninguna: al momento si se las pides desde la app, y si no, al abrir la app de widgets o al hablarle por la burbuja. Por eso también se pueden pedir <strong>por Telegram</strong>. Si alguna no ha entrado, <strong>abre la app de widgets</strong> y la mete; y el botón ⏰ de cada alarma en la tarjeta la pone aunque ya hubiera entrado (por si la quitaste tú).</div></div>
 
-      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📈 Precios nuevos, un veinte por ciento más (v749):</p>
-      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Desde el <strong>lunes 9 de noviembre</strong> todos los artículos del catálogo valen un <strong>veinte por ciento más</strong>. No suben el <strong>guardamuebles</strong>, la <strong>grúa / plataforma</strong>, los <strong>permisos</strong> ni la <strong>salida</strong>.</div></div>
-      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Las fichas ya hechas <strong>no cambian</strong>: abrir una ficha nunca re-tarifa nada. Los precios nuevos salen solo al añadir artículos en fichas nuevas (o al añadir líneas nuevas).</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📈 Los armarios, un veinte por ciento más (v750):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Desde el <strong>lunes 9 de noviembre</strong> los <strong>armarios</strong> (por módulos, de puertas correderas, escobero) valen un <strong>veinte por ciento más</strong>: un módulo 94,80 · dos módulos 228 · tres módulos 324 · cuatro o más 384 · dos puertas correderas 312. <strong>Todo lo demás sigue igual.</strong></div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Las fichas ya hechas <strong>no cambian</strong>: abrir una ficha nunca re-tarifa nada. Los precios nuevos salen al añadir armarios en fichas nuevas (o en líneas nuevas).</div></div>
 
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📇 El contacto a la agenda al mandar un WhatsApp (v748):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Al mandar un WhatsApp desde la ficha (el del presupuesto o el de «abrir WhatsApp»), o desde Azkarin (el botón verde o «mándale un WhatsApp»), el contacto del cliente se apunta en la agenda del móvil como <strong>número de cliente y nombre</strong> («6945 Cristina»), sin tocar nada. Lo que ya tenías guardado no se pisa. Si el número no es de ninguna ficha, no se inventa nada: dile a Azkarin «apúntalo en la agenda como …».</div></div>
@@ -4498,19 +4498,17 @@ var PRECIOS_ZONA = {
 };
 
 // ══════════════════════════════════════════════════════════════
-//  v749 · LA SUBIDA DEL VEINTE POR CIENTO (Asier, sábado 7-nov-2026): «súbeme un veinte por ciento a todos los artículos
-//  que tengo en la aplicación, sin subir el guardamuebles ni la grúa, y menos en la salida. En todos. Desde el lunes
-//  trabajamos con esos precios». Se aplica aquí sobre la tabla (igual que en el servidor, api/catalogo-precios.js), para
-//  que no se escape ningún artículo. Fuera: guardamuebles, grúa/plataforma, permisos del ayuntamiento y la salida.
-//  Las fichas ya hechas no se tocan (abrir una ficha nunca re-tarifa nada): esto es solo para las nuevas.
-//  Los precios de antes quedan en PRECIOS_FLAT_ANTES_2026_11.
+//  v750 · LA SUBIDA DEL VEINTE POR CIENTO, SOLO EN LOS ARMARIOS (Asier, sábado 7-nov-2026, 19:35): «deja todos los
+//  precios como estaban; lo único, todo lo que sean armarios de desmontar o de módulos, súbelos el veinte por ciento».
+//  (La v749 subía todo; se corrigió veinte minutos después.) Igual que el servidor (api/catalogo-precios.js): sube todo
+//  lo que empiece por «Armario» (por módulos, puertas correderas, escobero); lo demás, como estaba. Las fichas hechas no
+//  se tocan. Los precios sin la subida quedan en PRECIOS_FLAT_ANTES_2026_11.
 // ══════════════════════════════════════════════════════════════
-var SUBIDA_2026_11 = { factor: 1.20, desde: '2026-11-07', excluidos: /guardamuebles|gr[uú]a|plataforma|permiso|salida|desplazamiento/i };
+var SUBIDA_2026_11 = { factor: 1.20, desde: '2026-11-07', solo: /^armarios?\b/i };
 var PRECIOS_FLAT_ANTES_2026_11 = Object.assign({}, PRECIOS_FLAT);
 function conSubida(x) { return Math.round(Number(x) * SUBIDA_2026_11.factor * 100) / 100; }
-function subeConLaSubida(nombre) { return !SUBIDA_2026_11.excluidos.test(String(nombre || '')); }
+function subeConLaSubida(nombre) { return SUBIDA_2026_11.solo.test(String(nombre || '').trim()); }
 Object.keys(PRECIOS_FLAT).forEach(function (k) { if (subeConLaSubida(k) && PRECIOS_FLAT[k] > 0) PRECIOS_FLAT[k] = conSubida(PRECIOS_FLAT[k]); });
-Object.keys(PRECIOS_ZONA).forEach(function (z) { Object.keys(PRECIOS_ZONA[z]).forEach(function (k) { if (subeConLaSubida(k)) PRECIOS_ZONA[z][k] = conSubida(PRECIOS_ZONA[z][k]); }); });
 
 // ── Tiempos estimados por artículo (minutos, 1 operario) ─────
 // Formato: { nombre: [desmontaje+embalaje, montaje] } o { nombre: [manipulación, 0] }
@@ -5897,7 +5895,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v749';
+var APP_VERSION = 'v750';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
