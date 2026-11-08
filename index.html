@@ -1837,6 +1837,8 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Varias de golpe y para todos los días (v746):</strong> «ponme estas alarmas para todos los días, cada una con su nombre: 7:30 …, 13:30 …». Salen todas en una tarjeta y se mandan al reloj <strong>una a una</strong>, cada una con su nombre y repitiéndose los días que digas («todos los días», «de lunes a viernes», «los sábados»). Para que se repitan hace falta la <strong>app de widgets 1.37</strong> (te sale el botón 🔄 ACTUALIZAR). Mira el reloj: si alguna no ha entrado, toca su botón en la tarjeta. Antes, de varias solo se ponía la última.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Las mete la app de widgets (v747, widgets 1.38):</strong> cada alarma que le pides a Azkarin queda apuntada en el servidor, y la <strong>app de widgets</strong> las mete todas en el reloj ella sola, cada una con sus días y sin repetir ninguna: al momento si se las pides desde la app, y si no, al abrir la app de widgets o al hablarle por la burbuja. Por eso también se pueden pedir <strong>por Telegram</strong>. Si alguna no ha entrado, <strong>abre la app de widgets</strong> y la mete; y el botón ⏰ de cada alarma en la tarjeta la pone aunque ya hubiera entrado (por si la quitaste tú).</div></div>
 
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📸 Fotos para la web (v751):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El botón <strong>📸 FOTO WEB</strong> hace una foto (o la coge de la galería) y la guarda en la carpeta de Drive de la web. Con esas fotos se escriben y se publican solas las entradas que te suben en Google. Que no se vean caras, matrículas ni el número del portal.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📈 Los armarios, un veinte por ciento más (v750):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Desde el <strong>lunes 9 de noviembre</strong> los <strong>armarios</strong> (por módulos, de puertas correderas, escobero) valen un <strong>veinte por ciento más</strong>: un módulo 94,80 · dos módulos 228 · tres módulos 324 · cuatro o más 384 · dos puertas correderas 312. <strong>Todo lo demás sigue igual.</strong></div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Las fichas ya hechas <strong>no cambian</strong>: abrir una ficha nunca re-tarifa nada. Los precios nuevos salen al añadir armarios en fichas nuevas (o en líneas nuevas).</div></div>
@@ -4403,6 +4405,81 @@ async function PA_SOLO_DRIVE(){
   }
 })();
 
+// ══════════════════════════════════════════════════════════════
+//  v751 · FOTOS PARA LA WEB: los días de mudanza, una foto del trabajo → carpeta de Drive
+//  «Fotos para la web Azkar». De ahí la tarea de SEO escribe y publica entradas con trabajos reales.
+// ══════════════════════════════════════════════════════════════
+(function () {
+  var MAX_LADO = 2000, CALIDAD = 0.85;
+  function _capa(html) {
+    var v = document.getElementById('fweb-capa'); if (v) v.remove();
+    var c = document.createElement('div'); c.id = 'fweb-capa';
+    c.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+    c.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:440px;width:100%;padding:18px;font-size:15px;color:#222;box-shadow:0 10px 40px rgba(0,0,0,.35)">' + html + '</div>';
+    document.body.appendChild(c); return c;
+  }
+  function _input(camara) {
+    var id = camara ? 'fweb-camara' : 'fweb-galeria';
+    var i = document.getElementById(id); if (i) return i;
+    i = document.createElement('input'); i.type = 'file'; i.id = id; i.style.display = 'none'; i.accept = 'image/*';
+    if (camara) i.setAttribute('capture', 'environment'); else i.multiple = true;
+    i.addEventListener('change', function () { var fs = Array.prototype.slice.call(i.files || []); i.value = ''; if (fs.length) _subirVarias(fs); });
+    document.body.appendChild(i); return i;
+  }
+  function _leer(f) { return new Promise(function (ok, ko) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.onerror = function () { ko(new Error('No se pudo leer la foto')); }; r.readAsDataURL(f); }); }
+  function _encoger(f) {
+    if (f.size < 900 * 1024) return _leer(f).then(function (d) { return { dataUrl: d, mime: f.type || 'image/jpeg' }; });
+    return new Promise(function (ok) {
+      var url = URL.createObjectURL(f), im = new Image();
+      im.onload = function () {
+        try {
+          var esc = Math.min(1, MAX_LADO / Math.max(im.width, im.height));
+          var c = document.createElement('canvas'); c.width = Math.round(im.width * esc); c.height = Math.round(im.height * esc);
+          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          var d = c.toDataURL('image/jpeg', CALIDAD); URL.revokeObjectURL(url); ok({ dataUrl: d, mime: 'image/jpeg' });
+        } catch (e) { URL.revokeObjectURL(url); _leer(f).then(function (d) { ok({ dataUrl: d, mime: f.type || 'image/jpeg' }); }); }
+      };
+      im.onerror = function () { URL.revokeObjectURL(url); _leer(f).then(function (d) { ok({ dataUrl: d, mime: f.type || 'image/jpeg' }); }); };
+      im.src = url;
+    });
+  }
+  function _subirUna(f) {
+    return _encoger(f).then(function (x) {
+      return fetch(RAILWAY_API + '/api/fotos-web/subir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base64: x.dataUrl, mime: x.mime }) });
+    }).then(function (r) { return r.json().catch(function () { throw new Error('El servidor no contestó bien (' + r.status + ')'); }); })
+      .then(function (j) { if (j && j.offline) throw new Error('Sin cobertura. Vuelve a probar luego: la foto sigue en tu móvil.'); if (!j || !j.ok) throw new Error((j && j.error) || 'no se pudo guardar'); return j; });
+  }
+  function _subirVarias(fs) {
+    var hechas = 0, malas = [], carpeta = '';
+    var capa = _capa('<div style="font-size:18px;font-weight:700">⏳ Subiendo <span id="fweb-n">0</span> de ' + fs.length + '…</div>');
+    var p = Promise.resolve();
+    fs.forEach(function (f) {
+      p = p.then(function () { return _subirUna(f).then(function (j) { hechas++; carpeta = j.carpeta || carpeta; }).catch(function (e) { malas.push(e.message); }); })
+           .then(function () { var n = document.getElementById('fweb-n'); if (n) n.textContent = String(hechas + malas.length); });
+    });
+    p.then(function () {
+      capa.remove();
+      var ok = hechas > 0;
+      var c2 = _capa('<div style="font-size:19px;font-weight:800;color:' + (ok ? '#1a7a3f' : '#c00') + '">' + (ok ? '✅ ' + (hechas === 1 ? 'Foto guardada' : hechas + ' fotos guardadas') : '❌ No se ha guardado') + '</div>'
+        + '<div style="margin-top:8px;color:#444">' + (ok ? 'Ya están en la carpeta de la web. Con ellas se escriben las entradas que te suben en Google.' : '') + (malas.length ? '<br>' + malas.length + ' no han podido subir: ' + String(malas[0]).replace(/</g, '&lt;') : '') + '</div>'
+        + '<div style="display:flex;gap:8px;margin-top:14px"><button id="fweb-otra" style="flex:1;padding:12px;border:0;border-radius:10px;background:#E85C0D;color:#fff;font-weight:700">📷 Otra</button><button id="fweb-cerrar" style="flex:1;padding:12px;border:0;border-radius:10px;background:#eee;color:#333;font-weight:700">Cerrar</button></div>');
+      document.getElementById('fweb-otra').onclick = function () { c2.remove(); window.fotoWebElegir(); };
+      document.getElementById('fweb-cerrar').onclick = function () { c2.remove(); };
+    });
+  }
+  window.fotoWebElegir = function () {
+    var capa = _capa('<div style="font-size:19px;font-weight:800;color:#E85C0D">📸 Foto para la web</div>'
+      + '<div style="margin-top:6px;color:#555">Una foto del trabajo de hoy. Que no se vean caras, matrículas ni el número del portal.</div>'
+      + '<div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">'
+      + '<button id="fweb-foto" style="padding:18px;border:0;border-radius:12px;background:#E85C0D;color:#fff;font-weight:800;font-size:18px">📷 Hacer foto</button>'
+      + '<button id="fweb-gal" style="padding:14px;border:0;border-radius:12px;background:#2376C5;color:#fff;font-weight:700;font-size:15px">🖼️ Elegir de la galería</button>'
+      + '<button id="fweb-cerrar0" style="padding:12px;border:0;border-radius:12px;background:#eee;color:#333;font-weight:700;font-size:14px">Cerrar</button></div>');
+    document.getElementById('fweb-foto').onclick = function () { capa.remove(); _input(true).click(); };
+    document.getElementById('fweb-gal').onclick = function () { capa.remove(); _input(false).click(); };
+    document.getElementById('fweb-cerrar0').onclick = function () { capa.remove(); };
+  };
+})();
+
 /* beforeprint: browser fires this BEFORE rendering print — show all pages */
 var _printMode = 'pdf'; // 'pdf' or 'parte'
 window.addEventListener('beforeprint', function(){
@@ -5895,7 +5972,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v750';
+var APP_VERSION = 'v751';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -11632,6 +11709,15 @@ window.addEventListener('DOMContentLoaded', function() {
     gastoBtn.title = 'Sube un ticket o una factura de gasto y se guarda sola en su carpeta de Drive';
     gastoBtn.onclick = function () { try { window.gastoElegirArchivo(); } catch (e) { alert('No se pudo abrir: ' + e.message); } };
     acts.insertBefore(gastoBtn, acts.firstChild);
+
+    // v751: Botón "FOTO WEB" — foto del trabajo de hoy → carpeta de Drive de la web
+    const fotoWebBtn = document.createElement('button');
+    fotoWebBtn.className = 'nbtn';
+    fotoWebBtn.style.cssText = 'background:#E85C0D;color:#fff;margin-right:4px;';
+    fotoWebBtn.innerHTML = '📸 FOTO WEB';
+    fotoWebBtn.title = 'Haz o sube una foto del trabajo de hoy para la web';
+    fotoWebBtn.onclick = function () { try { window.fotoWebElegir(); } catch (e) { alert('No se pudo abrir: ' + e.message); } };
+    acts.insertBefore(fotoWebBtn, acts.firstChild);
 
     // Botón "Nueva Llamada" para transcripciones
     const callBtn = document.createElement('button');
