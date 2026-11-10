@@ -1837,6 +1837,11 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Varias de golpe y para todos los días (v746):</strong> «ponme estas alarmas para todos los días, cada una con su nombre: 7:30 …, 13:30 …». Salen todas en una tarjeta y se mandan al reloj <strong>una a una</strong>, cada una con su nombre y repitiéndose los días que digas («todos los días», «de lunes a viernes», «los sábados»). Para que se repitan hace falta la <strong>app de widgets 1.37</strong> (te sale el botón 🔄 ACTUALIZAR). Mira el reloj: si alguna no ha entrado, toca su botón en la tarjeta. Antes, de varias solo se ponía la última.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Las mete la app de widgets (v747, widgets 1.38):</strong> cada alarma que le pides a Azkarin queda apuntada en el servidor, y la <strong>app de widgets</strong> las mete todas en el reloj ella sola, cada una con sus días y sin repetir ninguna: al momento si se las pides desde la app, y si no, al abrir la app de widgets o al hablarle por la burbuja. Por eso también se pueden pedir <strong>por Telegram</strong>. Si alguna no ha entrado, <strong>abre la app de widgets</strong> y la mete; y el botón ⏰ de cada alarma en la tarjeta la pone aunque ya hubiera entrado (por si la quitaste tú).</div></div>
 
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🧭 La sala de control de Azkarin (v752):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En la cabecera del chat de Azkarin, el botón <strong>🧭</strong> (o decirle <strong>«¿qué estás haciendo?»</strong>) enseña lo que hace él solo: cada trabajo y cuándo corrió por última vez, lo que falla, de dónde saca la información, los avisos que no te han llegado, los compromisos de llamada sin llamada registrada, y lo que lleva gastado.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Pausa:</strong> «Pausa 2 horas» o «Hasta que yo diga» (o de palabra: «no me avises hasta mañana», «sigue»). En pausa no avisa ni hace nada por su cuenta, pero sigue recogiendo llamadas, correos y WhatsApp; lo que tuviera que decirte se queda guardado ahí.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>«Te llamo a las tres»:</strong> si alguien quedó en llamar a un cliente a una hora, media hora después Azkarin mira la centralita. Si no hay llamada, te avisa de que <strong>no le consta</strong> (una llamada desde un móvil no la ve).</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Solo IA local:</strong> un interruptor para que lo que Azkarin piensa por su cuenta no vaya nunca a la nube. Viene apagado.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📸 Fotos para la web (v751):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>El botón <strong>📸 FOTO WEB</strong> hace una foto (o la coge de la galería) y la guarda en la carpeta de Drive de la web. Con esas fotos se escriben y se publican solas las entradas que te suben en Google. Que no se vean caras, matrículas ni el número del portal.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>📈 Los armarios, un veinte por ciento más (v750):</p>
@@ -4480,6 +4485,74 @@ async function PA_SOLO_DRIVE(){
   };
 })();
 
+// ══════════════════════════════════════════════════════════════
+//  v752 · LA SALA DE CONTROL DE AZKARIN (botón 🧭 en la cabecera de su chat, o «¿qué estás haciendo?»)
+//  Qué hace él solo, qué falla, qué se ha quedado sin decirte, cuánto gasta, y la PAUSA general.
+//  Solo lee /api/azkarin/sala: aquí no se decide nada, lo decide el servidor.
+// ══════════════════════════════════════════════════════════════
+(function () {
+  function _e(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function _capa(html) {
+    var v = document.getElementById('sala-capa'); if (v) v.remove();
+    var c = document.createElement('div'); c.id = 'sala-capa';
+    c.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:12px;overflow:auto';
+    c.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:560px;width:100%;padding:16px;font-size:14px;color:#222;box-shadow:0 10px 40px rgba(0,0,0,.35);margin:auto">' + html + '</div>';
+    document.body.appendChild(c); return c;
+  }
+  function _pedir(metodo, cuerpo) {
+    return fetch(RAILWAY_API + '/api/azkarin/sala', { method: metodo, headers: { 'Content-Type': 'application/json' }, body: cuerpo ? JSON.stringify(cuerpo) : undefined })
+      .then(function (r) { return r.json().catch(function () { throw new Error('El servidor no contestó bien (' + r.status + ')'); }); })
+      .then(function (j) { if (j && j.offline) throw new Error('Sin cobertura ahora mismo.'); if (j && j.error) throw new Error(j.error); return j; });
+  }
+  function _bloque(titulo, dentro, abierto) { return '<details' + (abierto ? ' open' : '') + ' style="margin-top:10px;border:1px solid #e3e3e3;border-radius:10px;padding:8px 10px"><summary style="font-weight:800;cursor:pointer">' + titulo + '</summary><div style="margin-top:8px">' + dentro + '</div></details>'; }
+  function _pintar(e) {
+    var pausa = e.pausa && e.pausa.activa;
+    var fall = (e.trabajos || []).filter(function (t) { return t.estado === 'fallando'; });
+    var sinCon = (e.fuentes || []).filter(function (f) { return !f.conectada; });
+    var av = e.avisos_guardados || [];
+    var h = '<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:19px;font-weight:800;color:#1B4F8A">🧭 Qué está haciendo Azkarin</div><button id="sala-x" style="border:0;background:#eee;border-radius:8px;padding:6px 12px;font-weight:800">✕</button></div>';
+    // arriba, solo lo que hace decidir
+    h += '<div style="margin-top:10px;padding:12px;border-radius:10px;font-weight:700;background:' + (pausa ? '#fff3cd' : '#e8f5ec') + '">' + (pausa ? '⏸️ EN PAUSA' + (e.pausa.hasta ? ' hasta el ' + _e(new Date(e.pausa.hasta).toLocaleString('es-ES', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })) : '') + '. No avisa ni hace nada por su cuenta; sigue recogiendo llamadas, correos y WhatsApp.' : '▶️ En marcha.') + '</div>';
+    h += '<div style="display:flex;gap:8px;margin-top:8px">' + (pausa
+      ? '<button id="sala-seguir" style="flex:1;padding:13px;border:0;border-radius:10px;background:#1a7a3f;color:#fff;font-weight:800;font-size:15px">▶️ QUE SIGA</button>'
+      : '<button id="sala-p2" style="flex:1;padding:13px;border:0;border-radius:10px;background:#E85C0D;color:#fff;font-weight:800">⏸️ Pausa 2 horas</button><button id="sala-pm" style="flex:1;padding:13px;border:0;border-radius:10px;background:#8a4b00;color:#fff;font-weight:800">⏸️ Hasta que yo diga</button>') + '</div>';
+    if (fall.length) h += '<div style="margin-top:10px;padding:10px;border-radius:10px;background:#fdecea;color:#8a1c1c"><b>🔴 Fallando:</b><br>' + fall.map(function (t) { return '• ' + _e(t.nombre) + (t.fallo ? ' — ' + _e(t.fallo) : ''); }).join('<br>') + '</div>';
+    if (sinCon.length) h += '<div style="margin-top:10px;padding:10px;border-radius:10px;background:#fff3cd"><b>🔌 Sin conectar:</b> ' + sinCon.map(function (f) { return _e(f.nombre); }).join(', ') + '</div>';
+    if (av.length) h += _bloque('📥 Avisos que no te han llegado (' + av.length + ')', av.map(function (a) { return '<div style="padding:8px 0;border-bottom:1px solid #eee"><div style="color:#666;font-size:12px">' + _e(a.cuando) + ' · ' + _e(a.motivo) + '</div><div>' + _e(a.texto) + '</div><button data-desc="' + _e(a.id) + '" style="margin-top:6px;border:0;background:#eee;border-radius:8px;padding:6px 10px;font-weight:700">Visto, quítalo</button></div>'; }).join(''), true);
+    if (e.compromisos) h += '<div style="margin-top:10px">📞 Compromisos de llamadas abiertos: <b>' + e.compromisos.pendientes + '</b>' + (e.compromisos.avisado_sin_llamada ? ' · con la hora pasada y sin llamada registrada: <b>' + e.compromisos.avisado_sin_llamada + '</b>' : '') + (e.compromisos.no_se_pudo_comprobar ? ' · sin poder comprobar: ' + e.compromisos.no_se_pudo_comprobar : '') + '</div>';
+    if (e.gasto) h += '<div style="margin-top:6px">💶 Este mes: Gemini <b>' + _e(e.gasto.gemini_eur) + ' €</b> de ' + _e(e.gasto.gemini_tope_eur) + ' € (' + _e(e.gasto.gemini_pct) + ' %)' + (e.gasto.claude_usd_estimado != null ? ' · Claude, unos <b>' + _e(e.gasto.claude_usd_estimado) + ' $</b> de 200 (estimado)' : '') + '</div>';
+    if (e.cerebro) h += '<div style="margin-top:6px">🏠 Ordenador de casa: <b>' + (e.cerebro.casa_viva ? 'encendido' : 'no contesta') + '</b>. Hoy, de lo que piensa solo: <b>' + e.cerebro.en_casa + '</b> en casa y <b>' + e.cerebro.en_la_nube + '</b> en la nube' + (e.cerebro.ultimo_a_la_nube ? '<div style="color:#666;font-size:12px">Lo último que se fue a la nube: ' + _e(e.cerebro.ultimo_a_la_nube.tarea) + ' — ' + _e(e.cerebro.ultimo_a_la_nube.motivo) + '</div>' : '') + '</div>';
+    h += '<div style="margin-top:10px;padding:10px;border-radius:10px;background:#f2f6fb">' + (e.solo_local ? '🔒 <b>Solo IA local: ENCENDIDO.</b> Lo que piensa por su cuenta no va a la nube; si casa no puede, se queda apuntado aquí.' : '☁️ <b>Solo IA local: apagado.</b> Lo que casa no puede pensar lo piensa la nube.') + '<br><button id="sala-solo" style="margin-top:8px;border:0;border-radius:8px;padding:8px 12px;font-weight:800;background:' + (e.solo_local ? '#eee;color:#333' : '#1B4F8A;color:#fff') + '">' + (e.solo_local ? 'Volver a dejar la nube de respaldo' : 'Que nada de fondo vaya a la nube') + '</button></div>';
+    // el detalle, plegado
+    var color = { 'en marcha': '#1a7a3f', 'fallando': '#c00', 'en pausa': '#b36b00', 'apagado': '#999' };
+    h += _bloque('🛠️ Lo que hace él solo (' + (e.trabajos || []).length + ')', (e.trabajos || []).map(function (t) { return '<div style="padding:5px 0;border-bottom:1px solid #f0f0f0"><span style="color:' + (color[t.estado] || '#333') + ';font-weight:800">●</span> ' + _e(t.nombre) + '<div style="color:#666;font-size:12px">' + _e(t.estado) + (t.ultima_vez ? ' · ' + _e(t.ultima_vez) : '') + (t.lo_lleva ? ' · lo lleva ' + _e(t.lo_lleva) : '') + '</div></div>'; }).join(''));
+    h += _bloque('🔗 De dónde saca la información', (e.fuentes || []).map(function (f) { return '<div style="padding:5px 0;border-bottom:1px solid #f0f0f0">' + (f.conectada ? (f.fallando ? '🔴' : '🟢') : '⚪') + ' <b>' + _e(f.nombre) + '</b><div style="color:#666;font-size:12px">' + (f.conectada ? 'al día: ' + _e(f.al_dia) : 'sin conectar') + (f.ojo ? ' · ' + _e(f.ojo) : '') + '</div></div>'; }).join(''));
+    if (e.rutinas && e.rutinas.length) h += _bloque('⏰ Rutinas programadas (' + e.rutinas.length + ')', e.rutinas.map(function (r) { return '<div style="padding:5px 0;border-bottom:1px solid #f0f0f0">' + _e(r.nombre) + '<div style="color:#666;font-size:12px">' + (r.proxima ? 'próxima: ' + _e(r.proxima) : '') + (r.ultima ? ' · última: ' + _e(r.ultima) : '') + '</div></div>'; }).join(''));
+    if (e.gasto && e.gasto.por_tarea && e.gasto.por_tarea.length) h += _bloque('💶 En qué se va el gasto', e.gasto.por_tarea.map(function (g) { return '<div>' + _e(g.tarea) + ': <b>' + _e(g.eur) + ' €</b></div>'; }).join('') + '<div style="color:#666;font-size:12px;margin-top:6px">' + _e(e.gasto.nota || '') + '</div>');
+    if (e.agente && e.agente.texto) h += _bloque('✉️ Cómo te avisa', '<div>' + _e(e.agente.texto) + '</div>');
+    h += '<div style="color:#888;font-size:12px;margin-top:10px">Mirado el ' + _e(e.cuando) + '. También se lo puedes pedir hablando: «¿qué estás haciendo?», «pausa hasta mañana», «sigue».</div>';
+    var capa = _capa(h);
+    document.getElementById('sala-x').onclick = function () { capa.remove(); };
+    function hacer(cuerpo) { _capa('<div style="font-size:17px;font-weight:700">⏳ Un momento…</div>'); _pedir('POST', cuerpo).then(function () { window.azkarinSala(); }).catch(_error); }
+    var b;
+    if ((b = document.getElementById('sala-seguir'))) b.onclick = function () { hacer({ accion: 'reanudar' }); };
+    if ((b = document.getElementById('sala-p2'))) b.onclick = function () { hacer({ accion: 'pausar', horas: 2 }); };
+    if ((b = document.getElementById('sala-pm'))) b.onclick = function () { hacer({ accion: 'pausar' }); };
+    if ((b = document.getElementById('sala-solo'))) b.onclick = function () { hacer({ accion: e.solo_local ? 'solo_local_no' : 'solo_local_si' }); };
+    Array.prototype.slice.call(capa.querySelectorAll('[data-desc]')).forEach(function (x) { x.onclick = function () { hacer({ accion: 'descartar_aviso', id: x.getAttribute('data-desc') }); }; });
+  }
+  function _error(err) {
+    var c = _capa('<div style="font-size:18px;font-weight:700;color:#c00">❌ No he podido abrir la sala de control</div><div style="margin-top:8px;color:#444">' + _e(err && err.message) + '</div><div style="display:flex;gap:8px;margin-top:14px"><button id="sala-re" style="flex:1;padding:12px;border:0;border-radius:10px;background:#1B4F8A;color:#fff;font-weight:700">Probar otra vez</button><button id="sala-ce" style="flex:1;padding:12px;border:0;border-radius:10px;background:#eee;font-weight:700">Cerrar</button></div>');
+    document.getElementById('sala-re').onclick = function () { window.azkarinSala(); };
+    document.getElementById('sala-ce').onclick = function () { c.remove(); };
+  }
+  window.azkarinSala = function () {
+    _capa('<div style="font-size:17px;font-weight:700">⏳ Mirando qué está haciendo Azkarin…</div>');
+    _pedir('GET').then(_pintar).catch(_error);
+  };
+  window._azkarinSalaPintar = _pintar;   // para las pruebas
+})();
+
 /* beforeprint: browser fires this BEFORE rendering print — show all pages */
 var _printMode = 'pdf'; // 'pdf' or 'parte'
 window.addEventListener('beforeprint', function(){
@@ -5972,7 +6045,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v751';
+var APP_VERSION = 'v752';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18235,6 +18308,7 @@ async function doResetWithCode() {
     <div>
       <button id="chatbot-casa-btn" onclick="azkarinCasaToggle()" title="Con quién hablas: ordenador de casa o Railway (pulsa para cambiar)" style="display:none">&#127968;</button>
       <button onclick="chatbotNuevaConv()" title="Empezar una conversación nueva">&#10133;</button>
+      <button onclick="azkarinSala()" title="Sala de control: qué está haciendo Azkarin él solo, qué le falla, cuánto gasta, y la pausa">&#129517;</button>
       <button onclick="chatbotHistorial()" title="Ver historial de acciones">&#128203;</button>
       <button onclick="chatbotCopiarConv()" title="Copiar toda la conversación (para pegársela a Claude)">&#128228;</button>
       <button id="chatbot-oscar-btn" class="cargando" onclick="chatbotOscarAbrir()" title="&#211;scar &mdash; el que echa las cuentas de los presupuestos">&#211;</button>
