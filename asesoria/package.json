@@ -1,0 +1,18 @@
+{
+  "name": "gestoria-automatica",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plataforma para asesorías fiscales y contables: recogida de documentos, impuestos y plazos, atención al cliente y gestión interna.",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "demo": "node --disable-warning=ExperimentalWarning src/demo.js",
+    "test": "node --disable-warning=ExperimentalWarning --test tests/*.test.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0"
+  }
+}
