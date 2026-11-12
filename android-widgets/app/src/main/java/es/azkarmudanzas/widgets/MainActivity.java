@@ -175,6 +175,36 @@ public class MainActivity extends Activity {
         hablar.setText("🎙 HABLAR CON AZKARIN");
         raiz.addView(hablar);
 
+        // ══ v1.39 · EL COMPAÑERO: Azkarin habla él solo y escucha sin tocar el móvil ══
+        final Button companero = new Button(this);
+        companero.setTextSize(17);
+        raiz.addView(companero);
+        final TextView estadoComp = new TextView(this);
+        estadoComp.setTextSize(13);
+        estadoComp.setPadding(8, 4, 8, 16);
+        raiz.addView(estadoComp);
+        final Runnable pintaComp = new Runnable() { @Override public void run() {
+            boolean on = CompaneroService.encendido(MainActivity.this);
+            companero.setText(on ? "🟢 COMPAÑERO ENCENDIDO · tocar para apagar" : "⚪ ENCENDER EL COMPAÑERO (Azkarin te habla él solo)");
+            estadoComp.setText(on ? "Azkarin te habla en alto cuando tenga algo y se queda escuchando tu respuesta. " + (CompaneroService.ultimoEstado.isEmpty() ? "" : "Ahora: " + CompaneroService.ultimoEstado) : "Apagado. Al encenderlo te saluda para que veas que te oye.");
+        } };
+        pintaComp.run();
+        companero.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                try {
+                    if (CompaneroService.encendido(MainActivity.this)) { CompaneroService.apagar(MainActivity.this); }
+                    else {
+                        if (!Datos.hayLogin(MainActivity.this)) { estadoComp.setText("Entra primero con tu usuario y clave, aquí arriba."); return; }
+                        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) { requestPermissions(new String[]{ android.Manifest.permission.RECORD_AUDIO }, 11); estadoComp.setText("Acepta el micrófono y vuelve a tocar el botón."); return; }
+                        CompaneroService.encender(MainActivity.this);
+                        startService(new Intent(MainActivity.this, CompaneroService.class).setAction(CompaneroService.ACCION_PROBAR));
+                    }
+                } catch (Exception e) { estadoComp.setText("No he podido: " + e.getMessage()); }
+                companero.postDelayed(pintaComp, 600);
+                companero.postDelayed(pintaComp, 4000);
+            }
+        });
+
         // ══ v1.33 · LOS AVISOS DE WHATSAPP ═══════════════════════════════════════
         // Asier: «que Azkarin lea las notificaciones… hasta que conecte el WhatsApp».
         TextView tAv = new TextView(this);

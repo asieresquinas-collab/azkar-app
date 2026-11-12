@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="es.azkarmudanzas.widgets"
-    android:versionCode="39"
-    android:versionName="1.38">
+    android:versionCode="40"
+    android:versionName="1.39">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- v1.39 · el compañero: un servicio a la vista (aviso fijo) que habla y escucha sin abrir pantallas -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- v1.17: para que Azkarin sepa DESDE DONDE sales y pueda decir cuanto tardas.
          Solo se lee con la tarjeta del walkie-talkie abierta; al cerrarla se suelta. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -271,6 +274,10 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <!-- v1.39 · EL COMPAÑERO (Asier, 12-nov-2026): Azkarin habla él solo y escucha la respuesta sin tocar el móvil.
+             Lo enciende Asier desde la pantalla de la app; se apaga con el mismo botón o desde su aviso. -->
+        <service android:name=".CompaneroService" android:exported="false" />
 
     </application>
 </manifest>

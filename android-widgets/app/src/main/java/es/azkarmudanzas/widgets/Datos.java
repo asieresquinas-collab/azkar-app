@@ -364,6 +364,41 @@ public class Datos {
         }
     }
 
+    /** v1.39 · EL COMPAÑERO: ¿tiene Azkarin algo que decirme en alto? {hay, id, texto, accion} o null. */
+    static JSONObject companero(Context ctx) {
+        JSONObject r = companeroUna(ctx);
+        if (r != null) return r;
+        SharedPreferences p = prefs(ctx);
+        String u = p.getString("usuario", ""), pw = p.getString("pass", "");
+        if (ultimoErrorCompanero.startsWith("HTTP 401") && !u.isEmpty() && !pw.isEmpty() && login(ctx, u, pw) == null) return companeroUna(ctx);
+        return null;
+    }
+    static String ultimoErrorCompanero = "";
+    private static JSONObject companeroUna(Context ctx) {
+        try {
+            String jwt = prefs(ctx).getString("jwt", "");
+            if (jwt.isEmpty()) { ultimoErrorCompanero = "sin sesión"; return null; }
+            HttpURLConnection c = conecta(BASE + "/api/widget/companero?v=" + CompaneroService.VERSION, "GET", jwt);
+            int code = c.getResponseCode();
+            if (code != 200) { ultimoErrorCompanero = "HTTP " + code; return null; }
+            ultimoErrorCompanero = "";
+            return new JSONObject(leerTodo(c.getInputStream()));
+        } catch (Exception e) { ultimoErrorCompanero = String.valueOf(e.getMessage()); return null; }
+    }
+    /** Ya lo he dicho en alto (resultado: dicho | hecho | no). */
+    static void companeroOido(Context ctx, String id, String resultado) {
+        try {
+            String jwt = prefs(ctx).getString("jwt", "");
+            if (jwt.isEmpty() || id == null) return;
+            HttpURLConnection c = conecta(BASE + "/api/widget/companero/oido", "POST", jwt);
+            JSONObject cuerpo = new JSONObject();
+            cuerpo.put("id", id); cuerpo.put("resultado", resultado);
+            c.setDoOutput(true);
+            c.getOutputStream().write(cuerpo.toString().getBytes("UTF-8"));
+            c.getResponseCode();
+        } catch (Exception e) { /* si falla, como mucho lo repite una vez */ }
+    }
+
     /** v1.4: ¿hay versión nueva del widget publicada? Lee widgets-version.json de la web de la
      *  app y compara con la versión instalada. Devuelve {versionCode, versionName, url} o null. */
     static JSONObject hayActualizacion(Context ctx) {
