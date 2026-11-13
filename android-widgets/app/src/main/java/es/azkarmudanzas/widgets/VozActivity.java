@@ -703,7 +703,7 @@ public class VozActivity extends Activity implements RecognitionListener {
         // v1.12: la voz lee la respuesta ENTERA (en trozos con _trozosVoz, sin cortar ni mandar "a la app"),
         // pero SIN leer los enlaces — los cambia por "el enlace"; en pantalla sí se ven y se tocan.
         // v1.13: si hay vozAlt, la voz lee ESO (limpio de enlaces) en vez del texto de pantalla.
-        String paraVoz = String.valueOf(vozAlt != null ? vozAlt : paraVer)
+        String paraVoz = CompaneroService.sinConsumo(vozAlt != null ? vozAlt : paraVer)   // v1.40: sin el consumo de IA del final
                 .replaceAll("\\*\\*|__|`|#+", "")
                 .replaceAll("https?://\\S+", "el enlace").replaceAll("\\s+", " ").trim();
         if (ttsListo && tts != null) {

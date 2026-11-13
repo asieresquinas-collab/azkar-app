@@ -378,7 +378,7 @@ public class Datos {
         try {
             String jwt = prefs(ctx).getString("jwt", "");
             if (jwt.isEmpty()) { ultimoErrorCompanero = "sin sesión"; return null; }
-            HttpURLConnection c = conecta(BASE + "/api/widget/companero?v=" + CompaneroService.VERSION, "GET", jwt);
+            HttpURLConnection c = conecta(BASE + "/api/widget/companero?v=" + CompaneroService.VERSION + "&d=" + java.net.URLEncoder.encode(CompaneroService.diarioTexto(), "UTF-8"), "GET", jwt);
             int code = c.getResponseCode();
             if (code != 200) { ultimoErrorCompanero = "HTTP " + code; return null; }
             ultimoErrorCompanero = "";

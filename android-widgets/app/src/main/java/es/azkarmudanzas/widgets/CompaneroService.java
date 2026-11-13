@@ -47,7 +47,7 @@ public class CompaneroService extends Service implements RecognitionListener {
     static final String ACCION_PROBAR = "es.azkarmudanzas.widgets.COMPANERO_PROBAR";
     static final int ID_AVISO = 41;
     static final long CADA_MS = 30000;
-    static final int VERSION = 40;
+    static final int VERSION = 41;
     static volatile boolean vivo = false;
     static volatile String ultimoEstado = "";
 
@@ -66,6 +66,23 @@ public class CompaneroService extends Service implements RecognitionListener {
     int vacias = 0;                  // escuchas seguidas sin voz
     boolean mirando = false;
     String pendienteDeDecir = null;  // si la voz aún no estaba lista
+    // v1.40 · lo que de verdad oye el micro (para verlo desde fuera): el parcial más largo, el volumen máximo y los últimos sucesos
+    String mejorParcial = "";
+    float rmsMax = -99f;
+    static final java.util.LinkedList<String> diario = new java.util.LinkedList<String>();
+    static void apunta(String que) {
+        synchronized (diario) { diario.add((System.currentTimeMillis() / 1000) + " " + que); while (diario.size() > 14) diario.removeFirst(); }
+    }
+    static String diarioTexto() {
+        StringBuilder b = new StringBuilder();
+        synchronized (diario) { for (String x : diario) { if (b.length() > 0) b.append(" | "); b.append(x); } }
+        return b.toString();
+    }
+    /** Una palabra suelta de relleno no es una frase: el reconocedor de Google la «oye» en un ruido o un pitido. */
+    static boolean esRuido(String t) {
+        String x = t.toLowerCase(Locale.ROOT).replaceAll("[^a-záéíóúüñ ]", "").trim();
+        return x.isEmpty() || x.matches("^(pero|eh|em|mm+|ah|oh|y|a|o|e|que|qué|es|el|la|de|en|pues|bueno|hola)$");
+    }
 
     static boolean encendido(Context c) { return Datos.prefs(c).getBoolean(PREF, false); }
 
@@ -194,8 +211,16 @@ public class CompaneroService extends Service implements RecognitionListener {
         try { JSONObject m = new JSONObject(); m.put("role", rol); m.put("content", texto); historial.put(m); while (historial.length() > 12) historial.remove(0); } catch (Exception e) { /* nada */ }
     }
 
-    static String paraVoz(String t) {
+    /** v1.40 · Asier: «cuando me hable por el widget, que no me diga el consumo de IA en cada mensaje». Quita la coletilla del
+     *  final (el punto de color con el gasto, o el aviso de pago) antes de leer en voz. En pantalla se sigue viendo. */
+    static String sinConsumo(String t) {
         return String.valueOf(t == null ? "" : t)
+            .replaceAll("(?s)\\s*[\\x{1F534}\\x{1F7E0}-\\x{1F7EB}\\x{26AA}\\x{26AB}][ \\t]*(?:[0-9]\\x{FE0F}?\\x{20E3}|[ ,.\\x{FE0F}])+\\s*$", "")
+            .replaceAll("(?s)\\s*\\x{1F4B8}[^\\n]*$", "").trim();
+    }
+
+    static String paraVoz(String t) {
+        return sinConsumo(t)
             .replaceAll("(?is)<br\\s*/?>", ". ").replaceAll("(?is)</?[a-z][^>]*>", "")
             .replaceAll("\\[([^\\]]*)\\]\\([^)]*\\)", "$1")
             .replaceAll("https?://\\S+", "")
@@ -221,9 +246,10 @@ public class CompaneroService extends Service implements RecognitionListener {
 
     void trasHablar() {
         if (!vivo) return;
+        apunta("dicho");
         // lo de la cola ya está dicho: que el servidor no lo repita
         if (idActual != null && !resuelto) { final String id = idActual; new Thread(new Runnable() { @Override public void run() { Datos.companeroOido(CompaneroService.this, id, "dicho"); } }).start(); }
-        escuchar();
+        ui.postDelayed(new Runnable() { @Override public void run() { if (vivo) escuchar(); } }, 500);   // v1.40: medio segundo, que no se oiga a sí mismo
     }
 
     // ── escuchar ──
@@ -237,6 +263,8 @@ public class CompaneroService extends Service implements RecognitionListener {
             i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
             i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES");
             i.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
+            i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);   // v1.40: como la burbuja (que oye bien)
+            mejorParcial = ""; rmsMax = -99f;
             i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 4000L);
             i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 4000L);
             i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 4000L);
@@ -247,6 +275,7 @@ public class CompaneroService extends Service implements RecognitionListener {
     }
 
     void reposo(String porque) {
+        apunta("reposo" + (porque == null ? "" : " " + porque));
         fase = REPOSO; vacias = 0; idActual = null; accionPendiente = null;
         try { audio.abandonAudioFocus(null); } catch (Exception e) { /* nada */ }
         estado(porque == null ? "Estoy contigo. Te hablo cuando tenga algo." : "En espera · " + porque);
@@ -254,15 +283,18 @@ public class CompaneroService extends Service implements RecognitionListener {
 
     @Override public void onReadyForSpeech(Bundle p) { }
     @Override public void onBeginningOfSpeech() { }
-    @Override public void onRmsChanged(float r) { }
+    @Override public void onRmsChanged(float r) { if (r > rmsMax) rmsMax = r; }
     @Override public void onBufferReceived(byte[] b) { }
     @Override public void onEndOfSpeech() { }
     @Override public void onEvent(int t, Bundle p) { }
-    @Override public void onPartialResults(Bundle p) { }
+    @Override public void onPartialResults(Bundle p) {
+        try { ArrayList<String> l = p.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION); if (l != null && !l.isEmpty() && l.get(0).length() > mejorParcial.length()) mejorParcial = l.get(0); } catch (Exception e) { /* nada */ }
+    }
 
     @Override
     public void onError(int e) {
         if (!vivo || fase != ESCUCHANDO) return;
+        apunta("error " + e + " vol " + Math.round(rmsMax));
         if (e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
             vacias++;
             if (vacias >= 2) { reposo(null); return; }   // se ha callado: a esperar otra vez, sin pitar más
@@ -281,9 +313,15 @@ public class CompaneroService extends Service implements RecognitionListener {
         if (!vivo) return;
         ArrayList<String> l = p.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
         if (l == null || l.isEmpty() || l.get(0).trim().isEmpty()) { onError(SpeechRecognizer.ERROR_NO_MATCH); return; }
-        vacias = 0;
-        final String texto = l.get(0).trim();
+        String oido0 = l.get(0).trim();
+        if (mejorParcial.trim().length() > oido0.length() + 3) oido0 = mejorParcial.trim();   // v1.40: si el final llega recortado, vale el parcial más largo
+        final String texto = oido0;
         String b = texto.toLowerCase(Locale.ROOT);
+        apunta("oido «" + (texto.length() > 40 ? texto.substring(0, 40) + "…" : texto) + "» vol " + Math.round(rmsMax));
+        // v1.40 · 13-nov: le llegaba «pero» una y otra vez (un ruido que el reconocedor convierte en palabra) y contestaba en bucle.
+        //  Una palabra suelta de relleno, sin un «sí/no» pendiente, no se manda: cuenta como silencio.
+        if (accionPendiente == null && esRuido(texto)) { onError(SpeechRecognizer.ERROR_NO_MATCH); return; }
+        vacias = 0;
         if (accionPendiente != null) {
             final JSONObject acc = accionPendiente;
             if (esSi(b)) {
