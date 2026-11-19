@@ -1837,6 +1837,10 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'><strong>Varias de golpe y para todos los días (v746):</strong> «ponme estas alarmas para todos los días, cada una con su nombre: 7:30 …, 13:30 …». Salen todas en una tarjeta y se mandan al reloj <strong>una a una</strong>, cada una con su nombre y repitiéndose los días que digas («todos los días», «de lunes a viernes», «los sábados»). Para que se repitan hace falta la <strong>app de widgets 1.37</strong> (te sale el botón 🔄 ACTUALIZAR). Mira el reloj: si alguna no ha entrado, toca su botón en la tarjeta. Antes, de varias solo se ponía la última.</div></div>
       <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Las mete la app de widgets (v747, widgets 1.38):</strong> cada alarma que le pides a Azkarin queda apuntada en el servidor, y la <strong>app de widgets</strong> las mete todas en el reloj ella sola, cada una con sus días y sin repetir ninguna: al momento si se las pides desde la app, y si no, al abrir la app de widgets o al hablarle por la burbuja. Por eso también se pueden pedir <strong>por Telegram</strong>. Si alguna no ha entrado, <strong>abre la app de widgets</strong> y la mete; y el botón ⏰ de cada alarma en la tarjeta la pone aunque ya hubiera entrado (por si la quitaste tú).</div></div>
 
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>⚡ Atajos de Azkarin y quién te contesta (v753):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Encima de la caja de escribir del chat de Azkarin hay una fila de <strong>atajos</strong>: <strong>Hoy</strong> (novedades: llamadas, wasaps y correos), <strong>Mañana</strong>, <strong>Cobros</strong>, <strong>Llamadas</strong> (las que no se han devuelto), <strong>Asistente</strong> (si el de WhatsApp está encendido) y <strong>Gasto</strong>. Un toque y le manda la pregunta. La flecha de la izquierda los esconde o los saca.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>En <strong>Telegram</strong> son los mismos, en el botón del menú del bot (abajo, al lado de donde escribes): /hoy, /manana, /cobros, /llamadas, /asistente y /gasto.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Debajo de cada respuesta, junto a los tokens por segundo, pone <strong>quién te ha contestado</strong> cuando el servidor lo sabe: «casa (Qwen …)» o «nube (Claude … / Gemini …)». Si no lo sabe, no pone nada.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🧭 La sala de control de Azkarin (v752):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En la cabecera del chat de Azkarin, el botón <strong>🧭</strong> (o decirle <strong>«¿qué estás haciendo?»</strong>) enseña lo que hace él solo: cada trabajo y cuándo corrió por última vez, lo que falla, de dónde saca la información, los avisos que no te han llegado, los compromisos de llamada sin llamada registrada, y lo que lleva gastado.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Pausa:</strong> «Pausa 2 horas» o «Hasta que yo diga» (o de palabra: «no me avises hasta mañana», «sigue»). En pausa no avisa ni hace nada por su cuenta, pero sigue recogiendo llamadas, correos y WhatsApp; lo que tuviera que decirte se queda guardado ahí.</div></div>
@@ -6045,7 +6049,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v752';
+var APP_VERSION = 'v753';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -18290,6 +18294,17 @@ async function doResetWithCode() {
 #chatbot-panel.grande .chat-msg{max-width:min(85%,900px)}
 #chatbot-grande-btn svg{width:17px;height:17px;display:block}
 .chat-tokens{font-size:10.5px;color:#8a97a8;margin-top:2px;line-height:1.35}
+/* v753 · LOS ATAJOS ENCIMA DE LA CAJA DE ESCRIBIR (las mismas frases que los botones /hoy, /cobros… de Telegram). Plegables. */
+#chatbot-chips{display:flex;align-items:center;gap:6px;padding:6px 8px 0 8px;background:#fff;border-top:1px solid #eee;flex-shrink:0;min-width:0}
+#chatbot-chips-fila{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:0;padding-bottom:4px;scrollbar-width:none}
+#chatbot-chips-fila::-webkit-scrollbar{display:none}
+#chatbot-chips-fila button{flex-shrink:0;white-space:nowrap;background:#e8f0fc;border:1px solid #c5d4e8;color:#1B4F8A;border-radius:14px;padding:5px 11px;font-size:12px;font-weight:600;font-family:Barlow,sans-serif;cursor:pointer}
+#chatbot-chips-fila button:disabled{opacity:.5;cursor:default}
+#chatbot-chips-plegar{flex-shrink:0;width:26px;height:26px;margin-bottom:4px;border:none;border-radius:50%;background:#eef2f7;color:#1B4F8A;font-size:13px;cursor:pointer;line-height:26px;padding:0}
+#chatbot-chips.plegado{padding-top:2px}
+#chatbot-chips.plegado #chatbot-chips-fila{display:none}
+#chatbot-chips.plegado #chatbot-chips-plegar{transform:rotate(180deg);margin-bottom:2px}
+#chatbot-chips + #chatbot-input-area{border-top:none}
 @media(max-width:480px){
   #chatbot-grande-btn{display:none}
   #chatbot-header{padding:12px 10px}
@@ -18322,6 +18337,7 @@ async function doResetWithCode() {
   <div id="chatbot-estado"></div>
   <button id="chatbot-parar" type="button" onclick="window._convInterrumpir &amp;&amp; window._convInterrumpir()">&#9209; Parar de hablar</button>
   <div id="chatbot-foto-ind" style="display:none"></div>
+  <div id="chatbot-chips"><button type="button" id="chatbot-chips-plegar" onclick="azkChipsPlegar()" title="Esconder o sacar los atajos" aria-label="Esconder o sacar los atajos">&#9662;</button><div id="chatbot-chips-fila"></div></div>
   <div id="chatbot-input-area">
     <input type="file" id="chatbot-foto-input" accept="image/*,application/pdf,.doc,.docx,.xlsx,.xlsm,.xls,.csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" multiple style="display:none">
     <input type="file" id="chatbot-cam-input" accept="image/*" capture="environment" style="display:none">
@@ -22174,18 +22190,44 @@ async function doResetWithCode() {
   //  primer mensaje que se pinta tras la respuesta, en gris y sin leerse en voz alta.
   window._azkTokensPend = null;
   window._azkTokensDe = function (d) {
-    try { var t = d && d.tokens; window._azkTokensPend = (t && (t.salida || t.entrada)) ? { t: Date.now(), tk: t } : null; } catch (e) { window._azkTokensPend = null; }
+    try { var t = d && d.tokens; window._azkTokensPend = (t && (t.salida || t.entrada)) ? { t: Date.now(), tk: t, quien: _azkQuienContesta(d) } : null; } catch (e) { window._azkTokensPend = null; }
   };
+  // v753 · ¿QUIÉN TE CONTESTA? (backend 2.7.1385, igual que en Telegram). Junto a los tokens: «casa (Qwen …)» o «nube (Claude Sonnet /
+  //  Gemini …)», SOLO con lo que manda el servidor (_casa, _nube, modelo, motor_usado o tokens.modelo). Si no lo manda, no se pone nada.
+  function _azkNombreModelo(m) {
+    var s = String(m || '').replace(/:cloud$/i, '').trim();
+    if (!s || /^(casa|nube|local)$/i.test(s)) return '';
+    var b = s.toLowerCase();
+    if (/claude|sonnet|opus|haiku|fable/.test(b)) return 'Claude' + (/sonnet/.test(b) ? ' Sonnet' : (/opus/.test(b) ? ' Opus' : (/haiku/.test(b) ? ' Haiku' : (/fable/.test(b) ? ' Fable' : ''))));
+    if (/gemini/.test(b)) { var g = s.replace(/^gemini-/i, '').replace(/-preview$/i, '').replace(/-/g, ' '); return 'Gemini ' + g.replace(/\bflash\b/i, 'Flash').replace(/\blite\b/i, 'Lite').replace(/\bpro\b/i, 'Pro'); }
+    var f = /^([a-z]+)[-_ ]?v?(\d+(?:\.\d+)?)?/i.exec(s.replace(/^.*\//, ''));
+    if (f && /^(qwen|gemma|llama|mistral|phi|deepseek|kimi|glm)$/i.test(f[1])) {
+      var bits = /(?:^|[^a-z0-9])i?q(\d)(?:_|\b)/i.exec(s);
+      return f[1].charAt(0).toUpperCase() + f[1].slice(1).toLowerCase() + (f[2] ? ' ' + f[2] : '') + (bits ? ' ' + bits[1] + ' bits' : '');
+    }
+    return s.slice(0, 40);
+  }
+  function _azkQuienContesta(d) {
+    if (!d || typeof d !== 'object') return '';
+    var m = d.modelo || d.motor_usado || (d.tokens && typeof d.tokens === 'object' && d.tokens.modelo) || '';
+    var nom = typeof m === 'string' ? _azkNombreModelo(m) : '';
+    var donde = d._casa ? 'casa' : (d._nube ? 'nube' : '');
+    if (!donde && /^(Claude|Gemini)/.test(nom)) donde = 'nube';
+    if (!donde) return nom;
+    return donde + (nom ? ' (' + nom + ')' : '');
+  }
+  window._azkQuienContesta = _azkQuienContesta;
   function _azkNum(n, dec) {
     try { return Number(n || 0).toLocaleString('es-ES', { maximumFractionDigits: dec || 0, minimumFractionDigits: 0 }); } catch (e) { return String(n || 0); }
   }
-  function _azkTokensTexto(tk) {
+  function _azkTokensTexto(tk, quien) {
     if (!tk) return '';
     var ps = Number(tk.por_segundo) || 0;
     var txt = ps > 0
       ? '⚡ ' + _azkNum(ps, ps < 10 ? 1 : 0) + ' tokens por segundo · ' + _azkNum(tk.salida) + ' escritos' + (tk.segundos ? ' en ' + _azkNum(tk.segundos, 1) + ' s' : '')
       : '⚡ ' + _azkNum(tk.salida) + ' tokens escritos';
     if (Number(tk.leyendo_por_segundo) > 0) txt += ' · leyendo ' + _azkNum(tk.leyendo_por_segundo) + ' por segundo';
+    if (quien) txt += ' · ' + quien;   // v753
     return txt;
   }
   function _azkTokensEn(div) {
@@ -22194,12 +22236,44 @@ async function doResetWithCode() {
     window._azkTokensPend = null;
     var tk = p.tk, l = document.createElement('div');
     l.className = 'chat-tokens';
-    l.textContent = _azkTokensTexto(tk);
+    l.textContent = _azkTokensTexto(tk, p.quien || '');
     l.title = (tk.medido === 'escribiendo' ? 'Lo que tarda en escribir, medido por el ordenador de casa' : 'Contado de punta a punta, con la espera')
       + ' · ' + _azkNum(tk.entrada) + ' tokens leídos' + (tk.cache ? ' (' + _azkNum(tk.cache) + ' reaprovechados)' : '') + ' · ' + (tk.llamadas || 1) + ' llamada(s) al modelo';
     div.appendChild(l);
   }
   window._azkTokensTexto = _azkTokensTexto;
+  // ── v753 · LOS ATAJOS ENCIMA DE LA CAJA DE ESCRIBIR (estudio del 19-nov, H20: las mismas frases todos los días). Son las mismas que
+  //  los botones del menú de Telegram (/hoy, /manana, /cobros, /llamadas, /asistente, /gasto, backend 2.7.1385): al tocar uno se manda
+  //  su frase por el camino de siempre (chatbotSend). Se pliegan con la flecha y se acuerda en este móvil.
+  var AZK_CHIPS = [
+    { t: '📰 Hoy', f: '¿Qué ha pasado hoy? Dime las novedades del día: llamadas, wasaps y correos.' },
+    { t: '📅 Mañana', f: '¿Qué tenemos mañana? Los trabajos de mañana con su hora y su dirección.' },
+    { t: '💶 Cobros', f: '¿Cuánto falta por cobrar hasta fin de mes?' },
+    { t: '📞 Llamadas', f: '¿Hemos cogido a todos el teléfono? ¿Quién ha llamado y no se le ha devuelto?' },
+    { t: '🤖 Asistente', f: '¿Está encendido el asistente de WhatsApp?' },
+    { t: '🧾 Gasto', f: '/gasto' }
+  ];
+  window.AZK_CHIPS = AZK_CHIPS;
+  window.azkChipEnviar = function (i) {
+    var c = AZK_CHIPS[i]; if (!c) return;
+    var sb = document.getElementById('chatbot-send');
+    if (sb && sb.disabled) return;   // está pensando: no se le cruza otra pregunta
+    if (typeof window.azkChatCmd === 'function') window.azkChatCmd(c.f);
+  };
+  window.azkChipsPlegar = function () {
+    var cj = document.getElementById('chatbot-chips'); if (!cj) return;
+    var pleg = !cj.classList.contains('plegado');
+    cj.classList.toggle('plegado', pleg);
+    try { localStorage.setItem('azkar_chips_plegados', pleg ? '1' : '0'); } catch (e) {}
+  };
+  (function _azkPintarChips() {
+    try {
+      var fila = document.getElementById('chatbot-chips-fila'); if (!fila) return;
+      fila.innerHTML = AZK_CHIPS.map(function (c, i) { return '<button type="button" onclick="azkChipEnviar(' + i + ')" title="' + c.f.replace(/"/g, '&quot;') + '">' + c.t + '</button>'; }).join('');
+      var pleg = false; try { pleg = localStorage.getItem('azkar_chips_plegados') === '1'; } catch (e) {}
+      if (pleg) document.getElementById('chatbot-chips').classList.add('plegado');
+    } catch (e) {}
+  })();
   function addMsg(type, text, opts) {
     // v730 · cada respuesta de Azkarin puede haber cambiado la ficha abierta (quitar la marca de «no aceptado»): el cartel se vuelve a mirar
     try { if (type === 'bot' && window._cartelNoElegidaPinta && window._currentPresupuestoRef) setTimeout(window._cartelNoElegidaPinta, 1500); } catch (eP) {}
