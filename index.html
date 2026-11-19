@@ -1840,7 +1840,12 @@ body.print-parte #page-dossier,body.print-parte #page-presupuesto,body.print-par
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>⚡ Atajos de Azkarin y quién te contesta (v753):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Encima de la caja de escribir del chat de Azkarin hay una fila de <strong>atajos</strong>: <strong>Hoy</strong> (novedades: llamadas, wasaps y correos), <strong>Mañana</strong>, <strong>Cobros</strong>, <strong>Llamadas</strong> (las que no se han devuelto), <strong>Asistente</strong> (si el de WhatsApp está encendido) y <strong>Gasto</strong>. Un toque y le manda la pregunta. La flecha de la izquierda los esconde o los saca.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>En <strong>Telegram</strong> son los mismos, en el botón del menú del bot (abajo, al lado de donde escribes): /hoy, /manana, /cobros, /llamadas, /asistente y /gasto.</div></div>
-      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Debajo de cada respuesta, junto a los tokens por segundo, pone <strong>quién te ha contestado</strong> cuando el servidor lo sabe: «casa (Qwen …)» o «nube (Claude … / Gemini …)». Si no lo sabe, no pone nada.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Debajo de cada respuesta, junto a los tokens por segundo, pone <strong>quién te ha contestado</strong> cuando el servidor lo sabe: «casa» (el ordenador de casa; el nombre del modelo solo si el servidor lo dice) o «nube (Claude … / Gemini …)». Si no lo sabe, no pone nada.</div></div>
+      <div class='ayuda-step'><div class='step-num'>4</div><div class='step-text'><strong>Con una tarjeta esperando tu «sí» (v754)</strong>, los atajos salen apagados: primero contesta a la tarjeta (Sí o No). Antes, tocar un atajo la retiraba sin hacerla.</div></div>
+      <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🚚 Los kilómetros «ida y vuelta» se respetan (v754):</p>
+      <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>Si la línea de desplazamiento dice <strong>«ida y vuelta»</strong> (por ejemplo, la que pone Azkarin cuando se lo dices), tocar la casilla de recogida o de entrega ya <strong>no la parte por la mitad</strong>: 200 km × 3,50 = 700 € se quedan en 700 €. Antes pasaba a 100 km = 350 € sin avisar.</div></div>
+      <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'>Si esa línea (o una con un precio por km que no es el de la casa, o una que cobra y pasaría a «sin cargo») sale distinta porque <strong>la dirección ha cambiado de verdad</strong>, la app no la toca: te pone un aviso naranja en la caja de los km con los dos números y un botón para cambiarla. Lo decides tú.</div></div>
+      <div class='ayuda-step'><div class='step-num'>3</div><div class='step-text'>Cuando la app rehace una línea de km normal, ahora lo dice en la barra de arriba: «He rehecho los km: … (antes …)». Los botones de cambio de muebles y de ida entera funcionan como siempre.</div></div>
       <p style='font-weight:700;color:#1B4F8A;margin-top:16px'>🧭 La sala de control de Azkarin (v752):</p>
       <div class='ayuda-step'><div class='step-num'>1</div><div class='step-text'>En la cabecera del chat de Azkarin, el botón <strong>🧭</strong> (o decirle <strong>«¿qué estás haciendo?»</strong>) enseña lo que hace él solo: cada trabajo y cuándo corrió por última vez, lo que falla, de dónde saca la información, los avisos que no te han llegado, los compromisos de llamada sin llamada registrada, y lo que lleva gastado.</div></div>
       <div class='ayuda-step'><div class='step-num'>2</div><div class='step-text'><strong>Pausa:</strong> «Pausa 2 horas» o «Hasta que yo diga» (o de palabra: «no me avises hasta mañana», «sigue»). En pausa no avisa ni hace nada por su cuenta, pero sigue recogiendo llamadas, correos y WhatsApp; lo que tuviera que decirte se queda guardado ahí.</div></div>
@@ -3904,6 +3909,7 @@ function apagarPermuta() {
   window._currentPermuta = false;
   updatePermutaUI(false);
   if (typeof CA === 'function') CA();
+  window._kmQuitarIdaYVuelta = true; window._kmLoDecideElUsuario = true;   // v754 · ha dicho «solo la ida»: la «ida y vuelta» de la línea se va
   if (window._pintarDistanciaYKm) window._pintarDistanciaYKm();
   if (typeof showSyncStatus === 'function') showSyncStatus('🔄 Cambio de muebles quitado');
   if (window._currentPresupuestoRef && typeof saveNow === 'function') setTimeout(saveNow, 500);
@@ -4009,6 +4015,7 @@ function confirmarPermuta() {
   updatePermutaUI(true);
   _permutaCerrar();
   if (typeof CA === 'function') CA();
+  window._kmLoDecideElUsuario = true;   // v754 · lo ha decidido él con el botón: la línea de km se rehace sin preguntar
   if (window._pintarDistanciaYKm) window._pintarDistanciaYKm();
   if (typeof showSyncStatus === 'function') showSyncStatus('🔄 Cambio de muebles: 2º mueble añadido y kilómetros de ida y vuelta');
   if (window._currentPresupuestoRef && typeof saveNow === 'function') setTimeout(saveNow, 500);
@@ -6049,7 +6056,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v753';
+var APP_VERSION = 'v754';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
@@ -14842,6 +14849,77 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis, idaYVuelta) {
   }
 }
 
+// ── v754 · LA LÍNEA DE KM QUE YA HAY Y CÓMO SE CAMBIA (examen 2 del 19-nov, F4) ──
+// Lee la línea «Desplazamiento…» del presupuesto tal cual está: concepto, km, precio,
+// si cobra y si dice «ida y vuelta». null si no hay.
+function leerLineaKm() {
+  try {
+    var filas = document.querySelectorAll('#tb .cr');
+    for (var i = 0; i < filas.length; i++) {
+      var ins = filas[i].querySelectorAll('input');
+      if (ins[0] && /^Desplazamiento/i.test(ins[0].value)) {
+        var c = String(ins[0].value || '');
+        var u = parseFloat(String(ins[1] && ins[1].value).replace(',', '.')) || 0;
+        var p = parseFloat(String(ins[2] && ins[2].value).replace(',', '.')) || 0;
+        var sc = /SIN CARGO/i.test(c);
+        return { c: c, u: u, p: p, sinCargo: sc, cobra: !sc && u > 0 && p > 0, iv: /ida y vuelta/i.test(c) };
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+function _eurKm754(x) { return (Math.round((Number(x) || 0) * 100) / 100).toFixed(2).replace('.', ',') + ' €'; }
+function _escKm754(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+// Pone la línea de km. Si está «protegida» (ida y vuelta de la línea, precio que no es
+// el de la casa, o pasaría de cobrar a SIN CARGO) NO la pisa: si la cuenta sale igual
+// la deja; si sale distinta, avisa con los dos números y un botón para cambiarla.
+// Si la cambia, lo dice en la barra («he rehecho los km…»).
+function ponerLineaKmConCuidado(antes, kmNum, precioKm, kmGratis, idaYVuelta, o) {
+  o = o || {};
+  var viejo = document.getElementById('aviso-km-linea');
+  if (viejo && viejo.parentNode) viejo.parentNode.removeChild(viejo);
+  var cobra = kmNum > kmGratis;
+  var nU = cobra ? Math.round(kmNum) : 0, nP = cobra ? precioKm : 0;
+  var _iv = idaYVuelta ? ' ida y vuelta' : '';
+  if (o.protegida && antes && antes.cobra) {
+    var igual = cobra && Math.abs(nP - antes.p) < 0.005 && Math.abs(nU - antes.u) <= Math.max(2, antes.u * 0.03);
+    if (igual) return { tocada: false, igual: true };
+    var rutaEl = o.rutaEl;
+    var sello = (typeof selloDeFicha === 'function') ? selloDeFicha() : '';
+    if (rutaEl) {
+      var caja = document.createElement('div');
+      caja.id = 'aviso-km-linea';
+      caja.className = 'no-pdf';
+      caja.style.cssText = 'margin-top:6px;padding:7px 10px;border-radius:5px;font-size:11.5px;line-height:1.5;background:#FEF0E7;color:#a35a1c;border:1px solid #f0cdaf';
+      caja.innerHTML = '🛑 <b>No he tocado la línea de los kilómetros</b>: «' + _escKm754(antes.c) + '» cobra ' + antes.u + ' km × ' + _eurKm754(antes.p) + ' = <b>' + _eurKm754(antes.u * antes.p) + '</b>. '
+        + 'Con las direcciones de ahora salen <b>' + (cobra ? (nU + ' km' + _iv + ' × ' + _eurKm754(nP) + ' = ' + _eurKm754(nU * nP)) : (kmNum.toFixed(1) + ' km' + _iv + ', que no pasan de ' + kmGratis + ' km (sin cargo)')) + '</b>. '
+        + '<span style="font-size:10.5px;color:#7b8794">Lo decides tú: si la dirección no ha cambiado, déjala como está.</span> ';
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.id = 'btn-km-linea-cambiar';
+      b.style.cssText = 'margin-left:6px;background:#1B4F8A;color:#fff;border:none;border-radius:5px;padding:4px 10px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer';
+      b.textContent = cobra ? ('Cambiar a ' + nU + ' km × ' + _eurKm754(nP)) : 'Quitar el cobro (sin cargo)';
+      b.onclick = function () {
+        if (typeof selloDeFicha === 'function' && selloDeFicha() !== sello) { if (caja.parentNode) caja.parentNode.removeChild(caja); return; }   // otra ficha: no se toca nada
+        ponerLineaKmConCuidado(leerLineaKm(), kmNum, precioKm, kmGratis, idaYVuelta, {});
+        try { if (typeof window.scheduleSave === 'function') window.scheduleSave(); } catch (e) {}
+      };
+      caja.appendChild(b);
+      rutaEl.appendChild(caja);
+    }
+    try { if (typeof showSyncStatus === 'function') showSyncStatus('🛑 Los kilómetros han cambiado y la línea de desplazamiento NO la he tocado: míralo en la caja de los km', 9000); } catch (e) {}
+    return { tocada: false, pregunta: true };
+  }
+  actualizarLineaKm(kmNum, precioKm, kmGratis, idaYVuelta);
+  var antesImp = (antes && antes.cobra) ? antes.u * antes.p : 0;
+  if (antes && (Math.abs(antesImp - nU * nP) > 0.005 || (antes.iv !== !!idaYVuelta && (antes.cobra || cobra)))) {
+    try {
+      if (typeof showSyncStatus === 'function') showSyncStatus('🚚 He rehecho los km: ' + (cobra ? (nU + ' km' + _iv + ' × ' + _eurKm754(nP) + ' = ' + _eurKm754(nU * nP)) : (kmNum.toFixed(1) + ' km' + _iv + ', sin cargo')) + ' (antes ' + _eurKm754(antesImp) + ')', 9000);
+    } catch (e) {}
+  }
+  return { tocada: true };
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  v473 · PINTAR LOS KILÓMETROS  ·  Y EL CAMBIO DE MUEBLES LOS CUENTA DOS VECES
 //  Asier, 15-ago-2026: «los km son todos, desde punto A a punto B y luego la vuelta,
@@ -14854,6 +14932,9 @@ function actualizarLineaKm(kmNum, precioKm, kmGratis, idaYVuelta) {
 //  desplazamiento a cero en los dos presupuestos del 14-ago.
 // ══════════════════════════════════════════════════════════════════════════════
 function pintarDistanciaYKm() {
+  // v754 · avisos de un solo uso que dejan los botones del usuario (ver más abajo): se gastan aquí, salga por donde salga
+  var _soltarIv754 = window._kmQuitarIdaYVuelta === true, _decideEl754 = window._kmLoDecideElUsuario === true;
+  window._kmQuitarIdaYVuelta = false; window._kmLoDecideElUsuario = false;
   var kmBase = parseFloat(window._kmRutaBase);
   // ══════════════════════════════════════════════════════════════════════════
   // 🛑 v520 · CON VARIAS ENTREGAS, ESTOS KM SON SOLO HASTA LA PRIMERA.
@@ -14878,7 +14959,24 @@ function pintarDistanciaYKm() {
   var rutaEl = document.getElementById('dist-ruta');
   if (!elKm || !costeEl || !rutaEl) return;
 
-  var idaYVuelta = !!window._currentPermuta;
+  // ══════════════════════════════════════════════════════════════════════════
+  // 🛑 v754 · LA «IDA Y VUELTA» QUE PUSO AZKARIN (O ASIER) SE RESPETA
+  //    Examen 2 del 19-nov (F4): Azkarin pone «Desplazamiento (200.0 km ida y
+  //    vuelta)» 200 × 3,50 = 700 € en una ficha que NO es cambio de muebles. Al
+  //    tocar la casilla de recogida o de entrega y salir, esto recalculaba con
+  //    idaYVuelta = cambio de muebles (no) y dejaba «100.0 km» × 3,50 = 350 €.
+  //    Sin avisar. Ahora la ida y vuelta vale si es cambio de muebles O si la
+  //    línea que ya cobra lo dice. Y una línea así, o con un precio por km que no
+  //    es el de la casa (lo dijo Asier), o que cobra y pasaría a «SIN CARGO», NO
+  //    se pisa sola: si la cuenta sale igual se deja; si sale distinta (la
+  //    dirección ha cambiado de verdad), se avisa con los dos números y un botón.
+  //    Lo que decide el usuario con su botón (cambio de muebles, ida entera) va
+  //    directo, como siempre, y avisando en la barra.
+  // ══════════════════════════════════════════════════════════════════════════
+  var _lineaAntes = leerLineaKm();
+  var _ivDeLinea = !window._currentPermuta && !_soltarIv754 && !!(_lineaAntes && _lineaAntes.cobra && _lineaAntes.iv);
+  var idaYVuelta = !!window._currentPermuta || _ivDeLinea;
+  var _ivTxt = window._currentPermuta ? 'cambio de muebles' : 'ida y vuelta, como dice la línea';
   var kmNum = idaYVuelta ? Math.round(kmBase * 2 * 10) / 10 : kmBase;   // paso 1
   var km = kmNum.toFixed(1);
 
@@ -14904,13 +15002,13 @@ function pintarDistanciaYKm() {
         : ' · 🔒 ESTA FICHA TIENE SU TARIFA FIJADA (' + PRECIO_KM.toFixed(2) + ' €/km) y se respeta — hoy un viaje así iría a ' + PRECIO_KM_LARGO.toFixed(2) + ' €/km (' + (Math.round(kmNum) * PRECIO_KM_LARGO).toFixed(2) + ' €). Si no es a propósito, revísalo ANTES de enviar.';
     }
     rutaEl.innerHTML = Math.round(kmNum) + ' km × ' + PRECIO_KM.toFixed(2) + ' €/km = ' + costeKm.toFixed(2) + ' €'
-      + (idaYVuelta ? ' <b>(cambio de muebles: ' + kmBase.toFixed(1) + ' km de ida y otros tantos de vuelta)</b>' : '')
+      + (idaYVuelta ? ' <b>(' + _ivTxt + ': ' + kmBase.toFixed(1) + ' km de ida y otros tantos de vuelta)</b>' : '')
       + '<span class="no-pdf"> — pasa de ' + KM_GRATIS + ' km, se cobran TODOS (se añade al presupuesto)' + _coletilla + '</span>';
   } else {
     costeEl.textContent = 'GRATIS';   // v449: sin emoji — en el PDF salía un cuadradito vacío
     costeEl.style.color = '#27ae60';
     rutaEl.textContent = idaYVuelta
-      ? ('Cambio de muebles: ' + kmBase.toFixed(1) + ' km de ida y vuelta hacen ' + km + ' km — no pasa de ' + KM_GRATIS + ' km → sin cargo por desplazamiento')
+      ? ((window._currentPermuta ? 'Cambio de muebles: ' : 'Ida y vuelta: ') + kmBase.toFixed(1) + ' km de ida y vuelta hacen ' + km + ' km — no pasa de ' + KM_GRATIS + ' km → sin cargo por desplazamiento')
       : (KM_GRATIS + ' km o menos → sin cargo por desplazamiento');
   }
 
@@ -14929,7 +15027,10 @@ function pintarDistanciaYKm() {
   hiddenDist.value = km;
 
   // Auto-añadir o actualizar línea de km en el presupuesto
-  actualizarLineaKm(kmNum, PRECIO_KM, KM_GRATIS, idaYVuelta);
+  // v754 · con cuidado: la línea que puso Azkarin/Asier no se pisa sola (ver arriba)
+  var _tarifaPropia = !!(_lineaAntes && _lineaAntes.cobra && Math.abs(_lineaAntes.p - PRECIO_KM_CERCA) > 0.001 && Math.abs(_lineaAntes.p - PRECIO_KM_LARGO) > 0.001);
+  var _protegida = !!(_lineaAntes && _lineaAntes.cobra && !_decideEl754 && (_ivDeLinea || _tarifaPropia || kmNum <= KM_GRATIS));
+  ponerLineaKmConCuidado(_lineaAntes, kmNum, PRECIO_KM, KM_GRATIS, idaYVuelta, { protegida: _protegida, rutaEl: rutaEl });
 }
 window._pintarDistanciaYKm = pintarDistanciaYKm;
 
@@ -20503,6 +20604,7 @@ async function doResetWithCode() {
     }
     var accion = pendingAction;
     pendingAction = null;
+    try { _azkChipsEstado(); } catch (eCh) {}   // v754 · ya no hay tarjeta: los atajos vuelven
     var btns = msgsDiv.querySelectorAll('.chat-confirm-btns');
     btns.forEach(function(b) { b.remove(); });
     if (!si) {
@@ -22255,11 +22357,34 @@ async function doResetWithCode() {
   ];
   window.AZK_CHIPS = AZK_CHIPS;
   window.azkChipEnviar = function (i) {
+    if (pendingAction) { _azkChipsEsperanTarjeta(); return; }   // v754 · hay una tarjeta esperando el sí
     var c = AZK_CHIPS[i]; if (!c) return;
     var sb = document.getElementById('chatbot-send');
     if (sb && sb.disabled) return;   // está pensando: no se le cruza otra pregunta
     if (typeof window.azkChatCmd === 'function') window.azkChatCmd(c.f);
   };
+  // ── v754 · CON UNA TARJETA ESPERANDO EL «SÍ», LOS ATAJOS NO LA RETIRAN (examen 2 del 19-nov, F16) ──
+  //  Antes, tocar un atajo con una tarjeta pendiente mandaba su frase, la tarjeta contaba como «otra cosa» y se retiraba sin
+  //  hacerla («↩️ La tarjeta de antes se queda sin hacer…»). No ejecutaba nada, pero confundía. Ahora, mientras haya tarjeta,
+  //  los atajos salen apagados con el porqué en su globo; y si aun así llega un toque, no se manda nada y se señala la tarjeta.
+  //  Escribir a mano sigue igual (eso sí puede retirarla, como siempre).
+  function _azkChipsEstado() {
+    try {
+      var fila = document.getElementById('chatbot-chips-fila'); if (!fila) return;
+      var esp = !!pendingAction;
+      var bs = fila.querySelectorAll('button');
+      for (var k = 0; k < bs.length; k++) {
+        bs[k].disabled = esp;
+        bs[k].title = esp ? 'Primero contesta a la tarjeta (Sí o No)' : String((AZK_CHIPS[k] && AZK_CHIPS[k].f) || '');
+      }
+    } catch (e) {}
+  }
+  window._azkChipsEstado = _azkChipsEstado;
+  function _azkChipsEsperanTarjeta() {
+    _azkChipsEstado();
+    try { if (typeof showSyncStatus === 'function') showSyncStatus('👆 Primero contesta a la tarjeta: Sí o No', 4000); } catch (e) {}
+    try { var t = msgsDiv && msgsDiv.querySelector('.chat-confirm-btns'); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'center' }); } catch (e) {}
+  }
   window.azkChipsPlegar = function () {
     var cj = document.getElementById('chatbot-chips'); if (!cj) return;
     var pleg = !cj.classList.contains('plegado');
@@ -22275,6 +22400,7 @@ async function doResetWithCode() {
     } catch (e) {}
   })();
   function addMsg(type, text, opts) {
+    try { _azkChipsEstado(); } catch (eCh) {}   // v754 · atajos apagados mientras haya una tarjeta esperando el sí
     // v730 · cada respuesta de Azkarin puede haber cambiado la ficha abierta (quitar la marca de «no aceptado»): el cartel se vuelve a mirar
     try { if (type === 'bot' && window._cartelNoElegidaPinta && window._currentPresupuestoRef) setTimeout(window._cartelNoElegidaPinta, 1500); } catch (eP) {}
     var div = document.createElement('div');
@@ -22431,6 +22557,7 @@ async function doResetWithCode() {
     var desc = String(data.accion.descripcion || '').trim();
     if (txt) addMsg('bot', txt);
     addConfirmMsg(desc || (txt ? 'Lo que te he dicho arriba.' : 'Una acción.'), data.accion);
+    try { _azkChipsEstado(); } catch (eCh) {}   // v754 · con la tarjeta puesta, los atajos se apagan
     chatHistorial.push({ role: 'assistant', content: (txt || 'Te he pedido el OK para una acción.') + '\n[TARJETA PENDIENTE DE TU OK: ' + (desc || data.accion.herramienta || '').slice(0, 700) + ']' });
     return true;
   }
@@ -25659,6 +25786,7 @@ window._ponerVariasAlarmas = function (lista, opc) {
   }
   function _ponKmEntero(si) {
     window._kmEnteroOn = !!si;
+    window._kmLoDecideElUsuario = true;   // v754 · lo ha pedido él con el botón: la línea de km se rehace sin preguntar
     try { if (typeof window._pintarDistanciaYKm === 'function') window._pintarDistanciaYKm(); } catch (e) {}
     try { if (typeof window.scheduleSave === 'function') window.scheduleSave(); } catch (e) {}
   }
