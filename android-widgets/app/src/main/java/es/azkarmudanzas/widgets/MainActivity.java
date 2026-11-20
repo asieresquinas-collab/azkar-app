@@ -226,8 +226,13 @@ public class MainActivity extends Activity {
         llamarle.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 try {
-                    if (!CompaneroService.encendido(MainActivity.this)) { estadoComp.setText("Enciende primero el compañero, aquí arriba."); return; }
+                    // v1.42 · Asier (20-nov): «le doy al botón nuevo y no hace nada». Pedía encender antes el compañero; ahora lo enciende él solo.
+                    if (!Datos.hayLogin(MainActivity.this)) { estadoComp.setText("Entra primero con tu usuario y clave, arriba del todo."); return; }
+                    if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) { requestPermissions(new String[]{ android.Manifest.permission.RECORD_AUDIO }, 11); estadoComp.setText("Acepta el micrófono y vuelve a tocar «Llamar a Azkarin»."); return; }
+                    if (!CompaneroService.encendido(MainActivity.this)) CompaneroService.encender(MainActivity.this);
                     startService(new Intent(MainActivity.this, CompaneroService.class).setAction(CompaneroService.ACCION_LLAMAR));
+                    estadoComp.setText("📞 Llamando a Azkarin… ahora te dice «Dime».");
+                    companero.postDelayed(pintaComp, 5000);
                 } catch (Exception e) { estadoComp.setText("No he podido llamar: " + e.getMessage()); }
             }
         });
