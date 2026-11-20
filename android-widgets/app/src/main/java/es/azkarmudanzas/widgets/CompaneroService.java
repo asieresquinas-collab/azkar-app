@@ -398,8 +398,12 @@ public class CompaneroService extends Service implements RecognitionListener {
 
     // ── v1.41 · el oído de la llamada ──
     void iniciarOido() {
-        conTubo = Build.VERSION.SDK_INT >= 33 && !Datos.prefs(this).getBoolean("sin_tubo", false);
-        if (!conTubo) { apunta("oído clásico"); return; }
+        fallosTubo = 0;
+        // v1.43 · Asier (20-nov): «sale la llamada pero no me oye, estoy con cascos». Con cascos no hay eco que quitar: se oye por
+        //  el micro de siempre (el del reconocedor, que es el que ya le oía bien), sin modo llamada ni tubería.
+        boolean cascos = conCascos();
+        conTubo = !cascos && Build.VERSION.SDK_INT >= 33 && !Datos.prefs(this).getBoolean("sin_tubo", false);
+        if (!conTubo) { apunta(cascos ? "oído clásico (cascos)" : "oído clásico"); return; }
         try { audio.setMode(AudioManager.MODE_IN_COMMUNICATION); } catch (Exception e) { /* nada */ }
         try {
             if (audio.isBluetoothA2dpOn() && audio.isBluetoothScoAvailableOffCall()) { audio.startBluetoothSco(); audio.setBluetoothScoOn(true); }   // el manos libres del coche o los cascos
@@ -412,6 +416,16 @@ public class CompaneroService extends Service implements RecognitionListener {
         });
         oido.start();
         ui.postDelayed(new Runnable() { @Override public void run() { if (oido != null) apunta("oído eco=" + oido.conEco + " ruido=" + oido.conRuido); } }, 1500);
+    }
+    int fallosTubo = 0;
+    /** ¿Hay cascos puestos (de cable o Bluetooth)? */
+    boolean conCascos() {
+        try { if (audio.isWiredHeadsetOn() || audio.isBluetoothA2dpOn() || audio.isBluetoothScoOn()) return true; } catch (Exception e) { /* nada */ }
+        try {
+            android.media.AudioDeviceInfo[] ds = audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
+            for (android.media.AudioDeviceInfo d : ds) { int t = d.getType(); if (t == 3 || t == 4 || t == 7 || t == 8 || t == 22 || t == 23 || t == 26 || t == 27) return true; }
+        } catch (Throwable e) { /* nada */ }
+        return false;
     }
     void pararOido() {
         if (oido != null) { oido.parar(); oido = null; }
@@ -562,6 +576,14 @@ public class CompaneroService extends Service implements RecognitionListener {
         }
         if (!vivo || fase != ESCUCHANDO) return;
         apunta("error " + e + " vol " + Math.round(rmsMax));
+        // v1.43 · el oído nuevo no saca nada dos veces seguidas en este móvil: se sigue con el de siempre (y si había voz y aun así
+        //  el reconocedor no entendió nada, es que no admite la tubería: ya no se intenta más).
+        if (enLlamada && conTubo && (e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) && mejorParcial.isEmpty() && ++fallosTubo >= 2) {
+            apunta("oído nuevo sin fruto" + (huboVoz ? " (con voz)" : ""));
+            if (huboVoz) Datos.prefs(this).edit().putBoolean("sin_tubo", true).apply();
+            aClasico();
+            return;
+        }
         if (e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
             vacias++;
             if (vacias >= (enLlamada ? 5 : 2)) { reposo(null); return; }   // se ha callado: a esperar otra vez, sin pitar más (en llamada aguanta más)
@@ -597,7 +619,7 @@ public class CompaneroService extends Service implements RecognitionListener {
         // v1.40 · 13-nov: le llegaba «pero» una y otra vez (un ruido que el reconocedor convierte en palabra) y contestaba en bucle.
         //  Una palabra suelta de relleno, sin un «sí/no» pendiente, no se manda: cuenta como silencio.
         if (accionPendiente == null && esRuido(texto)) { onError(SpeechRecognizer.ERROR_NO_MATCH); return; }
-        vacias = 0;
+        vacias = 0; fallosTubo = 0;
         if (accionPendiente != null) {
             final JSONObject acc = accionPendiente;
             if (esSi(b)) {
