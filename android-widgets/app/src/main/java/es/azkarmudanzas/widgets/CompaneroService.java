@@ -75,6 +75,14 @@ public class CompaneroService extends Service implements RecognitionListener {
     boolean recAbierto = false;      // el micro está abierto (también mientras habla, en llamada)
     final java.util.HashMap<String, Long> luego = new java.util.HashMap<String, Long>();
     static boolean llamarEncendido(Context c) { return Datos.prefs(c).getBoolean(PREF_LLAMAR, true); }
+    // ── v1.41 · el oído de la llamada (Oido.java): micro en modo llamada con cancelador de eco, y la voz detectada por volumen ──
+    Oido oido;
+    boolean conTubo = false;         // el sonido limpio va al reconocedor por una tubería (Android 13 o más)
+    boolean huboVoz = false;         // en esta escucha ya ha hablado
+    boolean interrumpio = false;     // esta escucha empezó cortándole
+    long sesionDesde = 0;
+    int turno = 0;                   // para tirar lo que llegue tarde (colgó, o habló encima)
+    android.os.ParcelFileDescriptor tuboLectura;
     Handler ui = new Handler(Looper.getMainLooper());
     TextToSpeech tts;
     boolean ttsListo = false;
@@ -148,8 +156,8 @@ public class CompaneroService extends Service implements RecognitionListener {
         });
         tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
             @Override public void onStart(String id) { }
-            @Override public void onError(String id) { ui.post(new Runnable() { @Override public void run() { trasHablar(); } }); }
-            @Override public void onDone(String id) { ui.post(new Runnable() { @Override public void run() { trasHablar(); } }); }
+            @Override public void onError(String id) { if (!"azk_comp".equals(id)) return; ui.post(new Runnable() { @Override public void run() { trasHablar(); } }); }
+            @Override public void onDone(String id) { if (!"azk_comp".equals(id)) return; ui.post(new Runnable() { @Override public void run() { trasHablar(); } }); }
         });
         ui.postDelayed(vuelta, 4000);
         ultimoEstado = "encendido";
@@ -164,6 +172,7 @@ public class CompaneroService extends Service implements RecognitionListener {
         if (ACCION_LLAMAR.equals(a) && fase == REPOSO) {
             historial = new JSONArray(); accionPendiente = null; idActual = null; resuelto = false; vacias = 0;
             enLlamada = true;
+            iniciarOido();
             abrirPantalla();
             di("Dime.");
             return START_STICKY;
@@ -278,10 +287,19 @@ public class CompaneroService extends Service implements RecognitionListener {
         try { audio.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK); } catch (Exception e) { /* nada */ }
         try {
             if (t.length() > 3500) t = t.substring(0, 3500);
-            tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "azk_comp");
+            Bundle pv = null;
+            if (enLlamada && conTubo && oido != null) {
+                // v1.41 · por el canal de llamada: es el que el cancelador de eco sabe quitar del micro
+                pv = new Bundle(); pv.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL);
+                try { if (rec != null) rec.cancel(); } catch (Exception e) { /* nada */ }
+                recAbierto = false;
+                oido.conectar(null, false); oido.reinicia();
+                oido.ttsDesde = System.currentTimeMillis(); oido.hablandoTts = true;
+            }
+            tts.speak(t, TextToSpeech.QUEUE_FLUSH, pv, "azk_comp");
         } catch (Exception e) { trasHablar(); }
-        // v1.41 · en llamada, el micro se abre mientras habla (para poder interrumpirle)
-        if (enLlamada) ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && enLlamada && fase == HABLANDO && !recAbierto) abrirMicro(); } }, 700);
+        // v1.41 · sin tubería (móviles viejos): el micro del reconocedor se abre mientras habla (para poder interrumpirle)
+        if (enLlamada && !conTubo) ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && enLlamada && fase == HABLANDO && !recAbierto) abrirMicro(); } }, 700);
     }
 
     // ── v1.41 · sonar, coger, colgar ──
@@ -345,6 +363,7 @@ public class CompaneroService extends Service implements RecognitionListener {
         pararTono();
         apunta("cogida");
         enLlamada = true;
+        iniciarOido();
         String t = textoLlamada == null ? "Dime." : textoLlamada; textoLlamada = null;
         mete("assistant", t);
         di(t);
@@ -369,10 +388,94 @@ public class CompaneroService extends Service implements RecognitionListener {
         for (String w : x.split(" +")) { if (w.length() >= 3 && diciendo.indexOf(w) < 0) nuevas++; }
         return nuevas >= 2;
     }
+    /** v1.41 · con el cancelador de eco se confía más: solo es eco si TODO lo oído (dos palabras o más) lo estaba diciendo Azkarin. */
+    boolean esEco(String oidoTxt) {
+        String x = oidoTxt.toLowerCase(Locale.ROOT).replaceAll("[^a-záéíóúüñ0-9 ]", " ").trim();
+        int n = 0;
+        for (String w : x.split(" +")) { if (w.length() < 3) continue; if (diciendo.indexOf(w) < 0) return false; n++; }
+        return n >= 2;
+    }
+
+    // ── v1.41 · el oído de la llamada ──
+    void iniciarOido() {
+        conTubo = Build.VERSION.SDK_INT >= 33 && !Datos.prefs(this).getBoolean("sin_tubo", false);
+        if (!conTubo) { apunta("oído clásico"); return; }
+        try { audio.setMode(AudioManager.MODE_IN_COMMUNICATION); } catch (Exception e) { /* nada */ }
+        try {
+            if (audio.isBluetoothA2dpOn() && audio.isBluetoothScoAvailableOffCall()) { audio.startBluetoothSco(); audio.setBluetoothScoOn(true); }   // el manos libres del coche o los cascos
+            else audio.setSpeakerphoneOn(!audio.isWiredHeadsetOn());
+        } catch (Exception e) { /* nada */ }
+        oido = new Oido(new Oido.Escucha() {
+            @Override public void vozEmpieza() { ui.post(new Runnable() { @Override public void run() { vozEmpiezaUi(); } }); }
+            @Override public void vozAcaba() { ui.post(new Runnable() { @Override public void run() { vozAcabaUi(); } }); }
+            @Override public void fallo(final String que) { ui.post(new Runnable() { @Override public void run() { apunta("oído: " + que); aClasico(); } }); }
+        });
+        oido.start();
+        ui.postDelayed(new Runnable() { @Override public void run() { if (oido != null) apunta("oído eco=" + oido.conEco + " ruido=" + oido.conRuido); } }, 1500);
+    }
+    void pararOido() {
+        if (oido != null) { oido.parar(); oido = null; }
+        try { if (tuboLectura != null) tuboLectura.close(); } catch (Exception e) { /* nada */ }
+        tuboLectura = null;
+        if (conTubo) { try { audio.stopBluetoothSco(); audio.setBluetoothScoOn(false); audio.setSpeakerphoneOn(false); audio.setMode(AudioManager.MODE_NORMAL); } catch (Exception e) { /* nada */ } }
+        conTubo = false;
+    }
+    /** Algo del oído nuevo no va en este móvil: se sigue con el de antes (y si el reconocedor no admite la tubería, ya no se intenta más). */
+    void aClasico() {
+        if (!conTubo) return;
+        pararOido();
+        if (vivo && enLlamada && fase == ESCUCHANDO) escuchar();
+    }
+    void vozEmpiezaUi() {
+        if (!vivo || !enLlamada || oido == null) return;
+        if (fase == HABLANDO) {            // le corta: se calla YA y escucha, con el último segundo para no perder el principio
+            interrumpio = true;
+            interrumpido();
+            abrirSesion(true);
+        } else if (fase == ESCUCHANDO) huboVoz = true;
+    }
+    void vozAcabaUi() {
+        if (!vivo || !enLlamada || oido == null || fase != ESCUCHANDO || !huboVoz || !oido.conectado()) return;
+        oido.cerrarSalida();               // ha terminado la frase: se le dice al reconocedor que no hay más, y contesta antes
+        final int miTurno = turno;
+        ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && fase == ESCUCHANDO && turno == miTurno && recAbierto) { try { rec.cancel(); } catch (Exception e) { /* nada */ } onError(SpeechRecognizer.ERROR_NO_MATCH); } } }, 5000);
+    }
+    /** Una escucha con el sonido limpio del oído (sin el eco de Azkarin) por la tubería. */
+    void abrirSesion(boolean conPrevio) {
+        try {
+            if (rec == null) { rec = SpeechRecognizer.createSpeechRecognizer(this); rec.setRecognitionListener(this); }
+            try { rec.cancel(); } catch (Exception e) { /* nada */ }
+            try { if (tuboLectura != null) tuboLectura.close(); } catch (Exception e) { /* nada */ }
+            android.os.ParcelFileDescriptor[] t = android.os.ParcelFileDescriptor.createPipe();
+            tuboLectura = t[0];
+            Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES");
+            i.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
+            i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+            i.putExtra("android.speech.extra.AUDIO_SOURCE", t[0]);                       // Android 13: el sonido se lo damos nosotros
+            i.putExtra("android.speech.extra.AUDIO_SOURCE_CHANNEL_COUNT", 1);
+            i.putExtra("android.speech.extra.AUDIO_SOURCE_ENCODING", android.media.AudioFormat.ENCODING_PCM_16BIT);
+            i.putExtra("android.speech.extra.AUDIO_SOURCE_SAMPLING_RATE", Oido.HZ);
+            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L);
+            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L);
+            mejorParcial = ""; rmsMax = -99f;
+            huboVoz = conPrevio; if (!conPrevio) { interrumpio = false; oido.reinicia(); }
+            oido.hablandoTts = false;
+            sesionDesde = System.currentTimeMillis();
+            recAbierto = true;
+            rec.startListening(i);
+            oido.conectar(new android.os.ParcelFileDescriptor.AutoCloseOutputStream(t[1]), conPrevio);
+            final int miTurno = turno;   // si en doce segundos no dice nada, cuenta como silencio
+            ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && enLlamada && fase == ESCUCHANDO && turno == miTurno && !huboVoz) { try { rec.cancel(); } catch (Exception e) { /* nada */ } onError(SpeechRecognizer.ERROR_SPEECH_TIMEOUT); } } }, 12000);
+        } catch (Exception e) { apunta("tubería: " + e.getMessage()); aClasico(); }
+    }
+
     void interrumpido() {
         apunta("interrumpido");
         if (idActual != null && !resuelto) { final String id = idActual; new Thread(new Runnable() { @Override public void run() { Datos.companeroOido(CompaneroService.this, id, "dicho"); } }).start(); }
         try { tts.stop(); } catch (Exception e) { /* nada */ }
+        if (oido != null) oido.hablandoTts = false;
         fase = ESCUCHANDO;
         estado("Te escucho…");
     }
@@ -383,6 +486,7 @@ public class CompaneroService extends Service implements RecognitionListener {
         // lo de la cola ya está dicho: que el servidor no lo repita
         if (idActual != null && !resuelto) { final String id = idActual; new Thread(new Runnable() { @Override public void run() { Datos.companeroOido(CompaneroService.this, id, "dicho"); } }).start(); }
         if (fase != HABLANDO) return;   // v1.41 · le interrumpieron: ya está escuchando
+        if (oido != null) oido.hablandoTts = false;
         if (enLlamada && recAbierto) { fase = ESCUCHANDO; estado(accionPendiente != null ? "Te escucho: ¿sí o no?" : "Te escucho…"); return; }
         ui.postDelayed(new Runnable() { @Override public void run() { if (vivo) escuchar(); } }, enLlamada ? 150 : 500);   // v1.40: medio segundo, que no se oiga a sí mismo
     }
@@ -396,6 +500,7 @@ public class CompaneroService extends Service implements RecognitionListener {
     }
     void abrirMicro() {
         if (!vivo) return;
+        if (enLlamada && conTubo && oido != null) { abrirSesion(false); return; }   // v1.41 · en llamada, por el oído con cancelador de eco
         if (!SpeechRecognizer.isRecognitionAvailable(this)) { reposo("el móvil no tiene el reconocimiento de voz de Google"); return; }
         if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) { reposo("falta el permiso del micrófono: abre Azkar Widgets y acéptalo"); return; }
         try {
@@ -417,7 +522,8 @@ public class CompaneroService extends Service implements RecognitionListener {
 
     void reposo(String porque) {
         apunta("reposo" + (porque == null ? "" : " " + porque));
-        fase = REPOSO; vacias = 0; idActual = null; accionPendiente = null; enLlamada = false; recAbierto = false;
+        fase = REPOSO; vacias = 0; idActual = null; accionPendiente = null; enLlamada = false; recAbierto = false; turno++; interrumpio = false;
+        pararOido();
         try { audio.abandonAudioFocus(null); } catch (Exception e) { /* nada */ }
         estado(porque == null ? "Estoy contigo. Te hablo cuando tenga algo." : "En espera · " + porque);
     }
@@ -440,6 +546,16 @@ public class CompaneroService extends Service implements RecognitionListener {
     @Override
     public void onError(int e) {
         recAbierto = false;
+        if (oido != null) oido.cerrarSalida();
+        // v1.41 · el reconocedor de este móvil no admite la tubería (falla nada más abrir, sin que nadie hable): al oído de antes, para siempre
+        if (vivo && enLlamada && conTubo && fase == ESCUCHANDO && !huboVoz && e != SpeechRecognizer.ERROR_NO_MATCH && e != SpeechRecognizer.ERROR_SPEECH_TIMEOUT
+            && e != SpeechRecognizer.ERROR_RECOGNIZER_BUSY && System.currentTimeMillis() - sesionDesde < 2500) {
+            apunta("sin tubería (" + e + ")");
+            Datos.prefs(this).edit().putBoolean("sin_tubo", true).apply();
+            aClasico();
+            return;
+        }
+        if (vivo && enLlamada && conTubo && fase == HABLANDO) return;
         if (vivo && enLlamada && fase == HABLANDO) {   // v1.41 · mientras habla, el micro se vuelve a abrir sin contar silencios
             ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && enLlamada && fase == HABLANDO && !recAbierto) abrirMicro(); } }, 400);
             return;
@@ -449,7 +565,7 @@ public class CompaneroService extends Service implements RecognitionListener {
         if (e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
             vacias++;
             if (vacias >= (enLlamada ? 5 : 2)) { reposo(null); return; }   // se ha callado: a esperar otra vez, sin pitar más (en llamada aguanta más)
-            ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && fase == ESCUCHANDO) escuchar(); } }, 1200);
+            ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && fase == ESCUCHANDO) escuchar(); } }, enLlamada ? 300 : 1200);
             return;
         }
         if (e == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) { reposo("Android no me deja el micro: abre Azkar Widgets, apaga y enciende el compañero"); return; }
@@ -463,7 +579,10 @@ public class CompaneroService extends Service implements RecognitionListener {
     public void onResults(Bundle p) {
         if (!vivo) return;
         recAbierto = false;
+        if (oido != null) oido.cerrarSalida();
         ArrayList<String> l = p.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+        // v1.41 · le «cortó» pero lo oído es solo lo que estaba diciendo Azkarin (eco que se ha colado): no es Asier, se sigue escuchando
+        if (enLlamada && conTubo && interrumpio && l != null && !l.isEmpty() && esEco(l.get(0))) { apunta("era eco"); interrumpio = false; onError(SpeechRecognizer.ERROR_NO_MATCH); return; }
         if (fase == HABLANDO) {   // v1.41 · lo oído mientras hablaba: o es Asier (se calla y sigue con ello) o es su propio eco (se ignora)
             String o = (l == null || l.isEmpty()) ? "" : l.get(0).trim();
             if (enLlamada && esAsier(o)) interrumpido();
@@ -501,6 +620,15 @@ public class CompaneroService extends Service implements RecognitionListener {
         mandar(texto, null);
     }
 
+    /** v1.41 · una frase corta mientras piensa (no cambia de fase ni abre el micro). */
+    void dePaso(String frase) {
+        try {
+            Bundle pv = null;
+            if (conTubo) { pv = new Bundle(); pv.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL); }
+            tts.speak(frase, TextToSpeech.QUEUE_FLUSH, pv, "azk_paso");
+        } catch (Exception e) { /* nada */ }
+    }
+
     void cerrarCola(final String resultado) {
         resuelto = true;
         if (idActual == null) return;
@@ -516,10 +644,19 @@ public class CompaneroService extends Service implements RecognitionListener {
         fase = PENSANDO;
         estado("Pensando…");
         if (conf == null) mete("user", texto);
+        interrumpio = false;
+        final int miTurno = ++turno;
+        // v1.41 · Asier: «aunque tenga que esperar dos segundos, pero que me vaya contando». En llamada, si tarda, lo dice.
+        if (enLlamada) {
+            ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && enLlamada && fase == PENSANDO && turno == miTurno) dePaso("Un momento, lo miro."); } }, 2500);
+            ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && enLlamada && fase == PENSANDO && turno == miTurno) dePaso("Sigo con ello, ya casi está."); } }, 15000);
+            ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && enLlamada && fase == PENSANDO && turno == miTurno) dePaso("Me está llevando un poco más, no cuelgues."); } }, 40000);
+        }
         new Thread(new Runnable() { @Override public void run() {
             final JSONObject r = Datos.chat(CompaneroService.this, texto, historial, conf);
             ui.post(new Runnable() { @Override public void run() {
                 if (!vivo) return;
+                if (turno != miTurno) return;   // v1.41 · colgó mientras pensaba: esta respuesta ya no se dice
                 if (r == null) { di("No llego al cerebro de Azkarin." + (Datos.ultimoErrorChat.isEmpty() ? "" : " " + Datos.ultimoErrorChat)); return; }
                 String msg = r.optString("mensaje", "");
                 if (msg.isEmpty()) msg = r.optString("texto", r.optString("respuesta", ""));
