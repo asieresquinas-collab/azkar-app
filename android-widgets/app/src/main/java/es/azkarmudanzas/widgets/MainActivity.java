@@ -205,6 +205,33 @@ public class MainActivity extends Activity {
             }
         });
 
+        // ══ v1.41 · LA LLAMADA: Azkarin suena como una llamada, y un botón para llamarle tú ══
+        final Button comoLlamada = new Button(this);
+        comoLlamada.setTextSize(15);
+        raiz.addView(comoLlamada);
+        final Runnable pintaLl = new Runnable() { @Override public void run() {
+            comoLlamada.setText(CompaneroService.llamarEncendido(MainActivity.this) ? "📞 Me avisa SONANDO COMO UNA LLAMADA · tocar para que hable sin sonar" : "🔈 Me habla directamente, sin sonar · tocar para que suene como una llamada");
+        } };
+        pintaLl.run();
+        comoLlamada.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                Datos.prefs(MainActivity.this).edit().putBoolean(CompaneroService.PREF_LLAMAR, !CompaneroService.llamarEncendido(MainActivity.this)).apply();
+                pintaLl.run();
+            }
+        });
+        Button llamarle = new Button(this);
+        llamarle.setTextSize(17);
+        llamarle.setText("📞 LLAMAR A AZKARIN (hablar seguido, sin tocar)");
+        raiz.addView(llamarle);
+        llamarle.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                try {
+                    if (!CompaneroService.encendido(MainActivity.this)) { estadoComp.setText("Enciende primero el compañero, aquí arriba."); return; }
+                    startService(new Intent(MainActivity.this, CompaneroService.class).setAction(CompaneroService.ACCION_LLAMAR));
+                } catch (Exception e) { estadoComp.setText("No he podido llamar: " + e.getMessage()); }
+            }
+        });
+
         // ══ v1.33 · LOS AVISOS DE WHATSAPP ═══════════════════════════════════════
         // Asier: «que Azkarin lea las notificaciones… hasta que conecte el WhatsApp».
         TextView tAv = new TextView(this);

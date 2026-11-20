@@ -47,12 +47,34 @@ public class CompaneroService extends Service implements RecognitionListener {
     static final String ACCION_PROBAR = "es.azkarmudanzas.widgets.COMPANERO_PROBAR";
     static final int ID_AVISO = 41;
     static final long CADA_MS = 30000;
-    static final int VERSION = 41;
+    static final int VERSION = 42;
     static volatile boolean vivo = false;
     static volatile String ultimoEstado = "";
 
-    static final int REPOSO = 0, HABLANDO = 1, ESCUCHANDO = 2, PENSANDO = 3;
+    static final int REPOSO = 0, HABLANDO = 1, ESCUCHANDO = 2, PENSANDO = 3, SONANDO = 4;
     int fase = REPOSO;
+    // ── v1.41 · LA LLAMADA DE AZKARIN (20-nov-2026). Asier: «que me suene como una llamada, con el sonido que tengo de llamadas;
+    //  la cojo y hablo con él sin tocar el móvil y sin mirar, y que le pueda interrumpir… lo más fluido posible».
+    //  · Cuando Azkarin tiene algo que decir, SUENA (el tono de llamada del móvil) con la pantalla de llamada (también bloqueado).
+    //  · «Coger» (pantalla, aviso o botón de los cascos) → lo dice y se queda en conversación. «Colgar» o no cogerla → lo deja
+    //    para dentro de un cuarto de hora.
+    //  · EN LLAMADA el micro sigue abierto mientras él habla: si Asier dice algo que no es el eco de lo que está diciendo
+    //    Azkarin, se calla al momento y le escucha (interrumpir). Los silencios se cortan antes (1,5 s) para que vaya ágil.
+    static final String PREF_LLAMAR = "companero_llamar";
+    static final String ACCION_COGER = "es.azkarmudanzas.widgets.LLAMADA_COGER";
+    static final String ACCION_COLGAR = "es.azkarmudanzas.widgets.LLAMADA_COLGAR";
+    static final String ACCION_LLAMAR = "es.azkarmudanzas.widgets.LLAMADA_LLAMAR";   // le llama Asier
+    static final int ID_LLAMADA = 42;
+    static final long SUENA_MS = 35000, LUEGO_MS = 15 * 60000;
+    static volatile boolean enLlamada = false;
+    static volatile boolean sonando = false;
+    static volatile CompaneroService yo = null;
+    android.media.Ringtone tono;
+    String textoLlamada = null;
+    String diciendo = "";            // lo que está diciendo ahora (para no confundir su eco con Asier)
+    boolean recAbierto = false;      // el micro está abierto (también mientras habla, en llamada)
+    final java.util.HashMap<String, Long> luego = new java.util.HashMap<String, Long>();
+    static boolean llamarEncendido(Context c) { return Datos.prefs(c).getBoolean(PREF_LLAMAR, true); }
     Handler ui = new Handler(Looper.getMainLooper());
     TextToSpeech tts;
     boolean ttsListo = false;
@@ -105,7 +127,7 @@ public class CompaneroService extends Service implements RecognitionListener {
     @Override
     public void onCreate() {
         super.onCreate();
-        vivo = true;
+        vivo = true; yo = this;
         audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         try { startForeground(ID_AVISO, aviso("Estoy contigo. Te hablo cuando tenga algo.")); } catch (Exception e) { ultimoEstado = "sin aviso fijo: " + e.getMessage(); }
         try {
@@ -137,6 +159,15 @@ public class CompaneroService extends Service implements RecognitionListener {
     public int onStartCommand(Intent i, int flags, int id) {
         String a = i == null ? null : i.getAction();
         if (ACCION_APAGAR.equals(a)) { apagar(this); stopSelf(); return START_NOT_STICKY; }
+        if (ACCION_COGER.equals(a)) { coger(); return START_STICKY; }
+        if (ACCION_COLGAR.equals(a)) { colgar(); return START_STICKY; }
+        if (ACCION_LLAMAR.equals(a) && fase == REPOSO) {
+            historial = new JSONArray(); accionPendiente = null; idActual = null; resuelto = false; vacias = 0;
+            enLlamada = true;
+            abrirPantalla();
+            di("Dime.");
+            return START_STICKY;
+        }
         if (ACCION_PROBAR.equals(a) && fase == REPOSO) {
             historial = new JSONArray(); accionPendiente = null; idActual = null; resuelto = false; vacias = 0;
             di("Hola Asier, soy Azkarin. Ya estoy contigo. Dime algo y te contesto.");
@@ -146,7 +177,8 @@ public class CompaneroService extends Service implements RecognitionListener {
 
     @Override
     public void onDestroy() {
-        vivo = false;
+        vivo = false; yo = null; enLlamada = false; sonando = false;
+        pararTono();
         ui.removeCallbacksAndMessages(null);
         try { if (rec != null) rec.destroy(); } catch (Exception e) { /* nada */ }
         try { if (tts != null) { tts.stop(); tts.shutdown(); } } catch (Exception e) { /* nada */ }
@@ -174,6 +206,7 @@ public class CompaneroService extends Service implements RecognitionListener {
         PendingIntent apagar = PendingIntent.getService(this, 1, new Intent(this, CompaneroService.class).setAction(ACCION_APAGAR), f);
         b.setSmallIcon(R.drawable.azkarin).setContentTitle("Azkarin · compañero").setContentText(texto).setOngoing(true).setContentIntent(abrir)
          .addAction(0, "APAGAR", apagar);
+        if (enLlamada) b.addAction(0, "COLGAR", PendingIntent.getService(this, 3, new Intent(this, CompaneroService.class).setAction(ACCION_COLGAR), f));
         return b.build();
     }
     void estado(String t) {
@@ -197,9 +230,13 @@ public class CompaneroService extends Service implements RecognitionListener {
                     if (r == null || !r.optBoolean("hay") || fase != REPOSO) return;
                     String texto = r.optString("texto", "").trim();
                     if (texto.isEmpty()) return;
+                    String idN = r.optString("id", null);
+                    Long hasta = idN == null ? null : luego.get(idN);
+                    if (hasta != null && System.currentTimeMillis() < hasta) return;   // v1.41 · colgó o no la cogió: para luego
                     historial = new JSONArray(); vacias = 0; resuelto = false;
-                    idActual = r.optString("id", null);
+                    idActual = idN;
                     accionPendiente = r.optJSONObject("accion");
+                    if (llamarEncendido(CompaneroService.this)) { sonar(texto); return; }   // v1.41 · suena como una llamada
                     mete("assistant", texto);
                     di(texto);
                 } });
@@ -232,16 +269,112 @@ public class CompaneroService extends Service implements RecognitionListener {
     // ── hablar ──
     void di(String texto) {
         String t = paraVoz(texto);
-        if (t.isEmpty()) { trasHablar(); return; }
+        if (t.isEmpty()) { fase = HABLANDO; trasHablar(); return; }
         if (!ttsListo) { pendienteDeDecir = texto; return; }
         fase = HABLANDO;
+        diciendo = t.toLowerCase(Locale.ROOT);
         estado("Te estoy hablando…");
-        try { if (rec != null) rec.cancel(); } catch (Exception e) { /* nada */ }
+        if (!enLlamada) { try { if (rec != null) rec.cancel(); } catch (Exception e) { /* nada */ } recAbierto = false; }
         try { audio.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK); } catch (Exception e) { /* nada */ }
         try {
             if (t.length() > 3500) t = t.substring(0, 3500);
             tts.speak(t, TextToSpeech.QUEUE_FLUSH, null, "azk_comp");
         } catch (Exception e) { trasHablar(); }
+        // v1.41 · en llamada, el micro se abre mientras habla (para poder interrumpirle)
+        if (enLlamada) ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && enLlamada && fase == HABLANDO && !recAbierto) abrirMicro(); } }, 700);
+    }
+
+    // ── v1.41 · sonar, coger, colgar ──
+    void sonar(String texto) {
+        textoLlamada = texto;
+        fase = SONANDO; sonando = true;
+        estado("Te estoy llamando…");
+        try {
+            android.net.Uri u = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE);
+            tono = android.media.RingtoneManager.getRingtone(this, u);
+            if (tono != null) {
+                try { tono.setStreamType(AudioManager.STREAM_RING); } catch (Exception e) { /* nada */ }
+                try { android.media.Ringtone.class.getMethod("setLooping", boolean.class).invoke(tono, true); } catch (Exception e) { /* antes de Android 9 suena una vez */ }
+                tono.play();
+            }
+        } catch (Exception e) { apunta("sin tono " + e.getMessage()); }
+        try {
+            android.os.Vibrator v = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (v != null && audio.getRingerMode() != AudioManager.RINGER_MODE_SILENT) v.vibrate(new long[] { 0, 700, 900 }, 0);
+        } catch (Exception e) { /* nada */ }
+        avisoLlamada();
+        ui.postDelayed(noCogida, SUENA_MS);
+    }
+    final Runnable noCogida = new Runnable() { @Override public void run() { if (vivo && fase == SONANDO) { apunta("no cogida"); colgar(); } } };
+    void pararTono() {
+        try { if (tono != null && tono.isPlaying()) tono.stop(); } catch (Exception e) { /* nada */ }
+        tono = null;
+        try { android.os.Vibrator v = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE); if (v != null) v.cancel(); } catch (Exception e) { /* nada */ }
+        try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel(ID_LLAMADA); } catch (Exception e) { /* nada */ }
+        ui.removeCallbacks(noCogida);
+        sonando = false;
+    }
+    /** El aviso de llamada: a pantalla completa con el móvil bloqueado; con el móvil en uso, arriba con «Coger» y «Colgar». */
+    void avisoLlamada() {
+        String canal = "llamada";
+        if (Build.VERSION.SDK_INT >= 26) {
+            try {
+                Class<?> nc = Class.forName("android.app.NotificationChannel");
+                Object ch = nc.getConstructor(String.class, CharSequence.class, int.class).newInstance(canal, "Azkarin · llamada", 4 /* IMPORTANCE_HIGH */);
+                nc.getMethod("setSound", android.net.Uri.class, Class.forName("android.media.AudioAttributes")).invoke(ch, null, null);   // el tono lo pone el servicio
+                NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                NotificationManager.class.getMethod("createNotificationChannel", nc).invoke(nm, ch);
+            } catch (Exception e) { /* nada */ }
+        }
+        int f = Build.VERSION.SDK_INT >= 23 ? 0x04000000 : 0;
+        PendingIntent pantalla = PendingIntent.getActivity(this, 4, new Intent(this, LlamadaActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), f | PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent coger = PendingIntent.getService(this, 5, new Intent(this, CompaneroService.class).setAction(ACCION_COGER), f);
+        PendingIntent colgar = PendingIntent.getService(this, 6, new Intent(this, CompaneroService.class).setAction(ACCION_COLGAR), f);
+        Notification.Builder b = new Notification.Builder(this);
+        if (Build.VERSION.SDK_INT >= 26) { try { Notification.Builder.class.getMethod("setChannelId", String.class).invoke(b, canal); } catch (Exception e) { /* nada */ } }
+        b.setSmallIcon(R.drawable.azkarin).setContentTitle("Azkarin te llama").setContentText("Tiene algo que decirte").setOngoing(true)
+         .setPriority(Notification.PRIORITY_MAX).setCategory(Notification.CATEGORY_CALL).setFullScreenIntent(pantalla, true).setContentIntent(pantalla)
+         .addAction(0, "COGER", coger).addAction(0, "COLGAR", colgar);
+        try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(ID_LLAMADA, b.build()); } catch (Exception e) { apunta("sin aviso de llamada"); }
+    }
+    void abrirPantalla() {
+        try { startActivity(new Intent(this, LlamadaActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception e) { /* con el móvil bloqueado puede no dejar: queda el aviso */ }
+    }
+    void coger() {
+        if (fase != SONANDO) return;
+        pararTono();
+        apunta("cogida");
+        enLlamada = true;
+        String t = textoLlamada == null ? "Dime." : textoLlamada; textoLlamada = null;
+        mete("assistant", t);
+        di(t);
+    }
+    void colgar() {
+        boolean sinCoger = (fase == SONANDO);
+        pararTono();
+        if (sinCoger && idActual != null) luego.put(idActual, System.currentTimeMillis() + LUEGO_MS);
+        try { if (tts != null) tts.stop(); } catch (Exception e) { /* nada */ }
+        try { if (rec != null) rec.cancel(); } catch (Exception e) { /* nada */ }
+        recAbierto = false; textoLlamada = null;
+        apunta(sinCoger ? "colgada sin coger" : "colgada");
+        reposo(null);
+    }
+    /** ¿Lo que se oye es Asier, o es el eco de lo que está diciendo Azkarin? Asier: dos palabras o más que Azkarin no está diciendo,
+     *  o una orden corta («para», «espera», «calla», «oye», «azkarin», «no»). */
+    boolean esAsier(String oido) {
+        String x = oido.toLowerCase(Locale.ROOT).replaceAll("[^a-záéíóúüñ0-9 ]", " ").trim();
+        if (x.isEmpty()) return false;
+        if (x.matches("^(para|espera|calla|c[aá]llate|oye|azkarin|no|vale|ya|un momento)\\b.*") && diciendo.indexOf(x.split(" +")[0]) < 0) return true;
+        int nuevas = 0;
+        for (String w : x.split(" +")) { if (w.length() >= 3 && diciendo.indexOf(w) < 0) nuevas++; }
+        return nuevas >= 2;
+    }
+    void interrumpido() {
+        apunta("interrumpido");
+        if (idActual != null && !resuelto) { final String id = idActual; new Thread(new Runnable() { @Override public void run() { Datos.companeroOido(CompaneroService.this, id, "dicho"); } }).start(); }
+        try { tts.stop(); } catch (Exception e) { /* nada */ }
+        fase = ESCUCHANDO;
+        estado("Te escucho…");
     }
 
     void trasHablar() {
@@ -249,11 +382,19 @@ public class CompaneroService extends Service implements RecognitionListener {
         apunta("dicho");
         // lo de la cola ya está dicho: que el servidor no lo repita
         if (idActual != null && !resuelto) { final String id = idActual; new Thread(new Runnable() { @Override public void run() { Datos.companeroOido(CompaneroService.this, id, "dicho"); } }).start(); }
-        ui.postDelayed(new Runnable() { @Override public void run() { if (vivo) escuchar(); } }, 500);   // v1.40: medio segundo, que no se oiga a sí mismo
+        if (fase != HABLANDO) return;   // v1.41 · le interrumpieron: ya está escuchando
+        if (enLlamada && recAbierto) { fase = ESCUCHANDO; estado(accionPendiente != null ? "Te escucho: ¿sí o no?" : "Te escucho…"); return; }
+        ui.postDelayed(new Runnable() { @Override public void run() { if (vivo) escuchar(); } }, enLlamada ? 150 : 500);   // v1.40: medio segundo, que no se oiga a sí mismo
     }
 
     // ── escuchar ──
     void escuchar() {
+        if (!vivo) return;
+        fase = ESCUCHANDO;
+        estado(accionPendiente != null ? "Te escucho: ¿sí o no?" : "Te escucho…");
+        abrirMicro();
+    }
+    void abrirMicro() {
         if (!vivo) return;
         if (!SpeechRecognizer.isRecognitionAvailable(this)) { reposo("el móvil no tiene el reconocimiento de voz de Google"); return; }
         if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) { reposo("falta el permiso del micrófono: abre Azkar Widgets y acéptalo"); return; }
@@ -265,18 +406,18 @@ public class CompaneroService extends Service implements RecognitionListener {
             i.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
             i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);   // v1.40: como la burbuja (que oye bien)
             mejorParcial = ""; rmsMax = -99f;
-            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 4000L);
-            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 4000L);
-            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 4000L);
-            fase = ESCUCHANDO;
-            estado(accionPendiente != null ? "Te escucho: ¿sí o no?" : "Te escucho…");
+            long sil = enLlamada ? 1500L : 4000L;   // v1.41 · en llamada, más ágil
+            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, sil);
+            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, sil);
+            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, sil);
+            recAbierto = true;
             rec.startListening(i);
         } catch (Exception e) { reposo("no he podido abrir el micro: " + e.getMessage()); }
     }
 
     void reposo(String porque) {
         apunta("reposo" + (porque == null ? "" : " " + porque));
-        fase = REPOSO; vacias = 0; idActual = null; accionPendiente = null;
+        fase = REPOSO; vacias = 0; idActual = null; accionPendiente = null; enLlamada = false; recAbierto = false;
         try { audio.abandonAudioFocus(null); } catch (Exception e) { /* nada */ }
         estado(porque == null ? "Estoy contigo. Te hablo cuando tenga algo." : "En espera · " + porque);
     }
@@ -288,16 +429,26 @@ public class CompaneroService extends Service implements RecognitionListener {
     @Override public void onEndOfSpeech() { }
     @Override public void onEvent(int t, Bundle p) { }
     @Override public void onPartialResults(Bundle p) {
-        try { ArrayList<String> l = p.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION); if (l != null && !l.isEmpty() && l.get(0).length() > mejorParcial.length()) mejorParcial = l.get(0); } catch (Exception e) { /* nada */ }
+        try {
+            ArrayList<String> l = p.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+            if (l == null || l.isEmpty()) return;
+            if (fase == HABLANDO) { if (enLlamada && esAsier(l.get(0))) { mejorParcial = l.get(0); interrumpido(); } return; }   // v1.41 · interrumpir
+            if (l.get(0).length() > mejorParcial.length()) mejorParcial = l.get(0);
+        } catch (Exception e) { /* nada */ }
     }
 
     @Override
     public void onError(int e) {
+        recAbierto = false;
+        if (vivo && enLlamada && fase == HABLANDO) {   // v1.41 · mientras habla, el micro se vuelve a abrir sin contar silencios
+            ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && enLlamada && fase == HABLANDO && !recAbierto) abrirMicro(); } }, 400);
+            return;
+        }
         if (!vivo || fase != ESCUCHANDO) return;
         apunta("error " + e + " vol " + Math.round(rmsMax));
         if (e == SpeechRecognizer.ERROR_NO_MATCH || e == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
             vacias++;
-            if (vacias >= 2) { reposo(null); return; }   // se ha callado: a esperar otra vez, sin pitar más
+            if (vacias >= (enLlamada ? 5 : 2)) { reposo(null); return; }   // se ha callado: a esperar otra vez, sin pitar más (en llamada aguanta más)
             ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && fase == ESCUCHANDO) escuchar(); } }, 1200);
             return;
         }
@@ -311,7 +462,13 @@ public class CompaneroService extends Service implements RecognitionListener {
     @Override
     public void onResults(Bundle p) {
         if (!vivo) return;
+        recAbierto = false;
         ArrayList<String> l = p.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+        if (fase == HABLANDO) {   // v1.41 · lo oído mientras hablaba: o es Asier (se calla y sigue con ello) o es su propio eco (se ignora)
+            String o = (l == null || l.isEmpty()) ? "" : l.get(0).trim();
+            if (enLlamada && esAsier(o)) interrumpido();
+            else { onError(SpeechRecognizer.ERROR_NO_MATCH); return; }
+        }
         if (l == null || l.isEmpty() || l.get(0).trim().isEmpty()) { onError(SpeechRecognizer.ERROR_NO_MATCH); return; }
         String oido0 = l.get(0).trim();
         if (mejorParcial.trim().length() > oido0.length() + 3) oido0 = mejorParcial.trim();   // v1.40: si el final llega recortado, vale el parcial más largo
@@ -340,7 +497,7 @@ public class CompaneroService extends Service implements RecognitionListener {
             // ni sí ni no: es que me está diciendo otra cosa (una corrección, una pregunta): va al cerebro y el sí sigue esperando en Telegram
             accionPendiente = null;
         }
-        if (esAdios(b)) { fase = REPOSO; try { tts.speak("Vale. Aquí estoy.", TextToSpeech.QUEUE_FLUSH, null, null); } catch (Exception e) { /* nada */ } reposo(null); return; }
+        if (esAdios(b) || (enLlamada && b.matches("^(cuelga|colgamos|adi[oó]s.*|hasta luego.*|venga,? hasta luego.*)$"))) { fase = REPOSO; try { tts.speak("Vale. Aquí estoy.", TextToSpeech.QUEUE_FLUSH, null, null); } catch (Exception e) { /* nada */ } reposo(null); return; }
         mandar(texto, null);
     }
 

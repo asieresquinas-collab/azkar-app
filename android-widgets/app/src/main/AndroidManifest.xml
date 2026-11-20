@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="es.azkarmudanzas.widgets"
-    android:versionCode="41"
-    android:versionName="1.40">
+    android:versionCode="42"
+    android:versionName="1.41">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="28" />
 
@@ -11,6 +11,9 @@
     <!-- v1.39 · el compañero: un servicio a la vista (aviso fijo) que habla y escucha sin abrir pantallas -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- v1.41 · la llamada de Azkarin: pantalla de llamada con el móvil bloqueado y vibración -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!-- v1.17: para que Azkarin sepa DESDE DONDE sales y pueda decir cuanto tardas.
          Solo se lee con la tarjeta del walkie-talkie abierta; al cerrarla se suelta. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -278,6 +281,9 @@
         <!-- v1.39 · EL COMPAÑERO (Asier, 12-nov-2026): Azkarin habla él solo y escucha la respuesta sin tocar el móvil.
              Lo enciende Asier desde la pantalla de la app; se apaga con el mismo botón o desde su aviso. -->
         <service android:name=".CompaneroService" android:exported="false" />
+        <!-- v1.41 · la pantalla de llamada de Azkarin (suena, coger, colgar; se ve con el móvil bloqueado) -->
+        <activity android:name=".LlamadaActivity" android:exported="false" android:excludeFromRecents="true" android:launchMode="singleInstance"
+            android:showOnLockScreen="true" android:screenOrientation="portrait" android:theme="@android:style/Theme.Black.NoTitleBar" />
 
     </application>
 </manifest>
