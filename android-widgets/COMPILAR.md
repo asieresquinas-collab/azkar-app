@@ -24,6 +24,19 @@ no tiene permiso `workflow`). Receta que FUNCIONA:
   (targetCellWidth etc.). El manifest lleva package= y uses-sdk DENTRO (estilo clásico).
 - La APK publicada se sirve en: https://asieresquinas-collab.github.io/azkar-app/apk/azkar-widgets.apk
 
+## En el PC de casa (Windows), desde el 20-nov-2026
+Las herramientas están en `C:/Users/asier/IA/android-herramientas` (JDK 17 de Adoptium, build-tools 34 y la plataforma 25 de
+Google, descomprimidas, sin instalar nada en Windows). Para compilar y firmar:
+
+    bash /c/Users/asier/IA/android-herramientas/compilar-widgets.sh /c/azkar/app-noche-H/android-widgets
+
+Deja la APK firmada en `IA/android-herramientas/salida/out/azkar-widgets.apk` (usa d8 en vez de dalvik-exchange).
+
+- **v1.41 (20-nov-2026) · La llamada de Azkarin.** Suena con el tono de llamada (pantalla «Coger / Colgar», también bloqueado),
+  conversación seguida, interrumpirle hablando normal (Oido.java: micro en modo llamada con cancelador de eco y detector de voz
+  por volumen; el sonido limpio va al reconocedor por tubería en Android 13+), «Un momento, lo miro» si tarda, botón «Llamar a
+  Azkarin». Compilada y firmada; SIN publicar todavía (se le mandó la APK a mano para probar).
+
 ## Publicar una versión nueva (v1.4+, con AUTOACTUALIZACIÓN a un toque)
 1. Subir versionCode/versionName en app/build.gradle Y en el AndroidManifest.xml (van a la par).
 2. Compilar y firmar (receta de arriba, SIEMPRE con firma.jks).
