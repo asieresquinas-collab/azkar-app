@@ -339,7 +339,7 @@ public class Datos {
             String jwt = prefs(ctx).getString("jwt", "");
             if (jwt.isEmpty()) { ultimoErrorChat = "sin sesión"; return null; }
             HttpURLConnection c = conecta(BASE + "/api/chatbot/message", "POST", jwt);
-            c.setReadTimeout(120000); // Azkarin puede tardar (consulta calendario, crea eventos…)
+            c.setReadTimeout(CompaneroService.enLlamada ? 190000 : 120000);   // v1.44 · en llamada aguanta lo que aguanta la nube esperando a casa (170 s) // Azkarin puede tardar (consulta calendario, crea eventos…)
             c.setDoOutput(true);
             JSONObject body = new JSONObject();
             body.put("mensaje", mensaje);

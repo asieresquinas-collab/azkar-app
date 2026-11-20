@@ -47,7 +47,7 @@ public class CompaneroService extends Service implements RecognitionListener {
     static final String ACCION_PROBAR = "es.azkarmudanzas.widgets.COMPANERO_PROBAR";
     static final int ID_AVISO = 41;
     static final long CADA_MS = 30000;
-    static final int VERSION = 42;
+    static final int VERSION = 45;
     static volatile boolean vivo = false;
     static volatile String ultimoEstado = "";
 
@@ -679,7 +679,13 @@ public class CompaneroService extends Service implements RecognitionListener {
             ui.post(new Runnable() { @Override public void run() {
                 if (!vivo) return;
                 if (turno != miTurno) return;   // v1.41 · colgó mientras pensaba: esta respuesta ya no se dice
-                if (r == null) { di("No llego al cerebro de Azkarin." + (Datos.ultimoErrorChat.isEmpty() ? "" : " " + Datos.ultimoErrorChat)); return; }
+                if (r == null) {
+                    // v1.44 · Asier (20-nov): «me dice que no llega al cerebro». Que quede apuntado por qué, y si es que tarda, que lo diga claro.
+                    apunta("cerebro: " + Datos.ultimoErrorChat);
+                    if (Datos.ultimoErrorChat.contains("Timeout")) di("Esto me está llevando más de tres minutos. Sigo con ello y te lo dejo escrito en el chat cuando acabe.");
+                    else di("No llego al cerebro de Azkarin." + (Datos.ultimoErrorChat.isEmpty() ? "" : " " + Datos.ultimoErrorChat));
+                    return;
+                }
                 String msg = r.optString("mensaje", "");
                 if (msg.isEmpty()) msg = r.optString("texto", r.optString("respuesta", ""));
                 if (msg.isEmpty() && r.has("error")) msg = "No he podido: " + r.optString("error");
