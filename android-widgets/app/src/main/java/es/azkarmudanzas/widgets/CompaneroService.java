@@ -47,7 +47,7 @@ public class CompaneroService extends Service implements RecognitionListener {
     static final String ACCION_PROBAR = "es.azkarmudanzas.widgets.COMPANERO_PROBAR";
     static final int ID_AVISO = 41;
     static final long CADA_MS = 30000;
-    static final int VERSION = 45;
+    static final int VERSION = 46;
     static volatile boolean vivo = false;
     static volatile String ultimoEstado = "";
 
@@ -101,7 +101,22 @@ public class CompaneroService extends Service implements RecognitionListener {
     float rmsMax = -99f;
     static final java.util.LinkedList<String> diario = new java.util.LinkedList<String>();
     static void apunta(String que) {
-        synchronized (diario) { diario.add((System.currentTimeMillis() / 1000) + " " + que); while (diario.size() > 14) diario.removeFirst(); }
+        synchronized (diario) { diario.add((System.currentTimeMillis() / 1000) + " " + que + (enLlamada && pantallaApagada() ? " ·apag" : "")); while (diario.size() > 14) diario.removeFirst(); }
+    }
+    /** v1.45 · para saber desde fuera si un fallo pasó con la pantalla apagada. */
+    static boolean pantallaApagada() {
+        try { CompaneroService s = yo; if (s == null) return false; return !((PowerManager) s.getSystemService(Context.POWER_SERVICE)).isInteractive(); } catch (Exception e) { return false; }
+    }
+    // v1.45 · Asier (20-nov): «tampoco habla cuando tengo la pantalla bloqueada». Con la pantalla apagada el móvil duerme el wifi
+    // y corta la conexión a media respuesta: en llamada se le pide que no lo duerma.
+    android.net.wifi.WifiManager.WifiLock wifi;
+    void wifiDespierto(boolean si) {
+        try {
+            if (si) {
+                if (wifi == null) { wifi = ((android.net.wifi.WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE)).createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "azkar:llamada"); wifi.setReferenceCounted(false); }
+                wifi.acquire();
+            } else if (wifi != null && wifi.isHeld()) wifi.release();
+        } catch (Exception e) { /* sin él también va */ }
     }
     static String diarioTexto() {
         StringBuilder b = new StringBuilder();
@@ -172,6 +187,7 @@ public class CompaneroService extends Service implements RecognitionListener {
         if (ACCION_LLAMAR.equals(a) && fase == REPOSO) {
             historial = new JSONArray(); accionPendiente = null; idActual = null; resuelto = false; vacias = 0;
             enLlamada = true;
+            wifiDespierto(true);
             iniciarOido();
             abrirPantalla();
             di("Dime.");
@@ -192,6 +208,7 @@ public class CompaneroService extends Service implements RecognitionListener {
         try { if (rec != null) rec.destroy(); } catch (Exception e) { /* nada */ }
         try { if (tts != null) { tts.stop(); tts.shutdown(); } } catch (Exception e) { /* nada */ }
         try { if (despierto != null && despierto.isHeld()) despierto.release(); } catch (Exception e) { /* nada */ }
+        wifiDespierto(false);
         try { audio.abandonAudioFocus(null); } catch (Exception e) { /* nada */ }
         ultimoEstado = "apagado";
         super.onDestroy();
@@ -363,6 +380,7 @@ public class CompaneroService extends Service implements RecognitionListener {
         pararTono();
         apunta("cogida");
         enLlamada = true;
+        wifiDespierto(true);
         iniciarOido();
         String t = textoLlamada == null ? "Dime." : textoLlamada; textoLlamada = null;
         mete("assistant", t);
@@ -538,6 +556,7 @@ public class CompaneroService extends Service implements RecognitionListener {
         apunta("reposo" + (porque == null ? "" : " " + porque));
         fase = REPOSO; vacias = 0; idActual = null; accionPendiente = null; enLlamada = false; recAbierto = false; turno++; interrumpio = false;
         pararOido();
+        wifiDespierto(false);
         try { audio.abandonAudioFocus(null); } catch (Exception e) { /* nada */ }
         estado(porque == null ? "Estoy contigo. Te hablo cuando tenga algo." : "En espera · " + porque);
     }
@@ -683,6 +702,7 @@ public class CompaneroService extends Service implements RecognitionListener {
                     // v1.44 · Asier (20-nov): «me dice que no llega al cerebro». Que quede apuntado por qué, y si es que tarda, que lo diga claro.
                     apunta("cerebro: " + Datos.ultimoErrorChat);
                     if (Datos.ultimoErrorChat.contains("Timeout")) di("Esto me está llevando más de tres minutos. Sigo con ello y te lo dejo escrito en el chat cuando acabe.");
+                    else if (Datos.ultimoErrorChat.contains("SocketException") || Datos.ultimoErrorChat.contains("UnknownHost") || Datos.ultimoErrorChat.contains("ConnectException") || Datos.ultimoErrorChat.contains("EOFException")) di("Se me ha cortado la conexión mientras lo miraba. Dímelo otra vez.");   // v1.45
                     else di("No llego al cerebro de Azkarin." + (Datos.ultimoErrorChat.isEmpty() ? "" : " " + Datos.ultimoErrorChat));
                     return;
                 }

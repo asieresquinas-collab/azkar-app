@@ -229,6 +229,16 @@ public class MainActivity extends Activity {
                     // v1.42 · Asier (20-nov): «le doy al botón nuevo y no hace nada». Pedía encender antes el compañero; ahora lo enciende él solo.
                     if (!Datos.hayLogin(MainActivity.this)) { estadoComp.setText("Entra primero con tu usuario y clave, arriba del todo."); return; }
                     if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) { requestPermissions(new String[]{ android.Manifest.permission.RECORD_AUDIO }, 11); estadoComp.setText("Acepta el micrófono y vuelve a tocar «Llamar a Azkarin»."); return; }
+                    // v1.45 · para que la llamada siga con la pantalla bloqueada, el móvil no debe «dormir» esta app. Se pide una sola vez.
+                    try {
+                        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+                        if (!pm.isIgnoringBatteryOptimizations(getPackageName()) && !Datos.prefs(MainActivity.this).getBoolean("pedida_bateria", false)) {
+                            Datos.prefs(MainActivity.this).edit().putBoolean("pedida_bateria", true).apply();
+                            startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, android.net.Uri.parse("package:" + getPackageName())));
+                            estadoComp.setText("Toca «Permitir» para que la llamada siga con la pantalla apagada, y vuelve a tocar «Llamar a Azkarin».");
+                            return;
+                        }
+                    } catch (Exception e) { /* si el móvil no lo tiene, se llama igual */ }
                     if (!CompaneroService.encendido(MainActivity.this)) CompaneroService.encender(MainActivity.this);
                     startService(new Intent(MainActivity.this, CompaneroService.class).setAction(CompaneroService.ACCION_LLAMAR));
                     estadoComp.setText("📞 Llamando a Azkarin… ahora te dice «Dime».");

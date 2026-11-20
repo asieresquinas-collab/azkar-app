@@ -92,7 +92,7 @@ public class LlamadaActivity extends Activity {
 
     /** Cada medio segundo: ¿sigue sonando?, ¿en llamada?, ¿ya ha acabado? */
     final Runnable mira = new Runnable() {
-        int sinNada = 0;
+        int sinNada = 0; boolean suelta = false;
         @Override public void run() {
             if (isFinishing()) return;
             if (CompaneroService.sonando) {
@@ -101,7 +101,10 @@ public class LlamadaActivity extends Activity {
                 sinNada = 0;
             } else if (CompaneroService.enLlamada) {
                 coger.setVisibility(View.GONE);
-                estado.setText(CompaneroService.ultimoEstado);
+                // v1.45 · Asier: «que pueda hablar con la pantalla bloqueada, así no gasto tanta batería». Ya cogida, la pantalla
+                // deja de sujetarse encendida: se apaga sola o la apagas tú, y la llamada sigue.
+                if (!suelta) { suelta = true; getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); }
+                estado.setText(CompaneroService.ultimoEstado + " · Puedes apagar la pantalla: sigo aquí.");
                 sinNada = 0;
             } else if (++sinNada >= 3) { finish(); return; }   // ni suena ni hay llamada: fuera
             ui.postDelayed(this, 500);
