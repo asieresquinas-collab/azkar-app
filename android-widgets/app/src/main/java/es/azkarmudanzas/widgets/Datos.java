@@ -345,7 +345,8 @@ public class Datos {
             body.put("mensaje", mensaje);
             body.put("historial", historial == null ? new org.json.JSONArray() : historial);
             if (confirmarAccion != null) body.put("confirmar_accion", confirmarAccion);
-            if (CompaneroService.enLlamada) body.put("modo_voz", true);   // v1.41 · en llamada: respuestas para ser oídas (cortas)
+            if (CompaneroService.enLlamada) body.put("modo_voz", true);
+            if (CompaneroService.enLlamada && CompaneroService.trozosId != null) body.put("trozos_id", CompaneroService.trozosId);   // v1.46 · habla según escribe   // v1.41 · en llamada: respuestas para ser oídas (cortas)
             // v1.17: donde esta Asier AHORA (si dio permiso y la tarjeta esta abierta).
             // Si no hay, se manda el MOTIVO para que Azkarin lo explique en vez de callarse.
             JSONObject _ub = Ubic.json();
@@ -366,6 +367,19 @@ public class Datos {
     }
 
     /** v1.39 · EL COMPAÑERO: ¿tiene Azkarin algo que decirme en alto? {hay, id, texto, accion} o null. */
+    /** v1.46 · lo que lleva escrito Azkarin en la llamada (para decir cada frase en cuanto está entera). */
+    static JSONObject trozos(Context ctx, String id) {
+        try {
+            String jwt = prefs(ctx).getString("jwt", "");
+            if (jwt.isEmpty() || id == null) return null;
+            HttpURLConnection c = conecta(BASE + "/api/widget/trozos/" + id, "GET", jwt);
+            c.setConnectTimeout(5000); c.setReadTimeout(8000);
+            int code = c.getResponseCode();
+            if (code != 200) return null;
+            return new JSONObject(leerTodo(c.getInputStream()));
+        } catch (Exception e) { return null; }
+    }
+
     static JSONObject companero(Context ctx) {
         JSONObject r = companeroUna(ctx);
         if (r != null) return r;

@@ -82,6 +82,11 @@ public class CompaneroService extends Service implements RecognitionListener {
     boolean interrumpio = false;     // esta escucha empezó cortándole
     long sesionDesde = 0;
     int turno = 0;                   // para tirar lo que llegue tarde (colgó, o habló encima)
+    // v1.46 · LA LLAMADA HABLA SEGÚN ESCRIBE: lo que Azkarin lleva escrito se pide cada segundo y cada frase entera se dice ya
+    static volatile String trozosId = null;
+    int turnoCortado = -1;           // el turno en el que Asier habló encima (lo que llegue de ese turno ya no se dice)
+    boolean encolar = false;         // decir detrás de lo que ya está diciendo (no cortarlo)
+    final java.util.List<String> dichasTurno = new java.util.ArrayList<String>();
     android.os.ParcelFileDescriptor tuboLectura;
     Handler ui = new Handler(Looper.getMainLooper());
     TextToSpeech tts;
@@ -295,6 +300,7 @@ public class CompaneroService extends Service implements RecognitionListener {
     // ── hablar ──
     void di(String texto) {
         String t = paraVoz(texto);
+        if (t.isEmpty() && encolar) { encolar = false; fase = HABLANDO; try { tts.playSilentUtterance(60, TextToSpeech.QUEUE_ADD, "azk_comp"); } catch (Exception e) { trasHablar(); } return; }   // v1.46 · lo dicho a trozos ya era todo: al acabar la cola, a escuchar
         if (t.isEmpty()) { fase = HABLANDO; trasHablar(); return; }
         if (!ttsListo) { pendienteDeDecir = texto; return; }
         fase = HABLANDO;
@@ -313,8 +319,9 @@ public class CompaneroService extends Service implements RecognitionListener {
                 oido.conectar(null, false); oido.reinicia();
                 oido.ttsDesde = System.currentTimeMillis(); oido.hablandoTts = true;
             }
-            tts.speak(t, TextToSpeech.QUEUE_FLUSH, pv, "azk_comp");
-        } catch (Exception e) { trasHablar(); }
+            tts.speak(t, encolar ? TextToSpeech.QUEUE_ADD : TextToSpeech.QUEUE_FLUSH, pv, "azk_comp");
+            encolar = false;
+        } catch (Exception e) { encolar = false; trasHablar(); }
         // v1.41 · sin tubería (móviles viejos): el micro del reconocedor se abre mientras habla (para poder interrumpirle)
         if (enLlamada && !conTubo) ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && enLlamada && fase == HABLANDO && !recAbierto) abrirMicro(); } }, 700);
     }
@@ -505,6 +512,7 @@ public class CompaneroService extends Service implements RecognitionListener {
 
     void interrumpido() {
         apunta("interrumpido");
+        turnoCortado = turno;
         if (idActual != null && !resuelto) { final String id = idActual; new Thread(new Runnable() { @Override public void run() { Datos.companeroOido(CompaneroService.this, id, "dicho"); } }).start(); }
         try { tts.stop(); } catch (Exception e) { /* nada */ }
         if (oido != null) oido.hablandoTts = false;
@@ -661,6 +669,82 @@ public class CompaneroService extends Service implements RecognitionListener {
         mandar(texto, null);
     }
 
+    /** v1.46 · una frase ya entera de lo que Azkarin está escribiendo: se dice detrás de lo anterior, sin cortar nada. */
+    void diTrozo(String frase, int miTurno) {
+        if (!vivo || turno != miTurno || turnoCortado == miTurno || !ttsListo) return;
+        String t = paraVoz(frase);
+        if (t.isEmpty()) return;
+        dichasTurno.add(normaliza(t));
+        boolean primera = (fase == PENSANDO);
+        fase = HABLANDO;
+        diciendo = (diciendo + " " + t.toLowerCase(Locale.ROOT)).trim();
+        if (diciendo.length() > 4000) diciendo = diciendo.substring(diciendo.length() - 4000);
+        estado("Te estoy hablando…");
+        try {
+            Bundle pv = null;
+            if (enLlamada && conTubo && oido != null) {
+                pv = new Bundle(); pv.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL);
+                if (primera) { try { if (rec != null) rec.cancel(); } catch (Exception e) { /* nada */ } recAbierto = false; oido.conectar(null, false); oido.reinicia(); }
+                oido.ttsDesde = System.currentTimeMillis(); oido.hablandoTts = true;
+            }
+            if (primera) { try { audio.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK); } catch (Exception e) { /* nada */ } }
+            tts.speak(t, primera ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD, pv, "azk_trozo");
+        } catch (Exception e) { /* nada */ }
+        if (primera && enLlamada && !conTubo) ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && enLlamada && fase == HABLANDO && !recAbierto) abrirMicro(); } }, 700);
+    }
+
+    static String normaliza(String t) { return t.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9áéíóúñü]+", " ").trim(); }
+
+    /** v1.46 · las frases ya enteras de un trozo de texto (terminadas en . ! ? … seguidas de espacio); devuelve hasta dónde ha usado. */
+    static int frasesEnteras(String s, int desde, java.util.List<String> out) {
+        int usado = desde;
+        for (int i = desde; i < s.length(); i++) {
+            char ch = s.charAt(i);
+            if ((ch == '.' || ch == '!' || ch == '?' || ch == '\u2026' || ch == '\n') && i + 1 < s.length() && Character.isWhitespace(s.charAt(i + 1))) {
+                String f = s.substring(usado, i + 1).trim();
+                if (f.length() > 0) out.add(f);
+                usado = i + 1;
+            }
+        }
+        return usado;
+    }
+
+    /** v1.46 · lo que trae la respuesta final y no se ha dicho ya a trozos (un aviso, una corrección, el final). */
+    String restoSinDecir(String msg) {
+        if (dichasTurno.isEmpty()) return msg;
+        String t = paraVoz(msg);
+        java.util.List<String> fr = new java.util.ArrayList<String>();
+        int u = frasesEnteras(t + " ", 0, fr);
+        if (u < t.length()) { String cola = t.substring(Math.min(u, t.length())).trim(); if (!cola.isEmpty()) fr.add(cola); }
+        java.util.Set<String> ya = new java.util.HashSet<String>(dichasTurno);
+        StringBuilder sb = new StringBuilder();
+        for (String f : fr) { if (!ya.contains(normaliza(paraVoz(f)))) sb.append(f).append(' '); }
+        return sb.toString().trim();
+    }
+
+    /** v1.46 · mientras piensa: cada segundo pregunta lo que lleva escrito y dice las frases que ya estén enteras. */
+    void pedirTrozos(final String id, final int miTurno) {
+        new Thread(new Runnable() { @Override public void run() {
+            final int[] usado = new int[20];
+            int vueltas = 0;
+            while (vivo && enLlamada && turno == miTurno && id.equals(trozosId) && vueltas++ < 220) {
+                try { Thread.sleep(900); } catch (InterruptedException e) { return; }
+                if (!(vivo && enLlamada && turno == miTurno && id.equals(trozosId))) return;
+                JSONObject j = Datos.trozos(CompaneroService.this, id);
+                if (j == null) continue;
+                org.json.JSONArray seg = j.optJSONArray("segmentos");
+                final java.util.List<String> nuevas = new java.util.ArrayList<String>();
+                if (seg != null) for (int k = 0; k < seg.length() && k < 20; k++) {
+                    String sg = seg.optString(k, "");
+                    if (usado[k] > sg.length()) usado[k] = 0;   // ese trozo resultó ser una herramienta: se vació
+                    usado[k] = frasesEnteras(sg, usado[k], nuevas);
+                }
+                if (!nuevas.isEmpty()) ui.post(new Runnable() { @Override public void run() { for (String f : nuevas) diTrozo(f, miTurno); } });
+                if (j.optBoolean("fin", false)) return;
+            }
+        } }).start();
+    }
+
     /** v1.41 · una frase corta mientras piensa (no cambia de fase ni abre el micro). */
     void dePaso(String frase) {
         try {
@@ -687,6 +771,9 @@ public class CompaneroService extends Service implements RecognitionListener {
         if (conf == null) mete("user", texto);
         interrumpio = false;
         final int miTurno = ++turno;
+        dichasTurno.clear();
+        trozosId = enLlamada ? java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 24) : null;
+        if (trozosId != null) pedirTrozos(trozosId, miTurno);
         // v1.41 · Asier: «aunque tenga que esperar dos segundos, pero que me vaya contando». En llamada, si tarda, lo dice.
         if (enLlamada) {
             ui.postDelayed(new Runnable() { @Override public void run() { if (vivo && enLlamada && fase == PENSANDO && turno == miTurno) dePaso("Un momento, lo miro."); } }, 2500);
@@ -713,6 +800,9 @@ public class CompaneroService extends Service implements RecognitionListener {
                 JSONObject acc = "confirmacion".equals(r.optString("tipo")) ? r.optJSONObject("accion") : null;
                 if (acc != null) { accionPendiente = acc; idActual = null; msg = msg.replaceAll("(?is)si te parece bien,? dime «sí».*$", "").trim() + " ¿Lo hago?"; }
                 mete("assistant", msg);
+                trozosId = null;
+                if (turnoCortado == miTurno) return;   // v1.46 · habló encima mientras le contaba: ya está escuchando
+                if (!dichasTurno.isEmpty() && acc == null) { String resto = restoSinDecir(msg); apunta("trozos: " + dichasTurno.size() + " dichas, faltan " + resto.length() + " letras"); encolar = true; di(resto); return; }
                 di(msg);
             } });
         } }).start();
