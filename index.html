@@ -2645,6 +2645,10 @@ window._saludoA = function (nombre, d) {
           //  por casa como antes y se avisa una vez. Y al entrar con el usuario, se entra también en Railway.
           // v735 · y la pestaña WhatsApp entera (chats, conversación, contestar): los enlaces firmados de las fotos los sirve Railway
           //  y la llave de Dualhook está en Railway; la base es la misma, así que casa no aporta nada aquí
+          // v755 · GASTOS Y FOTOS PARA LA WEB, SIEMPRE POR RAILWAY (Asier, 26-nov: «no tiene acceso a la nube para guardarlas en el
+          //  Drive»). En casa, leer cada ticket con el modelo tarda ~30 s por foto; si el túnel se corta a mitad, la app daba el
+          //  fallo sin probar por Railway (y a veces sí se había guardado). Railway guarda en el mismo Drive y siempre contesta.
+          if (/\/api\/(gastos\/|fotos-web\/)/i.test(rec.replace(/\?.*$/, ''))) return _aRailway(rec, _ini);
           if (/\/api\/(pdf\/generate-and-save|drive\/save\b|drive\/captacion\/save|email\/|drive\/pdf\/|drive\/foto\/|whatsapp\/chats)|firma/i.test(rec.replace(/\?.*$/, ''))) return _aRailway(rec, _ini);
           if (rec.indexOf('/api/usuarios/login') >= 0 && _ini && typeof _ini.body === 'string') { try { _loginEn('railway', _ini.body); _loginEn('casa', _ini.body); } catch (eL) {} }
           // v710 · con servidor de casa configurado: se espera a saber si contesta (como mucho cuatro segundos) y se va a él
@@ -6056,7 +6060,7 @@ function waMandar() {
     })
     .catch(function (e) { btn.disabled = false; btn.innerHTML = 'Mandar &#10148;'; alert('No ha salido: ' + (e && e.message)); });
 }
-var APP_VERSION = 'v754';
+var APP_VERSION = 'v755';
 // v412 · La marca de agua de abajo a la derecha llevaba 'v399' ESCRITO A MANO desde la
 // v399. Cada version nueva cambiaba APP_VERSION pero el cartelito seguia diciendo v399:
 // la app se actualizaba perfectamente y parecia clavada. Ahora se pinta con la de verdad.
